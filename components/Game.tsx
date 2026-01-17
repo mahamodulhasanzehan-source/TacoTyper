@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { 
   COLORS, 
   LEVEL_CONFIGS, 
@@ -60,6 +60,7 @@ export default function Game({ user, onLogout }: GameProps) {
   const [infoModalText, setInfoModalText] = useState('');
   
   // Game Dimensions
+  // @ts-ignore
   const [gameDimensions, setGameDimensions] = useState({ width: window.innerWidth, height: window.innerHeight });
 
   // Speed Test State
@@ -370,6 +371,7 @@ export default function Game({ user, onLogout }: GameProps) {
       setGameMode('speed-test');
   };
 
+  // @ts-ignore
   const finishSpeedTest = async (wpm: number, cpm: number, accuracy: number) => {
       setScreen('speed-test-result');
       // Show analyzing state
