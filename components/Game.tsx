@@ -173,12 +173,10 @@ export default function Game({ user, onLogout }: GameProps) {
     const width = window.innerWidth; 
     
     // Spawning Logic:
-    // For standard mode, continue spawning until user COLLECTS the target amount.
-    // Do not cap based on words spawned, only check active density or goal completion.
     let targetIngredients = 7;
     if (state.gameMode === 'standard') {
         targetIngredients = LEVEL_CONFIGS[state.level]?.goal || 7;
-        if (state.ingredientsCount >= targetIngredients) return null; // Goal met, stop spawning
+        if (state.ingredientsCount >= targetIngredients) return null; // Goal met
     } else if (state.gameMode === 'boss') {
         if (state.wordsSpawnedThisLevel >= BOSS_WORD_COUNT) return null;
     }
@@ -340,12 +338,8 @@ export default function Game({ user, onLogout }: GameProps) {
     let targetIngredients = 7;
     if (state.gameMode === 'standard') targetIngredients = LEVEL_CONFIGS[state.level]?.goal || 7;
 
-    // Standard Win: Count ingredients collected, no longer check words spawned cap
     if (state.gameMode === 'standard' && state.ingredientsCount >= targetIngredients && nextWords.length === 0) {
-        // Technically we can complete as soon as ingredients count is reached, but usually better to let the screen clear or just transition
-        // But let's check if there are no more "ingredient" type words falling.
-        // For simplicity: if ingredientsCount >= target, we can transition immediately or wait for clear.
-        // Let's transition immediately when last required word is typed (handled in addIngredient)
+        // Handled in addIngredient usually, but safe guard here
     }
 
     if (state.gameMode === 'boss' && nextWords.length === 0 && state.wordsSpawnedThisLevel >= BOSS_WORD_COUNT && state.activeWordId === null) {
@@ -406,7 +400,7 @@ export default function Game({ user, onLogout }: GameProps) {
     stateRef.current.infiniteConfig = { speedMult: infiniteMult, difficultyIncrease: difficultyInc, wordsTyped: 0 };
     stateRef.current.universalConfig = { wordCount: 0, maxWordLength: 5, forcedWordsLeft: 0 };
 
-    // Stats Reset if starting fresh or competitive
+    // Stats Reset
     stateRef.current.stats = {
         mistakes: 0,
         timeTaken: 0,
@@ -465,38 +459,35 @@ export default function Game({ user, onLogout }: GameProps) {
     
     const state = stateRef.current;
     
-    // For competitive, track stats even on loss
-    if (playStyle === 'competitive' && user && customUsername) {
-        // Update time for the partial level
+    if (user && customUsername) {
+        // Update stats
         const levelTime = (Date.now() - state.levelStartTime) / 1000;
         state.stats.timeTaken += levelTime;
         state.stats.totalScore = state.score;
         state.stats.levelReached = state.level;
 
+        // Trigger AI Calculation for ALL modes
         setIsCalculatingScore(true);
-        // Generate AI Score for the run
         const { score, title } = await aiService.generateCompetitiveScore(state.stats);
         setFinalAiScore(score);
         setFinalAiTitle(title);
         setIsCalculatingScore(false);
         
-        await saveLeaderboardScore(user, customUsername, score, title, state.stats, 'competitive');
-    } 
-    else if (user) {
-        // For unrated, save history
-        saveGameStats(user, state.score, state.gameMode, state.level);
-        
-        // If Infinite or Universal, save to leaderboard too
-        if ((state.gameMode === 'infinite' || state.gameMode === 'universal') && customUsername) {
-            await saveLeaderboardScore(
-                user, 
-                customUsername, 
-                state.score, 
-                state.gameMode === 'infinite' ? 'Speedster' : 'Universal Chef', 
-                state.stats, 
-                state.gameMode
-            );
+        // Save to Leaderboard
+        let modeToSave = playStyle === 'competitive' ? 'competitive' : state.gameMode;
+        // Map standard/boss to something clearer if unrated? Or just use 'standard'
+        if (state.gameMode === 'standard' || state.gameMode === 'boss') {
+            if (playStyle === 'competitive') modeToSave = 'competitive';
+            // Unrated standard games typically don't go to leaderboard, but user asked for "any three modes".
+            // We'll skip unrated standard unless we want to track it.
         }
+        
+        if (modeToSave === 'competitive' || modeToSave === 'infinite' || modeToSave === 'universal') {
+             await saveLeaderboardScore(user, customUsername, score, title, state.stats, modeToSave);
+        }
+        
+        // Save generic history
+        saveGameStats(user, state.score, state.gameMode, state.level);
     }
   };
 
@@ -504,29 +495,26 @@ export default function Game({ user, onLogout }: GameProps) {
     setScreen('game-over');
     const state = stateRef.current;
     
-    // Update final stats for last level
+    // Update stats
     const levelTime = (Date.now() - state.levelStartTime) / 1000;
     state.stats.timeTaken += levelTime;
     state.stats.totalScore = state.score;
+    state.stats.levelReached = 6; // Completed
 
-    if (playStyle === 'competitive') {
-        setInfoModalText("Master Chef Status Achieved!");
-        setIsCalculatingScore(true);
-        
-        // AI Calculation
-        const { score, title } = await aiService.generateCompetitiveScore(state.stats);
-        
-        setFinalAiScore(score);
-        setFinalAiTitle(title);
-        setIsCalculatingScore(false);
+    // Calculate AI Score (0-100)
+    setIsCalculatingScore(true);
+    const { score, title } = await aiService.generateCompetitiveScore(state.stats);
+    setFinalAiScore(score);
+    setFinalAiTitle(title);
+    setIsCalculatingScore(false);
 
-        if (user && customUsername) {
-            await saveLeaderboardScore(user, customUsername, score, title, state.stats, 'competitive');
-        }
-    } else {
-        setInfoModalText("You survived the social hour and became the Master Chef!"); 
-        if (user) {
-            saveGameStats(user, state.score, 'boss', 6);
+    if (user && customUsername) {
+        if (playStyle === 'competitive') {
+             setInfoModalText("Master Chef Status Achieved!");
+             await saveLeaderboardScore(user, customUsername, score, title, state.stats, 'competitive');
+        } else {
+             setInfoModalText("You survived the social hour!");
+             saveGameStats(user, state.score, 'boss', 6);
         }
     }
   };
@@ -534,7 +522,6 @@ export default function Game({ user, onLogout }: GameProps) {
   const completeLevel = () => {
       const state = stateRef.current;
       
-      // Update Stats
       const levelTime = (Date.now() - state.levelStartTime) / 1000;
       state.stats.timeTaken += levelTime;
       
@@ -542,7 +529,6 @@ export default function Game({ user, onLogout }: GameProps) {
       setScore(state.score);
       
       if (playStyle === 'competitive') {
-          // Sequential Flow
           if (state.level < 5) {
              setScreen('level-complete');
           } else {
@@ -557,7 +543,6 @@ export default function Game({ user, onLogout }: GameProps) {
 
   const nextLevelAction = () => {
       if (playStyle === 'competitive') {
-          // Carry over score, lives, streaks
           const nextLvl = stateRef.current.level + 1;
           
           setLevel(nextLvl);
@@ -566,11 +551,10 @@ export default function Game({ user, onLogout }: GameProps) {
           setIngredientsCollected([]);
           setScreen('playing');
           
-          // Reset Level Specifics but keep Stats accumulators
           stateRef.current.fallingWords = [];
           stateRef.current.activeWordId = null;
           stateRef.current.level = nextLvl;
-          stateRef.current.stats.levelReached = nextLvl; // Update reached level
+          stateRef.current.stats.levelReached = nextLvl;
           stateRef.current.screen = 'playing';
           stateRef.current.wordsSpawnedThisLevel = 0;
           stateRef.current.ingredientsCount = 0;
@@ -579,14 +563,12 @@ export default function Game({ user, onLogout }: GameProps) {
           stateRef.current.lastTime = performance.now();
           stateRef.current.levelStartTime = Date.now();
       } else {
-          // Basic flow
           setLevel(l => l + 1);
           initGame('standard', level + 1);
       }
   };
-  // ... rest of the file (event listeners etc) remains effectively same but inside the closure
-  // re-rendering the component with the new spawn logic
-  
+
+  // ... rest of game logic remains same
   const processWordCompletion = (word: WordEntity) => {
     const state = stateRef.current;
     

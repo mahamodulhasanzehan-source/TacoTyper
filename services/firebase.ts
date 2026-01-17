@@ -152,18 +152,21 @@ export const saveLeaderboardScore = async (
 ) => {
     if (!isInitialized || !db) return;
     try {
-        // Calculate Sort Value
-        // Competitive: Level * 1,000,000 + Score (Max 10k). This ensures Level 4 > Level 3.
-        // Others: Just Score.
+        // Sort Value Logic
+        // Competitive/Universal/Infinite: Prioritize Level first (x1000), then Score (0-100)
+        // If mode is speed-test, score is WPM directly.
+        
         let sortValue = score;
-        if (mode === 'competitive') {
-            sortValue = (stats.levelReached * 1000000) + score;
+        if (mode !== 'speed-test') {
+             // Example: Level 6, Score 100 -> 6100. Level 5, Score 50 -> 5050.
+             // This ensures higher level always wins.
+             sortValue = (stats.levelReached * 1000) + score; 
         }
 
         const data: any = {
             uid: user.uid,
             username: username,
-            score: score,
+            score: score, // This is now 0-100 for non-speed modes
             title: title,
             stats: stats,
             timestamp: Date.now(),
@@ -185,42 +188,39 @@ export const saveLeaderboardScore = async (
 export const getLeaderboard = async (mode: string = 'competitive'): Promise<LeaderboardEntry[]> => {
     if (!isInitialized || !db) return [];
     try {
-        // Fetch top 50 scores for the mode, ordered by sortValue
+        // Query ONLY by mode. Sorting is done in memory to avoid "Missing Index" errors on Firebase.
+        // We limit to 100 to keep it lightweight.
         const q = query(
             collection(db, "leaderboard"), 
             where("mode", "==", mode),
-            orderBy("sortValue", "desc"), 
-            limit(50)
+            limit(100)
         );
         
         const querySnapshot = await getDocs(q);
         const entries: LeaderboardEntry[] = [];
         const userEntryCounts: Record<string, number> = {};
 
-        querySnapshot.forEach((doc) => {
-            const data = doc.data();
-            const uid = data.uid;
-            
-            // Limit to 3 entries per user
-            if (!userEntryCounts[uid]) userEntryCounts[uid] = 0;
-            if (userEntryCounts[uid] < 3) {
-                userEntryCounts[uid]++;
-                entries.push({
-                    id: doc.id,
-                    uid: data.uid,
-                    username: data.username,
-                    score: data.score,
-                    title: data.title,
-                    stats: data.stats,
-                    timestamp: data.timestamp,
-                    levelReached: data.levelReached || 1,
-                    mode: data.mode,
-                    accuracy: data.accuracy
-                });
-            }
-        });
+        // Convert docs to array
+        const rawEntries = querySnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        })) as LeaderboardEntry[]; // Temporary cast including internal fields
 
-        // Return top 10 after filtering
+        // Client-side Sort
+        // @ts-ignore
+        rawEntries.sort((a, b) => (b.sortValue || 0) - (a.sortValue || 0));
+
+        // Filter: Max 3 per user
+        for (const data of rawEntries) {
+             const uid = data.uid;
+             if (!userEntryCounts[uid]) userEntryCounts[uid] = 0;
+             if (userEntryCounts[uid] < 3) {
+                 userEntryCounts[uid]++;
+                 entries.push(data);
+             }
+        }
+
+        // Return top 10
         return entries.slice(0, 10);
     } catch (e) {
         console.error("Error fetching leaderboard", e);

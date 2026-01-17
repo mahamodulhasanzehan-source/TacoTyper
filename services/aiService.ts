@@ -15,7 +15,8 @@ class AIService {
   async generateSpeedText(): Promise<string> {
     try {
       const model = this.genAI.getGenerativeModel({ model: this.modelId });
-      const result = await model.generateContent("Generate a paragraph of about 40-50 words about a random interesting food or cooking fact. Do not include a title. Just the fact.");
+      // Updated prompt for 2 paragraphs
+      const result = await model.generateContent("Generate two distinct, detailed paragraphs (about 50-60 words each) about a random interesting food history or cooking science fact. Do not include a title. Just the text.");
       const response = await result.response;
       return response.text() || this.getFallbackText();
     } catch (error) {
@@ -48,28 +49,27 @@ class AIService {
             }
         });
         
+        // Updated prompt for 0-100 score
         const prompt = `
-            You are the Head Judge of the Culinary Olympics. A player has completed a run in the cooking competition.
-            They reached Level ${stats.levelReached} (Max is 6).
-
-            Evaluate their performance based on these statistics and assign a Score (0 to 10000) and a Rank Title.
+            You are the Head Judge of the Culinary Olympics. A player has completed a run.
+            Evaluate their performance and assign a Score from 0 to 100 (Integer) and a Rank Title.
 
             Stats:
-            - Level Reached: ${stats.levelReached}
-            - Mistakes (Typos): ${stats.mistakes} (Lower is better)
-            - Total Time Taken: ${stats.timeTaken} seconds (Lower is better)
-            - Ingredients Dropped / Lives Lost: ${stats.ingredientsMissed} (Lower is better)
-            - Rotten Ingredients Typed (Bad): ${stats.rottenWordsTyped} (Lower is better)
-            - Raw Game Score: ${stats.totalScore} (Higher is better)
+            - Level Reached: ${stats.levelReached} (Max 6)
+            - Mistakes: ${stats.mistakes}
+            - Time: ${stats.timeTaken.toFixed(1)}s
+            - Ingredients Dropped: ${stats.ingredientsMissed}
+            - Rotten Eaten: ${stats.rottenWordsTyped}
+            - Raw Points: ${stats.totalScore}
 
-            Scoring Logic:
-            - The most important factor is 'Level Reached'. The score you give is the *performance within that level context*.
-            - Heavily penalize 'Rotten Ingredients Typed' and 'Ingredients Dropped'.
-            - Reward speed (Time Taken) and low Mistakes.
-            - Raw Game Score is a baseline, but you must normalize it into a competitive 0-10000 scale.
-            
-            Return JSON format: { "score": number, "title": string }
-            Example Titles: "Sous Chef", "Line Cook", "Executive Chef", "Taco Legend", "Kitchen Disaster", "Dishwasher".
+            Scoring Guide:
+            - 90-100: Perfection. Fast, no mistakes, high levels.
+            - 70-89: Good solid performance.
+            - 50-69: Average, some mistakes or drops.
+            - 0-49: Poor performance, many drops or rotten food.
+
+            Return JSON: { "score": number, "title": string }
+            Example Titles: "Sous Chef", "Line Cook", "Executive Chef", "Taco Legend", "Kitchen Disaster".
         `;
 
         const result = await model.generateContent(prompt);
@@ -78,21 +78,31 @@ class AIService {
         const json = JSON.parse(text);
         
         return {
-            score: json.score || 0,
+            score: Math.min(100, Math.max(0, json.score || 0)),
             title: json.title || "Kitchen Porter"
         };
 
     } catch (error) {
         console.error("AI Score Generation failed", error);
-        // Fallback calculation
-        let score = Math.max(0, stats.totalScore - (stats.mistakes * 50) - (stats.timeTaken * 2) - (stats.ingredientsMissed * 200));
-        score = Math.min(10000, score);
+        // Fallback calculation 0-100
+        // Base 50 + (Points/1000) - Penalties
+        let score = 50 + (stats.totalScore / 500) - (stats.mistakes * 2) - (stats.ingredientsMissed * 5);
+        if (stats.levelReached > 3) score += 10;
+        if (stats.levelReached > 5) score += 20;
+        
+        score = Math.min(100, Math.max(0, Math.round(score)));
         return { score, title: "Line Cook (Offline)" };
     }
   }
 
   private getFallbackText() {
-    return SPEED_TEST_TEXTS[Math.floor(Math.random() * SPEED_TEST_TEXTS.length)];
+    // Fallback: Return two concatenated strings from pool to simulate 2 paragraphs
+    const p1 = SPEED_TEST_TEXTS[Math.floor(Math.random() * SPEED_TEST_TEXTS.length)];
+    let p2 = SPEED_TEST_TEXTS[Math.floor(Math.random() * SPEED_TEST_TEXTS.length)];
+    while (p1 === p2) {
+        p2 = SPEED_TEST_TEXTS[Math.floor(Math.random() * SPEED_TEST_TEXTS.length)];
+    }
+    return `${p1}\n\n${p2}`;
   }
 }
 
