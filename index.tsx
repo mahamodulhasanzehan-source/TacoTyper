@@ -2,6 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import './index.css';
 
 // SAFETY POLYFILL: Ensures 'process.env' exists in the browser so that
 // accessing properties on it doesn't crash the app if the bundler didn't replace them.
