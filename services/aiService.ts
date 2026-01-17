@@ -1,12 +1,13 @@
 import { GoogleGenAI } from "@google/genai";
-import { getEnv } from '../utils/env';
 
 class AIService {
   private ai: GoogleGenAI | null = null;
 
   private getClient(): GoogleGenAI | null {
       if (!this.ai) {
-          const key = getEnv('API_KEY');
+          // Static access to ensure bundler replacement
+          const key = process.env.API_KEY || process.env.REACT_APP_API_KEY || process.env.VITE_API_KEY;
+          
           if (key) {
               this.ai = new GoogleGenAI({ apiKey: key });
           }

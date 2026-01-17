@@ -7,46 +7,101 @@ import Game from './components/Game';
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
   const [authChecked, setAuthChecked] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Listen to Auth state
   useEffect(() => {
-    if (auth) {
-        const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-            setUser(currentUser);
+    let mounted = true;
+
+    const initAuth = async () => {
+      // 1. Safety Timeout: If Firebase hangs, force show login screen after 2 seconds
+      const safetyTimeout = setTimeout(() => {
+        if (mounted && !authChecked) {
+          console.warn("Auth check timed out. Forcing login screen.");
+          setAuthChecked(true);
+          setIsLoading(false);
+        }
+      }, 2000);
+
+      // 2. Check Firebase
+      if (auth) {
+        try {
+            const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+                if (mounted) {
+                    clearTimeout(safetyTimeout);
+                    setUser(currentUser);
+                    setAuthChecked(true);
+                    setIsLoading(false);
+                }
+            }, (error) => {
+                console.error("Auth Error:", error);
+                if (mounted) {
+                    clearTimeout(safetyTimeout);
+                    setAuthChecked(true);
+                    setIsLoading(false);
+                }
+            });
+            return () => unsubscribe();
+        } catch (e) {
+            console.error("Auth initialization threw error:", e);
+            if (mounted) {
+                clearTimeout(safetyTimeout);
+                setAuthChecked(true);
+                setIsLoading(false);
+            }
+        }
+      } else {
+        // Firebase not configured or failed to init
+        console.warn("Auth service not available.");
+        if (mounted) {
+            clearTimeout(safetyTimeout);
             setAuthChecked(true);
             setIsLoading(false);
-        });
-        return () => unsubscribe();
-    } else {
-        setAuthChecked(true);
-    }
+        }
+      }
+    };
+
+    initAuth();
+
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   const handleLogin = async () => {
       setIsLoading(true);
-      await signInWithGoogle();
-      // Auth listener handles the rest
+      if (!auth) {
+          alert("Login Service Unavailable. Please check configuration.");
+          setIsLoading(false);
+          return;
+      }
+      try {
+        await signInWithGoogle();
+        // Listener updates state
+      } catch (error) {
+        console.error("Login failed", error);
+        alert("Login failed. See console.");
+        setIsLoading(false);
+      }
   };
 
   const handleLogout = async () => {
       await logout();
+      setUser(null);
   };
 
-  // While checking auth status
-  if (!authChecked) {
+  // Render Logic
+  if (isLoading) {
       return (
-          <div className="flex w-full h-screen bg-black items-center justify-center">
+          <div className="flex w-full h-screen bg-black items-center justify-center text-white flex-col gap-4">
               <div className="loading-spinner"></div>
+              <div className="text-xs text-gray-500">Loading Kitchen...</div>
           </div>
       );
   }
 
-  // If not logged in, show Login Screen
   if (!user) {
-      return <LoginScreen onLogin={handleLogin} isLoading={isLoading} />;
+      return <LoginScreen onLogin={handleLogin} isLoading={false} />;
   }
 
-  // If logged in, show the Game
   return <Game user={user} onLogout={handleLogout} />;
 }
