@@ -1,7 +1,7 @@
 
 import { initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, User } from 'firebase/auth';
-import { getFirestore, doc, setDoc, updateDoc, arrayUnion, getDoc, collection, addDoc, query, orderBy, limit, getDocs, where } from 'firebase/firestore';
+import { getFirestore, doc, setDoc, updateDoc, arrayUnion, getDoc, collection, addDoc, query, orderBy, limit, getDocs, where, deleteDoc } from 'firebase/firestore';
 import { LeaderboardEntry, SessionStats } from '../types';
 
 // CONFIGURATION:
@@ -182,6 +182,17 @@ export const saveLeaderboardScore = async (
         await addDoc(collection(db, "leaderboard"), data);
     } catch (e) {
         console.error("Error saving score", e);
+    }
+};
+
+export const deleteLeaderboardEntry = async (id: string) => {
+    if (!isInitialized || !db) return;
+    try {
+        await deleteDoc(doc(db, "leaderboard", id));
+        return true;
+    } catch (e) {
+        console.error("Error deleting entry", e);
+        return false;
     }
 };
 
