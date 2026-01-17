@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { COLORS } from '../constants';
 import type { User } from '../services/firebase';
@@ -10,7 +11,7 @@ interface OverlayProps {
 
 const Overlay: React.FC<OverlayProps> = ({ children }) => (
   <div 
-    className="absolute top-0 left-0 w-full h-full bg-black/90 text-white flex flex-col justify-center items-center z-[100] animate-fade-in"
+    className="absolute top-0 left-0 w-full h-full bg-black/90 text-white flex flex-col justify-center items-center z-[100] animate-fade-in p-4 overflow-y-auto"
     style={{ animation: 'fadeIn 0.5s ease-out forwards' }}
   >
     {children}
@@ -31,7 +32,7 @@ export const Button: React.FC<React.ButtonHTMLAttributes<HTMLButtonElement> & { 
           backgroundColor: bgColor,
           fontFamily: '"Press Start 2P", cursive'
       }}
-      className={`text-white text-base py-4 px-5 border-4 border-white cursor-pointer transition-all duration-200 hover:scale-110 hover:brightness-125 active:scale-95 ${className}`}
+      className={`text-white text-xs md:text-base py-3 px-4 md:py-4 md:px-5 border-4 border-white cursor-pointer transition-all duration-200 hover:scale-110 hover:brightness-125 active:scale-95 ${className}`}
     >
       {children}
     </button>
@@ -100,7 +101,7 @@ const LeaderboardWidget: React.FC = () => {
     };
 
     return (
-        <div className="absolute top-0 right-0 h-full w-[300px] border-l-4 border-white bg-[#0a0a0a] p-4 flex flex-col z-[150] shadow-[-10px_0_30px_rgba(0,0,0,0.8)]">
+        <div className="absolute top-0 right-0 h-full w-[160px] md:w-[300px] border-l-4 border-white bg-[#0a0a0a] p-2 md:p-4 flex flex-col z-[150] shadow-[-10px_0_30px_rgba(0,0,0,0.8)]">
             
             {/* Settings / Admin Icon */}
             <div 
@@ -111,7 +112,7 @@ const LeaderboardWidget: React.FC = () => {
                         setShowAdminLogin(true);
                     }
                 }}
-                className={`absolute top-2 right-2 w-6 h-6 cursor-pointer opacity-50 hover:opacity-100 transition-opacity z-50 ${isAdmin ? 'text-red-500' : 'text-gray-500'}`}
+                className={`absolute top-2 right-2 w-4 h-4 md:w-6 md:h-6 cursor-pointer opacity-50 hover:opacity-100 transition-opacity z-50 ${isAdmin ? 'text-red-500' : 'text-gray-500'}`}
                 title="Admin Control"
             >
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
@@ -137,11 +138,11 @@ const LeaderboardWidget: React.FC = () => {
                 </div>
             )}
 
-            <h3 className="text-[#f4b400] text-center mb-4 text-xs uppercase border-b-2 border-[#333] pb-3 tracking-widest mt-4">
+            <h3 className="text-[#f4b400] text-center mb-4 text-[10px] md:text-xs uppercase border-b-2 border-[#333] pb-3 tracking-widest mt-4">
                 {isAdmin ? 'ADMIN MODE' : 'Top Chefs'}
             </h3>
             
-            <div className="flex gap-1 mb-4 justify-center">
+            <div className="flex gap-1 mb-4 justify-center flex-wrap">
                 <button 
                     onClick={() => setMode('competitive')} 
                     className={`text-[8px] px-2 py-1.5 border ${mode === 'competitive' ? 'bg-[#e55934] border-white text-white' : 'bg-transparent border-[#444] text-[#888] hover:border-[#666]'}`}
@@ -198,7 +199,7 @@ const LeaderboardWidget: React.FC = () => {
                                     <span className={`text-xs font-bold w-5 ${idx === 0 ? 'text-[#f4b400]' : idx === 1 ? 'text-[#ccc]' : idx === 2 ? 'text-[#cd7f32]' : 'text-[#444]'}`}>
                                         #{idx + 1}
                                     </span>
-                                    <span className="text-[10px] text-white truncate max-w-[110px]">{entry.username}</span>
+                                    <span className="text-[10px] text-white truncate max-w-[80px] md:max-w-[110px]">{entry.username}</span>
                                 </div>
                                 <div className="flex flex-col items-end shrink-0 ml-1">
                                     <span className="text-[#57a863] text-[10px] font-bold shadow-black drop-shadow-md">
@@ -208,7 +209,7 @@ const LeaderboardWidget: React.FC = () => {
                             </div>
                             
                             <div className="flex justify-between items-end border-t border-[#222] pt-1 mt-1">
-                                <span className="text-[8px] text-[#888] italic truncate max-w-[150px] block">
+                                <span className="text-[8px] text-[#888] italic truncate max-w-[120px] md:max-w-[150px] block">
                                     "{entry.title}"
                                 </span>
                                 {mode === 'speed' && entry.accuracy !== undefined && (
@@ -235,10 +236,10 @@ interface ExitConfirmProps {
 }
 
 export const ExitConfirmScreen: React.FC<ExitConfirmProps> = ({ onConfirm, onCancel }) => (
-    <div className="absolute top-0 left-0 w-full h-full bg-black/80 flex items-center justify-center z-[200] animate-fade-in">
-        <div className="bg-[#111] border-4 border-[#ff2a2a] p-8 flex flex-col items-center max-w-md text-center shadow-[0_0_30px_rgba(255,0,0,0.3)]">
-            <h2 className="text-2xl text-[#ff2a2a] mb-4">WARNING CHEF!</h2>
-            <p className="text-sm leading-6 mb-6">
+    <div className="absolute top-0 left-0 w-full h-full bg-black/80 flex items-center justify-center z-[200] animate-fade-in p-4">
+        <div className="bg-[#111] border-4 border-[#ff2a2a] p-4 md:p-8 flex flex-col items-center max-w-md text-center shadow-[0_0_30px_rgba(255,0,0,0.3)]">
+            <h2 className="text-xl md:text-2xl text-[#ff2a2a] mb-4">WARNING CHEF!</h2>
+            <p className="text-xs md:text-sm leading-6 mb-6">
                 You are about to abandon the kitchen during a ranked service.<br/><br/>
                 <span className="text-[#f4b400]">Your score/time will not be recorded.</span>
             </p>
@@ -267,7 +268,7 @@ export const UsernameScreen: React.FC<UsernameScreenProps> = ({ onSubmit }) => {
 
     return (
         <Overlay>
-            <h2 className="text-2xl mb-6 text-[#f4b400]">Identify Yourself</h2>
+            <h2 className="text-xl md:text-2xl mb-6 text-[#f4b400]">Identify Yourself</h2>
             <form onSubmit={handleSubmit} className="flex flex-col items-center gap-4">
                 <input 
                     type="text" 
@@ -275,7 +276,7 @@ export const UsernameScreen: React.FC<UsernameScreenProps> = ({ onSubmit }) => {
                     onChange={(e) => setName(e.target.value)}
                     placeholder="Nickname"
                     maxLength={12}
-                    className="bg-[#111] border-4 border-white p-4 text-center text-white font-['Press_Start_2P'] outline-none focus:border-[#f4b400] w-[300px]"
+                    className="bg-[#111] border-4 border-white p-3 md:p-4 text-center text-white font-['Press_Start_2P'] outline-none focus:border-[#f4b400] w-[250px] md:w-[300px]"
                     autoFocus
                 />
                 <div className="text-[10px] text-[#aaa] mb-4">Max 12 chars</div>
@@ -294,14 +295,14 @@ interface ModeSelectProps {
 
 export const ModeSelectScreen: React.FC<ModeSelectProps> = ({ onCompetitive, onUnrated, onBack }) => (
     <Overlay>
-        <h2 className="text-3xl text-[#f4b400] mb-8" style={{ textShadow: `3px 3px 0px ${COLORS.accent}` }}>Select Kitchen</h2>
-        <div className="flex gap-8 mb-8">
+        <h2 className="text-2xl md:text-3xl text-[#f4b400] mb-8" style={{ textShadow: `3px 3px 0px ${COLORS.accent}` }}>Select Kitchen</h2>
+        <div className="flex flex-col md:flex-row gap-4 md:gap-8 mb-8">
             <button 
                 onClick={onCompetitive}
-                className="w-[220px] h-[180px] bg-[#222] border-4 border-[#ff2a2a] hover:bg-[#330000] hover:scale-105 transition-all flex flex-col items-center justify-center p-4"
+                className="w-[200px] h-[150px] md:w-[220px] md:h-[180px] bg-[#222] border-4 border-[#ff2a2a] hover:bg-[#330000] hover:scale-105 transition-all flex flex-col items-center justify-center p-4"
             >
                 <div className="text-4xl mb-4">🏆</div>
-                <h3 className="text-[#ff2a2a] mb-2 font-bold">COMPETITIVE</h3>
+                <h3 className="text-[#ff2a2a] mb-2 font-bold text-xs md:text-base">COMPETITIVE</h3>
                 <p className="text-[10px] text-center text-[#aaa] leading-4">
                     Ranked Play.<br/>Lvl 1 - Boss.<br/>Time Attack.<br/>No AI Score.
                 </p>
@@ -309,10 +310,10 @@ export const ModeSelectScreen: React.FC<ModeSelectProps> = ({ onCompetitive, onU
 
             <button 
                 onClick={onUnrated}
-                className="w-[220px] h-[180px] bg-[#222] border-4 border-[#57a863] hover:bg-[#002200] hover:scale-105 transition-all flex flex-col items-center justify-center p-4"
+                className="w-[200px] h-[150px] md:w-[220px] md:h-[180px] bg-[#222] border-4 border-[#57a863] hover:bg-[#002200] hover:scale-105 transition-all flex flex-col items-center justify-center p-4"
             >
                 <div className="text-4xl mb-4">🍳</div>
-                <h3 className="text-[#57a863] mb-2 font-bold">UNRATED</h3>
+                <h3 className="text-[#57a863] mb-2 font-bold text-xs md:text-base">UNRATED</h3>
                 <p className="text-[10px] text-center text-[#aaa] leading-4">
                     Casual Play.<br/>Select Level.<br/>Practice.<br/>No Pressure.
                 </p>
@@ -338,31 +339,33 @@ export const StartScreen: React.FC<StartScreenProps> = ({ onStart, onInfinite, o
 
   return (
       <Overlay>
-         <LeaderboardWidget />
+         <div className="hidden md:block">
+            <LeaderboardWidget />
+         </div>
          
-         <div className="absolute top-8 left-8 flex gap-4 z-[120]">
+         <div className="absolute top-4 left-4 md:top-8 md:left-8 flex gap-4 z-[120]">
             {user && (
                 <div className="flex items-center gap-4">
-                    <span className="text-[#aaa] text-xs">Chef {user.displayName}</span>
+                    <span className="text-[#aaa] text-[10px] md:text-xs">Chef {user.displayName}</span>
                     {!showLogoutConfirm ? (
                         <button 
                             onClick={() => setShowLogoutConfirm(true)}
-                            className="bg-transparent border-2 border-[#ff2a2a] text-[#ff2a2a] text-xs py-2 px-4 cursor-pointer font-['Press_Start_2P'] hover:bg-[#ff2a2a] hover:text-white"
+                            className="bg-transparent border-2 border-[#ff2a2a] text-[#ff2a2a] text-[10px] md:text-xs py-1 px-2 md:py-2 md:px-4 cursor-pointer font-['Press_Start_2P'] hover:bg-[#ff2a2a] hover:text-white"
                         >
                             Log Out
                         </button>
                     ) : (
                         <div className="flex gap-2">
-                             <span className="text-xs text-white self-center">Sure?</span>
+                             <span className="text-[10px] md:text-xs text-white self-center">Sure?</span>
                              <button 
                                 onClick={onLogout}
-                                className="bg-[#ff2a2a] text-white text-xs py-2 px-2 border-2 border-[#ff2a2a] hover:brightness-125"
+                                className="bg-[#ff2a2a] text-white text-[10px] md:text-xs py-1 px-2 md:py-2 md:px-2 border-2 border-[#ff2a2a] hover:brightness-125"
                              >
                                 Yes
                              </button>
                              <button 
                                 onClick={() => setShowLogoutConfirm(false)}
-                                className="bg-transparent text-[#aaa] text-xs py-2 px-2 border-2 border-[#aaa] hover:bg-[#333]"
+                                className="bg-transparent text-[#aaa] text-[10px] md:text-xs py-1 px-2 md:py-2 md:px-2 border-2 border-[#aaa] hover:bg-[#333]"
                              >
                                 No
                              </button>
@@ -372,15 +375,15 @@ export const StartScreen: React.FC<StartScreenProps> = ({ onStart, onInfinite, o
             )}
          </div>
          
-         <div className="flex flex-col items-center mr-[300px]">
-            <h1 className="text-5xl mb-5 text-[#f4b400] shadow-[#e55934]" style={{ textShadow: `4px 4px 0px ${COLORS.accent}` }}>
-                Typing for Tacos
+         <div className="flex flex-col items-center md:mr-[300px]">
+            <h1 className="text-3xl md:text-5xl mb-5 text-[#f4b400] shadow-[#e55934] text-center leading-normal" style={{ textShadow: `4px 4px 0px ${COLORS.accent}` }}>
+                Typing for<br className="md:hidden"/> Tacos
             </h1>
-            <p className="text-base max-w-[500px] leading-normal mb-8 text-center">
+            <p className="text-xs md:text-base max-w-[500px] leading-normal mb-8 text-center px-4">
                 Type ingredients to cook!<br />Don't drop the food!
             </p>
-            <div className="flex flex-col gap-5 items-center">
-                <div className="flex gap-5">
+            <div className="flex flex-col gap-4 md:gap-5 items-center">
+                <div className="flex gap-4 md:gap-5">
                     <Button onClick={onStart}>Start Cooking</Button>
                     <Button onClick={onInfinite} variant="secondary">Infinite</Button>
                 </div>
@@ -388,14 +391,14 @@ export const StartScreen: React.FC<StartScreenProps> = ({ onStart, onInfinite, o
                 <div className="flex gap-4">
                      <button 
                         onClick={onUniversal}
-                        className="bg-transparent border-2 border-[#4facfe] text-[#4facfe] text-xs py-2 px-4 cursor-pointer font-['Press_Start_2P'] hover:bg-[#4facfe] hover:text-white hover:scale-105"
+                        className="bg-transparent border-2 border-[#4facfe] text-[#4facfe] text-[10px] md:text-xs py-2 px-4 cursor-pointer font-['Press_Start_2P'] hover:bg-[#4facfe] hover:text-white hover:scale-105"
                     >
                         Universal
                     </button>
                     <button 
                         onClick={onSpeedTest}
                         disabled={isGenerating}
-                        className={`bg-transparent border-2 border-[#ff2a2a] text-[#ff2a2a] text-xs py-2 px-4 cursor-pointer font-['Press_Start_2P'] hover:bg-[#ff2a2a] hover:text-white hover:scale-105 transition-all ${isGenerating ? 'opacity-50 cursor-wait' : ''}`}
+                        className={`bg-transparent border-2 border-[#ff2a2a] text-[#ff2a2a] text-[10px] md:text-xs py-2 px-4 cursor-pointer font-['Press_Start_2P'] hover:bg-[#ff2a2a] hover:text-white hover:scale-105 transition-all ${isGenerating ? 'opacity-50 cursor-wait' : ''}`}
                     >
                         {isGenerating ? '...' : 'Speed Test'}
                     </button>
@@ -414,8 +417,8 @@ interface LevelSelectProps {
 
 export const LevelSelectScreen: React.FC<LevelSelectProps> = ({ onSelectLevel, onBack }) => (
   <Overlay>
-    <h1 className="text-5xl mb-5 text-[#f4b400]" style={{ textShadow: `4px 4px 0px ${COLORS.accent}` }}>Select Level</h1>
-    <div className="grid grid-cols-2 gap-5 mb-5">
+    <h1 className="text-3xl md:text-5xl mb-5 text-[#f4b400]" style={{ textShadow: `4px 4px 0px ${COLORS.accent}` }}>Select Level</h1>
+    <div className="grid grid-cols-2 gap-4 md:gap-5 mb-5">
         {[
             { lvl: 1, icon: '🌮', name: 'Level 1\nTacos' },
             { lvl: 2, icon: '🍔', name: 'Level 2\nBurgers' },
@@ -426,10 +429,10 @@ export const LevelSelectScreen: React.FC<LevelSelectProps> = ({ onSelectLevel, o
             <button
                 key={item.lvl}
                 onClick={() => onSelectLevel(item.lvl)}
-                className={`bg-[#57a863] text-white flex flex-col items-center justify-center w-[160px] h-[100px] border-4 border-white hover:scale-105 transition-transform active:scale-95 ${item.full ? 'col-span-2 w-full' : ''}`}
-                style={{ fontFamily: '"Press Start 2P", cursive', fontSize: '14px' }}
+                className={`bg-[#57a863] text-white flex flex-col items-center justify-center w-[130px] h-[90px] md:w-[160px] md:h-[100px] border-4 border-white hover:scale-105 transition-transform active:scale-95 ${item.full ? 'col-span-2 w-full' : ''}`}
+                style={{ fontFamily: '"Press Start 2P", cursive', fontSize: '10px' }}
             >
-                <span className="text-3xl mb-2">{item.icon}</span>
+                <span className="text-2xl md:text-3xl mb-2">{item.icon}</span>
                 <span className="whitespace-pre-line text-center">{item.name}</span>
             </button>
         ))}
@@ -448,10 +451,10 @@ interface LevelCompleteProps {
 
 export const LevelCompleteScreen: React.FC<LevelCompleteProps> = ({ levelName, message, emoji, onNext }) => (
     <Overlay>
-        <h2 className="text-3xl text-[#f4b400] mb-4 text-center">{levelName}</h2>
-        <p className="mb-4 text-center">{message}</p>
-        <div className="relative w-[300px] h-[150px] flex justify-center items-center my-4">
-            <span className="text-[120px] absolute animate-bounce">{emoji}</span>
+        <h2 className="text-2xl md:text-3xl text-[#f4b400] mb-4 text-center">{levelName}</h2>
+        <p className="mb-4 text-center text-xs md:text-base">{message}</p>
+        <div className="relative w-[200px] h-[100px] md:w-[300px] md:h-[150px] flex justify-center items-center my-4">
+            <span className="text-[80px] md:text-[120px] absolute animate-bounce">{emoji}</span>
         </div>
         <Button onClick={onNext}>Next Level</Button>
     </Overlay>
@@ -479,33 +482,33 @@ export const GameOverScreen: React.FC<GameOverProps> = ({ score, message, stats,
 
     return (
         <Overlay>
-            <h1 className="text-4xl text-[#f4b400] mb-5 shadow-[#e55934]" style={{ textShadow: `4px 4px 0px ${COLORS.accent}` }}>
+            <h1 className="text-2xl md:text-4xl text-[#f4b400] mb-5 shadow-[#e55934] text-center" style={{ textShadow: `4px 4px 0px ${COLORS.accent}` }}>
                 {aiTitle ? "RANKING REPORT" : "Game Over!"}
             </h1>
             
             {isCalculating ? (
                  <div className="flex flex-col items-center mb-6">
                      <div className="loading-spinner mb-4" />
-                     <p className="animate-pulse">The Judges are deliberating...</p>
+                     <p className="animate-pulse text-xs md:text-base">The Judges are deliberating...</p>
                  </div>
             ) : aiScore !== undefined ? (
-                 <div className="bg-[#222] border-4 border-[#fff] p-6 mb-6 flex flex-col items-center animate-pop-in min-w-[300px]">
+                 <div className="bg-[#222] border-4 border-[#fff] p-6 mb-6 flex flex-col items-center animate-pop-in min-w-[280px] md:min-w-[300px]">
                      <p className="text-[#aaa] text-xs mb-2">{isTimeScore ? "TOTAL TIME" : "FINAL SCORE"}</p>
-                     <p className="text-6xl text-[#57a863] mb-4 font-bold">
+                     <p className="text-4xl md:text-6xl text-[#57a863] mb-4 font-bold">
                         {isTimeScore ? formatTime(aiScore) : aiScore}
                      </p>
-                     <p className="text-xl text-[#f4b400] border-t-2 border-[#555] pt-4 w-full text-center tracking-widest">
+                     <p className="text-lg md:text-xl text-[#f4b400] border-t-2 border-[#555] pt-4 w-full text-center tracking-widest">
                         "{aiTitle}"
                      </p>
                  </div>
             ) : (
                 <>
-                    <p className="mb-2">
+                    <p className="mb-2 text-xs md:text-base">
                         {isTimeScore ? "Total Time: " : "Final Score: "} 
                         <span className="text-[#f4b400]">{isTimeScore ? formatTime(score) : score}</span>
                     </p>
-                    <p className="mb-5 text-center px-4">{message}</p>
-                    {stats && <p className="mb-5 text-sm text-[#aaa]">{stats}</p>}
+                    <p className="mb-5 text-center px-4 text-xs md:text-base">{message}</p>
+                    {stats && <p className="mb-5 text-xs text-[#aaa]">{stats}</p>}
                 </>
             )}
             
@@ -517,8 +520,8 @@ export const GameOverScreen: React.FC<GameOverProps> = ({ score, message, stats,
 // --- Boss Intro ---
 export const BossIntroScreen: React.FC<{ onStart: () => void }> = ({ onStart }) => (
     <Overlay>
-        <h1 className="text-4xl mb-4 text-[#ff0055]">The After Party</h1>
-        <p className="mb-6 text-center max-w-[80%] leading-relaxed">"The food was amazing. Let's see if you can hold up and socialize."</p>
+        <h1 className="text-2xl md:text-4xl mb-4 text-[#ff0055]">The After Party</h1>
+        <p className="mb-6 text-center max-w-[80%] leading-relaxed text-xs md:text-base">"The food was amazing. Let's see if you can hold up and socialize."</p>
         <Button onClick={onStart}>Let's Go!</Button>
     </Overlay>
 );
@@ -526,18 +529,20 @@ export const BossIntroScreen: React.FC<{ onStart: () => void }> = ({ onStart }) 
 // --- Pause ---
 export const PauseScreen: React.FC<{ onResume: () => void, onQuit: () => void }> = ({ onResume, onQuit }) => (
     <Overlay>
-        <h1 className="text-5xl mb-4">PAUSED</h1>
-        <p className="animate-blink mb-8 cursor-pointer hover:text-[#f4b400]" onClick={onResume}>Press ESC to Resume</p>
+        <h1 className="text-4xl md:text-5xl mb-4">PAUSED</h1>
+        <p className="animate-blink mb-8 cursor-pointer hover:text-[#f4b400] text-xs md:text-base" onClick={onResume}>
+            Tap / Press ESC to Resume
+        </p>
         <Button onClick={onQuit} variant="accent">Quit to Menu</Button>
     </Overlay>
 );
 
 // --- Info Modal ---
 export const InfoModal: React.FC<{ text: string, onClose: () => void }> = ({ text, onClose }) => (
-    <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[500px] bg-[#111] border-4 border-white p-8 z-[200] flex flex-col items-center shadow-[0_0_20px_rgba(0,0,0,0.9)] animate-fade-in" style={{ animation: 'fadeIn 0.2s ease-out' }}>
+    <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[90%] md:w-[500px] bg-[#111] border-4 border-white p-6 md:p-8 z-[200] flex flex-col items-center shadow-[0_0_20px_rgba(0,0,0,0.9)] animate-fade-in" style={{ animation: 'fadeIn 0.2s ease-out' }}>
         <button onClick={onClose} className="absolute top-2 right-2 bg-[#e55934] border-2 border-white text-white cursor-pointer text-xs p-1 hover:scale-110">X</button>
-        <h2 className="text-[#f4b400] mb-4 text-xl">Mode Info</h2>
-        <p className="text-sm text-center leading-6">{text}</p>
+        <h2 className="text-[#f4b400] mb-4 text-lg md:text-xl">Mode Info</h2>
+        <p className="text-xs md:text-sm text-center leading-6">{text}</p>
     </div>
 );
 
@@ -573,23 +578,23 @@ export const SpeedResultScreen: React.FC<SpeedResultProps> = ({ wpm, cpm, accura
 
     return (
         <Overlay>
-            <h1 className="text-4xl text-[#4facfe] mb-8" style={{ textShadow: `4px 4px 0px ${COLORS.accent}` }}>Kitchen Report</h1>
-            <div className="flex gap-12 mb-8">
+            <h1 className="text-2xl md:text-4xl text-[#4facfe] mb-8 text-center" style={{ textShadow: `4px 4px 0px ${COLORS.accent}` }}>Kitchen Report</h1>
+            <div className="flex gap-4 md:gap-12 mb-8">
                 <div className="flex flex-col items-center">
-                    <span className="text-[60px]" style={{ color: wpmColor }}>{wpm}</span>
-                    <span className="text-[#aaa]">WPM</span>
+                    <span className="text-3xl md:text-[60px]" style={{ color: wpmColor }}>{wpm}</span>
+                    <span className="text-[#aaa] text-[10px] md:text-base">WPM</span>
                 </div>
                 <div className="flex flex-col items-center">
-                    <span className="text-[60px]" style={{ color: cpmColor }}>{cpm}</span>
-                    <span className="text-[#aaa]">CPM</span>
+                    <span className="text-3xl md:text-[60px]" style={{ color: cpmColor }}>{cpm}</span>
+                    <span className="text-[#aaa] text-[10px] md:text-base">CPM</span>
                 </div>
                 <div className="flex flex-col items-center">
-                    <span className="text-[60px]" style={{ color: accColor }}>{accuracy}%</span>
-                    <span className="text-[#aaa]">ACCURACY</span>
+                    <span className="text-3xl md:text-[60px]" style={{ color: accColor }}>{accuracy}%</span>
+                    <span className="text-[#aaa] text-[10px] md:text-base">ACCURACY</span>
                 </div>
             </div>
             <div 
-                className="bg-[#222] border-l-4 p-4 max-w-[600px] mb-8 italic"
+                className="bg-[#222] border-l-4 p-4 max-w-[600px] mb-8 italic text-xs md:text-base"
                 style={{ 
                     borderColor: commentColor, 
                     color: commentColor 

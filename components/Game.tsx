@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { 
   COLORS, 
   LEVEL_CONFIGS, 
@@ -27,6 +27,7 @@ import { audioService } from '../services/audioService';
 import { aiService } from '../services/aiService';
 import { saveGameStats, saveSpeedTestStats, getUserProfile, saveUsername, saveLeaderboardScore } from '../services/firebase';
 import type { User } from '../services/firebase';
+import { isMobileDevice } from '../utils/device';
 import WordComponent from './WordComponent';
 import TypingSpeedGame from './TypingSpeedGame';
 import { 
@@ -56,6 +57,8 @@ export default function Game({ user, onLogout }: GameProps) {
   const [level, setLevel] = useState(1);
   const [score, setScore] = useState(0); // For Competitive, this is displayed as Time
   const [elapsedTime, setElapsedTime] = useState(0); // Display timer for comp
+  const [sessionHighScore, setSessionHighScore] = useState(0);
+  const [showHighScoreAlert, setShowHighScoreAlert] = useState(false);
   
   const [lives, setLives] = useState(3);
   const [fallingWords, setFallingWords] = useState<WordEntity[]>([]);
@@ -69,9 +72,10 @@ export default function Game({ user, onLogout }: GameProps) {
   const [customUsername, setCustomUsername] = useState<string | null>(null);
   const [showExitConfirm, setShowExitConfirm] = useState(false);
   
-  // Game Dimensions
-  // @ts-ignore
+  // Game Dimensions & Mobile State
   const [gameDimensions, setGameDimensions] = useState({ width: window.innerWidth, height: window.innerHeight });
+  const [isMobile, setIsMobile] = useState(false);
+  const hiddenInputRef = useRef<HTMLInputElement>(null);
 
   // Speed Test State
   const [speedTestText, setSpeedTestText] = useState('');
@@ -114,17 +118,48 @@ export default function Game({ user, onLogout }: GameProps) {
         totalScore: 0,
         levelReached: 1
     } as SessionStats,
-    levelStartTime: 0
+    levelStartTime: 0,
+    gameHeight: window.innerHeight
   });
 
-  // Handle Resize
+  // Initialization & Mobile Check
+  useEffect(() => {
+    setIsMobile(isMobileDevice());
+  }, []);
+
+  // Handle Resize & Keyboard Visibility
   useEffect(() => {
       const handleResize = () => {
-          setGameDimensions({ width: window.innerWidth, height: window.innerHeight });
+          // Use visualViewport if available for accurate height when keyboard is open
+          const currentHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+          const currentWidth = window.visualViewport ? window.visualViewport.width : window.innerWidth;
+          
+          setGameDimensions({ width: currentWidth, height: currentHeight });
+          stateRef.current.gameHeight = currentHeight;
       };
+      
       window.addEventListener('resize', handleResize);
-      return () => window.removeEventListener('resize', handleResize);
+      if (window.visualViewport) {
+          window.visualViewport.addEventListener('resize', handleResize);
+      }
+      
+      // Initial set
+      handleResize();
+
+      return () => {
+          window.removeEventListener('resize', handleResize);
+          if (window.visualViewport) {
+              window.visualViewport.removeEventListener('resize', handleResize);
+          }
+      };
   }, []);
+
+  // Force Focus on Hidden Input for Mobile
+  useEffect(() => {
+      if (screen === 'playing' && isMobile && hiddenInputRef.current) {
+          hiddenInputRef.current.focus();
+      }
+  }, [screen, isMobile]);
 
   // Sync basic UI state to Ref
   useEffect(() => {
@@ -172,7 +207,7 @@ export default function Game({ user, onLogout }: GameProps) {
   // Helper to generate a word without side effects
   const generateWord = useCallback((): WordEntity | null => {
     const state = stateRef.current;
-    const width = window.innerWidth; 
+    const width = window.visualViewport ? window.visualViewport.width : window.innerWidth;
     
     // Spawning Logic:
     let targetIngredients = 7;
@@ -185,7 +220,7 @@ export default function Game({ user, onLogout }: GameProps) {
 
     // Distance Check to prevent overlap
     const lastWord = state.fallingWords[state.fallingWords.length - 1];
-    if (lastWord && lastWord.y < 120) return null;
+    if (lastWord && lastWord.y < 80) return null;
 
     let type: WordType = 'normal';
     let text = '';
@@ -234,11 +269,14 @@ export default function Game({ user, onLogout }: GameProps) {
 
     state.wordsSpawnedThisLevel++;
     
+    // Spawn centered somewhat within the viewport width
+    const spawnX = Math.random() * (width - 150) + 25;
+
     return {
         id: Math.random().toString(36).substr(2, 9),
         text,
         type,
-        x: Math.random() * (width - 250) + 25, // Padding for border
+        x: spawnX,
         y: -40,
         typed: ''
     };
@@ -253,7 +291,8 @@ export default function Game({ user, onLogout }: GameProps) {
     }
 
     const deltaTime = time - state.lastTime;
-    const height = window.innerHeight;
+    // Use dynamic height (resizes when keyboard opens)
+    const height = state.gameHeight;
 
     // Timer Update for Competitive
     if (playStyle === 'competitive') {
@@ -298,10 +337,11 @@ export default function Game({ user, onLogout }: GameProps) {
 
     currentWords.forEach(w => {
         const nextY = w.y + moveAmount;
+        // Kill zone at bottom of visible viewport (dynamic)
         if (nextY > height) {
             if (w.type === 'rotten') {
                 state.score += w.text.length * 10;
-                addPopup(w.x, height - 50, "AVOIDED!", COLORS.correct);
+                addPopup(w.x, height - 100, "AVOIDED!", COLORS.correct);
                 audioService.playSound('trap_avoid');
                 scoreChanged = true;
             } else {
@@ -309,7 +349,7 @@ export default function Game({ user, onLogout }: GameProps) {
                 state.streak = 0;
                 state.streakState = 'normal';
                 state.stats.ingredientsMissed++; // Track stat
-                addPopup(w.x, height - 50, "MISSED!", COLORS.accent);
+                addPopup(w.x, height - 100, "MISSED!", COLORS.accent);
                 audioService.playSound('rotten_penalty');
                 livesChanged = true;
                 streakReset = true;
@@ -336,7 +376,17 @@ export default function Game({ user, onLogout }: GameProps) {
             return; // Stop loop
         }
     }
-    if (scoreChanged && playStyle !== 'competitive') setScore(state.score); // Only update score UI for non-competitive
+    if (scoreChanged && playStyle !== 'competitive') {
+        setScore(state.score); 
+        // High Score Check (for session)
+        if (state.score > sessionHighScore) {
+            setSessionHighScore(state.score);
+            if (!showHighScoreAlert) {
+                setShowHighScoreAlert(true);
+                setTimeout(() => setShowHighScoreAlert(false), 2000);
+            }
+        }
+    }
     if (activeReset) setActiveWordId(null);
     if (streakReset) {
         setStreak(0);
@@ -354,7 +404,7 @@ export default function Game({ user, onLogout }: GameProps) {
 
     state.lastTime = time;
     requestRef.current = requestAnimationFrame(update);
-  }, [generateWord, playStyle]);
+  }, [generateWord, playStyle, sessionHighScore]);
 
   useEffect(() => {
     requestRef.current = requestAnimationFrame(update);
@@ -418,6 +468,12 @@ export default function Game({ user, onLogout }: GameProps) {
     };
     
     stateRef.current.levelStartTime = Date.now();
+    stateRef.current.gameHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+
+    // Focus input for mobile
+    setTimeout(() => {
+        if(isMobile && hiddenInputRef.current) hiddenInputRef.current.focus();
+    }, 100);
   };
 
   const handleUsernameSubmit = async (name: string) => {
@@ -436,7 +492,6 @@ export default function Game({ user, onLogout }: GameProps) {
       setGameMode('speed-test');
   };
 
-  // @ts-ignore
   const finishSpeedTest = async (wpm: number, cpm: number, accuracy: number) => {
       setScreen('speed-test-result');
       setSpeedTestResult({ wpm, cpm, accuracy, comment: "Chef is analyzing..." });
@@ -445,7 +500,6 @@ export default function Game({ user, onLogout }: GameProps) {
       const comment = await aiService.generateSpeedComment(wpm, cpm, accuracy);
       
       // 2. Score = WPM (Strictly)
-      // AI title can still be generated based on stats, but the SCORE is just WPM.
       const { title: rankTitle } = await aiService.generateCompetitiveScore(stateRef.current.stats, { wpm, accuracy });
 
       setSpeedTestResult({ wpm, cpm, accuracy, comment });
@@ -453,15 +507,18 @@ export default function Game({ user, onLogout }: GameProps) {
       if (user) {
           saveSpeedTestStats(user, wpm, accuracy);
           if (customUsername) {
-              await saveLeaderboardScore(
-                  user, 
-                  customUsername, 
-                  wpm, 
-                  rankTitle,
-                  stateRef.current.stats, 
-                  'speed-test', 
-                  { accuracy }
-              );
+              // BLOCK LEADERBOARD FOR MOBILE
+              if (!isMobile) {
+                  await saveLeaderboardScore(
+                      user, 
+                      customUsername, 
+                      wpm, 
+                      rankTitle,
+                      stateRef.current.stats, 
+                      'speed-test', 
+                      { accuracy }
+                  );
+              }
           }
       }
   };
@@ -479,19 +536,14 @@ export default function Game({ user, onLogout }: GameProps) {
         let finalScore = state.score;
         let title = "Line Cook";
 
-        // In Competitive, Score is Time
         if (playStyle === 'competitive') {
-             // For game over in competitive (failed), score is technically invalid or just what they got.
-             // But usually you only rank if you FINISH or maybe you rank with level reached?
-             // Assuming minimal ranking for failed runs:
              finalScore = Math.floor(state.stats.timeTaken); // Seconds
         }
 
-        // Trigger AI Calculation for Titles
         setIsCalculatingScore(true);
         const aiResult = await aiService.generateCompetitiveScore(state.stats);
         title = aiResult.title;
-        // For non-competitive/universal/infinite, we use AI Score points.
+        
         if (playStyle !== 'competitive' && state.gameMode !== 'speed-test') {
             finalScore = aiResult.score;
         }
@@ -500,14 +552,16 @@ export default function Game({ user, onLogout }: GameProps) {
         setFinalAiTitle(title);
         setIsCalculatingScore(false);
         
-        // Save to Leaderboard
-        let modeToSave = playStyle === 'competitive' ? 'competitive' : state.gameMode;
-        if (state.gameMode === 'standard' || state.gameMode === 'boss') {
-            if (playStyle === 'competitive') modeToSave = 'competitive';
-        }
-        
-        if (modeToSave === 'competitive' || modeToSave === 'infinite' || modeToSave === 'universal') {
-             await saveLeaderboardScore(user, customUsername, finalScore, title, state.stats, modeToSave);
+        // Save to Leaderboard - BLOCKED ON MOBILE
+        if (!isMobile) {
+            let modeToSave = playStyle === 'competitive' ? 'competitive' : state.gameMode;
+            if (state.gameMode === 'standard' || state.gameMode === 'boss') {
+                if (playStyle === 'competitive') modeToSave = 'competitive';
+            }
+            
+            if (modeToSave === 'competitive' || modeToSave === 'infinite' || modeToSave === 'universal') {
+                await saveLeaderboardScore(user, customUsername, finalScore, title, state.stats, modeToSave);
+            }
         }
         
         saveGameStats(user, state.score, state.gameMode, state.level);
@@ -529,12 +583,10 @@ export default function Game({ user, onLogout }: GameProps) {
     title = aiResult.title;
 
     if (playStyle === 'competitive') {
-         // Final Score is Total Time Taken
          finalScore = Math.floor(state.stats.timeTaken);
          setInfoModalText("Master Chef Status Achieved!");
     } else {
-         // Standard Unrated / Boss
-         finalScore = aiResult.score; // Use AI points
+         finalScore = aiResult.score;
          setInfoModalText("You survived the social hour!");
     }
 
@@ -544,7 +596,10 @@ export default function Game({ user, onLogout }: GameProps) {
 
     if (user && customUsername) {
         let modeToSave = playStyle === 'competitive' ? 'competitive' : 'boss';
-        await saveLeaderboardScore(user, customUsername, finalScore, title, state.stats, modeToSave);
+        // BLOCK LEADERBOARD ON MOBILE
+        if (!isMobile) {
+            await saveLeaderboardScore(user, customUsername, finalScore, title, state.stats, modeToSave);
+        }
         saveGameStats(user, state.score, modeToSave, 6);
     }
   };
@@ -552,15 +607,16 @@ export default function Game({ user, onLogout }: GameProps) {
   const completeLevel = () => {
       const state = stateRef.current;
       
-      // In competitive, time is tracked globally in update loop, so no need to add level time here manually.
-      // But for unrated stats, we might want it.
       if (playStyle !== 'competitive') {
          const levelTime = (Date.now() - state.levelStartTime) / 1000;
          state.stats.timeTaken += levelTime;
       }
       
       state.score += 100 * state.level;
-      if (playStyle !== 'competitive') setScore(state.score);
+      if (playStyle !== 'competitive') {
+          setScore(state.score);
+          if (state.score > sessionHighScore) setSessionHighScore(state.score);
+      }
       
       if (playStyle === 'competitive') {
           if (state.level < 5) {
@@ -596,6 +652,10 @@ export default function Game({ user, onLogout }: GameProps) {
           stateRef.current.spawnTimer = performance.now();
           stateRef.current.lastTime = performance.now();
           stateRef.current.levelStartTime = Date.now();
+          
+          // Re-focus for mobile
+          if (isMobile && hiddenInputRef.current) setTimeout(() => hiddenInputRef.current?.focus(), 50);
+
       } else {
           setLevel(l => l + 1);
           initGame('standard', level + 1);
@@ -611,7 +671,6 @@ export default function Game({ user, onLogout }: GameProps) {
       }
   };
 
-  // ... rest of game logic remains same
   const processWordCompletion = (word: WordEntity) => {
     const state = stateRef.current;
     
@@ -635,7 +694,16 @@ export default function Game({ user, onLogout }: GameProps) {
         state.lives++;
         setLives(state.lives);
         state.score += 100;
-        if (playStyle !== 'competitive') setScore(state.score);
+        if (playStyle !== 'competitive') {
+            setScore(state.score);
+            if (state.score > sessionHighScore) {
+                 setSessionHighScore(state.score);
+                 if (!showHighScoreAlert) {
+                    setShowHighScoreAlert(true);
+                    setTimeout(() => setShowHighScoreAlert(false), 2000);
+                 }
+            }
+        }
         audioService.playSound('powerup');
         state.consecutivePerfectWords++;
         increaseCombo();
@@ -648,7 +716,16 @@ export default function Game({ user, onLogout }: GameProps) {
 
         const points = (word.text.length * 10) * mult;
         state.score += points;
-        if (playStyle !== 'competitive') setScore(state.score);
+        if (playStyle !== 'competitive') {
+            setScore(state.score);
+            if (state.score > sessionHighScore) {
+                 setSessionHighScore(state.score);
+                 if (!showHighScoreAlert) {
+                    setShowHighScoreAlert(true);
+                    setTimeout(() => setShowHighScoreAlert(false), 2000);
+                 }
+            }
+        }
         audioService.playSound('hit');
         addPopup(word.x, word.y, `+${points}`, state.streakState === 'spicy' ? COLORS.comboPurple : (state.streakState === 'fiesta' ? COLORS.comboRed : COLORS.text));
         addSparkles(word.x + 40, word.y + 20, COLORS.correct, 10);
@@ -692,9 +769,71 @@ export default function Game({ user, onLogout }: GameProps) {
     }
   };
 
+  // --- Core Input Logic ---
+  const handleInputChar = (char: string) => {
+    const state = stateRef.current;
+    let activeWord = state.fallingWords.find(w => w.id === state.activeWordId);
+
+    if (!activeWord) {
+        // Find best match closest to bottom
+        const matches = state.fallingWords.filter(w => w.text.startsWith(char)).sort((a, b) => b.y - a.y);
+        if (matches.length > 0) {
+            activeWord = matches[0];
+            state.activeWordId = activeWord.id;
+            setActiveWordId(activeWord.id);
+            activeWord.typed = char;
+            setFallingWords([...state.fallingWords]);
+
+            audioService.playSound('type');
+            addSparkles(activeWord.x + 20, activeWord.y + 15, COLORS.text, 3);
+            
+            if (activeWord.text === char) {
+                processWordCompletion(activeWord);
+            }
+        } else {
+            state.consecutivePerfectWords = 0;
+        }
+        return;
+    }
+
+    const nextChar = activeWord.text[activeWord.typed.length];
+    if (char === nextChar) {
+        activeWord.typed += char;
+        setFallingWords([...state.fallingWords]);
+
+        audioService.playSound('type');
+        addSparkles(activeWord.x + (activeWord.typed.length * 14), activeWord.y + 15, COLORS.correct, 4);
+
+        if (activeWord.typed === activeWord.text) {
+            processWordCompletion(activeWord);
+        }
+    } else {
+        state.consecutivePerfectWords = 0;
+        resetCombo();
+        audioService.playSound('rotten_penalty');
+        triggerShake();
+        state.stats.mistakes++;
+    }
+  };
+
+  const handleBackspace = () => {
+      const state = stateRef.current;
+      const activeWord = state.fallingWords.find(w => w.id === state.activeWordId);
+      if (activeWord && activeWord.typed.length > 0) {
+          activeWord.typed = activeWord.typed.slice(0, -1);
+          setFallingWords([...state.fallingWords]);
+          if (activeWord.typed.length === 0) {
+              state.activeWordId = null;
+              setActiveWordId(null);
+          }
+          state.consecutivePerfectWords = 0;
+      }
+  };
+
+  // --- Keyboard Handler (Desktop) ---
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-        if (screen === 'speed-test-playing' || screen === 'username-setup' || showExitConfirm) return;
+        if (screen === 'speed-test-playing' || screen === 'username-setup' || showExitConfirm || isMobile) return;
 
         if (e.key === 'Escape') {
             if (screen === 'playing') {
@@ -704,8 +843,7 @@ export default function Game({ user, onLogout }: GameProps) {
                 } else {
                     setScreen('paused');
                 }
-            }
-            else if (screen === 'paused') setScreen('playing');
+            } else if (screen === 'paused') setScreen('playing');
             return;
         }
 
@@ -713,68 +851,32 @@ export default function Game({ user, onLogout }: GameProps) {
         if (e.key.length > 1 && e.key !== 'Backspace') return;
         if (e.key === ' ') e.preventDefault();
 
-        const state = stateRef.current;
-        let activeWord = state.fallingWords.find(w => w.id === state.activeWordId);
-
-        if (!activeWord) {
-            const matches = state.fallingWords.filter(w => w.text.startsWith(e.key)).sort((a, b) => b.y - a.y);
-            if (matches.length > 0) {
-                activeWord = matches[0];
-                state.activeWordId = activeWord.id;
-                setActiveWordId(activeWord.id);
-                activeWord.typed = e.key;
-                setFallingWords([...state.fallingWords]);
-
-                audioService.playSound('type');
-                addSparkles(activeWord.x + 20, activeWord.y + 15, COLORS.text, 3);
-                
-                if (activeWord.text === e.key) {
-                    processWordCompletion(activeWord);
-                }
-            } else {
-                state.consecutivePerfectWords = 0;
-            }
-            return;
-        }
-
         if (e.key === 'Backspace') {
-            if (activeWord.typed.length > 0) {
-                activeWord.typed = activeWord.typed.slice(0, -1);
-                setFallingWords([...state.fallingWords]);
-                if (activeWord.typed.length === 0) {
-                    state.activeWordId = null;
-                    setActiveWordId(null);
-                }
-                state.consecutivePerfectWords = 0;
-            }
+            handleBackspace();
         } else {
-            const nextChar = activeWord.text[activeWord.typed.length];
-            if (e.key === nextChar) {
-                activeWord.typed += e.key;
-                setFallingWords([...state.fallingWords]);
-
-                audioService.playSound('type');
-                addSparkles(activeWord.x + (activeWord.typed.length * 14), activeWord.y + 15, COLORS.correct, 4);
-
-                if (activeWord.typed === activeWord.text) {
-                    processWordCompletion(activeWord);
-                }
-            } else {
-                state.consecutivePerfectWords = 0;
-                resetCombo();
-                audioService.playSound('rotten_penalty');
-                triggerShake();
-                state.stats.mistakes++; // Track Mistake
-            }
+            handleInputChar(e.key);
         }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [screen, showExitConfirm]);
+  }, [screen, showExitConfirm, isMobile]);
 
-  // addIngredient, increaseCombo, resetCombo, handleManualSelect, getContainerStyles... 
-  // (Standard implementations kept in place)
+  // --- Mobile Input Handler ---
+  const handleMobileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const val = e.target.value;
+      const inputType = (e.nativeEvent as any).inputType;
+
+      if (inputType === 'deleteContentBackward') {
+          handleBackspace();
+      } else if (val.length > 0) {
+          const char = val.slice(-1);
+          handleInputChar(char);
+      }
+      
+      // Clear input so we always get changes
+      if (hiddenInputRef.current) hiddenInputRef.current.value = '';
+  };
 
   const addIngredient = (text: string) => {
       const state = stateRef.current;
@@ -791,7 +893,16 @@ export default function Game({ user, onLogout }: GameProps) {
       } else if (state.gameMode === 'infinite' && state.ingredientsCount % target === 0) {
           audioService.playSound('powerup');
           state.score += 200;
-          if (playStyle !== 'competitive') setScore(state.score);
+          if (playStyle !== 'competitive') {
+              setScore(state.score);
+              if (state.score > sessionHighScore) {
+                  setSessionHighScore(state.score);
+                  if (!showHighScoreAlert) {
+                     setShowHighScoreAlert(true);
+                     setTimeout(() => setShowHighScoreAlert(false), 2000);
+                  }
+             }
+          }
           setTimeout(() => setIngredientsCollected([]), 300);
           addPopup(window.innerWidth/2 - 50, window.innerHeight - 100, "MEAL COMPLETE!", COLORS.correct);
       }
@@ -824,6 +935,10 @@ export default function Game({ user, onLogout }: GameProps) {
 
   const handleManualSelect = (word: WordEntity) => {
       if (screen !== 'playing') return;
+      
+      // On mobile, tapping manually should also focus keyboard
+      if (isMobile && hiddenInputRef.current) hiddenInputRef.current.focus();
+
       const state = stateRef.current;
       if (state.activeWordId === word.id) return;
       if (state.activeWordId) {
@@ -858,8 +973,8 @@ export default function Game({ user, onLogout }: GameProps) {
       }
 
       return {
-          width: '100vw',
-          height: '100vh',
+          width: '100%',
+          height: '100%', // Use parent container height which is set by flex/fixed logic
           border: `15px solid ${borderColor}`,
           backgroundColor: COLORS.background,
           boxShadow,
@@ -874,8 +989,33 @@ export default function Game({ user, onLogout }: GameProps) {
       return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
+  // Touch handler to ensure keyboard stays open when tapping background
+  const handleGameTouch = () => {
+      if (screen === 'playing' && isMobile && hiddenInputRef.current) {
+          hiddenInputRef.current.focus();
+      }
+  };
+
   return (
-    <div className="flex justify-center items-center w-full h-screen bg-black font-['Press_Start_2P'] text-white overflow-hidden">
+    <div 
+        className="flex justify-center items-center w-full bg-black font-['Press_Start_2P'] text-white overflow-hidden"
+        style={{ height: gameDimensions.height }} // Dynamic height for keyboard
+        onTouchStart={handleGameTouch}
+    >
+        {/* Hidden Input for Mobile Keyboard */}
+        {isMobile && (
+            <input 
+                ref={hiddenInputRef}
+                type="text" 
+                className="opacity-0 absolute top-0 left-0 w-1 h-1 pointer-events-none"
+                onChange={handleMobileInput}
+                autoComplete="off"
+                autoCorrect="off"
+                autoCapitalize="off"
+                spellCheck="false"
+            />
+        )}
+
         <div style={getContainerStyles()} className="relative transition-all duration-500">
             {sparkles.map(s => (
                 <div key={s.id} className="sparkle" style={{ left: s.x, top: s.y, backgroundColor: s.color, '--tx': s.tx, '--ty': s.ty } as any} />
@@ -883,22 +1023,31 @@ export default function Game({ user, onLogout }: GameProps) {
             {popups.map(p => (
                 <div key={p.id} className="popup-text" style={{ left: p.x, top: p.y, color: p.color, fontSize: '20px' }}>{p.text}</div>
             ))}
+            
+            {showHighScoreAlert && (
+                 <div className="absolute top-20 left-1/2 transform -translate-x-1/2 text-[#f4b400] text-xl md:text-2xl animate-bounce z-50 text-center" style={{ textShadow: '2px 2px 0px #000' }}>
+                     NEW HIGH SCORE!
+                 </div>
+            )}
 
             {screen === 'playing' && (
                 <div className="absolute top-0 left-0 w-full p-2 box-border bg-white/10 text-white z-10 flex flex-col gap-2">
-                    <div className="flex justify-between w-full text-base">
+                    <div className="flex justify-between w-full text-[10px] md:text-base">
                         <div>
                             {playStyle === 'competitive' ? `Time: ${formatTimer(elapsedTime)}` : `Score: ${score}`}
                         </div>
-                        <div>Lives: {'❤️'.repeat(lives)}</div>
+                        <div>{'❤️'.repeat(lives)}</div>
                         <div>
                             {gameMode === 'boss' ? 'BOSS' : 
                             (gameMode === 'infinite' || gameMode === 'universal') ? `${stateRef.current.infiniteConfig?.speedMult.toFixed(1)}x` : 
-                            `Level: ${level}`}
+                            `Lvl: ${level}`}
                         </div>
                     </div>
+                    {isMobile && (
+                        <div className="text-[8px] text-red-500 text-center bg-black/50">LEADERBOARD DISABLED ON MOBILE</div>
+                    )}
                     {(screen === 'playing' || streak > 0) && (
-                        <div className="w-full h-2.5 bg-[#333] border-2 border-white relative">
+                        <div className="w-full h-1.5 md:h-2.5 bg-[#333] border-2 border-white relative">
                             <div 
                                 className="h-full transition-all duration-300 ease-out"
                                 style={{ 
@@ -906,7 +1055,7 @@ export default function Game({ user, onLogout }: GameProps) {
                                     backgroundColor: streak < COMBO_FIESTA ? '#aaa' : (streak < COMBO_SPICY ? COLORS.comboRed : COLORS.comboPurple)
                                 }}
                             />
-                            <div className="absolute top-3 left-1/2 transform -translate-x-1/2 text-[12px] text-[#aaa] shadow-black drop-shadow-md">
+                            <div className="absolute top-2 md:top-3 left-1/2 transform -translate-x-1/2 text-[8px] md:text-[12px] text-[#aaa] shadow-black drop-shadow-md">
                                 Streak: {streak}
                             </div>
                         </div>
@@ -915,7 +1064,7 @@ export default function Game({ user, onLogout }: GameProps) {
             )}
 
             {gameMode !== 'universal' && gameMode !== 'speed-test' && (
-                <div className="absolute bottom-5 left-1/2 transform -translate-x-1/2 text-3xl z-[5] w-[90%] h-[50px] whitespace-nowrap overflow-hidden text-center">
+                <div className="absolute bottom-5 left-1/2 transform -translate-x-1/2 text-2xl md:text-3xl z-[5] w-[90%] h-[50px] whitespace-nowrap overflow-hidden text-center">
                     {ingredientsCollected.map((icon, i) => (
                         <span key={i} className="inline-block mx-[2px] animate-pop-in">{icon}</span>
                     ))}
