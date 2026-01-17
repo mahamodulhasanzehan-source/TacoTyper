@@ -229,380 +229,257 @@ const LeaderboardWidget: React.FC = () => {
     );
 };
 
-// --- Exit Confirmation ---
-interface ExitConfirmProps {
-    onConfirm: () => void;
-    onCancel: () => void;
-}
+// --- Screens ---
 
-export const ExitConfirmScreen: React.FC<ExitConfirmProps> = ({ onConfirm, onCancel }) => (
-    <div className="absolute top-0 left-0 w-full h-full bg-black/80 flex items-center justify-center z-[200] animate-fade-in p-4">
-        <div className="bg-[#111] border-4 border-[#ff2a2a] p-4 md:p-8 flex flex-col items-center max-w-md text-center shadow-[0_0_30px_rgba(255,0,0,0.3)]">
-            <h2 className="text-xl md:text-2xl text-[#ff2a2a] mb-4">WARNING CHEF!</h2>
-            <p className="text-xs md:text-sm leading-6 mb-6">
-                You are about to abandon the kitchen during a ranked service.<br/><br/>
-                <span className="text-[#f4b400]">Your score/time will not be recorded.</span>
-            </p>
-            <div className="flex gap-4">
-                <Button onClick={onConfirm} variant="secondary">Leave Kitchen</Button>
-                <Button onClick={onCancel} variant="primary">Keep Cooking</Button>
-            </div>
-        </div>
-    </div>
-);
-
-// --- Username Setup ---
-interface UsernameScreenProps {
-    onSubmit: (name: string) => void;
-}
-
-export const UsernameScreen: React.FC<UsernameScreenProps> = ({ onSubmit }) => {
-    const [name, setName] = useState('');
-
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        if (name.trim().length > 0 && name.trim().length <= 12) {
-            onSubmit(name.trim());
-        }
-    };
-
-    return (
-        <Overlay>
-            <h2 className="text-xl md:text-2xl mb-6 text-[#f4b400]">Identify Yourself</h2>
-            <form onSubmit={handleSubmit} className="flex flex-col items-center gap-4">
-                <input 
-                    type="text" 
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder="Nickname"
-                    maxLength={12}
-                    className="bg-[#111] border-4 border-white p-3 md:p-4 text-center text-white font-['Press_Start_2P'] outline-none focus:border-[#f4b400] w-[250px] md:w-[300px]"
-                    autoFocus
-                />
-                <div className="text-[10px] text-[#aaa] mb-4">Max 12 chars</div>
-                <Button type="submit">Confirm Identity</Button>
-            </form>
-        </Overlay>
-    );
-};
-
-// --- Mode Select ---
-interface ModeSelectProps {
-    onCompetitive: () => void;
-    onUnrated: () => void;
-    onBack: () => void;
-}
-
-export const ModeSelectScreen: React.FC<ModeSelectProps> = ({ onCompetitive, onUnrated, onBack }) => (
-    <Overlay>
-        <h2 className="text-2xl md:text-3xl text-[#f4b400] mb-8" style={{ textShadow: `3px 3px 0px ${COLORS.accent}` }}>Select Kitchen</h2>
-        <div className="flex flex-col md:flex-row gap-4 md:gap-8 mb-8">
-            <button 
-                onClick={onCompetitive}
-                className="w-[200px] h-[150px] md:w-[220px] md:h-[180px] bg-[#222] border-4 border-[#ff2a2a] hover:bg-[#330000] hover:scale-105 transition-all flex flex-col items-center justify-center p-4"
-            >
-                <div className="text-4xl mb-4">🏆</div>
-                <h3 className="text-[#ff2a2a] mb-2 font-bold text-xs md:text-base">COMPETITIVE</h3>
-                <p className="text-[10px] text-center text-[#aaa] leading-4">
-                    Ranked Play.<br/>Lvl 1 - Boss.<br/>Time Attack.<br/>No AI Score.
-                </p>
-            </button>
-
-            <button 
-                onClick={onUnrated}
-                className="w-[200px] h-[150px] md:w-[220px] md:h-[180px] bg-[#222] border-4 border-[#57a863] hover:bg-[#002200] hover:scale-105 transition-all flex flex-col items-center justify-center p-4"
-            >
-                <div className="text-4xl mb-4">🍳</div>
-                <h3 className="text-[#57a863] mb-2 font-bold text-xs md:text-base">UNRATED</h3>
-                <p className="text-[10px] text-center text-[#aaa] leading-4">
-                    Casual Play.<br/>Select Level.<br/>Practice.<br/>No Pressure.
-                </p>
-            </button>
-        </div>
-        <button onClick={onBack} className="bg-[#444] text-white text-xs py-2 px-4 border-2 border-white font-['Press_Start_2P'] hover:bg-[#666]">Back</button>
-    </Overlay>
-);
-
-// --- Start Screen ---
-interface StartScreenProps {
-  onStart: () => void;
-  onInfinite: () => void;
-  onUniversal: () => void;
-  onSpeedTest: () => void;
-  user?: User | null;
-  onLogout?: () => void;
-  isGenerating?: boolean;
-}
-
-export const StartScreen: React.FC<StartScreenProps> = ({ onStart, onInfinite, onUniversal, onSpeedTest, user, onLogout, isGenerating }) => {
-  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
-
-  return (
-      <Overlay>
-         <div className="hidden md:block">
-            <LeaderboardWidget />
-         </div>
-         
-         <div className="absolute top-4 left-4 md:top-8 md:left-8 flex gap-4 z-[120]">
-            {user && (
-                <div className="flex items-center gap-4">
-                    <span className="text-[#aaa] text-[10px] md:text-xs">Chef {user.displayName}</span>
-                    {!showLogoutConfirm ? (
-                        <button 
-                            onClick={() => setShowLogoutConfirm(true)}
-                            className="bg-transparent border-2 border-[#ff2a2a] text-[#ff2a2a] text-[10px] md:text-xs py-1 px-2 md:py-2 md:px-4 cursor-pointer font-['Press_Start_2P'] hover:bg-[#ff2a2a] hover:text-white"
-                        >
-                            Log Out
-                        </button>
-                    ) : (
-                        <div className="flex gap-2">
-                             <span className="text-[10px] md:text-xs text-white self-center">Sure?</span>
-                             <button 
-                                onClick={onLogout}
-                                className="bg-[#ff2a2a] text-white text-[10px] md:text-xs py-1 px-2 md:py-2 md:px-2 border-2 border-[#ff2a2a] hover:brightness-125"
-                             >
-                                Yes
-                             </button>
-                             <button 
-                                onClick={() => setShowLogoutConfirm(false)}
-                                className="bg-transparent text-[#aaa] text-[10px] md:text-xs py-1 px-2 md:py-2 md:px-2 border-2 border-[#aaa] hover:bg-[#333]"
-                             >
-                                No
-                             </button>
-                        </div>
-                    )}
-                </div>
-            )}
-         </div>
-         
-         <div className="flex flex-col items-center md:mr-[300px]">
-            <h1 className="text-3xl md:text-5xl mb-5 text-[#f4b400] shadow-[#e55934] text-center leading-normal" style={{ textShadow: `4px 4px 0px ${COLORS.accent}` }}>
-                Typing for<br className="md:hidden"/> Tacos
-            </h1>
-            <p className="text-xs md:text-base max-w-[500px] leading-normal mb-8 text-center px-4">
-                Type ingredients to cook!<br />Don't drop the food!
-            </p>
-            <div className="flex flex-col gap-4 md:gap-5 items-center">
-                <div className="flex gap-4 md:gap-5">
-                    <Button onClick={onStart}>Start Cooking</Button>
-                    <Button onClick={onInfinite} variant="secondary">Infinite</Button>
-                </div>
-                
-                <div className="flex gap-4">
-                     <button 
-                        onClick={onUniversal}
-                        className="bg-transparent border-2 border-[#4facfe] text-[#4facfe] text-[10px] md:text-xs py-2 px-4 cursor-pointer font-['Press_Start_2P'] hover:bg-[#4facfe] hover:text-white hover:scale-105"
-                    >
-                        Universal
-                    </button>
-                    <button 
-                        onClick={onSpeedTest}
-                        disabled={isGenerating}
-                        className={`bg-transparent border-2 border-[#ff2a2a] text-[#ff2a2a] text-[10px] md:text-xs py-2 px-4 cursor-pointer font-['Press_Start_2P'] hover:bg-[#ff2a2a] hover:text-white hover:scale-105 transition-all ${isGenerating ? 'opacity-50 cursor-wait' : ''}`}
-                    >
-                        {isGenerating ? '...' : 'Speed Test'}
-                    </button>
-                </div>
-            </div>
-         </div>
-      </Overlay>
-  );
-};
-
-// --- Level Select ---
-interface LevelSelectProps {
-  onSelectLevel: (level: number) => void;
-  onBack: () => void;
-}
-
-export const LevelSelectScreen: React.FC<LevelSelectProps> = ({ onSelectLevel, onBack }) => (
+export const StartScreen: React.FC<{ 
+    onStart: () => void, 
+    onInfinite: () => void, 
+    onUniversal: () => void,
+    onSpeedTest: () => void,
+    user: User,
+    onLogout: () => void,
+    isGenerating: boolean
+}> = ({ onStart, onInfinite, onUniversal, onSpeedTest, user, onLogout, isGenerating }) => (
   <Overlay>
-    <h1 className="text-3xl md:text-5xl mb-5 text-[#f4b400]" style={{ textShadow: `4px 4px 0px ${COLORS.accent}` }}>Select Level</h1>
-    <div className="grid grid-cols-2 gap-4 md:gap-5 mb-5">
-        {[
-            { lvl: 1, icon: '🌮', name: 'Level 1\nTacos' },
-            { lvl: 2, icon: '🍔', name: 'Level 2\nBurgers' },
-            { lvl: 3, icon: '🍝', name: 'Level 3\nNoodles' },
-            { lvl: 4, icon: '🍲', name: 'Level 4\nPrep' },
-            { lvl: 5, icon: '🍛', name: 'Level 5\nKabsa', full: true },
-        ].map((item) => (
-            <button
-                key={item.lvl}
-                onClick={() => onSelectLevel(item.lvl)}
-                className={`bg-[#57a863] text-white flex flex-col items-center justify-center w-[130px] h-[90px] md:w-[160px] md:h-[100px] border-4 border-white hover:scale-105 transition-transform active:scale-95 ${item.full ? 'col-span-2 w-full' : ''}`}
-                style={{ fontFamily: '"Press Start 2P", cursive', fontSize: '10px' }}
-            >
-                <span className="text-2xl md:text-3xl mb-2">{item.icon}</span>
-                <span className="whitespace-pre-line text-center">{item.name}</span>
-            </button>
-        ))}
+    <LeaderboardWidget />
+    <h1 className="text-4xl md:text-6xl mb-2 text-[#f4b400] text-center" style={{ textShadow: `4px 4px 0px ${COLORS.accent}` }}>
+      Typing for<br/>Tacos
+    </h1>
+    <p className="text-xs md:text-sm text-[#aaa] mb-8 text-center max-w-md leading-relaxed">
+      You are the head chef. Orders are coming in fast.<br/>
+      Type the ingredients to cook. Don't drop the food!
+    </p>
+
+    <div className="flex flex-col gap-4 w-full max-w-xs z-10">
+      <Button onClick={onStart}>START SERVICE</Button>
+      
+      <Button 
+        onClick={onSpeedTest} 
+        variant="pro" 
+        className="relative overflow-hidden group" 
+        disabled={isGenerating}
+      >
+        {isGenerating ? "GENERATING..." : "SPEED CHEF MODE (AI)"}
+        {!isGenerating && <span className="absolute top-0 right-0 text-[8px] bg-white text-black px-1 font-bold">NEW</span>}
+      </Button>
+
+      <div className="flex gap-4 w-full">
+          <Button onClick={onUniversal} variant="secondary" className="flex-1 text-[10px]">Universal</Button>
+          <Button onClick={onInfinite} variant="secondary" className="flex-1 text-[10px]">Infinite</Button>
+      </div>
+
+      <div className="mt-8 pt-4 border-t border-[#333] w-full flex justify-between items-center text-[10px] text-[#555]">
+          <span>Chef: {user.displayName || 'Unknown'}</span>
+          <button onClick={onLogout} className="hover:text-white underline">Sign Out</button>
+      </div>
     </div>
-    <button onClick={onBack} className="bg-[#444] text-white text-xs py-2 px-4 border-2 border-white font-['Press_Start_2P'] hover:bg-[#666]">Back</button>
   </Overlay>
 );
 
-// --- Level Complete ---
-interface LevelCompleteProps {
-    levelName: string;
-    message: string;
-    emoji: string;
-    onNext: () => void;
-}
-
-export const LevelCompleteScreen: React.FC<LevelCompleteProps> = ({ levelName, message, emoji, onNext }) => (
+export const ModeSelectScreen: React.FC<{
+    onCompetitive: () => void,
+    onUnrated: () => void,
+    onBack: () => void
+}> = ({ onCompetitive, onUnrated, onBack }) => (
     <Overlay>
-        <h2 className="text-2xl md:text-3xl text-[#f4b400] mb-4 text-center">{levelName}</h2>
-        <p className="mb-4 text-center text-xs md:text-base">{message}</p>
-        <div className="relative w-[200px] h-[100px] md:w-[300px] md:h-[150px] flex justify-center items-center my-4">
-            <span className="text-[80px] md:text-[120px] absolute animate-bounce">{emoji}</span>
+        <h2 className="text-3xl text-[#f4b400] mb-8">Select Mode</h2>
+        <div className="flex flex-col gap-6 w-full max-w-sm">
+            <button onClick={onCompetitive} className="bg-[#111] border-2 border-[#e55934] p-6 hover:bg-[#222] transition-colors text-left group relative overflow-hidden">
+                <div className="absolute top-0 right-0 bg-[#e55934] text-black text-[10px] px-2 py-1 font-bold">LEADERBOARD</div>
+                <h3 className="text-xl text-[#e55934] mb-2 group-hover:scale-105 transition-transform">Competitive</h3>
+                <p className="text-[10px] text-[#aaa] leading-relaxed">
+                    - Ranked on Global Leaderboard<br/>
+                    - Standard Speed & Difficulty<br/>
+                    - AI Judges your performance
+                </p>
+            </button>
+
+            <button onClick={onUnrated} className="bg-[#111] border-2 border-[#57a863] p-6 hover:bg-[#222] transition-colors text-left group">
+                <h3 className="text-xl text-[#57a863] mb-2 group-hover:scale-105 transition-transform">Unrated Practice</h3>
+                <p className="text-[10px] text-[#aaa] leading-relaxed">
+                    - Choose your starting level<br/>
+                    - No Leaderboard pressure<br/>
+                    - Just cooking vibes
+                </p>
+            </button>
+            
+            <Button onClick={onBack} variant="secondary" className="mt-4">Back</Button>
         </div>
-        <Button onClick={onNext}>Next Level</Button>
     </Overlay>
 );
 
-// --- Game Over ---
-interface GameOverProps {
-    score: number;
-    message: string;
-    stats?: string;
-    onRestart: () => void;
-    aiTitle?: string;
-    aiScore?: number;
-    isCalculating?: boolean;
-    isTimeScore?: boolean;
-}
-
-export const GameOverScreen: React.FC<GameOverProps> = ({ score, message, stats, onRestart, aiTitle, aiScore, isCalculating, isTimeScore }) => {
-    
-    const formatTime = (s: number) => {
-        const mins = Math.floor(s / 60);
-        const secs = Math.floor(s % 60);
-        return `${mins}:${secs.toString().padStart(2, '0')}`;
-    };
-
+export const UsernameScreen: React.FC<{ onSubmit: (name: string) => void }> = ({ onSubmit }) => {
+    const [name, setName] = useState('');
     return (
         <Overlay>
-            <h1 className="text-2xl md:text-4xl text-[#f4b400] mb-5 shadow-[#e55934] text-center" style={{ textShadow: `4px 4px 0px ${COLORS.accent}` }}>
-                {aiTitle ? "RANKING REPORT" : "Game Over!"}
-            </h1>
-            
-            {isCalculating ? (
-                 <div className="flex flex-col items-center mb-6">
-                     <div className="loading-spinner mb-4" />
-                     <p className="animate-pulse text-xs md:text-base">The Judges are deliberating...</p>
-                 </div>
-            ) : aiScore !== undefined ? (
-                 <div className="bg-[#222] border-4 border-[#fff] p-6 mb-6 flex flex-col items-center animate-pop-in min-w-[280px] md:min-w-[300px]">
-                     <p className="text-[#aaa] text-xs mb-2">{isTimeScore ? "TOTAL TIME" : "FINAL SCORE"}</p>
-                     <p className="text-4xl md:text-6xl text-[#57a863] mb-4 font-bold">
-                        {isTimeScore ? formatTime(aiScore) : aiScore}
-                     </p>
-                     <p className="text-lg md:text-xl text-[#f4b400] border-t-2 border-[#555] pt-4 w-full text-center tracking-widest">
-                        "{aiTitle}"
-                     </p>
-                 </div>
-            ) : (
-                <>
-                    <p className="mb-2 text-xs md:text-base">
-                        {isTimeScore ? "Total Time: " : "Final Score: "} 
-                        <span className="text-[#f4b400]">{isTimeScore ? formatTime(score) : score}</span>
-                    </p>
-                    <p className="mb-5 text-center px-4 text-xs md:text-base">{message}</p>
-                    {stats && <p className="mb-5 text-xs text-[#aaa]">{stats}</p>}
-                </>
-            )}
-            
-            <Button onClick={onRestart}>Home</Button>
+            <h2 className="text-2xl text-[#f4b400] mb-4">Who is cooking?</h2>
+            <input 
+                autoFocus
+                type="text" 
+                maxLength={12}
+                className="bg-black border-4 border-white p-3 text-center text-xl mb-4 outline-none focus:border-[#f4b400] uppercase"
+                placeholder="CHEF NAME"
+                value={name}
+                onChange={e => setName(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''))}
+                onKeyDown={e => e.key === 'Enter' && name.length > 0 && onSubmit(name)}
+            />
+            <Button onClick={() => name.length > 0 && onSubmit(name)}>CONFIRM</Button>
         </Overlay>
     );
 };
 
-// --- Boss Intro ---
+export const LevelSelectScreen: React.FC<{ onSelectLevel: (lvl: number) => void, onBack: () => void }> = ({ onSelectLevel, onBack }) => (
+  <Overlay>
+    <h2 className="text-3xl mb-8 text-[#f4b400]">Select Menu</h2>
+    <div className="grid grid-cols-2 gap-4 max-w-lg">
+      {[1, 2, 3, 4, 5].map(lvl => (
+        <Button key={lvl} onClick={() => onSelectLevel(lvl)} variant="secondary" className="min-w-[140px]">
+          Level {lvl}
+        </Button>
+      ))}
+    </div>
+    <Button onClick={onBack} variant="accent" className="mt-8">Back to Title</Button>
+  </Overlay>
+);
+
+export const LevelCompleteScreen: React.FC<{ levelName: string, message: string, emoji: string, onNext: () => void }> = ({ levelName, message, emoji, onNext }) => (
+  <Overlay>
+    <div className="text-6xl mb-4 animate-bounce">{emoji}</div>
+    <h2 className="text-3xl text-[#57a863] mb-2">Service Complete!</h2>
+    <p className="text-xl text-white mb-6">{levelName}</p>
+    <p className="text-sm text-[#aaa] mb-8 max-w-md text-center">{message}</p>
+    <Button onClick={onNext}>Next Course</Button>
+  </Overlay>
+);
+
 export const BossIntroScreen: React.FC<{ onStart: () => void }> = ({ onStart }) => (
+  <Overlay>
+    <h2 className="text-4xl text-[#ff0055] mb-4 animate-pulse text-center">RUSH HOUR!</h2>
+    <p className="text-sm md:text-base text-white mb-8 text-center max-w-md leading-relaxed">
+      The restaurant is packed. A VIP party just walked in.<br/><br/>
+      Survive the <strong>Social Interactions</strong> to become a Master Chef.
+    </p>
+    <Button onClick={onStart} variant="pro">LET'S COOK!</Button>
+  </Overlay>
+);
+
+export const GameOverScreen: React.FC<{ 
+    score: number, 
+    message: string, 
+    stats?: string, 
+    onRestart: () => void,
+    aiTitle?: string,
+    aiScore?: number,
+    isCalculating: boolean,
+    isTimeScore?: boolean
+}> = ({ score, message, stats, onRestart, aiTitle, aiScore, isCalculating, isTimeScore }) => (
+  <Overlay>
+    <h2 className="text-4xl text-[#e55934] mb-2" style={{ textShadow: '2px 2px 0px #fff' }}>SHIFT OVER</h2>
+    
+    <div className="bg-[#111] border-4 border-white p-6 my-6 flex flex-col items-center min-w-[300px]">
+        <p className="text-[#aaa] text-xs mb-2 uppercase tracking-widest">Performance Review</p>
+        
+        {isCalculating ? (
+            <div className="flex flex-col items-center py-4">
+                <div className="loading-spinner mb-2"></div>
+                <p className="text-xs animate-pulse">Judges are tasting...</p>
+            </div>
+        ) : (
+            <>
+                <div className="text-2xl text-white mb-1">
+                    {aiTitle || "Line Cook"}
+                </div>
+                <div className="text-4xl text-[#f4b400] mb-4 font-bold">
+                    {isTimeScore ? `${Math.floor(score/60)}:${Math.floor(score%60).toString().padStart(2,'0')}` : score} 
+                    <span className="text-xs text-[#555] ml-2">{isTimeScore ? 'TIME' : 'PTS'}</span>
+                </div>
+                {aiScore !== undefined && !isTimeScore && (
+                     <div className="text-[10px] text-[#555] mt-[-10px] mb-2">AI Judge Score: {aiScore}/100</div>
+                )}
+                <div className="w-full h-px bg-[#333] my-2"></div>
+                <p className="text-xs text-center text-[#888] italic">"{message}"</p>
+            </>
+        )}
+        
+        {stats && <p className="mt-4 text-xs text-[#57a863]">{stats}</p>}
+    </div>
+
+    <Button onClick={onRestart}>Back to Kitchen</Button>
+  </Overlay>
+);
+
+export const SpeedResultScreen: React.FC<{ wpm: number, cpm: number, accuracy: number, comment: string, onRestart: () => void }> = ({ wpm, cpm, accuracy, comment, onRestart }) => (
     <Overlay>
-        <h1 className="text-2xl md:text-4xl mb-4 text-[#ff0055]">The After Party</h1>
-        <p className="mb-6 text-center max-w-[80%] leading-relaxed text-xs md:text-base">"The food was amazing. Let's see if you can hold up and socialize."</p>
-        <Button onClick={onStart}>Let's Go!</Button>
+        <h2 className="text-3xl text-[#f4b400] mb-6">Speed Test Results</h2>
+        
+        <div className="grid grid-cols-3 gap-4 mb-8 w-full max-w-lg">
+            <div className="bg-[#111] border-2 border-white p-4 flex flex-col items-center">
+                <span className="text-3xl text-[#4facfe] mb-1">{wpm}</span>
+                <span className="text-[10px] text-[#aaa]">WPM</span>
+            </div>
+            <div className="bg-[#111] border-2 border-white p-4 flex flex-col items-center">
+                <span className="text-3xl text-[#e55934] mb-1">{cpm}</span>
+                <span className="text-[10px] text-[#aaa]">CPM</span>
+            </div>
+            <div className="bg-[#111] border-2 border-white p-4 flex flex-col items-center">
+                <span className={`text-3xl mb-1 ${accuracy >= 95 ? 'text-[#57a863]' : accuracy >= 80 ? 'text-[#f4b400]' : 'text-[#e55934]'}`}>{accuracy}%</span>
+                <span className="text-[10px] text-[#aaa]">ACCURACY</span>
+            </div>
+        </div>
+
+        <div className="bg-[#111] p-4 border-l-4 border-[#f4b400] max-w-md mb-8">
+            <p className="text-xs text-[#aaa] mb-1">HEAD CHEF SAYS:</p>
+            <p className="text-sm text-white italic">"{comment}"</p>
+        </div>
+
+        <Button onClick={onRestart}>Back to Kitchen</Button>
     </Overlay>
 );
 
-// --- Pause ---
 export const PauseScreen: React.FC<{ onResume: () => void, onQuit: () => void }> = ({ onResume, onQuit }) => (
     <Overlay>
-        <h1 className="text-4xl md:text-5xl mb-4">PAUSED</h1>
-        <p className="animate-blink mb-8 cursor-pointer hover:text-[#f4b400] text-xs md:text-base" onClick={onResume}>
-            Tap / Press ESC to Resume
-        </p>
-        <Button onClick={onQuit} variant="accent">Quit to Menu</Button>
+        <h2 className="text-4xl mb-8 animate-pulse">PAUSED</h2>
+        <div className="flex flex-col gap-4 min-w-[200px]">
+            <Button onClick={onResume}>Resume Cooking</Button>
+            <Button onClick={onQuit} variant="secondary">Quit to Menu</Button>
+        </div>
     </Overlay>
 );
 
-// --- Info Modal ---
+export const ExitConfirmScreen: React.FC<{ onConfirm: () => void, onCancel: () => void }> = ({ onConfirm, onCancel }) => (
+    <Overlay>
+        <div className="bg-[#111] border-4 border-red-600 p-6 max-w-sm text-center">
+            <h2 className="text-xl text-red-500 mb-4">ABANDON SERVICE?</h2>
+            <p className="text-xs text-[#aaa] mb-6">Leaving now will forfeit your current run and score.</p>
+            <div className="flex gap-4 justify-center">
+                 <Button onClick={onConfirm} variant="accent">YES, QUIT</Button>
+                 <Button onClick={onCancel}>NO, STAY</Button>
+            </div>
+        </div>
+    </Overlay>
+);
+
 export const InfoModal: React.FC<{ text: string, onClose: () => void }> = ({ text, onClose }) => (
-    <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[90%] md:w-[500px] bg-[#111] border-4 border-white p-6 md:p-8 z-[200] flex flex-col items-center shadow-[0_0_20px_rgba(0,0,0,0.9)] animate-fade-in" style={{ animation: 'fadeIn 0.2s ease-out' }}>
-        <button onClick={onClose} className="absolute top-2 right-2 bg-[#e55934] border-2 border-white text-white cursor-pointer text-xs p-1 hover:scale-110">X</button>
-        <h2 className="text-[#f4b400] mb-4 text-lg md:text-xl">Mode Info</h2>
-        <p className="text-xs md:text-sm text-center leading-6">{text}</p>
+    <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-[#111] border-4 border-white p-6 z-[200] text-center min-w-[300px] animate-pop-in shadow-2xl">
+        <p className="mb-6 text-sm leading-relaxed">{text}</p>
+        <Button onClick={onClose} className="py-2 px-6 text-xs">OK CHEF</Button>
     </div>
 );
 
-// --- Speed Result ---
-interface SpeedResultProps {
-    wpm: number;
-    cpm: number;
-    accuracy: number;
-    comment: string;
-    onRestart: () => void;
+export interface GeneratingModalProps {
+    message: string;
 }
 
-export const SpeedResultScreen: React.FC<SpeedResultProps> = ({ wpm, cpm, accuracy, comment, onRestart }) => {
-    // Helper to determine color based on value thresholds
-    const getStatColor = (val: number, low: number, high: number) => {
-        if (val < low) return '#ff2a2a'; // Red
-        if (val < high) return '#f4b400'; // Yellow
-        return '#57a863'; // Green
-    };
-
-    // Calculate colors for each stat
-    const wpmColor = getStatColor(wpm, 30, 60);
-    const cpmColor = getStatColor(cpm, 150, 300);
-    const accColor = getStatColor(accuracy, 85, 95);
-
-    // Determine overall comment color based on a weighted check
-    let commentColor = '#f4b400';
-    if (accuracy < 85 || wpm < 30) {
-        commentColor = '#ff2a2a';
-    } else if (wpm > 60 && accuracy > 95) {
-        commentColor = '#57a863';
-    }
-
-    return (
-        <Overlay>
-            <h1 className="text-2xl md:text-4xl text-[#4facfe] mb-8 text-center" style={{ textShadow: `4px 4px 0px ${COLORS.accent}` }}>Kitchen Report</h1>
-            <div className="flex gap-4 md:gap-12 mb-8">
-                <div className="flex flex-col items-center">
-                    <span className="text-3xl md:text-[60px]" style={{ color: wpmColor }}>{wpm}</span>
-                    <span className="text-[#aaa] text-[10px] md:text-base">WPM</span>
-                </div>
-                <div className="flex flex-col items-center">
-                    <span className="text-3xl md:text-[60px]" style={{ color: cpmColor }}>{cpm}</span>
-                    <span className="text-[#aaa] text-[10px] md:text-base">CPM</span>
-                </div>
-                <div className="flex flex-col items-center">
-                    <span className="text-3xl md:text-[60px]" style={{ color: accColor }}>{accuracy}%</span>
-                    <span className="text-[#aaa] text-[10px] md:text-base">ACCURACY</span>
-                </div>
-            </div>
-            <div 
-                className="bg-[#222] border-l-4 p-4 max-w-[600px] mb-8 italic text-xs md:text-base"
-                style={{ 
-                    borderColor: commentColor, 
-                    color: commentColor 
-                }}
-            >
-                " {comment} "
-            </div>
-            <Button onClick={onRestart}>Back to Kitchen</Button>
-        </Overlay>
-    );
-};
+export const GeneratingModal: React.FC<GeneratingModalProps> = ({ message }) => (
+    <div className="absolute top-0 left-0 w-full h-full bg-black/95 flex flex-col items-center justify-center z-[300] animate-fade-in cursor-wait">
+        <div className="relative mb-8">
+            <span className="text-6xl animate-bounce inline-block">👨‍🍳</span>
+        </div>
+        
+        <h2 className="text-2xl md:text-4xl text-[#f4b400] mb-6 text-center" style={{ textShadow: '2px 2px 0px #e55934' }}>
+            {message}
+        </h2>
+        <div className="loading-spinner w-12 h-12 border-4 border-[#333] border-t-[#f4b400]"></div>
+        <div className="mt-4 text-[#888] text-xs animate-pulse">AI is cooking...</div>
+    </div>
+);
