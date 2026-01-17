@@ -42,8 +42,7 @@ import {
   SpeedResultScreen,
   UsernameScreen,
   ModeSelectScreen,
-  ExitConfirmScreen,
-  GeneratingModal
+  ExitConfirmScreen
 } from './Overlays';
 
 interface GameProps {
@@ -83,7 +82,6 @@ export default function Game({ user, onLogout }: GameProps) {
   const [speedTestText, setSpeedTestText] = useState('');
   const [speedTestResult, setSpeedTestResult] = useState<{wpm: number, cpm: number, accuracy: number, comment: string} | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [isEvaluating, setIsEvaluating] = useState(false);
 
   // Leaderboard Calculation State
   const [isCalculatingScore, setIsCalculatingScore] = useState(false);
@@ -500,14 +498,17 @@ export default function Game({ user, onLogout }: GameProps) {
   };
 
   const finishSpeedTest = async (wpm: number, cpm: number, accuracy: number) => {
-      // 1. Start Evaluating Loading Screen
-      setIsEvaluating(true);
+      setScreen('speed-test-result');
+      setSpeedTestResult({ wpm, cpm, accuracy, comment: "Chef is analyzing..." });
       
-      // 2. Perform AI Ops (Wait for response)
+      // 1. Generate a Witty Comment
       const comment = await aiService.generateSpeedComment(wpm, cpm, accuracy);
+      
+      // 2. Score = WPM (Strictly)
       const { title: rankTitle } = await aiService.generateCompetitiveScore(stateRef.current.stats, { wpm, accuracy });
 
-      // 3. Save Data
+      setSpeedTestResult({ wpm, cpm, accuracy, comment });
+      
       if (user) {
           saveSpeedTestStats(user, wpm, accuracy);
           const usernameToUse = customUsername || (await getUserProfile(user.uid))?.username;
@@ -523,13 +524,6 @@ export default function Game({ user, onLogout }: GameProps) {
               );
           }
       }
-
-      // 4. Update State & Switch Screen
-      setSpeedTestResult({ wpm, cpm, accuracy, comment });
-      setScreen('speed-test-result');
-      
-      // 5. Hide Loading Screen
-      setIsEvaluating(false);
   };
 
   const gameOver = async (reason: string) => {
@@ -1019,10 +1013,6 @@ export default function Game({ user, onLogout }: GameProps) {
                 spellCheck="false"
             />
         )}
-
-        {/* Global Loading Overlays */}
-        {isGenerating && <GeneratingModal message="Generating Text..." />}
-        {isEvaluating && <GeneratingModal message="Evaluating Performance..." />}
 
         <div style={getContainerStyles()} className="relative transition-all duration-500">
             {sparkles.map(s => (
