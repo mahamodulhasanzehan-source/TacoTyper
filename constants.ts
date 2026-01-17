@@ -1,3 +1,4 @@
+
 import { LevelConfig } from './types';
 
 // Colors
@@ -29,7 +30,19 @@ export const SPEED_TEST_TEXTS = [
   
   "The art of fermentation is one of humanity's oldest cooking techniques. From Korean kimchi to German sauerkraut and sourdough bread, cultures around the globe discovered that beneficial bacteria could not only preserve food but unlock complex, savory flavors that fresh ingredients simply cannot match.",
   
-  "Chocolate was once consumed as a bitter, spicy drink by the Maya and Aztecs. It wasn't until it reached Europe and was mixed with sugar and milk that it became the sweet treat we know today. In ancient times, cacao beans were so valuable they were actually used as a currency for trade."
+  "Chocolate was once consumed as a bitter, spicy drink by the Maya and Aztecs. It wasn't until it reached Europe and was mixed with sugar and milk that it became the sweet treat we know today. In ancient times, cacao beans were so valuable they were actually used as a currency for trade.",
+
+  "Sushi was originally a method of preserving fish in fermented rice. The rice was thrown away and only the fish was eaten. It wasn't until the Edo period in Japan that fresh fish was served over vinegared rice, creating the modern form of sushi we enjoy today.",
+
+  "Honey is one of the only foods that includes all the substances necessary to sustain life, including enzymes, vitamins, minerals, and water. It is also the only food that does not spoil. Edible honey has been found in ancient Egyptian tombs over 3000 years old.",
+
+  "The Carolina Reaper holds the record for the hottest chili pepper in the world. It averages over 1.6 million Scoville Heat Units. For comparison, a standard Jalapeno pepper measures between 2,500 to 8,000 units. Cooking with it requires protective gear.",
+
+  "Truffles are a type of fungus that grows underground near the roots of certain trees. They are located by using trained pigs or dogs who can smell the distinct aroma from beneath the soil. White truffles from Italy can sell for thousands of dollars per pound.",
+
+  "Wasabi that you eat in most restaurants is actually horseradish dyed green. Real wasabi is made from the root of the Wasabia japonica plant, which is incredibly difficult to grow. True wasabi loses its flavor within 15 minutes of being grated.",
+
+  "Vanilla is the second most expensive spice after saffron because the vanilla orchid is the only orchid of about 25,000 species that produces an edible fruit. In cultivation, each flower must be hand-pollinated within 12 hours of opening."
 ];
 
 // Levels

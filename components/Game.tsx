@@ -434,7 +434,13 @@ export default function Game({ user, onLogout }: GameProps) {
       setScreen('speed-test-result');
       setSpeedTestResult({ wpm, cpm, accuracy, comment: "Chef is analyzing..." });
       
+      // 1. Generate a Witty Comment
       const comment = await aiService.generateSpeedComment(wpm, cpm, accuracy);
+      
+      // 2. Calculate the True Points (0-100) using AI or Strict Formula
+      // This enforces accuracy over raw speed
+      const { score: pointsScore, title: rankTitle } = await aiService.generateCompetitiveScore(stateRef.current.stats, { wpm, accuracy });
+
       setSpeedTestResult({ wpm, cpm, accuracy, comment });
       
       if (user) {
@@ -443,8 +449,8 @@ export default function Game({ user, onLogout }: GameProps) {
               await saveLeaderboardScore(
                   user, 
                   customUsername, 
-                  wpm, 
-                  comment, 
+                  pointsScore, // Save the calculated POINTS, not WPM
+                  rankTitle, // Use the AI Title (e.g. "Speed Demon" or "Dishwasher")
                   stateRef.current.stats, 
                   'speed-test', 
                   { accuracy }
