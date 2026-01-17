@@ -1,48 +1,48 @@
 import { GoogleGenAI } from "@google/genai";
+import { getEnv } from '../utils/env';
 
 class AIService {
-  private ai: GoogleGenAI;
+  private ai: GoogleGenAI | null = null;
 
-  constructor() {
-    // Matches the "API_KEY" variable in your Vercel Screenshot
-    this.ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  private getClient(): GoogleGenAI | null {
+      if (!this.ai) {
+          const key = getEnv('API_KEY');
+          if (key) {
+              this.ai = new GoogleGenAI({ apiKey: key });
+          }
+      }
+      return this.ai;
   }
 
   async generateSpeedText(): Promise<string> {
+    const client = this.getClient();
+    if (!client) return "AI Service Unavailable (Missing API Key)";
+
     try {
-      const response = await this.ai.models.generateContent({
+      const response = await client.models.generateContent({
         model: 'gemini-3-flash-preview',
-        contents: "Write a short, interesting documentary-style fact or story about food history, cooking science, or a specific cuisine. It must be between 100 and 200 words long. Structure it into exactly 2 paragraphs. Do not use markdown formatting (like **bold**). Ensure there is a single blank line between paragraphs.",
+        contents: "Write a short, interesting documentary-style fact or story about food history. 150 words.",
       });
-      return response.text || "Failed to generate text. Please try again.";
+      return response.text || "Failed to generate text.";
     } catch (error) {
       console.error("AI Generation Error:", error);
-      return "Error connecting to the chef's brain. Please check your internet or API key.";
+      return "Error connecting to the chef's brain.";
     }
   }
 
   async generateSpeedComment(wpm: number, cpm: number, accuracy: number): Promise<string> {
+    const client = this.getClient();
+    if (!client) return "Keep cooking! (AI Key missing)";
+
     try {
-      const prompt = `A player just finished a typing speed test with these stats:
-      - Words Per Minute (WPM): ${wpm}
-      - Clicks Per Minute (CPM): ${cpm}
-      - Accuracy: ${accuracy}%
-
-      Act like a strict but fair head chef evaluating a line cook.
-      - If Accuracy is low (< 85%), roast them for making a mess in the kitchen, regardless of their speed.
-      - If WPM is low (< 30) and Accuracy is high, tell them they are too slow and the food is getting cold.
-      - If both are high (WPM > 60, Accuracy > 95%), praise them as a potential Master Chef.
-      - Otherwise, give a balanced critique on how to improve flow.
-
-      Write exactly ONE sentence. Do not mention the specific numbers in the response.`;
-
-      const response = await this.ai.models.generateContent({
+      const prompt = `Evaluate a typist with WPM: ${wpm}, Accuracy: ${accuracy}%. Be a strict chef. One sentence.`;
+      const response = await client.models.generateContent({
         model: 'gemini-3-flash-preview',
         contents: prompt,
       });
-      return response.text || "Your chopping skills need work. Keep practicing to become a master chef.";
+      return response.text || "Keep practicing!";
     } catch (error) {
-      return "Speedy cooking! But there is always room for improvement.";
+      return "Speedy cooking!";
     }
   }
 }
