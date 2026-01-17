@@ -57,27 +57,57 @@ const TypingSpeedGame: React.FC<TypingSpeedGameProps> = ({ targetText, onComplet
         const safeElapsed = Math.max(elapsedSecs, 1);
         const mins = safeElapsed / 60;
         
-        // Strict WPM: Check fully correct words only
-        const targetWords = targetText.split(' ');
-        const inputWords = inputText.split(' ');
-        let correctChars = 0;
+        const stats = calculateStats(inputText, targetText);
         
-        // Count characters in fully correct words
-        for (let i = 0; i < inputWords.length; i++) {
-            // Must match target word exactly and be followed by space (or be last word if text complete)
-            // Actually, live calculation usually counts chars in words that match so far
-            if (i < targetWords.length && inputWords[i] === targetWords[i]) {
-                correctChars += inputWords[i].length + 1; // +1 for space
-            }
-        }
-        
-        const words = correctChars / 5;
-        const currentCpm = Math.round(correctChars / mins);
+        const words = stats.correctChars / 5;
+        const currentCpm = Math.round(stats.correctChars / mins);
         
         setWpm(Math.round(words / mins));
         setCpm(currentCpm);
     }
   }, [inputText, timeLeft, startTime]);
+
+  const calculateStats = (input: string, target: string) => {
+      // Split by spaces to compare word by word
+      // Handle the fact that input might have a trailing space if user just finished a word
+      const inputWords = input.split(' ');
+      const targetWords = target.split(' ');
+      
+      let correctChars = 0;
+      
+      for (let i = 0; i < inputWords.length; i++) {
+          const inputWord = inputWords[i];
+          const targetWord = targetWords[i];
+          
+          if (!targetWord) break; // Typed more words than target
+
+          // Case 1: Completed word (not the last in list, OR last in list but user typed space at end)
+          // Actually split(' ') with trailing space produces empty string at end.
+          
+          if (i < inputWords.length - 1) {
+              // This is a completed word
+              if (inputWord === targetWord) {
+                  correctChars += inputWord.length + 1; // +1 for the space
+              }
+          } else {
+              // This is the current word being typed (or last word)
+              // We credit characters that match the prefix of the target word
+              // This ensures CPM/WPM isn't 0 while typing a long word
+              for (let j = 0; j < inputWord.length; j++) {
+                  if (j < targetWord.length && inputWord[j] === targetWord[j]) {
+                      correctChars++;
+                  } else {
+                      break; // Stop counting chars once a mismatch occurs in the current word
+                  }
+              }
+              // If exact match of full word (and it's the very last word of text), credit it fully
+              if (inputWord === targetWord && i === targetWords.length - 1) {
+                  // No space to add
+              }
+          }
+      }
+      return { correctChars };
+  };
 
   const finishGame = (timeUp = false) => {
       if (timerRef.current) clearInterval(timerRef.current);
@@ -100,30 +130,16 @@ const TypingSpeedGame: React.FC<TypingSpeedGameProps> = ({ targetText, onComplet
 
       const mins = durationSecs / 60;
       
-      // STRICT CALCULATION
-      const targetWords = targetText.split(' ');
-      const inputWords = inputText.split(' ');
-      let correctChars = 0;
-      let correctCount = 0;
-      
-      for(let i=0; i<inputWords.length; i++) {
-          // A word is correct if it matches target exactly. 
-          // Note: Splitting by space might have empty strings if multiple spaces, but assuming normal typing.
-          if (i < targetWords.length) {
-              if (inputWords[i] === targetWords[i]) {
-                  correctChars += inputWords[i].length + 1; // +1 for space
-                  correctCount++;
-              }
-          }
-      }
+      const stats = calculateStats(inputText, targetText);
 
-      const words = correctChars / 5;
+      const words = stats.correctChars / 5;
       const finalWpm = Math.round(words / mins);
-      const finalCpm = Math.round(correctChars / mins);
+      const finalCpm = Math.round(stats.correctChars / mins);
 
       // Calculate final accuracy based on Total Characters Typed (Keystrokes)
       let correctRaw = 0;
-      for (let i = 0; i < inputText.length; i++) {
+      const minLen = Math.min(inputText.length, targetText.length);
+      for (let i = 0; i < minLen; i++) {
           if (inputText[i] === targetText[i]) correctRaw++;
       }
       
@@ -170,7 +186,8 @@ const TypingSpeedGame: React.FC<TypingSpeedGameProps> = ({ targetText, onComplet
           }
 
           if (val.length === targetText.length) {
-              setTimeout(() => finishGame(false), 0);
+              // Delay finish to allow render update
+              setTimeout(() => finishGame(false), 50);
           }
       }
   };

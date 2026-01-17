@@ -488,7 +488,11 @@ export default function Game({ user, onLogout }: GameProps) {
       const text = await aiService.generateSpeedText();
       setIsGenerating(false);
 
-      setSpeedTestText(text);
+      // SANITIZE: Remove newlines, carriage returns, and multiple spaces.
+      // This ensures the input matches the display text properly.
+      const cleanText = text.replace(/[\n\r]+/g, ' ').replace(/\s{2,}/g, ' ').trim();
+      
+      setSpeedTestText(cleanText);
       setScreen('speed-test-playing');
       setGameMode('speed-test');
   };
@@ -551,7 +555,7 @@ export default function Game({ user, onLogout }: GameProps) {
         setFinalAiTitle(title);
         setIsCalculatingScore(false);
         
-        // Save to Leaderboard - REMOVED MOBILE BLOCK
+        // Save to Leaderboard
         let modeToSave = playStyle === 'competitive' ? 'competitive' : state.gameMode;
         if (state.gameMode === 'standard' || state.gameMode === 'boss') {
             if (playStyle === 'competitive') modeToSave = 'competitive';
@@ -593,7 +597,6 @@ export default function Game({ user, onLogout }: GameProps) {
 
     if (user && customUsername) {
         let modeToSave = playStyle === 'competitive' ? 'competitive' : 'boss';
-        // REMOVED MOBILE BLOCK
         await saveLeaderboardScore(user, customUsername, finalScore, title, state.stats, modeToSave);
         saveGameStats(user, state.score, modeToSave, 6);
     }
