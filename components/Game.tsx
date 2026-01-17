@@ -42,7 +42,8 @@ import {
   SpeedResultScreen,
   UsernameScreen,
   ModeSelectScreen,
-  ExitConfirmScreen
+  ExitConfirmScreen,
+  GeneratingModal
 } from './Overlays';
 
 interface GameProps {
@@ -82,6 +83,7 @@ export default function Game({ user, onLogout }: GameProps) {
   const [speedTestText, setSpeedTestText] = useState('');
   const [speedTestResult, setSpeedTestResult] = useState<{wpm: number, cpm: number, accuracy: number, comment: string} | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isEvaluating, setIsEvaluating] = useState(false);
 
   // Leaderboard Calculation State
   const [isCalculatingScore, setIsCalculatingScore] = useState(false);
@@ -498,8 +500,7 @@ export default function Game({ user, onLogout }: GameProps) {
   };
 
   const finishSpeedTest = async (wpm: number, cpm: number, accuracy: number) => {
-      setScreen('speed-test-result');
-      setSpeedTestResult({ wpm, cpm, accuracy, comment: "Chef is analyzing..." });
+      setIsEvaluating(true);
       
       // 1. Generate a Witty Comment
       const comment = await aiService.generateSpeedComment(wpm, cpm, accuracy);
@@ -507,8 +508,7 @@ export default function Game({ user, onLogout }: GameProps) {
       // 2. Score = WPM (Strictly)
       const { title: rankTitle } = await aiService.generateCompetitiveScore(stateRef.current.stats, { wpm, accuracy });
 
-      setSpeedTestResult({ wpm, cpm, accuracy, comment });
-      
+      // Save Data
       if (user) {
           saveSpeedTestStats(user, wpm, accuracy);
           const usernameToUse = customUsername || (await getUserProfile(user.uid))?.username;
@@ -524,6 +524,10 @@ export default function Game({ user, onLogout }: GameProps) {
               );
           }
       }
+
+      setSpeedTestResult({ wpm, cpm, accuracy, comment });
+      setScreen('speed-test-result');
+      setIsEvaluating(false);
   };
 
   const gameOver = async (reason: string) => {
@@ -1013,6 +1017,10 @@ export default function Game({ user, onLogout }: GameProps) {
                 spellCheck="false"
             />
         )}
+
+        {/* Global Loading Overlays */}
+        {isGenerating && <GeneratingModal message="Generating text for you to cook..." />}
+        {isEvaluating && <GeneratingModal message="Evaluating Performance..." />}
 
         <div style={getContainerStyles()} className="relative transition-all duration-500">
             {sparkles.map(s => (

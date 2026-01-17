@@ -606,3 +606,21 @@ export const SpeedResultScreen: React.FC<SpeedResultProps> = ({ wpm, cpm, accura
         </Overlay>
     );
 };
+
+export interface GeneratingModalProps {
+    message: string;
+}
+
+export const GeneratingModal: React.FC<GeneratingModalProps> = ({ message }) => (
+    <div className="absolute top-0 left-0 w-full h-full bg-black flex flex-col items-center justify-center z-[300] animate-fade-in cursor-wait">
+        <div className="relative mb-8">
+            <span className="text-6xl animate-bounce inline-block">👨‍🍳</span>
+        </div>
+        
+        <h2 className="text-2xl md:text-4xl text-[#f4b400] mb-6 text-center" style={{ textShadow: '2px 2px 0px #e55934', fontFamily: '"Press Start 2P", cursive' }}>
+            {message}
+        </h2>
+        <div className="loading-spinner w-12 h-12 border-4 border-[#333] border-t-[#f4b400]"></div>
+        <div className="mt-4 text-[#888] text-xs animate-pulse font-['Press_Start_2P']">AI is cooking...</div>
+    </div>
+);
