@@ -9,7 +9,7 @@ interface LoginScreenProps {
 
 const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, isLoading }) => {
   return (
-    <div className="flex flex-col items-center justify-center w-full h-full bg-black text-white z-50 animate-fade-in">
+    <div className="flex flex-col items-center justify-center w-full h-screen bg-black text-white z-50 animate-fade-in">
         <h1 className="text-5xl mb-8 text-[#f4b400] text-center leading-normal" style={{ textShadow: `4px 4px 0px ${COLORS.accent}` }}>
             Typing for<br/>Tacos
         </h1>
