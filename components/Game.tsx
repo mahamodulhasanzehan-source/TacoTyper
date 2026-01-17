@@ -929,7 +929,7 @@ export default function Game({ user, onLogout }: GameProps) {
             )}
 
             {screen === 'playing' && (
-                <div className="absolute top-0 left-0 w-full p-2 box-border bg-white/10 z-10 flex flex-col gap-2" style={{ color: COLORS.text }}>
+                <div className="absolute top-0 left-0 w-full p-2 box-border bg-white/10 z-10 hidden md:flex flex-col gap-2" style={{ color: COLORS.text }}>
                     <div className="flex justify-between w-full text-[10px] md:text-base">
                         <div>
                             {playStyle === 'competitive' ? `Time: ${formatTimer(elapsedTime)}` : `Score: ${score}`}

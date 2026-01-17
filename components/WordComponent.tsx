@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { WordEntity } from '../types';
 import { COLORS } from '../constants';
@@ -14,7 +15,6 @@ const WordComponent: React.FC<WordProps> = ({ word, isActive, onClick }) => {
       position: 'absolute',
       top: `${word.y}px`,
       left: `${word.x}px`,
-      fontSize: '24px',
       padding: '5px 10px',
       borderWidth: '3px',
       borderStyle: 'solid',
@@ -80,7 +80,7 @@ const WordComponent: React.FC<WordProps> = ({ word, isActive, onClick }) => {
         e.preventDefault();
         onClick(word);
       }}
-      className={`word ${word.type === 'heart' ? 'animate-heart-beat' : ''} hover:border-[#f4b400] word-enter`}
+      className={`word ${word.type === 'heart' ? 'animate-heart-beat' : ''} hover:border-[#f4b400] word-enter text-base md:text-2xl`}
     >
       <span 
         style={{ 

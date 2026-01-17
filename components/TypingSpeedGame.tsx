@@ -178,7 +178,7 @@ const TypingSpeedGame: React.FC<TypingSpeedGameProps> = ({ targetText, onComplet
                     backgroundColor: bg,
                     display: 'inline-block' // Needed for transform
                 }}
-                className={`relative ${isCursor ? 'border-b-8 border-[#f4b400] animate-pulse' : ''}`}
+                className={`relative ${isCursor ? 'border-b-4 md:border-b-8 border-[#f4b400] animate-pulse' : ''}`}
               >
                   {/* Need an inner span for the cursor ref to ensure scrolling works on the actual element position */}
                   <span id={isCursor ? 'cursor-ref' : undefined}>{char}</span>
@@ -188,11 +188,11 @@ const TypingSpeedGame: React.FC<TypingSpeedGameProps> = ({ targetText, onComplet
   };
 
   return (
-    <div className="absolute top-0 left-0 w-full h-full bg-black flex flex-col items-center pt-10 z-50 animate-fade-in">
-        <h2 className="text-[#f4b400] text-3xl mb-6"><RandomText text="Speed Chef Mode" /></h2>
+    <div className="absolute top-0 left-0 w-full h-full bg-black flex flex-col items-center pt-2 md:pt-10 z-50 animate-fade-in">
+        <h2 className="text-[#f4b400] text-3xl mb-6 hidden md:block"><RandomText text="Speed Chef Mode" /></h2>
         
-        {/* Stats Bar */}
-        <RandomReveal className="flex gap-12 mb-8 text-2xl border-4 border-[#333] p-6 bg-[#111]">
+        {/* Stats Bar - Hidden on mobile */}
+        <RandomReveal className="hidden md:flex gap-12 mb-8 text-2xl border-4 border-[#333] p-6 bg-[#111]">
             <div className="flex flex-col items-center">
                 <span className="text-[#aaa] text-sm mb-2">TIME</span>
                 <span className={timeLeft < 10 ? 'text-red-500 animate-pulse' : 'text-white'}>{timeLeft}s</span>
@@ -207,10 +207,10 @@ const TypingSpeedGame: React.FC<TypingSpeedGameProps> = ({ targetText, onComplet
             </div>
         </RandomReveal>
 
-        {/* Text Area */}
+        {/* Text Area - Adjusted size for mobile */}
         <div 
             ref={textContainerRef}
-            className="w-[90%] h-[60%] bg-[#111] border-4 border-white p-8 overflow-y-auto leading-relaxed text-6xl font-mono relative shadow-[0_0_20px_rgba(255,255,255,0.1)]"
+            className="w-[95%] md:w-[90%] h-[40%] md:h-[60%] bg-[#111] border-2 md:border-4 border-white p-4 md:p-8 overflow-y-auto leading-relaxed text-lg md:text-6xl font-mono relative shadow-[0_0_20px_rgba(255,255,255,0.1)]"
             style={{ fontFamily: 'monospace', whiteSpace: 'pre-wrap' }}
             onClick={() => inputRef.current?.focus()}
         >
@@ -226,7 +226,9 @@ const TypingSpeedGame: React.FC<TypingSpeedGameProps> = ({ targetText, onComplet
             autoFocus
         />
 
-        <RandomReveal delay={0.5} className="mt-8 text-[#aaa] text-sm">Start typing to begin timer • ESC to Quit</RandomReveal>
+        <RandomReveal delay={0.5} className="mt-4 md:mt-8 text-[#aaa] text-xs md:text-sm text-center">
+            Start typing to begin<span className="hidden md:inline"> • ESC to Quit</span>
+        </RandomReveal>
     </div>
   );
 };
