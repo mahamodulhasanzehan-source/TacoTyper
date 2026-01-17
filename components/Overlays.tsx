@@ -489,32 +489,81 @@ export const ModeSelectScreen: React.FC<ModeSelectProps> = ({ onCompetitive, onU
     </Overlay>
 );
 
-export const LevelSelectScreen: React.FC<LevelSelectProps> = ({ onSelectLevel, onBack }) => (
-  <Overlay>
-    <h1 className="text-3xl md:text-5xl mb-5 text-[#f4b400]" style={{ textShadow: `4px 4px 0px ${COLORS.accent}` }}><RandomText text="Select Level" /></h1>
-    <div className="grid grid-cols-2 gap-4 md:gap-5 mb-5">
-        {[
-            { lvl: 1, icon: '🌮', name: 'Level 1\nTacos' },
-            { lvl: 2, icon: '🍔', name: 'Level 2\nBurgers' },
-            { lvl: 3, icon: '🍝', name: 'Level 3\nNoodles' },
-            { lvl: 4, icon: '🍲', name: 'Level 4\nPrep' },
-            { lvl: 5, icon: '🍛', name: 'Level 5\nKabsa', full: true },
-        ].map((item, idx) => (
-            <RandomReveal key={item.lvl} delay={idx * 0.1}>
-                <button
-                    onClick={() => onSelectLevel(item.lvl)}
-                    className={`bg-[#57a863] text-white flex flex-col items-center justify-center w-[130px] h-[90px] md:w-[160px] md:h-[100px] border-4 border-white hover:scale-105 transition-transform active:scale-95 ${item.full ? 'col-span-2 w-full' : ''}`}
-                    style={{ fontFamily: '"Press Start 2P", cursive', fontSize: '10px' }}
-                >
-                    <span className="text-2xl md:text-3xl mb-2">{item.icon}</span>
-                    <span className="whitespace-pre-line text-center">{item.name}</span>
-                </button>
+export const LevelSelectScreen: React.FC<LevelSelectProps> = ({ onSelectLevel, onBack }) => {
+    const [hovered, setHovered] = useState<number | null>(null);
+    const [selected, setSelected] = useState<number>(1);
+
+    const levels = [
+        { lvl: 1, icon: '🌮', name: 'Tacos' },
+        { lvl: 2, icon: '🍔', name: 'Burgers' },
+        { lvl: 3, icon: '🍝', name: 'Noodles' },
+        { lvl: 4, icon: '🍲', name: 'Prep' },
+        { lvl: 5, icon: '🍛', name: 'Kabsa' },
+    ];
+
+    const activeIndex = levels.findIndex(l => l.lvl === selected);
+
+    return (
+        <Overlay>
+            <h1 className="text-3xl md:text-5xl mb-8 text-[#f4b400]" style={{ textShadow: `4px 4px 0px ${COLORS.accent}` }}>
+                <RandomText text="Select Menu" />
+            </h1>
+
+            {/* Capsule Slider */}
+            <RandomReveal className="relative flex w-full max-w-[500px] bg-[#000] border-2 border-[#333] rounded-full p-1 mb-8 select-none h-[60px] md:h-[70px]">
+                {/* Moving Indicator */}
+                <div 
+                    className="absolute top-1 bottom-1 rounded-full bg-white/10 transition-all duration-300 ease-out border border-white/20 shadow-[0_0_15px_rgba(255,255,255,0.2)]"
+                    style={{ 
+                        left: `calc(${(activeIndex) * 20}% + 2px)`,
+                        width: 'calc(20% - 4px)'
+                    }}
+                />
+                
+                {levels.map((item) => (
+                    <button
+                        key={item.lvl}
+                        onClick={() => setSelected(item.lvl)}
+                        onMouseEnter={() => setHovered(item.lvl)}
+                        onMouseLeave={() => setHovered(null)}
+                        className={`flex-1 relative z-10 flex flex-col items-center justify-center transition-all duration-200 cursor-pointer
+                            ${selected === item.lvl ? 'scale-110 -translate-y-1' : 'hover:scale-105 opacity-70 hover:opacity-100'}`}
+                    >
+                        <span className="text-xl md:text-3xl filter drop-shadow-md">{item.icon}</span>
+                        {selected === item.lvl && (
+                             <span className="text-[6px] md:text-[8px] text-[#f4b400] mt-1 absolute -bottom-3 animate-fade-in whitespace-nowrap">{item.name}</span>
+                        )}
+                    </button>
+                ))}
             </RandomReveal>
-        ))}
-    </div>
-    <RandomReveal delay={0.6}><button onClick={onBack} className="bg-[#444] text-white text-xs py-2 px-4 border-2 border-white font-['Press_Start_2P'] hover:bg-[#666]">Back</button></RandomReveal>
-  </Overlay>
-);
+
+            {/* Info Panel for Selected Level */}
+            <RandomReveal delay={0.2} className="bg-[#111] border-4 border-white p-6 md:p-8 flex flex-col items-center max-w-[400px] w-full mb-8 min-h-[200px] transition-all relative">
+                 <div className="absolute -top-6 bg-[#f4b400] text-black px-4 py-2 border-2 border-white font-bold text-xs">
+                     LEVEL {selected}
+                 </div>
+                 
+                 <div className="text-4xl mb-4 animate-bounce">{levels[activeIndex].icon}</div>
+                 <h2 className="text-xl md:text-2xl text-[#f4b400] mb-2">{levels[activeIndex].name}</h2>
+                 <p className="text-xs text-[#aaa] text-center mb-4">
+                     {selected === 1 && "Start your journey with simple ingredients."}
+                     {selected === 2 && "Things get greasy. Watch out for burnt patties."}
+                     {selected === 3 && "Don't spill the broth! Speed picks up."}
+                     {selected === 4 && "Mise en place. Precision required."}
+                     {selected === 5 && "The ultimate feast. Don't disappoint the guests."}
+                 </p>
+                 <div className="flex gap-4 text-[10px] text-[#555]">
+                     <span>GOAL: {selected === 1 ? 7 : selected === 2 ? 8 : selected === 3 ? 9 : selected === 4 ? 10 : 15}</span>
+                 </div>
+            </RandomReveal>
+
+            <div className="flex gap-4">
+                 <RandomReveal delay={0.4}><button onClick={onBack} className="bg-[#444] text-white text-xs py-3 px-6 border-2 border-white font-['Press_Start_2P'] hover:bg-[#666]">BACK</button></RandomReveal>
+                 <RandomReveal delay={0.4}><Button onClick={() => onSelectLevel(selected)} className="animate-pulse">START COOKING</Button></RandomReveal>
+            </div>
+        </Overlay>
+    );
+};
 
 export const LevelCompleteScreen: React.FC<LevelCompleteProps> = ({ levelName, message, emoji, onNext }) => (
     <Overlay>
