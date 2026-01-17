@@ -10,8 +10,7 @@ import {
   UNIVERSAL_DICTIONARY,
   TRAP_WORDS,
   COMBO_FIESTA,
-  COMBO_SPICY,
-  SPEED_TEST_TEXTS
+  COMBO_SPICY
 } from '../constants';
 import { 
   GameScreen, 
@@ -23,6 +22,7 @@ import {
   UniversalConfig 
 } from '../types';
 import { audioService } from '../services/audioService';
+import { aiService } from '../services/aiService';
 import { saveGameStats, saveSpeedTestStats } from '../services/firebase';
 import { User } from 'firebase/auth';
 import WordComponent from './WordComponent';
@@ -65,6 +65,7 @@ export default function Game({ user, onLogout }: GameProps) {
   // Speed Test State
   const [speedTestText, setSpeedTestText] = useState('');
   const [speedTestResult, setSpeedTestResult] = useState<{wpm: number, cpm: number, accuracy: number, comment: string} | null>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
 
   // Visual Effects State
   const [popups, setPopups] = useState<Array<{ id: string, x: number, y: number, text: string, color: string }>>([]);
@@ -360,24 +361,21 @@ export default function Game({ user, onLogout }: GameProps) {
   };
 
   const startSpeedTest = async () => {
+      setIsGenerating(true);
+      const text = await aiService.generateSpeedText();
+      setIsGenerating(false);
+
+      setSpeedTestText(text);
       setScreen('speed-test-playing');
       setGameMode('speed-test');
-      
-      // Select random text
-      const randomText = SPEED_TEST_TEXTS[Math.floor(Math.random() * SPEED_TEST_TEXTS.length)];
-      setSpeedTestText(randomText);
   };
 
   const finishSpeedTest = async (wpm: number, cpm: number, accuracy: number) => {
       setScreen('speed-test-result');
-      
-      // Algorithmic comment generation (No AI)
-      let comment = "Keep practicing!";
-      if (accuracy < 85) comment = "The kitchen is a mess! Focus on accuracy first.";
-      else if (wpm < 30) comment = "Too slow! The customers are waiting.";
-      else if (wpm > 60 && accuracy > 95) comment = "You are a true Master Chef!";
-      else comment = "Not bad, but there's room for improvement.";
+      // Show analyzing state
+      setSpeedTestResult({ wpm, cpm, accuracy, comment: "Chef is analyzing..." });
 
+      const comment = await aiService.generateSpeedComment(wpm, cpm, accuracy);
       setSpeedTestResult({ wpm, cpm, accuracy, comment });
 
       if (user) {
@@ -718,6 +716,7 @@ export default function Game({ user, onLogout }: GameProps) {
                     onSpeedTest={startSpeedTest}
                     user={user}
                     onLogout={onLogout}
+                    isGenerating={isGenerating}
                 />
             )}
             

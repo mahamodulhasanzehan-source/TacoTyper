@@ -2,33 +2,41 @@ import { initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, User } from 'firebase/auth';
 import { getFirestore, doc, setDoc, updateDoc, arrayUnion } from 'firebase/firestore';
 
-// HELPER: Explicitly check all common prefix patterns.
-// Bundlers replace `process.env.XYZ` strings at build time. 
-// Dynamic access (process.env[key]) fails in bundled apps.
-const getEnvVar = (base: string, vite: string, react: string): string => {
-  try {
-    // @ts-ignore
-    return process.env[base] || process.env[vite] || process.env[react] || 
-           // @ts-ignore
-           (import.meta.env && import.meta.env[base]) || 
-           // @ts-ignore
-           (import.meta.env && import.meta.env[vite]) || 
-           // @ts-ignore
-           (import.meta.env && import.meta.env[react]) || "";
-  } catch (e) {
-    return "";
-  }
+// CONFIGURATION:
+// Try to get variables from both process.env (Webpack/Create-React-App) and import.meta.env (Vite)
+// explicitly to ensure the bundler can replace them.
+
+const getEnv = (key: string) => {
+    let val = '';
+    // 1. Try Vite (import.meta.env)
+    try {
+        // @ts-ignore
+        if (import.meta && import.meta.env) {
+            // @ts-ignore
+            val = import.meta.env[`VITE_${key}`] || import.meta.env[key];
+        }
+    } catch (e) {}
+
+    if (val) return val;
+
+    // 2. Try Node/CRA (process.env)
+    try {
+        if (process && process.env) {
+            val = process.env[`REACT_APP_${key}`] || process.env[key] || process.env[`VITE_${key}`] || '';
+        }
+    } catch (e) {}
+    
+    return val;
 };
 
-// STATIC CONFIGURATION
-// We must statically reference the process.env properties for the bundler to see them.
-const firebaseConfig = {
-  apiKey:            process.env.FIREBASE_API_KEY || process.env.VITE_FIREBASE_API_KEY || process.env.REACT_APP_FIREBASE_API_KEY,
-  authDomain:        process.env.FIREBASE_AUTH_DOMAIN || process.env.VITE_FIREBASE_AUTH_DOMAIN || process.env.REACT_APP_FIREBASE_AUTH_DOMAIN,
-  projectId:         process.env.FIREBASE_PROJECT_ID || process.env.VITE_FIREBASE_PROJECT_ID || process.env.REACT_APP_FIREBASE_PROJECT_ID,
-  storageBucket:     process.env.FIREBASE_STORAGE_BUCKET || process.env.VITE_FIREBASE_STORAGE_BUCKET || process.env.REACT_APP_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.FIREBASE_MESSAGING_SENDER_ID || process.env.VITE_FIREBASE_MESSAGING_SENDER_ID || process.env.REACT_APP_FIREBASE_MESSAGING_SENDER_ID,
-  appId:             process.env.FIREBASE_APP_ID || process.env.VITE_FIREBASE_APP_ID || process.env.REACT_APP_FIREBASE_APP_ID
+// Explicitly list keys for bundler find-and-replace optimization
+const rawConfig = {
+    apiKey:            getEnv('FIREBASE_API_KEY'),
+    authDomain:        getEnv('FIREBASE_AUTH_DOMAIN'),
+    projectId:         getEnv('FIREBASE_PROJECT_ID'),
+    storageBucket:     getEnv('FIREBASE_STORAGE_BUCKET'),
+    messagingSenderId: getEnv('FIREBASE_MESSAGING_SENDER_ID'),
+    appId:             getEnv('FIREBASE_APP_ID')
 };
 
 let app;
@@ -37,31 +45,28 @@ let db: any = null;
 let provider: any = null;
 let isInitialized = false;
 
-// Attempt Initialization
-try {
-    // Verify we have at least an API Key
-    if (firebaseConfig.apiKey) {
-        app = initializeApp(firebaseConfig);
+if (rawConfig.apiKey) {
+    try {
+        app = initializeApp(rawConfig);
         auth = getAuth(app);
         db = getFirestore(app);
         provider = new GoogleAuthProvider();
         isInitialized = true;
-        console.log("Firebase Initialized Successfully");
-    } else {
-        console.warn("Firebase Config Missing. Environment variables not found.");
-        console.log("Debug Config:", JSON.stringify(firebaseConfig, null, 2));
+        console.log("Firebase initialized.");
+    } catch (e) {
+        console.error("Firebase init failed:", e);
     }
-} catch (e) {
-    console.error("Firebase initialization failed:", e);
+} else {
+    console.warn("Firebase Config Missing. Login will not work.");
 }
 
 export { auth };
 
 export const signInWithGoogle = async () => {
     if (!isInitialized || !auth) {
-        const msg = "Cannot sign in: Firebase configuration is missing. Please check your environment variables.";
-        console.error(msg);
-        alert(msg);
+        // Allow bypass for testing if no keys (Optional: Remove if strict auth required)
+        console.error("Sign In Error: Firebase not configured.");
+        alert("Configuration Error: Firebase API Keys are missing.\n\nPlease check your .env file or Vercel Environment Variables.");
         return;
     }
     try {
@@ -99,7 +104,7 @@ export const saveGameStats = async (user: User, score: number, mode: string, lev
             })
         });
     } catch (e) {
-        console.warn("Failed to save stats", e);
+        // Silent fail
     }
 };
 
@@ -125,6 +130,6 @@ export const saveSpeedTestStats = async (user: User, wpm: number, accuracy: numb
             })
         });
     } catch (e) {
-        console.warn("Failed to save speed stats", e);
+        // Silent fail
     }
 };

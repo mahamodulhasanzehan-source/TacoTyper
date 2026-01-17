@@ -44,9 +44,10 @@ interface StartScreenProps {
   onSpeedTest: () => void;
   user?: User | null;
   onLogout?: () => void;
+  isGenerating?: boolean;
 }
 
-export const StartScreen: React.FC<StartScreenProps> = ({ onStart, onInfinite, onUniversal, onSpeedTest, user, onLogout }) => (
+export const StartScreen: React.FC<StartScreenProps> = ({ onStart, onInfinite, onUniversal, onSpeedTest, user, onLogout, isGenerating }) => (
   <Overlay>
      <div className="absolute top-8 right-8 flex gap-4">
         {user && (
@@ -80,9 +81,10 @@ export const StartScreen: React.FC<StartScreenProps> = ({ onStart, onInfinite, o
      <div className="mt-6">
         <button 
             onClick={onSpeedTest}
-            className="bg-transparent border-2 border-[#ff2a2a] text-[#ff2a2a] text-sm py-3 px-6 cursor-pointer font-['Press_Start_2P'] hover:bg-[#ff2a2a] hover:text-white hover:scale-105 transition-all"
+            disabled={isGenerating}
+            className={`bg-transparent border-2 border-[#ff2a2a] text-[#ff2a2a] text-sm py-3 px-6 cursor-pointer font-['Press_Start_2P'] hover:bg-[#ff2a2a] hover:text-white hover:scale-105 transition-all ${isGenerating ? 'opacity-50 cursor-wait' : ''}`}
         >
-            Typing Speed
+            {isGenerating ? 'Prepping Kitchen...' : 'Typing Speed'}
         </button>
      </div>
   </Overlay>
