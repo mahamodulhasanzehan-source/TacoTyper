@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { 
   COLORS, 
@@ -506,19 +507,17 @@ export default function Game({ user, onLogout }: GameProps) {
       
       if (user) {
           saveSpeedTestStats(user, wpm, accuracy);
-          if (customUsername) {
-              // BLOCK LEADERBOARD FOR MOBILE
-              if (!isMobile) {
-                  await saveLeaderboardScore(
-                      user, 
-                      customUsername, 
-                      wpm, 
-                      rankTitle,
-                      stateRef.current.stats, 
-                      'speed-test', 
-                      { accuracy }
-                  );
-              }
+          const usernameToUse = customUsername || (await getUserProfile(user.uid))?.username;
+          if (usernameToUse) {
+              await saveLeaderboardScore(
+                  user, 
+                  usernameToUse, 
+                  wpm, 
+                  rankTitle,
+                  stateRef.current.stats, 
+                  'speed-test', 
+                  { accuracy }
+              );
           }
       }
   };
@@ -552,16 +551,14 @@ export default function Game({ user, onLogout }: GameProps) {
         setFinalAiTitle(title);
         setIsCalculatingScore(false);
         
-        // Save to Leaderboard - BLOCKED ON MOBILE
-        if (!isMobile) {
-            let modeToSave = playStyle === 'competitive' ? 'competitive' : state.gameMode;
-            if (state.gameMode === 'standard' || state.gameMode === 'boss') {
-                if (playStyle === 'competitive') modeToSave = 'competitive';
-            }
-            
-            if (modeToSave === 'competitive' || modeToSave === 'infinite' || modeToSave === 'universal') {
-                await saveLeaderboardScore(user, customUsername, finalScore, title, state.stats, modeToSave);
-            }
+        // Save to Leaderboard - REMOVED MOBILE BLOCK
+        let modeToSave = playStyle === 'competitive' ? 'competitive' : state.gameMode;
+        if (state.gameMode === 'standard' || state.gameMode === 'boss') {
+            if (playStyle === 'competitive') modeToSave = 'competitive';
+        }
+        
+        if (modeToSave === 'competitive' || modeToSave === 'infinite' || modeToSave === 'universal') {
+            await saveLeaderboardScore(user, customUsername, finalScore, title, state.stats, modeToSave);
         }
         
         saveGameStats(user, state.score, state.gameMode, state.level);
@@ -596,10 +593,8 @@ export default function Game({ user, onLogout }: GameProps) {
 
     if (user && customUsername) {
         let modeToSave = playStyle === 'competitive' ? 'competitive' : 'boss';
-        // BLOCK LEADERBOARD ON MOBILE
-        if (!isMobile) {
-            await saveLeaderboardScore(user, customUsername, finalScore, title, state.stats, modeToSave);
-        }
+        // REMOVED MOBILE BLOCK
+        await saveLeaderboardScore(user, customUsername, finalScore, title, state.stats, modeToSave);
         saveGameStats(user, state.score, modeToSave, 6);
     }
   };
@@ -1043,9 +1038,7 @@ export default function Game({ user, onLogout }: GameProps) {
                             `Lvl: ${level}`}
                         </div>
                     </div>
-                    {isMobile && (
-                        <div className="text-[8px] text-red-500 text-center bg-black/50">LEADERBOARD DISABLED ON MOBILE</div>
-                    )}
+                    {/* LEADERBOARD MOBILE NOTICE REMOVED */}
                     {(screen === 'playing' || streak > 0) && (
                         <div className="w-full h-1.5 md:h-2.5 bg-[#333] border-2 border-white relative">
                             <div 
