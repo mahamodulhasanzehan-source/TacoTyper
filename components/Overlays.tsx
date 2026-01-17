@@ -130,18 +130,32 @@ const LeaderboardWidget: React.FC = () => {
         return mode === 'competitive' ? 'TIME' : 'PTS';
     };
 
+    const modes = ['competitive', 'infinite', 'universal', 'speed'];
+    const activeIndex = modes.indexOf(mode);
+
     return (
         <RandomReveal distance={1500} className="absolute top-0 right-0 h-full w-[160px] md:w-[300px] border-l-4 border-white bg-[#0a0a0a] p-2 md:p-4 flex flex-col z-[150] shadow-[-10px_0_30px_rgba(0,0,0,0.8)]">
             <h3 className="text-[#f4b400] text-center mb-4 text-[10px] md:text-xs uppercase border-b-2 border-[#333] pb-3 tracking-widest mt-4">
                 {isAdmin ? 'ADMIN MODE' : 'Top Chefs'}
             </h3>
             
-            <div className="flex gap-1 mb-4 justify-center flex-wrap">
-                {['competitive', 'infinite', 'universal', 'speed'].map(m => (
-                    <button 
+            {/* Capsule Slider */}
+            <div className="relative flex w-full bg-[#000] border border-[#333] rounded-full p-1 mb-4 select-none">
+                {/* Moving Indicator */}
+                <div 
+                    className="absolute top-1 bottom-1 rounded-full bg-white/20 transition-all duration-300 ease-out"
+                    style={{ 
+                        left: `calc(${activeIndex * 25}% + 2px)`,
+                        width: 'calc(25% - 4px)'
+                    }}
+                />
+                
+                {modes.map(m => (
+                    <button
                         key={m}
-                        onClick={() => setMode(m)} 
-                        className={`text-[8px] px-2 py-1.5 border ${mode === m ? 'bg-[#e55934] border-white text-white' : 'bg-transparent border-[#444] text-[#888] hover:border-[#666]'}`}
+                        onClick={() => setMode(m)}
+                        className={`flex-1 relative z-10 text-[7px] md:text-[8px] py-1.5 text-center transition-colors duration-200 font-bold uppercase tracking-tight
+                            ${mode === m ? 'text-white' : 'text-[#555] hover:text-[#777]'}`}
                     >
                         {m === 'competitive' ? 'COMP' : m === 'infinite' ? 'INF' : m === 'universal' ? 'UNIV' : 'SPEED'}
                     </button>
