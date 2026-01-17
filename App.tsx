@@ -70,8 +70,27 @@ export default function App() {
   const handleLogin = async () => {
       setIsLoading(true);
       if (!auth) {
-          alert("Login Service Unavailable. Please check configuration.");
-          setIsLoading(false);
+          console.warn("Firebase Auth unavailable. Logging in as Guest Chef.");
+          // Fallback: Guest Login for demo/offline usage
+          setTimeout(() => {
+              setUser({
+                  uid: `guest-${Date.now()}`,
+                  displayName: 'Guest Chef',
+                  email: null,
+                  emailVerified: false,
+                  isAnonymous: true,
+                  metadata: {},
+                  providerData: [],
+                  refreshToken: '',
+                  tenantId: null,
+                  delete: async () => {},
+                  getIdToken: async () => '',
+                  getIdTokenResult: async () => ({} as any),
+                  reload: async () => {},
+                  toJSON: () => ({})
+              } as unknown as User);
+              setIsLoading(false);
+          }, 600);
           return;
       }
       try {
@@ -85,7 +104,9 @@ export default function App() {
   };
 
   const handleLogout = async () => {
-      await logout();
+      if (auth) {
+        await logout();
+      }
       setUser(null);
   };
 
