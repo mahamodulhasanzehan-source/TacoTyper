@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="https://fonts.googleapis.com/css2?family=Noto+Color+Emoji&display=swap" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Typing for Tacos</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Creepster&display=swap" rel="stylesheet">
+    <style>
+      /* Custom Keyframes and Animations to match original exact visuals */
+      @keyframes spicyPulse {
+        0% { transform: scale(1); }
+        50% { transform: scale(1.005); }
+        100% { transform: scale(1); }
+      }
+      @keyframes popIn {
+        0% { transform: scale(0); opacity: 0; }
+        80% { transform: scale(1.1); opacity: 1; }
+        100% { transform: scale(1); opacity: 1; }
+      }
+      @keyframes heartBeat { 
+        0%, 100% { transform: scale(1); } 
+        50% { transform: scale(1.05); } 
+      }
+      @keyframes shake { 
+        0%, 100% { transform: translateX(0); } 
+        25% { transform: translateX(-10px); } 
+        75% { transform: translateX(10px); } 
+      }
+      @keyframes blinker { 
+        50% { opacity: 0; } 
+      }
+      
+      .animate-spicy-pulse {
+        animation: spicyPulse 2s infinite;
+      }
+      .animate-pop-in {
+        animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      }
+      .animate-heart-beat {
+        animation: heartBeat 1s infinite;
+      }
+      .animate-shake {
+        animation: shake 0.2s;
+      }
+      .animate-shake-long {
+        animation: shake 0.5s;
+      }
+      .animate-blink {
+        animation: blinker 1.5s linear infinite;
+      }
+      
+      body {
+        font-family: 'Press Start 2P', cursive;
+        background-color: #000;
+        overflow: hidden;
+      }
+
+      /* Creepster font for rotten words */
+      .font-creepster {
+        font-family: 'Creepster', cursive;
+      }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "react/": "https://esm.sh/react@^19.2.3/",
+    "react": "https://esm.sh/react@^19.2.3",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
+    "@google/genai": "https://esm.sh/@google/genai",
+    "firebase/app": "https://esm.sh/firebase@10.8.0/app",
+    "firebase/auth": "https://esm.sh/firebase@10.8.0/auth",
+    "firebase/firestore": "https://esm.sh/firebase@10.8.0/firestore",
+    "firebase/": "https://esm.sh/firebase@^12.8.0/"
+  }
+}
+</script>
+</head>
+  <body>
+    <div id="root"></div>
+  </body>
+</html>
