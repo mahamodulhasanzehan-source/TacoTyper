@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { 
   COLORS, 
@@ -27,7 +26,7 @@ import {
 import { audioService } from '../services/audioService';
 import { aiService } from '../services/aiService';
 import { saveGameStats, saveSpeedTestStats, getUserProfile, saveUsername, saveLeaderboardScore } from '../services/firebase';
-import type { User } from 'firebase/auth';
+import type { User } from '../services/firebase';
 import WordComponent from './WordComponent';
 import TypingSpeedGame from './TypingSpeedGame';
 import { 

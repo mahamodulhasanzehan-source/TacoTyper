@@ -1,7 +1,6 @@
-
 import React, { useEffect, useState } from 'react';
 import { COLORS } from '../constants';
-import type { User } from 'firebase/auth';
+import type { User } from '../services/firebase';
 import { LeaderboardEntry } from '../types';
 import { getLeaderboard, deleteLeaderboardEntry } from '../services/firebase';
 

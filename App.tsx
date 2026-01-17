@@ -1,8 +1,6 @@
-
 import { useState, useEffect } from 'react';
-import { auth, signInWithGoogle, logout } from './services/firebase';
-import { onAuthStateChanged } from 'firebase/auth';
-import type { User } from 'firebase/auth';
+import { auth, signInWithGoogle, logout, onAuthStateChanged } from './services/firebase';
+import type { User } from './services/firebase';
 import LoginScreen from './components/LoginScreen';
 import Game from './components/Game';
 
@@ -24,9 +22,8 @@ export default function App() {
         }
       }, 2000);
 
-      // 2. Check Firebase
-      if (auth) {
-        try {
+      // 2. Check Auth
+      try {
             const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
                 if (mounted) {
                     clearTimeout(safetyTimeout);
@@ -43,22 +40,13 @@ export default function App() {
                 }
             });
             return () => unsubscribe();
-        } catch (e) {
+      } catch (e) {
             console.error("Auth initialization threw error:", e);
             if (mounted) {
                 clearTimeout(safetyTimeout);
                 setAuthChecked(true);
                 setIsLoading(false);
             }
-        }
-      } else {
-        // Firebase not configured or failed to init
-        console.warn("Auth service not available.");
-        if (mounted) {
-            clearTimeout(safetyTimeout);
-            setAuthChecked(true);
-            setIsLoading(false);
-        }
       }
     };
 
@@ -71,30 +59,6 @@ export default function App() {
 
   const handleLogin = async () => {
       setIsLoading(true);
-      if (!auth) {
-          console.warn("Firebase Auth unavailable. Logging in as Guest Chef.");
-          // Fallback: Guest Login for demo/offline usage
-          setTimeout(() => {
-              setUser({
-                  uid: `guest-${Date.now()}`,
-                  displayName: 'Guest Chef',
-                  email: null,
-                  emailVerified: false,
-                  isAnonymous: true,
-                  metadata: {},
-                  providerData: [],
-                  refreshToken: '',
-                  tenantId: null,
-                  delete: async () => {},
-                  getIdToken: async () => '',
-                  getIdTokenResult: async () => ({} as any),
-                  reload: async () => {},
-                  toJSON: () => ({})
-              } as unknown as User);
-              setIsLoading(false);
-          }, 600);
-          return;
-      }
       try {
         await signInWithGoogle();
         // Listener updates state
@@ -106,9 +70,7 @@ export default function App() {
   };
 
   const handleLogout = async () => {
-      if (auth) {
-        await logout();
-      }
+      await logout();
       setUser(null);
   };
 
