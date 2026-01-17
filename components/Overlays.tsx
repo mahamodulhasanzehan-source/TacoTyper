@@ -56,33 +56,33 @@ const LeaderboardWidget: React.FC = () => {
     }, [mode]);
 
     return (
-        <div className="absolute top-0 right-0 h-full w-[350px] border-l-4 border-white bg-[#0a0a0a] p-6 flex flex-col z-[150] shadow-[-10px_0_30px_rgba(0,0,0,0.8)]">
-            <h3 className="text-[#f4b400] text-center mb-6 text-base uppercase border-b-4 border-[#333] pb-4 tracking-widest">
+        <div className="absolute top-0 right-0 h-full w-[300px] border-l-4 border-white bg-[#0a0a0a] p-4 flex flex-col z-[150] shadow-[-10px_0_30px_rgba(0,0,0,0.8)]">
+            <h3 className="text-[#f4b400] text-center mb-4 text-xs uppercase border-b-2 border-[#333] pb-3 tracking-widest">
                 Top Chefs
             </h3>
             
-            <div className="flex gap-1 mb-6 justify-center">
+            <div className="flex gap-1 mb-4 justify-center">
                 <button 
                     onClick={() => setMode('competitive')} 
-                    className={`text-[9px] px-3 py-2 border-2 ${mode === 'competitive' ? 'bg-[#e55934] border-white text-white' : 'bg-transparent border-[#444] text-[#888] hover:border-[#666]'}`}
+                    className={`text-[8px] px-2 py-1.5 border ${mode === 'competitive' ? 'bg-[#e55934] border-white text-white' : 'bg-transparent border-[#444] text-[#888] hover:border-[#666]'}`}
                 >
                     COMP
                 </button>
                 <button 
                     onClick={() => setMode('infinite')} 
-                    className={`text-[9px] px-3 py-2 border-2 ${mode === 'infinite' ? 'bg-[#4facfe] border-white text-white' : 'bg-transparent border-[#444] text-[#888] hover:border-[#666]'}`}
+                    className={`text-[8px] px-2 py-1.5 border ${mode === 'infinite' ? 'bg-[#4facfe] border-white text-white' : 'bg-transparent border-[#444] text-[#888] hover:border-[#666]'}`}
                 >
                     INF
                 </button>
                 <button 
                     onClick={() => setMode('universal')} 
-                    className={`text-[9px] px-3 py-2 border-2 ${mode === 'universal' ? 'bg-[#57a863] border-white text-white' : 'bg-transparent border-[#444] text-[#888] hover:border-[#666]'}`}
+                    className={`text-[8px] px-2 py-1.5 border ${mode === 'universal' ? 'bg-[#57a863] border-white text-white' : 'bg-transparent border-[#444] text-[#888] hover:border-[#666]'}`}
                 >
                     UNIV
                 </button>
                 <button 
                     onClick={() => setMode('speed')} 
-                    className={`text-[9px] px-3 py-2 border-2 ${mode === 'speed' ? 'bg-[#ff2a2a] border-white text-white' : 'bg-transparent border-[#444] text-[#888] hover:border-[#666]'}`}
+                    className={`text-[8px] px-2 py-1.5 border ${mode === 'speed' ? 'bg-[#ff2a2a] border-white text-white' : 'bg-transparent border-[#444] text-[#888] hover:border-[#666]'}`}
                 >
                     SPEED
                 </button>
@@ -90,42 +90,42 @@ const LeaderboardWidget: React.FC = () => {
 
             {loading ? (
                 <div className="flex-1 flex flex-col items-center justify-center">
-                    <div className="loading-spinner mb-4" />
-                    <div className="text-xs text-[#aaa]">Retrieving Archives...</div>
+                    <div className="loading-spinner mb-4 w-6 h-6 border-2" />
+                    <div className="text-[10px] text-[#aaa]">Retrieving Archives...</div>
                 </div>
             ) : entries.length === 0 ? (
-                <div className="flex-1 flex items-center justify-center text-center text-xs text-[#aaa] leading-6 px-4">
+                <div className="flex-1 flex items-center justify-center text-center text-[10px] text-[#aaa] leading-5 px-4">
                     Kitchen is empty.<br/>Be the first to cook!
                 </div>
             ) : (
-                <div className="flex-1 overflow-y-auto pr-2 space-y-4 custom-scrollbar">
+                <div className="flex-1 overflow-y-auto pr-1 space-y-3 custom-scrollbar">
                     {entries.map((entry, idx) => (
-                        <div key={entry.id} className="flex flex-col bg-[#161616] p-3 border border-[#333] hover:border-[#555] transition-colors relative group">
-                            <div className="flex justify-between items-start mb-2">
-                                <div className="flex items-center gap-3">
-                                    <span className={`text-sm font-bold w-6 ${idx === 0 ? 'text-[#f4b400]' : idx === 1 ? 'text-[#ccc]' : idx === 2 ? 'text-[#cd7f32]' : 'text-[#444]'}`}>
+                        <div key={entry.id} className="flex flex-col bg-[#161616] p-2 border border-[#333] hover:border-[#555] transition-colors relative group">
+                            <div className="flex justify-between items-center mb-1">
+                                <div className="flex items-center gap-2 overflow-hidden">
+                                    <span className={`text-xs font-bold w-5 ${idx === 0 ? 'text-[#f4b400]' : idx === 1 ? 'text-[#ccc]' : idx === 2 ? 'text-[#cd7f32]' : 'text-[#444]'}`}>
                                         #{idx + 1}
                                     </span>
-                                    <span className="text-xs text-white truncate max-w-[120px]">{entry.username}</span>
+                                    <span className="text-[10px] text-white truncate max-w-[110px]">{entry.username}</span>
                                 </div>
-                                <div className="flex flex-col items-end">
-                                    <span className="text-[#57a863] text-sm font-bold shadow-black drop-shadow-md">
+                                <div className="flex flex-col items-end shrink-0 ml-1">
+                                    <span className="text-[#57a863] text-[10px] font-bold shadow-black drop-shadow-md">
                                         {entry.score} PTS
                                     </span>
                                 </div>
                             </div>
                             
-                            <div className="flex justify-between items-end border-t border-[#222] pt-2 mt-1">
-                                <span className="text-[9px] text-[#888] italic truncate max-w-[180px]">
+                            <div className="flex justify-between items-end border-t border-[#222] pt-1 mt-1">
+                                <span className="text-[8px] text-[#888] italic truncate max-w-[150px] block">
                                     "{entry.title}"
                                 </span>
                                 {mode === 'speed' && entry.accuracy !== undefined && (
-                                    <span className={`text-[8px] px-1 py-0.5 rounded ${entry.accuracy < 80 ? 'text-red-500 bg-red-900/20' : 'text-green-500 bg-green-900/20'}`}>
+                                    <span className={`text-[7px] px-1 py-px rounded ml-1 shrink-0 ${entry.accuracy < 80 ? 'text-red-500 bg-red-900/20' : 'text-green-500 bg-green-900/20'}`}>
                                         {entry.accuracy}% ACC
                                     </span>
                                 )}
                                 {mode === 'competitive' && (
-                                    <span className="text-[8px] text-[#aaa]">Lvl {entry.levelReached}</span>
+                                    <span className="text-[7px] text-[#aaa] ml-1 shrink-0">Lvl {entry.levelReached}</span>
                                 )}
                             </div>
                         </div>
@@ -258,7 +258,7 @@ export const StartScreen: React.FC<StartScreenProps> = ({ onStart, onInfinite, o
             )}
          </div>
          
-         <div className="flex flex-col items-center mr-[350px]">
+         <div className="flex flex-col items-center mr-[300px]">
             <h1 className="text-5xl mb-5 text-[#f4b400] shadow-[#e55934]" style={{ textShadow: `4px 4px 0px ${COLORS.accent}` }}>
                 Typing for Tacos
             </h1>
@@ -436,7 +436,7 @@ export const InfoModal: React.FC<{ text: string, onClose: () => void }> = ({ tex
     </div>
 );
 
-// --- Speed Test Result ---
+// --- Speed Result ---
 interface SpeedResultProps {
     wpm: number;
     cpm: number;
