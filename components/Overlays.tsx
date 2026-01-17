@@ -43,19 +43,43 @@ export const Button: React.FC<React.ButtonHTMLAttributes<HTMLButtonElement> & { 
 const LeaderboardWidget: React.FC = () => {
     const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
     const [loading, setLoading] = useState(true);
+    const [mode, setMode] = useState<string>('competitive');
 
     useEffect(() => {
+        setLoading(true);
         const fetch = async () => {
-            const data = await getLeaderboard();
+            const data = await getLeaderboard(mode);
             setEntries(data);
             setLoading(false);
         };
         fetch();
-    }, []);
+    }, [mode]);
 
     return (
-        <div className="absolute top-20 right-10 w-[300px] h-[70vh] border-4 border-white bg-[#111] p-4 flex flex-col z-[110] shadow-[0_0_20px_rgba(255,255,255,0.2)]">
+        <div className="absolute top-20 right-10 w-[320px] h-[70vh] border-4 border-white bg-[#111] p-4 flex flex-col z-[110] shadow-[0_0_20px_rgba(255,255,255,0.2)]">
             <h3 className="text-[#f4b400] text-center mb-4 text-sm uppercase border-b-2 border-[#333] pb-2">Top Chefs</h3>
+            
+            <div className="flex gap-1 mb-4 justify-center">
+                <button 
+                    onClick={() => setMode('competitive')} 
+                    className={`text-[9px] px-2 py-1 border ${mode === 'competitive' ? 'bg-[#e55934] border-white' : 'bg-transparent border-[#444] text-[#888]'}`}
+                >
+                    Comp
+                </button>
+                <button 
+                    onClick={() => setMode('infinite')} 
+                    className={`text-[9px] px-2 py-1 border ${mode === 'infinite' ? 'bg-[#4facfe] border-white' : 'bg-transparent border-[#444] text-[#888]'}`}
+                >
+                    Inf
+                </button>
+                <button 
+                    onClick={() => setMode('universal')} 
+                    className={`text-[9px] px-2 py-1 border ${mode === 'universal' ? 'bg-[#57a863] border-white' : 'bg-transparent border-[#444] text-[#888]'}`}
+                >
+                    Univ
+                </button>
+            </div>
+
             {loading ? (
                 <div className="text-center text-xs text-[#aaa] mt-10">Loading Rankings...</div>
             ) : entries.length === 0 ? (
@@ -65,19 +89,24 @@ const LeaderboardWidget: React.FC = () => {
                     {entries.map((entry, idx) => (
                         <div key={entry.id} className="flex flex-col border-b border-[#333] pb-2">
                             <div className="flex justify-between items-center mb-1">
-                                <span className={`text-xs ${idx === 0 ? 'text-[#f4b400]' : idx === 1 ? 'text-[#ccc]' : idx === 2 ? 'text-[#cd7f32]' : 'text-white'}`}>
-                                    #{idx + 1} {entry.username}
-                                </span>
-                                <span className="text-[#57a863] text-xs">{entry.score}</span>
+                                <div className="flex items-center gap-2">
+                                    <span className={`text-xs ${idx === 0 ? 'text-[#f4b400]' : idx === 1 ? 'text-[#ccc]' : idx === 2 ? 'text-[#cd7f32]' : 'text-white'}`}>
+                                        #{idx + 1}
+                                    </span>
+                                    <span className="text-xs text-white">{entry.username}</span>
+                                </div>
+                                <div className="flex flex-col items-end">
+                                    <span className="text-[#57a863] text-xs">{entry.score}</span>
+                                    {mode === 'competitive' && (
+                                        <span className="text-[9px] text-[#aaa]">Lvl {entry.levelReached}</span>
+                                    )}
+                                </div>
                             </div>
-                            <span className="text-[10px] text-[#888] italic">{entry.title}</span>
+                            <span className="text-[10px] text-[#888] italic truncate w-full">{entry.title}</span>
                         </div>
                     ))}
                 </div>
             )}
-            <div className="mt-2 pt-2 border-t-2 border-[#333] text-[9px] text-[#555] text-center">
-                Competitive Mode Only
-            </div>
         </div>
     );
 };
@@ -105,7 +134,7 @@ export const UsernameScreen: React.FC<UsernameScreenProps> = ({ onSubmit }) => {
                     type="text" 
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    placeholder="Enter Chef Name"
+                    placeholder="Nickname"
                     maxLength={12}
                     className="bg-[#111] border-4 border-white p-4 text-center text-white font-['Press_Start_2P'] outline-none focus:border-[#f4b400] w-[300px]"
                     autoFocus
@@ -165,56 +194,78 @@ interface StartScreenProps {
   isGenerating?: boolean;
 }
 
-export const StartScreen: React.FC<StartScreenProps> = ({ onStart, onInfinite, onUniversal, onSpeedTest, user, onLogout, isGenerating }) => (
-  <Overlay>
-     <LeaderboardWidget />
-     
-     <div className="absolute top-8 left-8 flex gap-4 z-[120]">
-        {user && (
-            <div className="flex items-center gap-4">
-                <span className="text-[#aaa] text-xs">Chef {user.displayName}</span>
-                <button 
-                    onClick={onLogout}
-                    className="bg-transparent border-2 border-[#ff2a2a] text-[#ff2a2a] text-xs py-2 px-4 cursor-pointer font-['Press_Start_2P'] hover:bg-[#ff2a2a] hover:text-white"
-                >
-                    Log Out
-                </button>
+export const StartScreen: React.FC<StartScreenProps> = ({ onStart, onInfinite, onUniversal, onSpeedTest, user, onLogout, isGenerating }) => {
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+
+  return (
+      <Overlay>
+         <LeaderboardWidget />
+         
+         <div className="absolute top-8 left-8 flex gap-4 z-[120]">
+            {user && (
+                <div className="flex items-center gap-4">
+                    <span className="text-[#aaa] text-xs">Chef {user.displayName}</span>
+                    {!showLogoutConfirm ? (
+                        <button 
+                            onClick={() => setShowLogoutConfirm(true)}
+                            className="bg-transparent border-2 border-[#ff2a2a] text-[#ff2a2a] text-xs py-2 px-4 cursor-pointer font-['Press_Start_2P'] hover:bg-[#ff2a2a] hover:text-white"
+                        >
+                            Log Out
+                        </button>
+                    ) : (
+                        <div className="flex gap-2">
+                             <span className="text-xs text-white self-center">Sure?</span>
+                             <button 
+                                onClick={onLogout}
+                                className="bg-[#ff2a2a] text-white text-xs py-2 px-2 border-2 border-[#ff2a2a] hover:brightness-125"
+                             >
+                                Yes
+                             </button>
+                             <button 
+                                onClick={() => setShowLogoutConfirm(false)}
+                                className="bg-transparent text-[#aaa] text-xs py-2 px-2 border-2 border-[#aaa] hover:bg-[#333]"
+                             >
+                                No
+                             </button>
+                        </div>
+                    )}
+                </div>
+            )}
+         </div>
+         
+         <div className="flex flex-col items-center mr-[300px]">
+            <h1 className="text-5xl mb-5 text-[#f4b400] shadow-[#e55934]" style={{ textShadow: `4px 4px 0px ${COLORS.accent}` }}>
+                Typing for Tacos
+            </h1>
+            <p className="text-base max-w-[500px] leading-normal mb-8 text-center">
+                Type ingredients to cook!<br />Don't drop the food!
+            </p>
+            <div className="flex flex-col gap-5 items-center">
+                <div className="flex gap-5">
+                    <Button onClick={onStart}>Start Cooking</Button>
+                    <Button onClick={onInfinite} variant="secondary">Infinite</Button>
+                </div>
+                
+                <div className="flex gap-4">
+                     <button 
+                        onClick={onUniversal}
+                        className="bg-transparent border-2 border-[#4facfe] text-[#4facfe] text-xs py-2 px-4 cursor-pointer font-['Press_Start_2P'] hover:bg-[#4facfe] hover:text-white hover:scale-105"
+                    >
+                        Universal
+                    </button>
+                    <button 
+                        onClick={onSpeedTest}
+                        disabled={isGenerating}
+                        className={`bg-transparent border-2 border-[#ff2a2a] text-[#ff2a2a] text-xs py-2 px-4 cursor-pointer font-['Press_Start_2P'] hover:bg-[#ff2a2a] hover:text-white hover:scale-105 transition-all ${isGenerating ? 'opacity-50 cursor-wait' : ''}`}
+                    >
+                        {isGenerating ? '...' : 'Speed Test'}
+                    </button>
+                </div>
             </div>
-        )}
-     </div>
-     
-     <div className="flex flex-col items-center mr-[300px]"> {/* Shift left to make room for leaderboard */}
-        <h1 className="text-5xl mb-5 text-[#f4b400] shadow-[#e55934]" style={{ textShadow: `4px 4px 0px ${COLORS.accent}` }}>
-            Typing for Tacos
-        </h1>
-        <p className="text-base max-w-[500px] leading-normal mb-8 text-center">
-            Type ingredients to cook!<br />Don't drop the food!
-        </p>
-        <div className="flex flex-col gap-5 items-center">
-            <div className="flex gap-5">
-                <Button onClick={onStart}>Start Cooking</Button>
-                <Button onClick={onInfinite} variant="secondary">Infinite</Button>
-            </div>
-            
-            <div className="flex gap-4">
-                 <button 
-                    onClick={onUniversal}
-                    className="bg-transparent border-2 border-[#4facfe] text-[#4facfe] text-xs py-2 px-4 cursor-pointer font-['Press_Start_2P'] hover:bg-[#4facfe] hover:text-white hover:scale-105"
-                >
-                    Universal
-                </button>
-                <button 
-                    onClick={onSpeedTest}
-                    disabled={isGenerating}
-                    className={`bg-transparent border-2 border-[#ff2a2a] text-[#ff2a2a] text-xs py-2 px-4 cursor-pointer font-['Press_Start_2P'] hover:bg-[#ff2a2a] hover:text-white hover:scale-105 transition-all ${isGenerating ? 'opacity-50 cursor-wait' : ''}`}
-                >
-                    {isGenerating ? '...' : 'Speed Test'}
-                </button>
-            </div>
-        </div>
-     </div>
-  </Overlay>
-);
+         </div>
+      </Overlay>
+  );
+};
 
 // --- Level Select ---
 interface LevelSelectProps {

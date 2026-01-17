@@ -49,10 +49,13 @@ class AIService {
         });
         
         const prompt = `
-            You are the Head Judge of the Culinary Olympics. A player has completed a series of 6 intense cooking levels.
+            You are the Head Judge of the Culinary Olympics. A player has completed a run in the cooking competition.
+            They reached Level ${stats.levelReached} (Max is 6).
+
             Evaluate their performance based on these statistics and assign a Score (0 to 10000) and a Rank Title.
 
             Stats:
+            - Level Reached: ${stats.levelReached}
             - Mistakes (Typos): ${stats.mistakes} (Lower is better)
             - Total Time Taken: ${stats.timeTaken} seconds (Lower is better)
             - Ingredients Dropped / Lives Lost: ${stats.ingredientsMissed} (Lower is better)
@@ -60,12 +63,13 @@ class AIService {
             - Raw Game Score: ${stats.totalScore} (Higher is better)
 
             Scoring Logic:
+            - The most important factor is 'Level Reached'. The score you give is the *performance within that level context*.
             - Heavily penalize 'Rotten Ingredients Typed' and 'Ingredients Dropped'.
             - Reward speed (Time Taken) and low Mistakes.
             - Raw Game Score is a baseline, but you must normalize it into a competitive 0-10000 scale.
             
             Return JSON format: { "score": number, "title": string }
-            Example Titles: "Sous Chef", "Line Cook", "Executive Chef", "Taco Legend", "Kitchen Disaster".
+            Example Titles: "Sous Chef", "Line Cook", "Executive Chef", "Taco Legend", "Kitchen Disaster", "Dishwasher".
         `;
 
         const result = await model.generateContent(prompt);

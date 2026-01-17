@@ -26,7 +26,7 @@ import {
 } from '../types';
 import { audioService } from '../services/audioService';
 import { aiService } from '../services/aiService';
-import { saveGameStats, saveSpeedTestStats, getUserProfile, saveUsername, saveCompetitiveScore } from '../services/firebase';
+import { saveGameStats, saveSpeedTestStats, getUserProfile, saveUsername, saveLeaderboardScore } from '../services/firebase';
 import { User } from 'firebase/auth';
 import WordComponent from './WordComponent';
 import TypingSpeedGame from './TypingSpeedGame';
@@ -109,7 +109,8 @@ export default function Game({ user, onLogout }: GameProps) {
         timeTaken: 0, // start time of level
         ingredientsMissed: 0,
         rottenWordsTyped: 0,
-        totalScore: 0
+        totalScore: 0,
+        levelReached: 1
     } as SessionStats,
     levelStartTime: 0
   });
@@ -171,11 +172,13 @@ export default function Game({ user, onLogout }: GameProps) {
     const state = stateRef.current;
     const width = window.innerWidth; 
     
-    // Cap Checks
+    // Spawning Logic:
+    // For standard mode, continue spawning until user COLLECTS the target amount.
+    // Do not cap based on words spawned, only check active density or goal completion.
     let targetIngredients = 7;
     if (state.gameMode === 'standard') {
         targetIngredients = LEVEL_CONFIGS[state.level]?.goal || 7;
-        if (state.wordsSpawnedThisLevel >= targetIngredients + EXTRA_BUFFER) return null;
+        if (state.ingredientsCount >= targetIngredients) return null; // Goal met, stop spawning
     } else if (state.gameMode === 'boss') {
         if (state.wordsSpawnedThisLevel >= BOSS_WORD_COUNT) return null;
     }
@@ -269,8 +272,6 @@ export default function Game({ user, onLogout }: GameProps) {
         if (newWord) {
             currentWords.push(newWord);
             state.spawnTimer = time; 
-        } else {
-            // Failed spawn, try next frame
         }
     }
 
@@ -339,9 +340,12 @@ export default function Game({ user, onLogout }: GameProps) {
     let targetIngredients = 7;
     if (state.gameMode === 'standard') targetIngredients = LEVEL_CONFIGS[state.level]?.goal || 7;
 
-    if (state.gameMode === 'standard' && nextWords.length === 0 && state.wordsSpawnedThisLevel >= (targetIngredients + EXTRA_BUFFER) && state.ingredientsCount < targetIngredients) {
-         gameOver("You didn't catch enough ingredients!");
-         return;
+    // Standard Win: Count ingredients collected, no longer check words spawned cap
+    if (state.gameMode === 'standard' && state.ingredientsCount >= targetIngredients && nextWords.length === 0) {
+        // Technically we can complete as soon as ingredients count is reached, but usually better to let the screen clear or just transition
+        // But let's check if there are no more "ingredient" type words falling.
+        // For simplicity: if ingredientsCount >= target, we can transition immediately or wait for clear.
+        // Let's transition immediately when last required word is typed (handled in addIngredient)
     }
 
     if (state.gameMode === 'boss' && nextWords.length === 0 && state.wordsSpawnedThisLevel >= BOSS_WORD_COUNT && state.activeWordId === null) {
@@ -402,16 +406,16 @@ export default function Game({ user, onLogout }: GameProps) {
     stateRef.current.infiniteConfig = { speedMult: infiniteMult, difficultyIncrease: difficultyInc, wordsTyped: 0 };
     stateRef.current.universalConfig = { wordCount: 0, maxWordLength: 5, forcedWordsLeft: 0 };
 
-    // Stats Reset if starting fresh
-    if (startLevel === 1) {
-        stateRef.current.stats = {
-            mistakes: 0,
-            timeTaken: 0,
-            ingredientsMissed: 0,
-            rottenWordsTyped: 0,
-            totalScore: 0
-        };
-    }
+    // Stats Reset if starting fresh or competitive
+    stateRef.current.stats = {
+        mistakes: 0,
+        timeTaken: 0,
+        ingredientsMissed: 0,
+        rottenWordsTyped: 0,
+        totalScore: 0,
+        levelReached: startLevel
+    };
+    
     stateRef.current.levelStartTime = Date.now();
   };
 
@@ -440,11 +444,44 @@ export default function Game({ user, onLogout }: GameProps) {
       if (user) saveSpeedTestStats(user, wpm, accuracy);
   };
 
-  const gameOver = (reason: string) => {
+  const gameOver = async (reason: string) => {
     setScreen('game-over');
     setInfoModalText(reason);
-    if (user && playStyle === 'unrated') {
-        saveGameStats(user, stateRef.current.score, stateRef.current.gameMode, stateRef.current.level);
+    
+    const state = stateRef.current;
+    
+    // For competitive, track stats even on loss
+    if (playStyle === 'competitive' && user && customUsername) {
+        // Update time for the partial level
+        const levelTime = (Date.now() - state.levelStartTime) / 1000;
+        state.stats.timeTaken += levelTime;
+        state.stats.totalScore = state.score;
+        state.stats.levelReached = state.level;
+
+        setIsCalculatingScore(true);
+        // Generate AI Score for the run
+        const { score, title } = await aiService.generateCompetitiveScore(state.stats);
+        setFinalAiScore(score);
+        setFinalAiTitle(title);
+        setIsCalculatingScore(false);
+        
+        await saveLeaderboardScore(user, customUsername, score, title, state.stats, 'competitive');
+    } 
+    else if (user) {
+        // For unrated, save history
+        saveGameStats(user, state.score, state.gameMode, state.level);
+        
+        // If Infinite or Universal, save to leaderboard too
+        if ((state.gameMode === 'infinite' || state.gameMode === 'universal') && customUsername) {
+            await saveLeaderboardScore(
+                user, 
+                customUsername, 
+                state.score, 
+                state.gameMode === 'infinite' ? 'Speedster' : 'Universal Chef', 
+                state.stats, 
+                state.gameMode
+            );
+        }
     }
   };
 
@@ -469,7 +506,7 @@ export default function Game({ user, onLogout }: GameProps) {
         setIsCalculatingScore(false);
 
         if (user && customUsername) {
-            await saveCompetitiveScore(user, customUsername, score, title, state.stats);
+            await saveLeaderboardScore(user, customUsername, score, title, state.stats, 'competitive');
         }
     } else {
         setInfoModalText("You survived the social hour and became the Master Chef!"); 
@@ -492,9 +529,6 @@ export default function Game({ user, onLogout }: GameProps) {
       if (playStyle === 'competitive') {
           // Sequential Flow
           if (state.level < 5) {
-             const nextLevel = state.level + 1;
-             // Brief pause before next level auto-start or just continue?
-             // To simplify, we keep the Level Complete screen but change button to "Next" which loads directly
              setScreen('level-complete');
           } else {
               setScreen('boss-intro');
@@ -517,10 +551,11 @@ export default function Game({ user, onLogout }: GameProps) {
           setIngredientsCollected([]);
           setScreen('playing');
           
-          // Reset Level Specifics
+          // Reset Level Specifics but keep Stats accumulators
           stateRef.current.fallingWords = [];
           stateRef.current.activeWordId = null;
           stateRef.current.level = nextLvl;
+          stateRef.current.stats.levelReached = nextLvl; // Update reached level
           stateRef.current.screen = 'playing';
           stateRef.current.wordsSpawnedThisLevel = 0;
           stateRef.current.ingredientsCount = 0;
@@ -534,7 +569,9 @@ export default function Game({ user, onLogout }: GameProps) {
           initGame('standard', level + 1);
       }
   };
-
+  // ... rest of the file (event listeners etc) remains effectively same but inside the closure
+  // re-rendering the component with the new spawn logic
+  
   const processWordCompletion = (word: WordEntity) => {
     const state = stateRef.current;
     
@@ -687,6 +724,9 @@ export default function Game({ user, onLogout }: GameProps) {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [screen]);
+
+  // addIngredient, increaseCombo, resetCombo, handleManualSelect, getContainerStyles... 
+  // (Standard implementations kept in place)
 
   const addIngredient = (text: string) => {
       const state = stateRef.current;

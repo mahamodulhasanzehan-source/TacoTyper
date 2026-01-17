@@ -55,14 +55,17 @@ export interface SessionStats {
   ingredientsMissed: number; // lives lost basically
   rottenWordsTyped: number;
   totalScore: number;
+  levelReached: number;
 }
 
 export interface LeaderboardEntry {
   id: string;
   uid: string;
   username: string;
-  score: number; // AI Calculated
+  score: number; // AI Calculated or Raw
   title: string; // AI Given title
   stats: SessionStats;
   timestamp: number;
+  levelReached: number;
+  mode: string;
 }
