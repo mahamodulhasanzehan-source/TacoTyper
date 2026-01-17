@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
+import { useSettings } from '../contexts/SettingsContext';
 
 interface RandomRevealProps {
   children: React.ReactNode;
@@ -18,20 +19,25 @@ export const RandomReveal: React.FC<RandomRevealProps> = ({
   as: Component = 'div',
   durationMin = 2,
   durationMax = 3,
-  distance = 800, // Large distance for the "pull up" effect from far away
+  distance = 800, 
   delay = 0,
   style: propStyle = {}
 }) => {
+  const { settings } = useSettings();
   const [animStyle, setAnimStyle] = useState<React.CSSProperties>({
-    opacity: 0,
-    transform: 'translate(0,0)', // Placeholder
+    opacity: settings.fastBoot ? 1 : 0,
+    transform: settings.fastBoot ? 'translate(0,0)' : 'translate(0,0)',
     transition: 'none'
   });
 
   useEffect(() => {
+    if (settings.fastBoot) {
+        setAnimStyle({ opacity: 1, transform: 'translate(0,0)', transition: 'none' });
+        return;
+    }
+
     // Calculate random starting position
     const angle = Math.random() * Math.PI * 2;
-    // Ensure it's far enough to be off-screen or significant
     const dist = distance + Math.random() * (distance / 2);
     const x = Math.cos(angle) * dist;
     const y = Math.sin(angle) * dist;
@@ -54,7 +60,7 @@ export const RandomReveal: React.FC<RandomRevealProps> = ({
     }, 100 + (delay * 1000));
 
     return () => clearTimeout(t);
-  }, []);
+  }, [settings.fastBoot]);
 
   const mergedStyle = { ...propStyle, ...animStyle };
   

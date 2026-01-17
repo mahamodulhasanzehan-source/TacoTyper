@@ -1,8 +1,10 @@
+
 import { useState, useEffect } from 'react';
 import { auth, signInWithGoogle, logout, onAuthStateChanged } from './services/firebase';
 import type { User } from './services/firebase';
 import LoginScreen from './components/LoginScreen';
 import Game from './components/Game';
+import { SettingsProvider } from './contexts/SettingsContext';
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
@@ -13,7 +15,7 @@ export default function App() {
     let mounted = true;
 
     const initAuth = async () => {
-      // 1. Safety Timeout: If Firebase hangs, force show login screen after 2 seconds
+      // 1. Safety Timeout
       const safetyTimeout = setTimeout(() => {
         if (mounted && !authChecked) {
           console.warn("Auth check timed out. Forcing login screen.");
@@ -61,7 +63,6 @@ export default function App() {
       setIsLoading(true);
       try {
         await signInWithGoogle();
-        // Listener updates state
       } catch (error) {
         console.error("Login failed", error);
         alert("Login failed. See console.");
@@ -74,7 +75,6 @@ export default function App() {
       setUser(null);
   };
 
-  // Render Logic
   if (isLoading) {
       return (
           <div className="flex w-full h-screen bg-black items-center justify-center text-white flex-col gap-4">
@@ -84,9 +84,13 @@ export default function App() {
       );
   }
 
-  if (!user) {
-      return <LoginScreen onLogin={handleLogin} isLoading={false} />;
-  }
-
-  return <Game user={user} onLogout={handleLogout} />;
+  return (
+    <SettingsProvider>
+      {!user ? (
+        <LoginScreen onLogin={handleLogin} isLoading={false} />
+      ) : (
+        <Game user={user} onLogout={handleLogout} />
+      )}
+    </SettingsProvider>
+  );
 }

@@ -1,19 +1,19 @@
 
 import { LevelConfig } from './types';
 
-// Colors
+// Colors - Using CSS Variables for dynamic theming
 export const COLORS = {
-  background: '#000000',
-  gameBorder: '#ff2a2a', // Changed from #990000 to bright red
-  text: '#ffffff',
-  accent: '#e55934',
-  correct: '#57a863',
-  warn: '#f4b400',
-  secondaryBtn: '#7f8c8d',
-  pro: '#ff0055',
-  comboRed: '#ff2a2a',
-  comboPurple: '#d900ff',
-  universal: '#4facfe',
+  background: 'var(--color-background)',
+  gameBorder: 'var(--color-game-border)',
+  text: 'var(--color-text)',
+  accent: 'var(--color-accent)',
+  correct: 'var(--color-correct)',
+  warn: 'var(--color-warn)',
+  secondaryBtn: 'var(--color-secondary-btn)',
+  pro: 'var(--color-pro)',
+  comboRed: 'var(--color-combo-red)',
+  comboPurple: 'var(--color-combo-purple)',
+  universal: 'var(--color-universal)',
 };
 
 // Game Constants

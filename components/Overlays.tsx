@@ -5,9 +5,60 @@ import type { User } from '../services/firebase';
 import { LeaderboardEntry } from '../types';
 import { getLeaderboard, deleteLeaderboardEntry } from '../services/firebase';
 import { RandomReveal, RandomText } from './Visuals';
+import { useSettings } from '../contexts/SettingsContext';
 
 interface OverlayProps {
   children: React.ReactNode;
+}
+
+export interface ExitConfirmProps {
+    onConfirm: () => void;
+    onCancel: () => void;
+}
+
+export interface UsernameScreenProps {
+    onSubmit: (name: string) => void;
+}
+
+export interface ModeSelectProps {
+    onCompetitive: () => void;
+    onUnrated: () => void;
+    onBack: () => void;
+}
+
+export interface LevelSelectProps {
+    onSelectLevel: (level: number) => void;
+    onBack: () => void;
+}
+
+export interface LevelCompleteProps {
+    levelName: string;
+    message: string;
+    emoji: string;
+    onNext: () => void;
+}
+
+export interface GameOverProps {
+    score: number;
+    message: string;
+    stats?: string;
+    onRestart: () => void;
+    aiTitle?: string;
+    aiScore?: number;
+    isCalculating?: boolean;
+    isTimeScore?: boolean;
+}
+
+export interface SpeedResultProps {
+    wpm: number;
+    cpm: number;
+    accuracy: number;
+    comment: string;
+    onRestart: () => void;
+}
+
+export interface GeneratingModalProps {
+    message: string;
 }
 
 const Overlay: React.FC<OverlayProps> = ({ children }) => (
@@ -31,9 +82,10 @@ export const Button: React.FC<React.ButtonHTMLAttributes<HTMLButtonElement> & { 
       {...props}
       style={{ 
           backgroundColor: bgColor,
-          fontFamily: '"Press Start 2P", cursive'
+          fontFamily: '"Press Start 2P", cursive',
+          color: 'var(--color-text)' // Ensure text is visible in BW mode if bgcolor is weird
       }}
-      className={`text-white text-xs md:text-base py-3 px-4 md:py-4 md:px-5 border-4 border-white cursor-pointer transition-all duration-200 hover:scale-110 hover:brightness-125 active:scale-95 ${className}`}
+      className={`text-xs md:text-base py-3 px-4 md:py-4 md:px-5 border-4 border-white cursor-pointer transition-all duration-200 hover:scale-110 hover:brightness-125 active:scale-95 ${className}`}
     >
       {children}
     </button>
@@ -45,11 +97,7 @@ const LeaderboardWidget: React.FC = () => {
     const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
     const [loading, setLoading] = useState(true);
     const [mode, setMode] = useState<string>('competitive');
-    
-    // Admin State
-    const [showAdminLogin, setShowAdminLogin] = useState(false);
-    const [isAdmin, setIsAdmin] = useState(false);
-    const [passwordInput, setPasswordInput] = useState('');
+    const { isAdmin } = useSettings();
 
     const fetchLeaderboard = async () => {
         setLoading(true);
@@ -61,18 +109,6 @@ const LeaderboardWidget: React.FC = () => {
     useEffect(() => {
         fetchLeaderboard();
     }, [mode]);
-
-    const handleAdminLogin = (e: React.FormEvent) => {
-        e.preventDefault();
-        if (passwordInput === 'tacos') {
-            setIsAdmin(true);
-            setShowAdminLogin(false);
-            setPasswordInput('');
-        } else {
-            alert("Wrong password, Chef!");
-            setPasswordInput('');
-        }
-    };
 
     const handleDelete = async (id: string) => {
         if (!confirm("Delete this score permanently?")) return;
@@ -96,40 +132,6 @@ const LeaderboardWidget: React.FC = () => {
 
     return (
         <RandomReveal distance={1500} className="absolute top-0 right-0 h-full w-[160px] md:w-[300px] border-l-4 border-white bg-[#0a0a0a] p-2 md:p-4 flex flex-col z-[150] shadow-[-10px_0_30px_rgba(0,0,0,0.8)]">
-            
-            <div 
-                onClick={() => {
-                    if (isAdmin) {
-                        if(confirm("Logout Admin?")) setIsAdmin(false);
-                    } else {
-                        setShowAdminLogin(true);
-                    }
-                }}
-                className={`absolute top-2 right-2 w-4 h-4 md:w-6 md:h-6 cursor-pointer opacity-50 hover:opacity-100 transition-opacity z-50 ${isAdmin ? 'text-red-500' : 'text-gray-500'}`}
-                title="Admin Control"
-            >
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 010-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
-            </div>
-
-            {showAdminLogin && (
-                <div className="absolute top-10 right-2 bg-[#222] border-2 border-white p-2 z-[200] flex flex-col gap-2 w-48 shadow-lg">
-                    <p className="text-[8px] text-[#aaa]">ENTER ADMIN PASS:</p>
-                    <form onSubmit={handleAdminLogin}>
-                        <input 
-                            type="password" 
-                            className="w-full bg-black border border-[#555] text-white p-1 text-xs outline-none focus:border-[#f4b400]"
-                            value={passwordInput}
-                            onChange={(e) => setPasswordInput(e.target.value)}
-                            autoFocus
-                        />
-                    </form>
-                    <button onClick={() => setShowAdminLogin(false)} className="text-[8px] text-red-500 hover:text-white text-left">Cancel</button>
-                </div>
-            )}
-
             <h3 className="text-[#f4b400] text-center mb-4 text-[10px] md:text-xs uppercase border-b-2 border-[#333] pb-3 tracking-widest mt-4">
                 {isAdmin ? 'ADMIN MODE' : 'Top Chefs'}
             </h3>
@@ -202,107 +204,104 @@ const LeaderboardWidget: React.FC = () => {
     );
 };
 
-// --- Exit Confirmation ---
-interface ExitConfirmProps {
-    onConfirm: () => void;
-    onCancel: () => void;
+// --- Settings Modal ---
+interface SettingsModalProps {
+    onClose: () => void;
 }
+const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
+    const { settings, updateSettings, isAdmin, setIsAdmin } = useSettings();
+    const [passwordInput, setPasswordInput] = useState('');
 
-export const ExitConfirmScreen: React.FC<ExitConfirmProps> = ({ onConfirm, onCancel }) => (
-    <div className="absolute top-0 left-0 w-full h-full bg-black/80 flex items-center justify-center z-[200] animate-fade-in p-4">
-        <RandomReveal className="bg-[#111] border-4 border-[#ff2a2a] p-4 md:p-8 flex flex-col items-center max-w-md text-center shadow-[0_0_30px_rgba(255,0,0,0.3)]">
-            <h2 className="text-xl md:text-2xl text-[#ff2a2a] mb-4">WARNING CHEF!</h2>
-            <p className="text-xs md:text-sm leading-6 mb-6">
-                You are about to abandon the kitchen during a ranked service.<br/><br/>
-                <span className="text-[#f4b400]">Your score/time will not be recorded.</span>
-            </p>
-            <div className="flex gap-4">
-                <Button onClick={onConfirm} variant="secondary">Leave Kitchen</Button>
-                <Button onClick={onCancel} variant="primary">Keep Cooking</Button>
-            </div>
-        </RandomReveal>
-    </div>
-);
-
-// --- Username Setup ---
-interface UsernameScreenProps {
-    onSubmit: (name: string) => void;
-}
-
-export const UsernameScreen: React.FC<UsernameScreenProps> = ({ onSubmit }) => {
-    const [name, setName] = useState('');
-
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleAdminLogin = (e: React.FormEvent) => {
         e.preventDefault();
-        if (name.trim().length > 0 && name.trim().length <= 12) {
-            onSubmit(name.trim());
+        if (passwordInput === 'tacos') {
+            setIsAdmin(true);
+            setPasswordInput('');
+        } else {
+            alert("Wrong password, Chef!");
         }
     };
 
     return (
-        <Overlay>
-            <h2 className="text-xl md:text-2xl mb-6 text-[#f4b400]"><RandomText text="Identify Yourself" /></h2>
-            <form onSubmit={handleSubmit} className="flex flex-col items-center gap-4">
-                <RandomReveal>
-                    <input 
-                        type="text" 
-                        value={name}
-                        onChange={(e) => setName(e.target.value)}
-                        placeholder="Nickname"
-                        maxLength={12}
-                        className="bg-[#111] border-4 border-white p-3 md:p-4 text-center text-white font-['Press_Start_2P'] outline-none focus:border-[#f4b400] w-[250px] md:w-[300px]"
-                        autoFocus
-                    />
-                </RandomReveal>
-                <div className="text-[10px] text-[#aaa] mb-4">Max 12 chars</div>
-                <RandomReveal delay={0.2}><Button type="submit">Confirm Identity</Button></RandomReveal>
-            </form>
-        </Overlay>
-    );
-};
+        <div className="absolute top-0 left-0 w-full h-full bg-black/95 z-[250] flex items-center justify-center p-4">
+            <RandomReveal className="bg-[#111] border-4 border-white p-6 md:p-8 w-full max-w-md flex flex-col gap-6">
+                <div className="flex justify-between items-center mb-4">
+                    <h2 className="text-2xl text-[#f4b400]">Kitchen Settings</h2>
+                    <button onClick={onClose} className="text-red-500 text-xl font-bold">X</button>
+                </div>
 
-// --- Mode Select ---
-interface ModeSelectProps {
-    onCompetitive: () => void;
-    onUnrated: () => void;
-    onBack: () => void;
-}
+                <div className="flex flex-col gap-4">
+                    {/* Fast Boot */}
+                    <label className="flex items-center justify-between cursor-pointer group">
+                        <span className="text-sm">Fast Boot (No Animations)</span>
+                        <input 
+                            type="checkbox" 
+                            checked={settings.fastBoot}
+                            onChange={(e) => updateSettings({ fastBoot: e.target.checked })}
+                            className="w-5 h-5 accent-[#e55934]"
+                        />
+                    </label>
 
-export const ModeSelectScreen: React.FC<ModeSelectProps> = ({ onCompetitive, onUnrated, onBack }) => (
-    <Overlay>
-        <h2 className="text-2xl md:text-3xl text-[#f4b400] mb-8" style={{ textShadow: `3px 3px 0px ${COLORS.accent}` }}>
-            <RandomText text="Select Kitchen" />
-        </h2>
-        <div className="flex flex-col md:flex-row gap-4 md:gap-8 mb-8">
-            <RandomReveal>
-                <button 
-                    onClick={onCompetitive}
-                    className="w-[200px] h-[150px] md:w-[220px] md:h-[180px] bg-[#222] border-4 border-[#ff2a2a] hover:bg-[#330000] hover:scale-105 transition-all flex flex-col items-center justify-center p-4"
-                >
-                    <div className="text-4xl mb-4">🏆</div>
-                    <h3 className="text-[#ff2a2a] mb-2 font-bold text-xs md:text-base">COMPETITIVE</h3>
-                    <p className="text-[10px] text-center text-[#aaa] leading-4">
-                        Ranked Play.<br/>Lvl 1 - Boss.<br/>Time Attack.<br/>No AI Score.
-                    </p>
-                </button>
-            </RandomReveal>
+                    {/* Reduced Motion */}
+                    <label className="flex items-center justify-between cursor-pointer group">
+                        <span className="text-sm">Reduced Motion (No Shake)</span>
+                        <input 
+                            type="checkbox" 
+                            checked={settings.reducedMotion}
+                            onChange={(e) => updateSettings({ reducedMotion: e.target.checked })}
+                            className="w-5 h-5 accent-[#e55934]"
+                        />
+                    </label>
 
-            <RandomReveal delay={0.2}>
-                <button 
-                    onClick={onUnrated}
-                    className="w-[200px] h-[150px] md:w-[220px] md:h-[180px] bg-[#222] border-4 border-[#57a863] hover:bg-[#002200] hover:scale-105 transition-all flex flex-col items-center justify-center p-4"
-                >
-                    <div className="text-4xl mb-4">🍳</div>
-                    <h3 className="text-[#57a863] mb-2 font-bold text-xs md:text-base">UNRATED</h3>
-                    <p className="text-[10px] text-center text-[#aaa] leading-4">
-                        Casual Play.<br/>Select Level.<br/>Practice.<br/>No Pressure.
-                    </p>
-                </button>
+                    {/* Theme */}
+                    <div className="flex items-center justify-between">
+                         <span className="text-sm">Visual Theme</span>
+                         <div className="flex gap-2">
+                             <button 
+                                onClick={() => updateSettings({ theme: 'taco' })}
+                                className={`text-[10px] px-3 py-2 border ${settings.theme === 'taco' ? 'bg-[#e55934] border-white' : 'bg-transparent border-[#555] text-[#888]'}`}
+                             >
+                                TACO
+                             </button>
+                             <button 
+                                onClick={() => updateSettings({ theme: 'dark' })}
+                                className={`text-[10px] px-3 py-2 border ${settings.theme === 'dark' ? 'bg-white text-black border-white' : 'bg-transparent border-[#555] text-[#888]'}`}
+                             >
+                                DARK
+                             </button>
+                         </div>
+                    </div>
+                </div>
+
+                <div className="h-px bg-[#333] my-2"></div>
+
+                {/* Admin Section */}
+                <div className="mt-auto pt-4">
+                     {isAdmin ? (
+                         <div className="flex justify-between items-center">
+                             <span className="text-green-500 text-xs">Admin Access Active</span>
+                             <button onClick={() => setIsAdmin(false)} className="text-red-500 text-xs border border-red-500 px-2 py-1 hover:bg-red-900">Logout</button>
+                         </div>
+                     ) : (
+                         <form onSubmit={handleAdminLogin} className="flex flex-col gap-2">
+                             <label className="text-[10px] text-[#555] uppercase">Admin Access</label>
+                             <div className="flex gap-2">
+                                 <input 
+                                     type="password"
+                                     value={passwordInput}
+                                     onChange={(e) => setPasswordInput(e.target.value)}
+                                     placeholder="Password"
+                                     className="bg-black border border-[#333] flex-1 p-2 text-xs text-white outline-none focus:border-[#f4b400]"
+                                 />
+                                 <button type="submit" className="bg-[#333] text-white text-xs px-3 border border-[#555] hover:bg-[#555]">Login</button>
+                             </div>
+                         </form>
+                     )}
+                </div>
             </RandomReveal>
         </div>
-        <RandomReveal delay={0.4}><button onClick={onBack} className="bg-[#444] text-white text-xs py-2 px-4 border-2 border-white font-['Press_Start_2P'] hover:bg-[#666]">Back</button></RandomReveal>
-    </Overlay>
-);
+    );
+};
 
 // --- Start Screen ---
 interface StartScreenProps {
@@ -317,6 +316,7 @@ interface StartScreenProps {
 
 export const StartScreen: React.FC<StartScreenProps> = ({ onStart, onInfinite, onUniversal, onSpeedTest, user, onLogout, isGenerating }) => {
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
 
   return (
       <Overlay>
@@ -325,6 +325,13 @@ export const StartScreen: React.FC<StartScreenProps> = ({ onStart, onInfinite, o
          </div>
          
          <div className="absolute top-4 left-4 md:top-8 md:left-8 flex gap-4 z-[120]">
+            <button 
+                onClick={() => setShowSettings(true)}
+                className="text-2xl hover:rotate-90 transition-transform duration-300"
+                title="Settings"
+            >
+                ⚙️
+            </button>
             {user && (
                 <RandomReveal distance={100} className="flex items-center gap-4">
                     <span className="text-[#aaa] text-[10px] md:text-xs">Chef {user.displayName}</span>
@@ -345,6 +352,8 @@ export const StartScreen: React.FC<StartScreenProps> = ({ onStart, onInfinite, o
                 </RandomReveal>
             )}
          </div>
+
+         {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />}
          
          <div className="flex flex-col items-center md:mr-[300px]">
             <h1 className="text-3xl md:text-5xl mb-5 text-[#f4b400] shadow-[#e55934] text-center leading-normal" style={{ textShadow: `4px 4px 0px ${COLORS.accent}` }}>
@@ -386,11 +395,85 @@ export const StartScreen: React.FC<StartScreenProps> = ({ onStart, onInfinite, o
   );
 };
 
-// --- Level Select ---
-interface LevelSelectProps {
-  onSelectLevel: (level: number) => void;
-  onBack: () => void;
-}
+export const ExitConfirmScreen: React.FC<ExitConfirmProps> = ({ onConfirm, onCancel }) => (
+    <div className="absolute top-0 left-0 w-full h-full bg-black/80 flex items-center justify-center z-[200] animate-fade-in p-4">
+        <RandomReveal className="bg-[#111] border-4 border-[#ff2a2a] p-4 md:p-8 flex flex-col items-center max-w-md text-center shadow-[0_0_30px_rgba(255,0,0,0.3)]">
+            <h2 className="text-xl md:text-2xl text-[#ff2a2a] mb-4">WARNING CHEF!</h2>
+            <p className="text-xs md:text-sm leading-6 mb-6">
+                You are about to abandon the kitchen during a ranked service.<br/><br/>
+                <span className="text-[#f4b400]">Your score/time will not be recorded.</span>
+            </p>
+            <div className="flex gap-4">
+                <Button onClick={onConfirm} variant="secondary">Leave Kitchen</Button>
+                <Button onClick={onCancel} variant="primary">Keep Cooking</Button>
+            </div>
+        </RandomReveal>
+    </div>
+);
+
+export const UsernameScreen: React.FC<UsernameScreenProps> = ({ onSubmit }) => {
+    const [name, setName] = useState('');
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (name.trim().length > 0 && name.trim().length <= 12) onSubmit(name.trim());
+    };
+    return (
+        <Overlay>
+            <h2 className="text-xl md:text-2xl mb-6 text-[#f4b400]"><RandomText text="Identify Yourself" /></h2>
+            <form onSubmit={handleSubmit} className="flex flex-col items-center gap-4">
+                <RandomReveal>
+                    <input 
+                        type="text" 
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        placeholder="Nickname"
+                        maxLength={12}
+                        className="bg-[#111] border-4 border-white p-3 md:p-4 text-center text-white font-['Press_Start_2P'] outline-none focus:border-[#f4b400] w-[250px] md:w-[300px]"
+                        autoFocus
+                    />
+                </RandomReveal>
+                <div className="text-[10px] text-[#aaa] mb-4">Max 12 chars</div>
+                <RandomReveal delay={0.2}><Button type="submit">Confirm Identity</Button></RandomReveal>
+            </form>
+        </Overlay>
+    );
+};
+
+export const ModeSelectScreen: React.FC<ModeSelectProps> = ({ onCompetitive, onUnrated, onBack }) => (
+    <Overlay>
+        <h2 className="text-2xl md:text-3xl text-[#f4b400] mb-8" style={{ textShadow: `3px 3px 0px ${COLORS.accent}` }}>
+            <RandomText text="Select Kitchen" />
+        </h2>
+        <div className="flex flex-col md:flex-row gap-4 md:gap-8 mb-8">
+            <RandomReveal>
+                <button 
+                    onClick={onCompetitive}
+                    className="w-[200px] h-[150px] md:w-[220px] md:h-[180px] bg-[#222] border-4 border-[#ff2a2a] hover:bg-[#330000] hover:scale-105 transition-all flex flex-col items-center justify-center p-4"
+                >
+                    <div className="text-4xl mb-4">🏆</div>
+                    <h3 className="text-[#ff2a2a] mb-2 font-bold text-xs md:text-base">COMPETITIVE</h3>
+                    <p className="text-[10px] text-center text-[#aaa] leading-4">
+                        Ranked Play.<br/>Lvl 1 - Boss.<br/>Time Attack.<br/>No AI Score.
+                    </p>
+                </button>
+            </RandomReveal>
+
+            <RandomReveal delay={0.2}>
+                <button 
+                    onClick={onUnrated}
+                    className="w-[200px] h-[150px] md:w-[220px] md:h-[180px] bg-[#222] border-4 border-[#57a863] hover:bg-[#002200] hover:scale-105 transition-all flex flex-col items-center justify-center p-4"
+                >
+                    <div className="text-4xl mb-4">🍳</div>
+                    <h3 className="text-[#57a863] mb-2 font-bold text-xs md:text-base">UNRATED</h3>
+                    <p className="text-[10px] text-center text-[#aaa] leading-4">
+                        Casual Play.<br/>Select Level.<br/>Practice.<br/>No Pressure.
+                    </p>
+                </button>
+            </RandomReveal>
+        </div>
+        <RandomReveal delay={0.4}><button onClick={onBack} className="bg-[#444] text-white text-xs py-2 px-4 border-2 border-white font-['Press_Start_2P'] hover:bg-[#666]">Back</button></RandomReveal>
+    </Overlay>
+);
 
 export const LevelSelectScreen: React.FC<LevelSelectProps> = ({ onSelectLevel, onBack }) => (
   <Overlay>
@@ -419,14 +502,6 @@ export const LevelSelectScreen: React.FC<LevelSelectProps> = ({ onSelectLevel, o
   </Overlay>
 );
 
-// --- Level Complete ---
-interface LevelCompleteProps {
-    levelName: string;
-    message: string;
-    emoji: string;
-    onNext: () => void;
-}
-
 export const LevelCompleteScreen: React.FC<LevelCompleteProps> = ({ levelName, message, emoji, onNext }) => (
     <Overlay>
         <h2 className="text-2xl md:text-3xl text-[#f4b400] mb-4 text-center"><RandomText text={levelName} /></h2>
@@ -437,18 +512,6 @@ export const LevelCompleteScreen: React.FC<LevelCompleteProps> = ({ levelName, m
         <RandomReveal delay={0.5}><Button onClick={onNext}>Next Level</Button></RandomReveal>
     </Overlay>
 );
-
-// --- Game Over ---
-interface GameOverProps {
-    score: number;
-    message: string;
-    stats?: string;
-    onRestart: () => void;
-    aiTitle?: string;
-    aiScore?: number;
-    isCalculating?: boolean;
-    isTimeScore?: boolean;
-}
 
 export const GameOverScreen: React.FC<GameOverProps> = ({ score, message, stats, onRestart, aiTitle, aiScore, isCalculating, isTimeScore }) => {
     const formatTime = (s: number) => {
@@ -494,7 +557,6 @@ export const GameOverScreen: React.FC<GameOverProps> = ({ score, message, stats,
     );
 };
 
-// --- Boss Intro ---
 export const BossIntroScreen: React.FC<{ onStart: () => void }> = ({ onStart }) => (
     <Overlay>
         <h1 className="text-2xl md:text-4xl mb-4 text-[#ff0055]"><RandomText text="The After Party" /></h1>
@@ -503,7 +565,6 @@ export const BossIntroScreen: React.FC<{ onStart: () => void }> = ({ onStart }) 
     </Overlay>
 );
 
-// --- Pause ---
 export const PauseScreen: React.FC<{ onResume: () => void, onQuit: () => void }> = ({ onResume, onQuit }) => (
     <Overlay>
         <h1 className="text-4xl md:text-5xl mb-4"><RandomText text="PAUSED" /></h1>
@@ -514,7 +575,6 @@ export const PauseScreen: React.FC<{ onResume: () => void, onQuit: () => void }>
     </Overlay>
 );
 
-// --- Info Modal ---
 export const InfoModal: React.FC<{ text: string, onClose: () => void }> = ({ text, onClose }) => (
     <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[90%] md:w-[500px] bg-[#111] border-4 border-white p-6 md:p-8 z-[200] flex flex-col items-center shadow-[0_0_20px_rgba(0,0,0,0.9)] animate-fade-in" style={{ animation: 'fadeIn 0.2s ease-out' }}>
         <button onClick={onClose} className="absolute top-2 right-2 bg-[#e55934] border-2 border-white text-white cursor-pointer text-xs p-1 hover:scale-110">X</button>
@@ -523,31 +583,23 @@ export const InfoModal: React.FC<{ text: string, onClose: () => void }> = ({ tex
     </div>
 );
 
-// --- Speed Result ---
-interface SpeedResultProps {
-    wpm: number;
-    cpm: number;
-    accuracy: number;
-    comment: string;
-    onRestart: () => void;
-}
-
 export const SpeedResultScreen: React.FC<SpeedResultProps> = ({ wpm, cpm, accuracy, comment, onRestart }) => {
+    // Re-implemented to use CSS Vars via COLORS
     const getStatColor = (val: number, low: number, high: number) => {
-        if (val < low) return '#ff2a2a'; 
-        if (val < high) return '#f4b400';
-        return '#57a863';
+        if (val < low) return COLORS.gameBorder; // Red 
+        if (val < high) return COLORS.warn;
+        return COLORS.correct;
     };
 
     const wpmColor = getStatColor(wpm, 30, 60);
     const cpmColor = getStatColor(cpm, 150, 300);
     const accColor = getStatColor(accuracy, 85, 95);
 
-    let commentColor = '#f4b400';
+    let commentColor = COLORS.warn;
     if (accuracy < 85 || wpm < 30) {
-        commentColor = '#ff2a2a';
+        commentColor = COLORS.gameBorder;
     } else if (wpm > 60 && accuracy > 95) {
-        commentColor = '#57a863';
+        commentColor = COLORS.correct;
     }
 
     return (
@@ -579,10 +631,6 @@ export const SpeedResultScreen: React.FC<SpeedResultProps> = ({ wpm, cpm, accura
         </Overlay>
     );
 };
-
-export interface GeneratingModalProps {
-    message: string;
-}
 
 export const GeneratingModal: React.FC<GeneratingModalProps> = ({ message }) => (
     <div className="absolute top-0 left-0 w-full h-full bg-black flex flex-col items-center justify-center z-[300] animate-fade-in cursor-wait">

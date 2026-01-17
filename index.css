@@ -1,6 +1,55 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+:root {
+  /* Default (Taco) Theme */
+  --color-background: #000000;
+  --color-game-border: #ff2a2a;
+  --color-text: #ffffff;
+  --color-accent: #e55934;
+  --color-correct: #57a863;
+  --color-warn: #f4b400;
+  --color-secondary-btn: #7f8c8d;
+  --color-pro: #ff0055;
+  --color-combo-red: #ff2a2a;
+  --color-combo-purple: #d900ff;
+  --color-universal: #4facfe;
+  
+  --color-rotten: #7cfc00;
+  --color-heart: #ff69b4;
+}
+
+body.theme-dark {
+  /* Dark (Black & White) Theme Override */
+  --color-background: #000000;
+  --color-game-border: #ffffff;
+  --color-text: #666666; /* Dimmed for remaining text */
+  --color-accent: #ffffff;
+  --color-correct: #ffffff; /* Bright for typed text */
+  --color-warn: #aaaaaa;
+  --color-secondary-btn: #333333;
+  --color-pro: #ffffff;
+  --color-combo-red: #eeeeee;
+  --color-combo-purple: #cccccc;
+  --color-universal: #dddddd;
+  
+  --color-rotten: #ffffff; /* We will use text-decoration or shape to distinguish */
+  --color-heart: #888888;
+  
+  /* Force grayscale to catch images/emojis */
+  filter: grayscale(100%) contrast(1.2);
+}
+
+body.reduce-motion *, 
+body.reduce-motion *::before, 
+body.reduce-motion *::after {
+  animation-duration: 0s !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0s !important;
+  scroll-behavior: auto !important;
+}
 
 /* Custom Scrollbar for the terminal/text feel */
 ::-webkit-scrollbar {
@@ -24,6 +73,6 @@ html, body, #root {
 body {
   margin: 0;
   overflow: hidden;
-  background-color: #000;
-  color: white;
+  background-color: var(--color-background);
+  color: var(--color-text);
 }
