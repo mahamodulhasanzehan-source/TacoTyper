@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useRef } from 'react';
 import { COLORS } from '../constants';
 import { audioService } from '../services/audioService';
@@ -54,11 +55,27 @@ const TypingSpeedGame: React.FC<TypingSpeedGameProps> = ({ targetText, onComplet
     if (startTime && timeLeft > 0) {
         const elapsedSecs = (Date.now() - startTime) / 1000;
         const safeElapsed = Math.max(elapsedSecs, 1);
-        const chars = inputText.length;
-        const words = chars / 5;
         const mins = safeElapsed / 60;
+        
+        // Strict WPM: Check fully correct words only
+        const targetWords = targetText.split(' ');
+        const inputWords = inputText.split(' ');
+        let correctChars = 0;
+        
+        // Count characters in fully correct words
+        for (let i = 0; i < inputWords.length; i++) {
+            // Must match target word exactly and be followed by space (or be last word if text complete)
+            // Actually, live calculation usually counts chars in words that match so far
+            if (i < targetWords.length && inputWords[i] === targetWords[i]) {
+                correctChars += inputWords[i].length + 1; // +1 for space
+            }
+        }
+        
+        const words = correctChars / 5;
+        const currentCpm = Math.round(correctChars / mins);
+        
         setWpm(Math.round(words / mins));
-        setCpm(Math.round(chars / mins));
+        setCpm(currentCpm);
     }
   }, [inputText, timeLeft, startTime]);
 
@@ -82,20 +99,36 @@ const TypingSpeedGame: React.FC<TypingSpeedGameProps> = ({ targetText, onComplet
       durationSecs = Math.max(durationSecs, 0.1);
 
       const mins = durationSecs / 60;
-      const chars = inputText.length;
-      const words = chars / 5;
       
+      // STRICT CALCULATION
+      const targetWords = targetText.split(' ');
+      const inputWords = inputText.split(' ');
+      let correctChars = 0;
+      let correctCount = 0;
+      
+      for(let i=0; i<inputWords.length; i++) {
+          // A word is correct if it matches target exactly. 
+          // Note: Splitting by space might have empty strings if multiple spaces, but assuming normal typing.
+          if (i < targetWords.length) {
+              if (inputWords[i] === targetWords[i]) {
+                  correctChars += inputWords[i].length + 1; // +1 for space
+                  correctCount++;
+              }
+          }
+      }
+
+      const words = correctChars / 5;
       const finalWpm = Math.round(words / mins);
-      const finalCpm = Math.round(chars / mins);
+      const finalCpm = Math.round(correctChars / mins);
 
       // Calculate final accuracy based on Total Characters Typed (Keystrokes)
-      let correct = 0;
+      let correctRaw = 0;
       for (let i = 0; i < inputText.length; i++) {
-          if (inputText[i] === targetText[i]) correct++;
+          if (inputText[i] === targetText[i]) correctRaw++;
       }
       
       const totalTyped = totalKeystrokesRef.current > 0 ? totalKeystrokesRef.current : 1;
-      const accuracy = Math.round((correct / totalTyped) * 100);
+      const accuracy = Math.round((correctRaw / totalTyped) * 100);
       
       onComplete(finalWpm, finalCpm, accuracy);
   };
@@ -182,7 +215,7 @@ const TypingSpeedGame: React.FC<TypingSpeedGameProps> = ({ targetText, onComplet
                 <span className={timeLeft < 10 ? 'text-red-500 animate-pulse' : 'text-white'}>{timeLeft}s</span>
             </div>
             <div className="flex flex-col items-center">
-                <span className="text-[#aaa] text-sm mb-2">WPM</span>
+                <span className="text-[#aaa] text-sm mb-2">NET WPM</span>
                 <span className="text-[#4facfe]">{wpm}</span>
             </div>
             <div className="flex flex-col items-center">

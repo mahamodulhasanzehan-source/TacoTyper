@@ -4,7 +4,7 @@ import { LevelConfig } from './types';
 // Colors
 export const COLORS = {
   background: '#000000',
-  gameBorder: '#990000',
+  gameBorder: '#ff2a2a', // Changed from #990000 to bright red
   text: '#ffffff',
   accent: '#e55934',
   correct: '#57a863',

@@ -1,21 +1,17 @@
 
-import { GoogleGenerativeAI, SchemaType } from "@google/generative-ai";
+import { GoogleGenAI } from "@google/genai";
 import { SPEED_TEST_TEXTS } from '../constants';
 import { SessionStats } from '../types';
 
 class AIService {
-  private genAI: GoogleGenerativeAI;
-  private modelId = 'gemini-1.5-flash'; 
+  private ai: GoogleGenAI;
 
   constructor() {
-    // @ts-ignore
-    this.genAI = new GoogleGenerativeAI(process.env.API_KEY as string);
+    this.ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   }
 
   async generateSpeedText(): Promise<string> {
     try {
-      const model = this.genAI.getGenerativeModel({ model: this.modelId });
-      
       // Dynamic Prompting to avoid cache/repetition
       const topics = ["obscure culinary history", "molecular gastronomy physics", "ancient grain farming", "coffee fermentation chemistry", "the evolution of silverware", "fungi in cheese making"];
       const randomTopic = topics[Math.floor(Math.random() * topics.length)];
@@ -26,9 +22,11 @@ class AIService {
       Do not include a title. Just the raw text.
       Random Seed: ${seed}`; // Seed forces fresh generation
 
-      const result = await model.generateContent(prompt);
-      const response = await result.response;
-      const text = response.text();
+      const response = await this.ai.models.generateContent({
+        model: 'gemini-3-flash-preview',
+        contents: prompt,
+      });
+      const text = response.text;
       
       if (!text || text.length < 50) return this.getFallbackText();
       return text;
@@ -40,11 +38,12 @@ class AIService {
 
   async generateSpeedComment(wpm: number, cpm: number, accuracy: number): Promise<string> {
     try {
-      const model = this.genAI.getGenerativeModel({ model: this.modelId });
       const prompt = `A player just finished a typing game with ${wpm} WPM and ${accuracy}% accuracy. Write a short 1-sentence witty comment as a strict chef judge. If accuracy is low, insult the mess.`;
-      const result = await model.generateContent(prompt);
-      const response = await result.response;
-      return response.text() || "Keep cooking!";
+      const response = await this.ai.models.generateContent({
+        model: 'gemini-3-flash-preview',
+        contents: prompt,
+      });
+      return response.text || "Keep cooking!";
     } catch (error) {
       if (accuracy < 90) return "You're making a mess of my kitchen!";
       if (wpm > 60) return "Fast hands, Chef!";
@@ -54,13 +53,6 @@ class AIService {
 
   async generateCompetitiveScore(stats: SessionStats, speedTest?: { wpm: number, accuracy: number }): Promise<{ score: number, title: string }> {
     try {
-        const model = this.genAI.getGenerativeModel({ 
-            model: this.modelId,
-            generationConfig: {
-                responseMimeType: "application/json",
-            }
-        });
-
         let prompt = "";
 
         if (speedTest) {
@@ -106,9 +98,16 @@ class AIService {
             `;
         }
 
-        const result = await model.generateContent(prompt);
-        const response = await result.response;
-        const text = response.text();
+        const response = await this.ai.models.generateContent({
+          model: 'gemini-3-flash-preview',
+          contents: prompt,
+          config: {
+             responseMimeType: "application/json",
+          }
+        });
+        
+        const text = response.text;
+        if (!text) throw new Error("No response from AI");
         const json = JSON.parse(text);
         
         return {
@@ -121,16 +120,12 @@ class AIService {
         
         // Fallback Logic
         if (speedTest) {
-            // Strict Formula: WPM * (Accuracy/100)^3
-            // If Accuracy < 80, cap at 40.
             let rawScore = speedTest.wpm * Math.pow(speedTest.accuracy / 100, 3);
             if (speedTest.accuracy < 80) rawScore = Math.min(rawScore, 40);
             if (speedTest.accuracy < 50) rawScore = 0;
-            // Normalize roughly (120 wpm = 100 pts)
             let score = Math.round((rawScore / 120) * 100);
             return { score: Math.min(100, score), title: "Line Cook (Offline)" };
         } else {
-            // General Fallback
             let score = 50 + (stats.totalScore / 500) - (stats.mistakes * 2) - (stats.ingredientsMissed * 5);
             if (stats.levelReached > 3) score += 10;
             if (stats.levelReached > 5) score += 20;
@@ -141,10 +136,8 @@ class AIService {
   }
 
   private getFallbackText() {
-    // Return random fallback from expanded list
     const p1 = SPEED_TEST_TEXTS[Math.floor(Math.random() * SPEED_TEST_TEXTS.length)];
     let p2 = SPEED_TEST_TEXTS[Math.floor(Math.random() * SPEED_TEST_TEXTS.length)];
-    // Ensure distinct paragraphs
     let retries = 0;
     while (p1 === p2 && retries < 5) {
         p2 = SPEED_TEST_TEXTS[Math.floor(Math.random() * SPEED_TEST_TEXTS.length)];

@@ -1,6 +1,8 @@
+
 import { useState, useEffect } from 'react';
 import { auth, signInWithGoogle, logout } from './services/firebase';
-import { onAuthStateChanged, User } from 'firebase/auth';
+import { onAuthStateChanged } from 'firebase/auth';
+import type { User } from 'firebase/auth';
 import LoginScreen from './components/LoginScreen';
 import Game from './components/Game';
 

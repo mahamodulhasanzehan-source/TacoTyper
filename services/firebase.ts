@@ -1,6 +1,7 @@
 
 import { initializeApp } from 'firebase/app';
-import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, User } from 'firebase/auth';
+import { getAuth, GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth';
+import type { User } from 'firebase/auth';
 import { getFirestore, doc, setDoc, updateDoc, arrayUnion, getDoc, collection, addDoc, query, orderBy, limit, getDocs, where, deleteDoc } from 'firebase/firestore';
 import { LeaderboardEntry, SessionStats } from '../types';
 
@@ -153,20 +154,23 @@ export const saveLeaderboardScore = async (
     if (!isInitialized || !db) return;
     try {
         // Sort Value Logic
-        // Competitive/Universal/Infinite: Prioritize Level first (x1000), then Score (0-100)
-        // If mode is speed-test, score is WPM directly.
-        
         let sortValue = score;
-        if (mode !== 'speed-test') {
-             // Example: Level 6, Score 100 -> 6100. Level 5, Score 50 -> 5050.
-             // This ensures higher level always wins.
+
+        if (mode === 'competitive') {
+             // For Competitive, SCORE is TIME (Seconds). Lower is better.
+             // We invert it for Firebase sorting (High to Low default)
+             // 1,000,000 max seconds buffer ~ 277 hours (safe)
+             sortValue = 1000000 - score; 
+        } else if (mode !== 'speed-test') {
+             // For Infinite/Universal: Level/Score combo. Higher is better.
              sortValue = (stats.levelReached * 1000) + score; 
         }
+        // For Speed Test: Score is WPM. Higher is better. sortValue = score.
 
         const data: any = {
             uid: user.uid,
             username: username,
-            score: score, // This is now 0-100 for non-speed modes
+            score: score, // Seconds for Competitive, Points/WPM for others
             title: title,
             stats: stats,
             timestamp: Date.now(),

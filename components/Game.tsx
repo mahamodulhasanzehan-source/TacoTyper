@@ -27,13 +27,12 @@ import {
 import { audioService } from '../services/audioService';
 import { aiService } from '../services/aiService';
 import { saveGameStats, saveSpeedTestStats, getUserProfile, saveUsername, saveLeaderboardScore } from '../services/firebase';
-import { User } from 'firebase/auth';
+import type { User } from 'firebase/auth';
 import WordComponent from './WordComponent';
 import TypingSpeedGame from './TypingSpeedGame';
 import { 
   StartScreen, 
   LevelSelectScreen, 
-  InfiniteSelectScreen, 
   LevelCompleteScreen, 
   GameOverScreen, 
   BossIntroScreen, 
@@ -41,7 +40,8 @@ import {
   InfoModal,
   SpeedResultScreen,
   UsernameScreen,
-  ModeSelectScreen
+  ModeSelectScreen,
+  ExitConfirmScreen
 } from './Overlays';
 
 interface GameProps {
@@ -55,7 +55,9 @@ export default function Game({ user, onLogout }: GameProps) {
   const [playStyle, setPlayStyle] = useState<PlayStyle>('unrated');
   
   const [level, setLevel] = useState(1);
-  const [score, setScore] = useState(0);
+  const [score, setScore] = useState(0); // For Competitive, this is displayed as Time
+  const [elapsedTime, setElapsedTime] = useState(0); // Display timer for comp
+  
   const [lives, setLives] = useState(3);
   const [fallingWords, setFallingWords] = useState<WordEntity[]>([]);
   const [activeWordId, setActiveWordId] = useState<string | null>(null);
@@ -66,6 +68,7 @@ export default function Game({ user, onLogout }: GameProps) {
   const [showInfoModal, setShowInfoModal] = useState(false);
   const [infoModalText, setInfoModalText] = useState('');
   const [customUsername, setCustomUsername] = useState<string | null>(null);
+  const [showExitConfirm, setShowExitConfirm] = useState(false);
   
   // Game Dimensions
   // @ts-ignore
@@ -106,7 +109,7 @@ export default function Game({ user, onLogout }: GameProps) {
     // Competitive Stats Tracking
     stats: {
         mistakes: 0,
-        timeTaken: 0, // start time of level
+        timeTaken: 0, // Cumulative time across levels for Competitive
         ingredientsMissed: 0,
         rottenWordsTyped: 0,
         totalScore: 0,
@@ -253,6 +256,13 @@ export default function Game({ user, onLogout }: GameProps) {
     const deltaTime = time - state.lastTime;
     const height = window.innerHeight;
 
+    // Timer Update for Competitive
+    if (playStyle === 'competitive') {
+        // Increment global timer by delta (ms) -> convert to seconds
+        state.stats.timeTaken += (deltaTime / 1000);
+        setElapsedTime(state.stats.timeTaken);
+    }
+
     // 1. Spawning
     let spawnRate = 1800;
     if (state.gameMode === 'infinite' || state.gameMode === 'universal') {
@@ -327,7 +337,7 @@ export default function Game({ user, onLogout }: GameProps) {
             return; // Stop loop
         }
     }
-    if (scoreChanged) setScore(state.score);
+    if (scoreChanged && playStyle !== 'competitive') setScore(state.score); // Only update score UI for non-competitive
     if (activeReset) setActiveWordId(null);
     if (streakReset) {
         setStreak(0);
@@ -338,10 +348,6 @@ export default function Game({ user, onLogout }: GameProps) {
     let targetIngredients = 7;
     if (state.gameMode === 'standard') targetIngredients = LEVEL_CONFIGS[state.level]?.goal || 7;
 
-    if (state.gameMode === 'standard' && state.ingredientsCount >= targetIngredients && nextWords.length === 0) {
-        // Handled in addIngredient usually, but safe guard here
-    }
-
     if (state.gameMode === 'boss' && nextWords.length === 0 && state.wordsSpawnedThisLevel >= BOSS_WORD_COUNT && state.activeWordId === null) {
         victory();
         return;
@@ -349,7 +355,7 @@ export default function Game({ user, onLogout }: GameProps) {
 
     state.lastTime = time;
     requestRef.current = requestAnimationFrame(update);
-  }, [generateWord]);
+  }, [generateWord, playStyle]);
 
   useEffect(() => {
     requestRef.current = requestAnimationFrame(update);
@@ -364,6 +370,7 @@ export default function Game({ user, onLogout }: GameProps) {
   const initGame = (mode: GameMode, startLevel = 1, infiniteMult = 1.0, difficultyInc = 1.1) => {
     // Basic Reset
     setScore(0);
+    setElapsedTime(0);
     setLives(3);
     setStreak(0);
     setStreakState('normal');
@@ -378,6 +385,7 @@ export default function Game({ user, onLogout }: GameProps) {
     setFinalAiScore(undefined);
     setFinalAiTitle(undefined);
     setIsCalculatingScore(false);
+    setShowExitConfirm(false);
 
     // Ref Reset
     stateRef.current.fallingWords = [];
@@ -403,7 +411,7 @@ export default function Game({ user, onLogout }: GameProps) {
     // Stats Reset
     stateRef.current.stats = {
         mistakes: 0,
-        timeTaken: 0,
+        timeTaken: 0, // In Competitive, this is the accumulative global timer.
         ingredientsMissed: 0,
         rottenWordsTyped: 0,
         totalScore: 0,
@@ -437,9 +445,9 @@ export default function Game({ user, onLogout }: GameProps) {
       // 1. Generate a Witty Comment
       const comment = await aiService.generateSpeedComment(wpm, cpm, accuracy);
       
-      // 2. Calculate the True Points (0-100) using AI or Strict Formula
-      // This enforces accuracy over raw speed
-      const { score: pointsScore, title: rankTitle } = await aiService.generateCompetitiveScore(stateRef.current.stats, { wpm, accuracy });
+      // 2. Score = WPM (Strictly)
+      // AI title can still be generated based on stats, but the SCORE is just WPM.
+      const { title: rankTitle } = await aiService.generateCompetitiveScore(stateRef.current.stats, { wpm, accuracy });
 
       setSpeedTestResult({ wpm, cpm, accuracy, comment });
       
@@ -449,8 +457,8 @@ export default function Game({ user, onLogout }: GameProps) {
               await saveLeaderboardScore(
                   user, 
                   customUsername, 
-                  pointsScore, // Save the calculated POINTS, not WPM
-                  rankTitle, // Use the AI Title (e.g. "Speed Demon" or "Dishwasher")
+                  wpm, 
+                  rankTitle,
                   stateRef.current.stats, 
                   'speed-test', 
                   { accuracy }
@@ -466,33 +474,43 @@ export default function Game({ user, onLogout }: GameProps) {
     const state = stateRef.current;
     
     if (user && customUsername) {
-        // Update stats
-        const levelTime = (Date.now() - state.levelStartTime) / 1000;
-        state.stats.timeTaken += levelTime;
         state.stats.totalScore = state.score;
         state.stats.levelReached = state.level;
 
-        // Trigger AI Calculation for ALL modes
+        let finalScore = state.score;
+        let title = "Line Cook";
+
+        // In Competitive, Score is Time
+        if (playStyle === 'competitive') {
+             // For game over in competitive (failed), score is technically invalid or just what they got.
+             // But usually you only rank if you FINISH or maybe you rank with level reached?
+             // Assuming minimal ranking for failed runs:
+             finalScore = Math.floor(state.stats.timeTaken); // Seconds
+        }
+
+        // Trigger AI Calculation for Titles
         setIsCalculatingScore(true);
-        const { score, title } = await aiService.generateCompetitiveScore(state.stats);
-        setFinalAiScore(score);
+        const aiResult = await aiService.generateCompetitiveScore(state.stats);
+        title = aiResult.title;
+        // For non-competitive/universal/infinite, we use AI Score points.
+        if (playStyle !== 'competitive' && state.gameMode !== 'speed-test') {
+            finalScore = aiResult.score;
+        }
+        
+        setFinalAiScore(finalScore);
         setFinalAiTitle(title);
         setIsCalculatingScore(false);
         
         // Save to Leaderboard
         let modeToSave = playStyle === 'competitive' ? 'competitive' : state.gameMode;
-        // Map standard/boss to something clearer if unrated? Or just use 'standard'
         if (state.gameMode === 'standard' || state.gameMode === 'boss') {
             if (playStyle === 'competitive') modeToSave = 'competitive';
-            // Unrated standard games typically don't go to leaderboard, but user asked for "any three modes".
-            // We'll skip unrated standard unless we want to track it.
         }
         
         if (modeToSave === 'competitive' || modeToSave === 'infinite' || modeToSave === 'universal') {
-             await saveLeaderboardScore(user, customUsername, score, title, state.stats, modeToSave);
+             await saveLeaderboardScore(user, customUsername, finalScore, title, state.stats, modeToSave);
         }
         
-        // Save generic history
         saveGameStats(user, state.score, state.gameMode, state.level);
     }
   };
@@ -501,38 +519,49 @@ export default function Game({ user, onLogout }: GameProps) {
     setScreen('game-over');
     const state = stateRef.current;
     
-    // Update stats
-    const levelTime = (Date.now() - state.levelStartTime) / 1000;
-    state.stats.timeTaken += levelTime;
     state.stats.totalScore = state.score;
     state.stats.levelReached = 6; // Completed
 
-    // Calculate AI Score (0-100)
+    let finalScore = state.score;
+    let title = "Master Chef";
+
     setIsCalculatingScore(true);
-    const { score, title } = await aiService.generateCompetitiveScore(state.stats);
-    setFinalAiScore(score);
+    const aiResult = await aiService.generateCompetitiveScore(state.stats);
+    title = aiResult.title;
+
+    if (playStyle === 'competitive') {
+         // Final Score is Total Time Taken
+         finalScore = Math.floor(state.stats.timeTaken);
+         setInfoModalText("Master Chef Status Achieved!");
+    } else {
+         // Standard Unrated / Boss
+         finalScore = aiResult.score; // Use AI points
+         setInfoModalText("You survived the social hour!");
+    }
+
+    setFinalAiScore(finalScore);
     setFinalAiTitle(title);
     setIsCalculatingScore(false);
 
     if (user && customUsername) {
-        if (playStyle === 'competitive') {
-             setInfoModalText("Master Chef Status Achieved!");
-             await saveLeaderboardScore(user, customUsername, score, title, state.stats, 'competitive');
-        } else {
-             setInfoModalText("You survived the social hour!");
-             saveGameStats(user, state.score, 'boss', 6);
-        }
+        let modeToSave = playStyle === 'competitive' ? 'competitive' : 'boss';
+        await saveLeaderboardScore(user, customUsername, finalScore, title, state.stats, modeToSave);
+        saveGameStats(user, state.score, modeToSave, 6);
     }
   };
 
   const completeLevel = () => {
       const state = stateRef.current;
       
-      const levelTime = (Date.now() - state.levelStartTime) / 1000;
-      state.stats.timeTaken += levelTime;
+      // In competitive, time is tracked globally in update loop, so no need to add level time here manually.
+      // But for unrated stats, we might want it.
+      if (playStyle !== 'competitive') {
+         const levelTime = (Date.now() - state.levelStartTime) / 1000;
+         state.stats.timeTaken += levelTime;
+      }
       
       state.score += 100 * state.level;
-      setScore(state.score);
+      if (playStyle !== 'competitive') setScore(state.score);
       
       if (playStyle === 'competitive') {
           if (state.level < 5) {
@@ -574,6 +603,15 @@ export default function Game({ user, onLogout }: GameProps) {
       }
   };
 
+  const handleQuitAttempt = () => {
+      if (playStyle === 'competitive' || gameMode === 'speed-test') {
+          setScreen('paused'); // Pause game loop
+          setShowExitConfirm(true); // Show overlay
+      } else {
+          setScreen('start');
+      }
+  };
+
   // ... rest of game logic remains same
   const processWordCompletion = (word: WordEntity) => {
     const state = stateRef.current;
@@ -587,7 +625,7 @@ export default function Game({ user, onLogout }: GameProps) {
 
     if (word.type === 'rotten') {
         state.score = Math.max(0, state.score - 50);
-        setScore(state.score);
+        if (playStyle !== 'competitive') setScore(state.score);
         state.stats.rottenWordsTyped++; // Track
         triggerShake();
         audioService.playSound('rotten_penalty');
@@ -598,7 +636,7 @@ export default function Game({ user, onLogout }: GameProps) {
         state.lives++;
         setLives(state.lives);
         state.score += 100;
-        setScore(state.score);
+        if (playStyle !== 'competitive') setScore(state.score);
         audioService.playSound('powerup');
         state.consecutivePerfectWords++;
         increaseCombo();
@@ -611,7 +649,7 @@ export default function Game({ user, onLogout }: GameProps) {
 
         const points = (word.text.length * 10) * mult;
         state.score += points;
-        setScore(state.score);
+        if (playStyle !== 'competitive') setScore(state.score);
         audioService.playSound('hit');
         addPopup(word.x, word.y, `+${points}`, state.streakState === 'spicy' ? COLORS.comboPurple : (state.streakState === 'fiesta' ? COLORS.comboRed : COLORS.text));
         addSparkles(word.x + 40, word.y + 20, COLORS.correct, 10);
@@ -621,7 +659,8 @@ export default function Game({ user, onLogout }: GameProps) {
         if (state.gameMode === 'infinite') {
             state.infiniteConfig.wordsTyped++;
             if (state.infiniteConfig.wordsTyped % 5 === 0) {
-                state.infiniteConfig.speedMult *= state.infiniteConfig.difficultyIncrease;
+                // Modified Infinite: 30% increase
+                state.infiniteConfig.speedMult *= 1.3; 
                 addPopup(window.innerWidth/2 - 50, window.innerHeight/2, "SPEED UP!", COLORS.warn);
             }
             const w = generateWord();
@@ -656,10 +695,17 @@ export default function Game({ user, onLogout }: GameProps) {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-        if (screen === 'speed-test-playing' || screen === 'username-setup') return;
+        if (screen === 'speed-test-playing' || screen === 'username-setup' || showExitConfirm) return;
 
         if (e.key === 'Escape') {
-            if (screen === 'playing') setScreen('paused');
+            if (screen === 'playing') {
+                if (playStyle === 'competitive') {
+                    setScreen('paused');
+                    setShowExitConfirm(true);
+                } else {
+                    setScreen('paused');
+                }
+            }
             else if (screen === 'paused') setScreen('playing');
             return;
         }
@@ -726,7 +772,7 @@ export default function Game({ user, onLogout }: GameProps) {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [screen]);
+  }, [screen, showExitConfirm]);
 
   // addIngredient, increaseCombo, resetCombo, handleManualSelect, getContainerStyles... 
   // (Standard implementations kept in place)
@@ -746,7 +792,7 @@ export default function Game({ user, onLogout }: GameProps) {
       } else if (state.gameMode === 'infinite' && state.ingredientsCount % target === 0) {
           audioService.playSound('powerup');
           state.score += 200;
-          setScore(state.score);
+          if (playStyle !== 'competitive') setScore(state.score);
           setTimeout(() => setIngredientsCollected([]), 300);
           addPopup(window.innerWidth/2 - 50, window.innerHeight - 100, "MEAL COMPLETE!", COLORS.correct);
       }
@@ -823,6 +869,12 @@ export default function Game({ user, onLogout }: GameProps) {
       };
   };
 
+  const formatTimer = (s: number) => {
+      const mins = Math.floor(s / 60);
+      const secs = Math.floor(s % 60);
+      return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
   return (
     <div className="flex justify-center items-center w-full h-screen bg-black font-['Press_Start_2P'] text-white overflow-hidden">
         <div style={getContainerStyles()} className="relative transition-all duration-500">
@@ -836,7 +888,9 @@ export default function Game({ user, onLogout }: GameProps) {
             {screen === 'playing' && (
                 <div className="absolute top-0 left-0 w-full p-2 box-border bg-white/10 text-white z-10 flex flex-col gap-2">
                     <div className="flex justify-between w-full text-base">
-                        <div>Score: {score}</div>
+                        <div>
+                            {playStyle === 'competitive' ? `Time: ${formatTimer(elapsedTime)}` : `Score: ${score}`}
+                        </div>
                         <div>Lives: {'❤️'.repeat(lives)}</div>
                         <div>
                             {gameMode === 'boss' ? 'BOSS' : 
@@ -887,7 +941,8 @@ export default function Game({ user, onLogout }: GameProps) {
                     onStart={() => setScreen('mode-select')}
                     onInfinite={() => {
                         setPlayStyle('unrated');
-                        setScreen('infinite-select');
+                        // Initialize Infinite directly with 1.3 mult logic implied
+                        initGame('infinite', 1, 1.0, 1.3);
                     }}
                     onUniversal={() => {
                         setPlayStyle('unrated');
@@ -918,7 +973,7 @@ export default function Game({ user, onLogout }: GameProps) {
                 <TypingSpeedGame 
                     targetText={speedTestText}
                     onComplete={finishSpeedTest}
-                    onQuit={() => setScreen('start')}
+                    onQuit={handleQuitAttempt}
                 />
             )}
 
@@ -936,17 +991,6 @@ export default function Game({ user, onLogout }: GameProps) {
                 <LevelSelectScreen 
                     onSelectLevel={(lvl) => initGame('standard', lvl)}
                     onBack={() => setScreen('start')}
-                />
-            )}
-
-            {screen === 'infinite-select' && (
-                <InfiniteSelectScreen 
-                    onSelectMode={(isPro) => initGame('infinite', 1, 1.0, isPro ? 1.5 : 1.1)}
-                    onBack={() => setScreen('start')}
-                    onInfo={(mode) => {
-                        setInfoModalText(mode === 'normal' ? "NORMAL: Every 5 words, speed increases by 10%." : "PRO: Every 5 words, speed increases by 50%. Chaos.");
-                        setShowInfoModal(true);
-                    }}
                 />
             )}
 
@@ -972,11 +1016,25 @@ export default function Game({ user, onLogout }: GameProps) {
                     aiTitle={finalAiTitle}
                     aiScore={finalAiScore}
                     isCalculating={isCalculatingScore}
+                    isTimeScore={playStyle === 'competitive'}
                 />
             )}
 
-            {screen === 'paused' && (
-                <PauseScreen onResume={() => setScreen('playing')} onQuit={() => setScreen('start')} />
+            {screen === 'paused' && !showExitConfirm && (
+                <PauseScreen onResume={() => setScreen('playing')} onQuit={handleQuitAttempt} />
+            )}
+
+            {showExitConfirm && (
+                <ExitConfirmScreen 
+                    onConfirm={() => {
+                        setShowExitConfirm(false);
+                        setScreen('start');
+                    }}
+                    onCancel={() => {
+                        setShowExitConfirm(false);
+                        setScreen('playing');
+                    }}
+                />
             )}
 
             {showInfoModal && (

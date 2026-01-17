@@ -1,7 +1,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { COLORS } from '../constants';
-import { User } from 'firebase/auth';
+import type { User } from 'firebase/auth';
 import { LeaderboardEntry } from '../types';
 import { getLeaderboard, deleteLeaderboardEntry } from '../services/firebase';
 
@@ -85,6 +85,19 @@ const LeaderboardWidget: React.FC = () => {
             alert("Failed to delete. Check console.");
             fetchLeaderboard(); // Revert on fail
         }
+    };
+
+    const formatScore = (entry: LeaderboardEntry) => {
+        if (mode === 'competitive') {
+            const mins = Math.floor(entry.score / 60);
+            const secs = Math.floor(entry.score % 60);
+            return `${mins}:${secs.toString().padStart(2, '0')}`;
+        }
+        return entry.score;
+    };
+
+    const getScoreLabel = () => {
+        return mode === 'competitive' ? 'TIME' : 'PTS';
     };
 
     return (
@@ -190,7 +203,7 @@ const LeaderboardWidget: React.FC = () => {
                                 </div>
                                 <div className="flex flex-col items-end shrink-0 ml-1">
                                     <span className="text-[#57a863] text-[10px] font-bold shadow-black drop-shadow-md">
-                                        {entry.score} PTS
+                                        {formatScore(entry)} {getScoreLabel()}
                                     </span>
                                 </div>
                             </div>
@@ -215,6 +228,28 @@ const LeaderboardWidget: React.FC = () => {
         </div>
     );
 };
+
+// --- Exit Confirmation ---
+interface ExitConfirmProps {
+    onConfirm: () => void;
+    onCancel: () => void;
+}
+
+export const ExitConfirmScreen: React.FC<ExitConfirmProps> = ({ onConfirm, onCancel }) => (
+    <div className="absolute top-0 left-0 w-full h-full bg-black/80 flex items-center justify-center z-[200] animate-fade-in">
+        <div className="bg-[#111] border-4 border-[#ff2a2a] p-8 flex flex-col items-center max-w-md text-center shadow-[0_0_30px_rgba(255,0,0,0.3)]">
+            <h2 className="text-2xl text-[#ff2a2a] mb-4">WARNING CHEF!</h2>
+            <p className="text-sm leading-6 mb-6">
+                You are about to abandon the kitchen during a ranked service.<br/><br/>
+                <span className="text-[#f4b400]">Your score/time will not be recorded.</span>
+            </p>
+            <div className="flex gap-4">
+                <Button onClick={onConfirm} variant="secondary">Leave Kitchen</Button>
+                <Button onClick={onCancel} variant="primary">Keep Cooking</Button>
+            </div>
+        </div>
+    </div>
+);
 
 // --- Username Setup ---
 interface UsernameScreenProps {
@@ -269,7 +304,7 @@ export const ModeSelectScreen: React.FC<ModeSelectProps> = ({ onCompetitive, onU
                 <div className="text-4xl mb-4">🏆</div>
                 <h3 className="text-[#ff2a2a] mb-2 font-bold">COMPETITIVE</h3>
                 <p className="text-[10px] text-center text-[#aaa] leading-4">
-                    Ranked Play.<br/>Lvl 1 - Boss.<br/>Stats Tracked.<br/>AI Scored.
+                    Ranked Play.<br/>Lvl 1 - Boss.<br/>Time Attack.<br/>No AI Score.
                 </p>
             </button>
 
@@ -404,30 +439,6 @@ export const LevelSelectScreen: React.FC<LevelSelectProps> = ({ onSelectLevel, o
   </Overlay>
 );
 
-// --- Infinite Select ---
-interface InfiniteSelectProps {
-    onSelectMode: (isPro: boolean) => void;
-    onBack: () => void;
-    onInfo: (mode: 'normal' | 'pro') => void;
-}
-
-export const InfiniteSelectScreen: React.FC<InfiniteSelectProps> = ({ onSelectMode, onBack, onInfo }) => (
-    <Overlay>
-        <h1 className="text-4xl mb-8 text-[#f4b400]" style={{ textShadow: `4px 4px 0px ${COLORS.accent}` }}>Select Difficulty</h1>
-        <div className="flex flex-col gap-4 mb-6">
-            <div className="flex items-center gap-4">
-                <Button onClick={() => onSelectMode(false)} className="w-[180px]">Normal</Button>
-                <div onClick={() => onInfo('normal')} className="text-xl cursor-pointer bg-[#333] border-2 border-white rounded-full w-10 h-10 flex items-center justify-center hover:bg-[#555] hover:scale-110 transition-all">👁️</div>
-            </div>
-            <div className="flex items-center gap-4">
-                <Button onClick={() => onSelectMode(true)} variant="pro" className="w-[180px]">Pro</Button>
-                <div onClick={() => onInfo('pro')} className="text-xl cursor-pointer bg-[#333] border-2 border-white rounded-full w-10 h-10 flex items-center justify-center hover:bg-[#555] hover:scale-110 transition-all">👁️</div>
-            </div>
-        </div>
-        <button onClick={onBack} className="bg-[#444] text-white text-xs py-2 px-4 border-2 border-white font-['Press_Start_2P'] hover:bg-[#666]">Back</button>
-    </Overlay>
-);
-
 // --- Level Complete ---
 interface LevelCompleteProps {
     levelName: string;
@@ -456,38 +467,53 @@ interface GameOverProps {
     aiTitle?: string;
     aiScore?: number;
     isCalculating?: boolean;
+    isTimeScore?: boolean;
 }
 
-export const GameOverScreen: React.FC<GameOverProps> = ({ score, message, stats, onRestart, aiTitle, aiScore, isCalculating }) => (
-    <Overlay>
-        <h1 className="text-4xl text-[#f4b400] mb-5 shadow-[#e55934]" style={{ textShadow: `4px 4px 0px ${COLORS.accent}` }}>
-            {aiTitle ? "RANKING REPORT" : "Game Over!"}
-        </h1>
-        
-        {isCalculating ? (
-             <div className="flex flex-col items-center mb-6">
-                 <div className="loading-spinner mb-4" />
-                 <p className="animate-pulse">The Judges are deliberating...</p>
-             </div>
-        ) : aiScore !== undefined ? (
-             <div className="bg-[#222] border-4 border-[#fff] p-6 mb-6 flex flex-col items-center animate-pop-in min-w-[300px]">
-                 <p className="text-[#aaa] text-xs mb-2">FINAL SCORE</p>
-                 <p className="text-6xl text-[#57a863] mb-4 font-bold">{aiScore}</p>
-                 <p className="text-xl text-[#f4b400] border-t-2 border-[#555] pt-4 w-full text-center tracking-widest">
-                    "{aiTitle}"
-                 </p>
-             </div>
-        ) : (
-            <>
-                <p className="mb-2">Final Score: <span className="text-[#f4b400]">{score}</span></p>
-                <p className="mb-5 text-center px-4">{message}</p>
-                {stats && <p className="mb-5 text-sm text-[#aaa]">{stats}</p>}
-            </>
-        )}
-        
-        <Button onClick={onRestart}>Home</Button>
-    </Overlay>
-);
+export const GameOverScreen: React.FC<GameOverProps> = ({ score, message, stats, onRestart, aiTitle, aiScore, isCalculating, isTimeScore }) => {
+    
+    const formatTime = (s: number) => {
+        const mins = Math.floor(s / 60);
+        const secs = Math.floor(s % 60);
+        return `${mins}:${secs.toString().padStart(2, '0')}`;
+    };
+
+    return (
+        <Overlay>
+            <h1 className="text-4xl text-[#f4b400] mb-5 shadow-[#e55934]" style={{ textShadow: `4px 4px 0px ${COLORS.accent}` }}>
+                {aiTitle ? "RANKING REPORT" : "Game Over!"}
+            </h1>
+            
+            {isCalculating ? (
+                 <div className="flex flex-col items-center mb-6">
+                     <div className="loading-spinner mb-4" />
+                     <p className="animate-pulse">The Judges are deliberating...</p>
+                 </div>
+            ) : aiScore !== undefined ? (
+                 <div className="bg-[#222] border-4 border-[#fff] p-6 mb-6 flex flex-col items-center animate-pop-in min-w-[300px]">
+                     <p className="text-[#aaa] text-xs mb-2">{isTimeScore ? "TOTAL TIME" : "FINAL SCORE"}</p>
+                     <p className="text-6xl text-[#57a863] mb-4 font-bold">
+                        {isTimeScore ? formatTime(aiScore) : aiScore}
+                     </p>
+                     <p className="text-xl text-[#f4b400] border-t-2 border-[#555] pt-4 w-full text-center tracking-widest">
+                        "{aiTitle}"
+                     </p>
+                 </div>
+            ) : (
+                <>
+                    <p className="mb-2">
+                        {isTimeScore ? "Total Time: " : "Final Score: "} 
+                        <span className="text-[#f4b400]">{isTimeScore ? formatTime(score) : score}</span>
+                    </p>
+                    <p className="mb-5 text-center px-4">{message}</p>
+                    {stats && <p className="mb-5 text-sm text-[#aaa]">{stats}</p>}
+                </>
+            )}
+            
+            <Button onClick={onRestart}>Home</Button>
+        </Overlay>
+    );
+};
 
 // --- Boss Intro ---
 export const BossIntroScreen: React.FC<{ onStart: () => void }> = ({ onStart }) => (
