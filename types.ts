@@ -1,3 +1,4 @@
+
 export type WordType = 'normal' | 'rotten' | 'heart';
 
 export interface WordEntity {
@@ -11,6 +12,8 @@ export interface WordEntity {
 
 export type GameScreen = 
   | 'start' 
+  | 'username-setup'
+  | 'mode-select'
   | 'level-select' 
   | 'infinite-select' 
   | 'playing' 
@@ -22,6 +25,7 @@ export type GameScreen =
   | 'game-over';
 
 export type GameMode = 'standard' | 'infinite' | 'boss' | 'universal' | 'speed-test';
+export type PlayStyle = 'unrated' | 'competitive';
 
 export type StreakState = 'normal' | 'fiesta' | 'spicy';
 
@@ -43,4 +47,22 @@ export interface UniversalConfig {
   wordCount: number;
   maxWordLength: number;
   forcedWordsLeft: number;
+}
+
+export interface SessionStats {
+  mistakes: number;
+  timeTaken: number; // in seconds
+  ingredientsMissed: number; // lives lost basically
+  rottenWordsTyped: number;
+  totalScore: number;
+}
+
+export interface LeaderboardEntry {
+  id: string;
+  uid: string;
+  username: string;
+  score: number; // AI Calculated
+  title: string; // AI Given title
+  stats: SessionStats;
+  timestamp: number;
 }

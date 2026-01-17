@@ -1,14 +1,12 @@
+
 import { initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, User } from 'firebase/auth';
-import { getFirestore, doc, setDoc, updateDoc, arrayUnion } from 'firebase/firestore';
+import { getFirestore, doc, setDoc, updateDoc, arrayUnion, getDoc, collection, addDoc, query, orderBy, limit, getDocs, where } from 'firebase/firestore';
+import { LeaderboardEntry, SessionStats } from '../types';
 
 // CONFIGURATION:
-// Try to get variables from both process.env (Webpack/Create-React-App) and import.meta.env (Vite)
-// explicitly to ensure the bundler can replace them.
-
 const getEnv = (key: string) => {
     let val = '';
-    // 1. Try Vite (import.meta.env)
     try {
         // @ts-ignore
         if (import.meta && import.meta.env) {
@@ -19,7 +17,6 @@ const getEnv = (key: string) => {
 
     if (val) return val;
 
-    // 2. Try Node/CRA (process.env)
     try {
         if (process && process.env) {
             val = process.env[`REACT_APP_${key}`] || process.env[key] || process.env[`VITE_${key}`] || '';
@@ -29,7 +26,6 @@ const getEnv = (key: string) => {
     return val;
 };
 
-// Explicitly list keys for bundler find-and-replace optimization
 const rawConfig = {
     apiKey:            getEnv('FIREBASE_API_KEY'),
     authDomain:        getEnv('FIREBASE_AUTH_DOMAIN'),
@@ -64,9 +60,8 @@ export { auth };
 
 export const signInWithGoogle = async () => {
     if (!isInitialized || !auth) {
-        // Allow bypass for testing if no keys (Optional: Remove if strict auth required)
         console.error("Sign In Error: Firebase not configured.");
-        alert("Configuration Error: Firebase API Keys are missing.\n\nPlease check your .env file or Vercel Environment Variables.");
+        alert("Configuration Error: Firebase API Keys are missing.");
         return;
     }
     try {
@@ -80,6 +75,24 @@ export const signInWithGoogle = async () => {
 export const logout = async () => {
     if (!isInitialized || !auth) return;
     await signOut(auth);
+};
+
+// --- User Profile ---
+
+export const getUserProfile = async (uid: string) => {
+    if (!isInitialized || !db) return null;
+    const docRef = doc(db, "users", uid);
+    const docSnap = await getDoc(docRef);
+    if (docSnap.exists()) {
+        return docSnap.data();
+    }
+    return null;
+};
+
+export const saveUsername = async (uid: string, username: string) => {
+    if (!isInitialized || !db) return;
+    const userRef = doc(db, "users", uid);
+    await setDoc(userRef, { username }, { merge: true });
 };
 
 export const saveGameStats = async (user: User, score: number, mode: string, level: number) => {
@@ -110,10 +123,8 @@ export const saveGameStats = async (user: User, score: number, mode: string, lev
 
 export const saveSpeedTestStats = async (user: User, wpm: number, accuracy: number) => {
     if (!isInitialized || !db || !user) return;
-    
     const userRef = doc(db, "users", user.uid);
     const date = new Date().toISOString();
-
     try {
         await setDoc(userRef, {
             displayName: user.displayName,
@@ -123,13 +134,68 @@ export const saveSpeedTestStats = async (user: User, wpm: number, accuracy: numb
         }, { merge: true });
 
         await updateDoc(userRef, {
-            speedTestHistory: arrayUnion({
-                date,
-                wpm,
-                accuracy
-            })
+            speedTestHistory: arrayUnion({ date, wpm, accuracy })
+        });
+    } catch (e) {}
+};
+
+// --- Leaderboard ---
+
+export const saveCompetitiveScore = async (user: User, username: string, score: number, title: string, stats: SessionStats) => {
+    if (!isInitialized || !db) return;
+    try {
+        await addDoc(collection(db, "leaderboard"), {
+            uid: user.uid,
+            username: username,
+            score: score,
+            title: title,
+            stats: stats,
+            timestamp: Date.now(),
+            mode: 'competitive'
         });
     } catch (e) {
-        // Silent fail
+        console.error("Error saving score", e);
+    }
+};
+
+export const getLeaderboard = async (): Promise<LeaderboardEntry[]> => {
+    if (!isInitialized || !db) return [];
+    try {
+        // Fetch top 50 raw scores
+        const q = query(
+            collection(db, "leaderboard"), 
+            where("mode", "==", "competitive"),
+            orderBy("score", "desc"), 
+            limit(50)
+        );
+        const querySnapshot = await getDocs(q);
+        const entries: LeaderboardEntry[] = [];
+        const userEntryCounts: Record<string, number> = {};
+
+        querySnapshot.forEach((doc) => {
+            const data = doc.data();
+            const uid = data.uid;
+            
+            // Limit to 3 entries per user
+            if (!userEntryCounts[uid]) userEntryCounts[uid] = 0;
+            if (userEntryCounts[uid] < 3) {
+                userEntryCounts[uid]++;
+                entries.push({
+                    id: doc.id,
+                    uid: data.uid,
+                    username: data.username,
+                    score: data.score,
+                    title: data.title,
+                    stats: data.stats,
+                    timestamp: data.timestamp
+                });
+            }
+        });
+
+        // Return top 10 after filtering
+        return entries.slice(0, 10);
+    } catch (e) {
+        console.error("Error fetching leaderboard", e);
+        return [];
     }
 };

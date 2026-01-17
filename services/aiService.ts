@@ -1,14 +1,14 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
+
+import { GoogleGenerativeAI, SchemaType } from "@google/generative-ai";
 import { SPEED_TEST_TEXTS } from '../constants';
+import { SessionStats } from '../types';
 
 class AIService {
   private genAI: GoogleGenerativeAI;
-  // Using gemini-1.5-flash which is standard for this SDK version
   private modelId = 'gemini-1.5-flash'; 
 
   constructor() {
-    // API Key must be obtained exclusively from process.env.API_KEY
-    // @ts-ignore - process.env is polyfilled in vite config
+    // @ts-ignore
     this.genAI = new GoogleGenerativeAI(process.env.API_KEY as string);
   }
 
@@ -36,6 +36,54 @@ class AIService {
       if (accuracy < 90) return "Watch your accuracy, Chef!";
       if (wpm > 60) return "You are a speed demon in the kitchen!";
       return "Keep practicing to become a Master Chef.";
+    }
+  }
+
+  async generateCompetitiveScore(stats: SessionStats): Promise<{ score: number, title: string }> {
+    try {
+        const model = this.genAI.getGenerativeModel({ 
+            model: this.modelId,
+            generationConfig: {
+                responseMimeType: "application/json",
+            }
+        });
+        
+        const prompt = `
+            You are the Head Judge of the Culinary Olympics. A player has completed a series of 6 intense cooking levels.
+            Evaluate their performance based on these statistics and assign a Score (0 to 10000) and a Rank Title.
+
+            Stats:
+            - Mistakes (Typos): ${stats.mistakes} (Lower is better)
+            - Total Time Taken: ${stats.timeTaken} seconds (Lower is better)
+            - Ingredients Dropped / Lives Lost: ${stats.ingredientsMissed} (Lower is better)
+            - Rotten Ingredients Typed (Bad): ${stats.rottenWordsTyped} (Lower is better)
+            - Raw Game Score: ${stats.totalScore} (Higher is better)
+
+            Scoring Logic:
+            - Heavily penalize 'Rotten Ingredients Typed' and 'Ingredients Dropped'.
+            - Reward speed (Time Taken) and low Mistakes.
+            - Raw Game Score is a baseline, but you must normalize it into a competitive 0-10000 scale.
+            
+            Return JSON format: { "score": number, "title": string }
+            Example Titles: "Sous Chef", "Line Cook", "Executive Chef", "Taco Legend", "Kitchen Disaster".
+        `;
+
+        const result = await model.generateContent(prompt);
+        const response = await result.response;
+        const text = response.text();
+        const json = JSON.parse(text);
+        
+        return {
+            score: json.score || 0,
+            title: json.title || "Kitchen Porter"
+        };
+
+    } catch (error) {
+        console.error("AI Score Generation failed", error);
+        // Fallback calculation
+        let score = Math.max(0, stats.totalScore - (stats.mistakes * 50) - (stats.timeTaken * 2) - (stats.ingredientsMissed * 200));
+        score = Math.min(10000, score);
+        return { score, title: "Line Cook (Offline)" };
     }
   }
 

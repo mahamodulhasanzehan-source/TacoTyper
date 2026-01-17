@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { 
   COLORS, 
@@ -19,11 +20,13 @@ import {
   WordType, 
   StreakState, 
   InfiniteConfig, 
-  UniversalConfig 
+  UniversalConfig,
+  PlayStyle,
+  SessionStats
 } from '../types';
 import { audioService } from '../services/audioService';
 import { aiService } from '../services/aiService';
-import { saveGameStats, saveSpeedTestStats } from '../services/firebase';
+import { saveGameStats, saveSpeedTestStats, getUserProfile, saveUsername, saveCompetitiveScore } from '../services/firebase';
 import { User } from 'firebase/auth';
 import WordComponent from './WordComponent';
 import TypingSpeedGame from './TypingSpeedGame';
@@ -36,7 +39,9 @@ import {
   BossIntroScreen, 
   PauseScreen,
   InfoModal,
-  SpeedResultScreen
+  SpeedResultScreen,
+  UsernameScreen,
+  ModeSelectScreen
 } from './Overlays';
 
 interface GameProps {
@@ -47,6 +52,8 @@ interface GameProps {
 export default function Game({ user, onLogout }: GameProps) {
   const [screen, setScreen] = useState<GameScreen>('start');
   const [gameMode, setGameMode] = useState<GameMode>('standard');
+  const [playStyle, setPlayStyle] = useState<PlayStyle>('unrated');
+  
   const [level, setLevel] = useState(1);
   const [score, setScore] = useState(0);
   const [lives, setLives] = useState(3);
@@ -58,6 +65,7 @@ export default function Game({ user, onLogout }: GameProps) {
   const [shake, setShake] = useState(false);
   const [showInfoModal, setShowInfoModal] = useState(false);
   const [infoModalText, setInfoModalText] = useState('');
+  const [customUsername, setCustomUsername] = useState<string | null>(null);
   
   // Game Dimensions
   // @ts-ignore
@@ -67,6 +75,11 @@ export default function Game({ user, onLogout }: GameProps) {
   const [speedTestText, setSpeedTestText] = useState('');
   const [speedTestResult, setSpeedTestResult] = useState<{wpm: number, cpm: number, accuracy: number, comment: string} | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
+
+  // Leaderboard Calculation State
+  const [isCalculatingScore, setIsCalculatingScore] = useState(false);
+  const [finalAiScore, setFinalAiScore] = useState<number | undefined>(undefined);
+  const [finalAiTitle, setFinalAiTitle] = useState<string | undefined>(undefined);
 
   // Visual Effects State
   const [popups, setPopups] = useState<Array<{ id: string, x: number, y: number, text: string, color: string }>>([]);
@@ -89,7 +102,16 @@ export default function Game({ user, onLogout }: GameProps) {
     infiniteConfig: { speedMult: 1.0, difficultyIncrease: 1.1, wordsTyped: 0 } as InfiniteConfig,
     universalConfig: { wordCount: 0, maxWordLength: 5, forcedWordsLeft: 0 } as UniversalConfig,
     lastTime: 0,
-    spawnTimer: 0
+    spawnTimer: 0,
+    // Competitive Stats Tracking
+    stats: {
+        mistakes: 0,
+        timeTaken: 0, // start time of level
+        ingredientsMissed: 0,
+        rottenWordsTyped: 0,
+        totalScore: 0
+    } as SessionStats,
+    levelStartTime: 0
   });
 
   // Handle Resize
@@ -107,6 +129,19 @@ export default function Game({ user, onLogout }: GameProps) {
     stateRef.current.gameMode = gameMode;
     stateRef.current.level = level;
   }, [screen, gameMode, level]);
+
+  // Initial User Check
+  useEffect(() => {
+      const checkUser = async () => {
+          const profile = await getUserProfile(user.uid);
+          if (profile && profile.username) {
+              setCustomUsername(profile.username);
+          } else {
+              setScreen('username-setup');
+          }
+      };
+      checkUser();
+  }, [user]);
 
   const requestRef = useRef<number>(0);
 
@@ -265,6 +300,7 @@ export default function Game({ user, onLogout }: GameProps) {
                 state.lives--;
                 state.streak = 0;
                 state.streakState = 'normal';
+                state.stats.ingredientsMissed++; // Track stat
                 addPopup(w.x, height - 50, "MISSED!", COLORS.accent);
                 audioService.playSound('rotten_penalty');
                 livesChanged = true;
@@ -327,7 +363,8 @@ export default function Game({ user, onLogout }: GameProps) {
       setTimeout(() => setShake(false), 500);
   };
 
-  const startGame = (mode: GameMode, startLevel = 1, infiniteMult = 1.0, difficultyInc = 1.1) => {
+  const initGame = (mode: GameMode, startLevel = 1, infiniteMult = 1.0, difficultyInc = 1.1) => {
+    // Basic Reset
     setScore(0);
     setLives(3);
     setStreak(0);
@@ -340,7 +377,11 @@ export default function Game({ user, onLogout }: GameProps) {
     setScreen('playing');
     setPopups([]);
     setSparkles([]);
+    setFinalAiScore(undefined);
+    setFinalAiTitle(undefined);
+    setIsCalculatingScore(false);
 
+    // Ref Reset
     stateRef.current.fallingWords = [];
     stateRef.current.activeWordId = null;
     stateRef.current.score = 0;
@@ -357,8 +398,27 @@ export default function Game({ user, onLogout }: GameProps) {
     stateRef.current.spawnTimer = performance.now();
     stateRef.current.lastTime = performance.now();
     
+    // Configs
     stateRef.current.infiniteConfig = { speedMult: infiniteMult, difficultyIncrease: difficultyInc, wordsTyped: 0 };
     stateRef.current.universalConfig = { wordCount: 0, maxWordLength: 5, forcedWordsLeft: 0 };
+
+    // Stats Reset if starting fresh
+    if (startLevel === 1) {
+        stateRef.current.stats = {
+            mistakes: 0,
+            timeTaken: 0,
+            ingredientsMissed: 0,
+            rottenWordsTyped: 0,
+            totalScore: 0
+        };
+    }
+    stateRef.current.levelStartTime = Date.now();
+  };
+
+  const handleUsernameSubmit = async (name: string) => {
+      setCustomUsername(name);
+      await saveUsername(user.uid, name);
+      setScreen('start');
   };
 
   const startSpeedTest = async () => {
@@ -374,41 +434,105 @@ export default function Game({ user, onLogout }: GameProps) {
   // @ts-ignore
   const finishSpeedTest = async (wpm: number, cpm: number, accuracy: number) => {
       setScreen('speed-test-result');
-      // Show analyzing state
       setSpeedTestResult({ wpm, cpm, accuracy, comment: "Chef is analyzing..." });
-
       const comment = await aiService.generateSpeedComment(wpm, cpm, accuracy);
       setSpeedTestResult({ wpm, cpm, accuracy, comment });
-
-      if (user) {
-          saveSpeedTestStats(user, wpm, accuracy);
-      }
+      if (user) saveSpeedTestStats(user, wpm, accuracy);
   };
 
   const gameOver = (reason: string) => {
     setScreen('game-over');
     setInfoModalText(reason);
-    if (user) {
+    if (user && playStyle === 'unrated') {
         saveGameStats(user, stateRef.current.score, stateRef.current.gameMode, stateRef.current.level);
     }
   };
 
-  const victory = () => {
+  const victory = async () => {
     setScreen('game-over');
-    setScore(stateRef.current.score);
-    setInfoModalText("You survived the social hour and became the Master Chef!"); 
-    if (user) {
-        saveGameStats(user, stateRef.current.score, 'boss', 6);
+    const state = stateRef.current;
+    
+    // Update final stats for last level
+    const levelTime = (Date.now() - state.levelStartTime) / 1000;
+    state.stats.timeTaken += levelTime;
+    state.stats.totalScore = state.score;
+
+    if (playStyle === 'competitive') {
+        setInfoModalText("Master Chef Status Achieved!");
+        setIsCalculatingScore(true);
+        
+        // AI Calculation
+        const { score, title } = await aiService.generateCompetitiveScore(state.stats);
+        
+        setFinalAiScore(score);
+        setFinalAiTitle(title);
+        setIsCalculatingScore(false);
+
+        if (user && customUsername) {
+            await saveCompetitiveScore(user, customUsername, score, title, state.stats);
+        }
+    } else {
+        setInfoModalText("You survived the social hour and became the Master Chef!"); 
+        if (user) {
+            saveGameStats(user, state.score, 'boss', 6);
+        }
     }
   };
 
   const completeLevel = () => {
       const state = stateRef.current;
+      
+      // Update Stats
+      const levelTime = (Date.now() - state.levelStartTime) / 1000;
+      state.stats.timeTaken += levelTime;
+      
       state.score += 100 * state.level;
       setScore(state.score);
       
-      if (state.level < 5) setScreen('level-complete');
-      else setScreen('boss-intro');
+      if (playStyle === 'competitive') {
+          // Sequential Flow
+          if (state.level < 5) {
+             const nextLevel = state.level + 1;
+             // Brief pause before next level auto-start or just continue?
+             // To simplify, we keep the Level Complete screen but change button to "Next" which loads directly
+             setScreen('level-complete');
+          } else {
+              setScreen('boss-intro');
+          }
+      } else {
+          // Unrated Flow
+          if (state.level < 5) setScreen('level-complete');
+          else setScreen('boss-intro');
+      }
+  };
+
+  const nextLevelAction = () => {
+      if (playStyle === 'competitive') {
+          // Carry over score, lives, streaks
+          const nextLvl = stateRef.current.level + 1;
+          
+          setLevel(nextLvl);
+          setFallingWords([]);
+          setActiveWordId(null);
+          setIngredientsCollected([]);
+          setScreen('playing');
+          
+          // Reset Level Specifics
+          stateRef.current.fallingWords = [];
+          stateRef.current.activeWordId = null;
+          stateRef.current.level = nextLvl;
+          stateRef.current.screen = 'playing';
+          stateRef.current.wordsSpawnedThisLevel = 0;
+          stateRef.current.ingredientsCount = 0;
+          stateRef.current.recentWords = [];
+          stateRef.current.spawnTimer = performance.now();
+          stateRef.current.lastTime = performance.now();
+          stateRef.current.levelStartTime = Date.now();
+      } else {
+          // Basic flow
+          setLevel(l => l + 1);
+          initGame('standard', level + 1);
+      }
   };
 
   const processWordCompletion = (word: WordEntity) => {
@@ -424,6 +548,7 @@ export default function Game({ user, onLogout }: GameProps) {
     if (word.type === 'rotten') {
         state.score = Math.max(0, state.score - 50);
         setScore(state.score);
+        state.stats.rottenWordsTyped++; // Track
         triggerShake();
         audioService.playSound('rotten_penalty');
         resetCombo();
@@ -463,7 +588,7 @@ export default function Game({ user, onLogout }: GameProps) {
             if (w) {
                 state.fallingWords.push(w);
                 setFallingWords([...state.fallingWords]);
-                state.spawnTimer = performance.now(); // Reset on manual spawn
+                state.spawnTimer = performance.now();
             }
         } else if (state.gameMode === 'universal') {
             state.universalConfig.wordCount++;
@@ -481,7 +606,7 @@ export default function Game({ user, onLogout }: GameProps) {
                 state.spawnTimer = performance.now();
             }
         } else if (state.gameMode === 'standard' || state.gameMode === 'boss') {
-             state.spawnTimer = 0; // Force quicker check in loop
+             state.spawnTimer = 0; 
         }
 
         state.consecutivePerfectWords++;
@@ -491,8 +616,7 @@ export default function Game({ user, onLogout }: GameProps) {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-        // Allow speed test mode to handle its own keys if active
-        if (screen === 'speed-test-playing') return;
+        if (screen === 'speed-test-playing' || screen === 'username-setup') return;
 
         if (e.key === 'Escape') {
             if (screen === 'playing') setScreen('paused');
@@ -555,6 +679,7 @@ export default function Game({ user, onLogout }: GameProps) {
                 resetCombo();
                 audioService.playSound('rotten_penalty');
                 triggerShake();
+                state.stats.mistakes++; // Track Mistake
             }
         }
     };
@@ -710,15 +835,39 @@ export default function Game({ user, onLogout }: GameProps) {
                 />
             ))}
 
+            {screen === 'username-setup' && (
+                <UsernameScreen onSubmit={handleUsernameSubmit} />
+            )}
+
             {screen === 'start' && (
                 <StartScreen 
-                    onStart={() => setScreen('level-select')}
-                    onInfinite={() => setScreen('infinite-select')}
-                    onUniversal={() => startGame('universal')}
+                    onStart={() => setScreen('mode-select')}
+                    onInfinite={() => {
+                        setPlayStyle('unrated');
+                        setScreen('infinite-select');
+                    }}
+                    onUniversal={() => {
+                        setPlayStyle('unrated');
+                        initGame('universal');
+                    }}
                     onSpeedTest={startSpeedTest}
                     user={user}
                     onLogout={onLogout}
                     isGenerating={isGenerating}
+                />
+            )}
+
+            {screen === 'mode-select' && (
+                <ModeSelectScreen 
+                    onCompetitive={() => {
+                        setPlayStyle('competitive');
+                        initGame('standard', 1);
+                    }}
+                    onUnrated={() => {
+                        setPlayStyle('unrated');
+                        setScreen('level-select');
+                    }}
+                    onBack={() => setScreen('start')}
                 />
             )}
             
@@ -742,14 +891,14 @@ export default function Game({ user, onLogout }: GameProps) {
 
             {screen === 'level-select' && (
                 <LevelSelectScreen 
-                    onSelectLevel={(lvl) => startGame('standard', lvl)}
+                    onSelectLevel={(lvl) => initGame('standard', lvl)}
                     onBack={() => setScreen('start')}
                 />
             )}
 
             {screen === 'infinite-select' && (
                 <InfiniteSelectScreen 
-                    onSelectMode={(isPro) => startGame('infinite', 1, 1.0, isPro ? 1.5 : 1.1)}
+                    onSelectMode={(isPro) => initGame('infinite', 1, 1.0, isPro ? 1.5 : 1.1)}
                     onBack={() => setScreen('start')}
                     onInfo={(mode) => {
                         setInfoModalText(mode === 'normal' ? "NORMAL: Every 5 words, speed increases by 10%." : "PRO: Every 5 words, speed increases by 50%. Chaos.");
@@ -761,17 +910,14 @@ export default function Game({ user, onLogout }: GameProps) {
             {screen === 'level-complete' && (
                 <LevelCompleteScreen 
                     levelName={level < 5 ? LEVEL_CONFIGS[level].name : "Kabsa Feast"}
-                    message={level === 3 ? "Delicious noodles! Next up: Prep." : "Level Complete!"}
+                    message={playStyle === 'competitive' ? "Ready for next service?" : (level === 3 ? "Delicious noodles! Next up: Prep." : "Level Complete!")}
                     emoji={LEVEL_CONFIGS[level]?.emoji}
-                    onNext={() => {
-                        setLevel(l => l + 1);
-                        startGame('standard', level + 1);
-                    }}
+                    onNext={nextLevelAction}
                 />
             )}
 
             {screen === 'boss-intro' && (
-                <BossIntroScreen onStart={() => startGame('boss', 6)} />
+                <BossIntroScreen onStart={() => initGame('boss', 6)} />
             )}
 
             {screen === 'game-over' && (
@@ -780,6 +926,9 @@ export default function Game({ user, onLogout }: GameProps) {
                     message={infoModalText}
                     stats={gameMode === 'infinite' ? `Reached Speed: ${stateRef.current.infiniteConfig.speedMult.toFixed(1)}x` : undefined}
                     onRestart={() => setScreen('start')}
+                    aiTitle={finalAiTitle}
+                    aiScore={finalAiScore}
+                    isCalculating={isCalculatingScore}
                 />
             )}
 

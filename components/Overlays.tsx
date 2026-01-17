@@ -1,6 +1,9 @@
-import React from 'react';
+
+import React, { useEffect, useState } from 'react';
 import { COLORS } from '../constants';
 import { User } from 'firebase/auth';
+import { LeaderboardEntry } from '../types';
+import { getLeaderboard } from '../services/firebase';
 
 interface OverlayProps {
   children: React.ReactNode;
@@ -36,6 +39,121 @@ export const Button: React.FC<React.ButtonHTMLAttributes<HTMLButtonElement> & { 
   );
 };
 
+// --- Leaderboard Component ---
+const LeaderboardWidget: React.FC = () => {
+    const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetch = async () => {
+            const data = await getLeaderboard();
+            setEntries(data);
+            setLoading(false);
+        };
+        fetch();
+    }, []);
+
+    return (
+        <div className="absolute top-20 right-10 w-[300px] h-[70vh] border-4 border-white bg-[#111] p-4 flex flex-col z-[110] shadow-[0_0_20px_rgba(255,255,255,0.2)]">
+            <h3 className="text-[#f4b400] text-center mb-4 text-sm uppercase border-b-2 border-[#333] pb-2">Top Chefs</h3>
+            {loading ? (
+                <div className="text-center text-xs text-[#aaa] mt-10">Loading Rankings...</div>
+            ) : entries.length === 0 ? (
+                <div className="text-center text-xs text-[#aaa] mt-10">No scores yet. Be the first!</div>
+            ) : (
+                <div className="flex-1 overflow-y-auto pr-2 space-y-3">
+                    {entries.map((entry, idx) => (
+                        <div key={entry.id} className="flex flex-col border-b border-[#333] pb-2">
+                            <div className="flex justify-between items-center mb-1">
+                                <span className={`text-xs ${idx === 0 ? 'text-[#f4b400]' : idx === 1 ? 'text-[#ccc]' : idx === 2 ? 'text-[#cd7f32]' : 'text-white'}`}>
+                                    #{idx + 1} {entry.username}
+                                </span>
+                                <span className="text-[#57a863] text-xs">{entry.score}</span>
+                            </div>
+                            <span className="text-[10px] text-[#888] italic">{entry.title}</span>
+                        </div>
+                    ))}
+                </div>
+            )}
+            <div className="mt-2 pt-2 border-t-2 border-[#333] text-[9px] text-[#555] text-center">
+                Competitive Mode Only
+            </div>
+        </div>
+    );
+};
+
+// --- Username Setup ---
+interface UsernameScreenProps {
+    onSubmit: (name: string) => void;
+}
+
+export const UsernameScreen: React.FC<UsernameScreenProps> = ({ onSubmit }) => {
+    const [name, setName] = useState('');
+
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (name.trim().length > 0 && name.trim().length <= 12) {
+            onSubmit(name.trim());
+        }
+    };
+
+    return (
+        <Overlay>
+            <h2 className="text-2xl mb-6 text-[#f4b400]">Identify Yourself</h2>
+            <form onSubmit={handleSubmit} className="flex flex-col items-center gap-4">
+                <input 
+                    type="text" 
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="Enter Chef Name"
+                    maxLength={12}
+                    className="bg-[#111] border-4 border-white p-4 text-center text-white font-['Press_Start_2P'] outline-none focus:border-[#f4b400] w-[300px]"
+                    autoFocus
+                />
+                <div className="text-[10px] text-[#aaa] mb-4">Max 12 chars</div>
+                <Button type="submit">Confirm Identity</Button>
+            </form>
+        </Overlay>
+    );
+};
+
+// --- Mode Select ---
+interface ModeSelectProps {
+    onCompetitive: () => void;
+    onUnrated: () => void;
+    onBack: () => void;
+}
+
+export const ModeSelectScreen: React.FC<ModeSelectProps> = ({ onCompetitive, onUnrated, onBack }) => (
+    <Overlay>
+        <h2 className="text-3xl text-[#f4b400] mb-8" style={{ textShadow: `3px 3px 0px ${COLORS.accent}` }}>Select Kitchen</h2>
+        <div className="flex gap-8 mb-8">
+            <button 
+                onClick={onCompetitive}
+                className="w-[220px] h-[180px] bg-[#222] border-4 border-[#ff2a2a] hover:bg-[#330000] hover:scale-105 transition-all flex flex-col items-center justify-center p-4"
+            >
+                <div className="text-4xl mb-4">🏆</div>
+                <h3 className="text-[#ff2a2a] mb-2 font-bold">COMPETITIVE</h3>
+                <p className="text-[10px] text-center text-[#aaa] leading-4">
+                    Ranked Play.<br/>Lvl 1 - Boss.<br/>Stats Tracked.<br/>AI Scored.
+                </p>
+            </button>
+
+            <button 
+                onClick={onUnrated}
+                className="w-[220px] h-[180px] bg-[#222] border-4 border-[#57a863] hover:bg-[#002200] hover:scale-105 transition-all flex flex-col items-center justify-center p-4"
+            >
+                <div className="text-4xl mb-4">🍳</div>
+                <h3 className="text-[#57a863] mb-2 font-bold">UNRATED</h3>
+                <p className="text-[10px] text-center text-[#aaa] leading-4">
+                    Casual Play.<br/>Select Level.<br/>Practice.<br/>No Pressure.
+                </p>
+            </button>
+        </div>
+        <button onClick={onBack} className="bg-[#444] text-white text-xs py-2 px-4 border-2 border-white font-['Press_Start_2P'] hover:bg-[#666]">Back</button>
+    </Overlay>
+);
+
 // --- Start Screen ---
 interface StartScreenProps {
   onStart: () => void;
@@ -49,7 +167,9 @@ interface StartScreenProps {
 
 export const StartScreen: React.FC<StartScreenProps> = ({ onStart, onInfinite, onUniversal, onSpeedTest, user, onLogout, isGenerating }) => (
   <Overlay>
-     <div className="absolute top-8 right-8 flex gap-4">
+     <LeaderboardWidget />
+     
+     <div className="absolute top-8 left-8 flex gap-4 z-[120]">
         {user && (
             <div className="flex items-center gap-4">
                 <span className="text-[#aaa] text-xs">Chef {user.displayName}</span>
@@ -61,31 +181,37 @@ export const StartScreen: React.FC<StartScreenProps> = ({ onStart, onInfinite, o
                 </button>
             </div>
         )}
-        <button 
-            onClick={onUniversal}
-            className="bg-transparent border-2 border-[#4facfe] text-[#4facfe] text-xs py-2 px-4 cursor-pointer font-['Press_Start_2P'] hover:bg-[#4facfe] hover:text-white hover:scale-105"
-        >
-            Universal
-        </button>
      </div>
-     <h1 className="text-5xl mb-5 text-[#f4b400] shadow-[#e55934]" style={{ textShadow: `4px 4px 0px ${COLORS.accent}` }}>
-       Typing for Tacos
-     </h1>
-     <p className="text-base max-w-[80%] leading-normal mb-5 text-center">
-       Type ingredients to cook!<br />Don't drop the food!
-     </p>
-     <div className="flex gap-5 mt-5 justify-center items-center">
-       <Button onClick={onStart}>Start Cooking</Button>
-       <Button onClick={onInfinite} variant="secondary">Infinite Cook</Button>
-     </div>
-     <div className="mt-6">
-        <button 
-            onClick={onSpeedTest}
-            disabled={isGenerating}
-            className={`bg-transparent border-2 border-[#ff2a2a] text-[#ff2a2a] text-sm py-3 px-6 cursor-pointer font-['Press_Start_2P'] hover:bg-[#ff2a2a] hover:text-white hover:scale-105 transition-all ${isGenerating ? 'opacity-50 cursor-wait' : ''}`}
-        >
-            {isGenerating ? 'Prepping Kitchen...' : 'Typing Speed'}
-        </button>
+     
+     <div className="flex flex-col items-center mr-[300px]"> {/* Shift left to make room for leaderboard */}
+        <h1 className="text-5xl mb-5 text-[#f4b400] shadow-[#e55934]" style={{ textShadow: `4px 4px 0px ${COLORS.accent}` }}>
+            Typing for Tacos
+        </h1>
+        <p className="text-base max-w-[500px] leading-normal mb-8 text-center">
+            Type ingredients to cook!<br />Don't drop the food!
+        </p>
+        <div className="flex flex-col gap-5 items-center">
+            <div className="flex gap-5">
+                <Button onClick={onStart}>Start Cooking</Button>
+                <Button onClick={onInfinite} variant="secondary">Infinite</Button>
+            </div>
+            
+            <div className="flex gap-4">
+                 <button 
+                    onClick={onUniversal}
+                    className="bg-transparent border-2 border-[#4facfe] text-[#4facfe] text-xs py-2 px-4 cursor-pointer font-['Press_Start_2P'] hover:bg-[#4facfe] hover:text-white hover:scale-105"
+                >
+                    Universal
+                </button>
+                <button 
+                    onClick={onSpeedTest}
+                    disabled={isGenerating}
+                    className={`bg-transparent border-2 border-[#ff2a2a] text-[#ff2a2a] text-xs py-2 px-4 cursor-pointer font-['Press_Start_2P'] hover:bg-[#ff2a2a] hover:text-white hover:scale-105 transition-all ${isGenerating ? 'opacity-50 cursor-wait' : ''}`}
+                >
+                    {isGenerating ? '...' : 'Speed Test'}
+                </button>
+            </div>
+        </div>
      </div>
   </Overlay>
 );
@@ -171,14 +297,36 @@ interface GameOverProps {
     message: string;
     stats?: string;
     onRestart: () => void;
+    aiTitle?: string;
+    aiScore?: number;
+    isCalculating?: boolean;
 }
 
-export const GameOverScreen: React.FC<GameOverProps> = ({ score, message, stats, onRestart }) => (
+export const GameOverScreen: React.FC<GameOverProps> = ({ score, message, stats, onRestart, aiTitle, aiScore, isCalculating }) => (
     <Overlay>
-        <h1 className="text-4xl text-[#f4b400] mb-5 shadow-[#e55934]" style={{ textShadow: `4px 4px 0px ${COLORS.accent}` }}>Game Over!</h1>
-        <p className="mb-2">Final Score: <span className="text-[#f4b400]">{score}</span></p>
-        <p className="mb-5 text-center px-4">{message}</p>
-        {stats && <p className="mb-5 text-sm text-[#aaa]">{stats}</p>}
+        <h1 className="text-4xl text-[#f4b400] mb-5 shadow-[#e55934]" style={{ textShadow: `4px 4px 0px ${COLORS.accent}` }}>
+            {aiTitle ? "RANKING REPORT" : "Game Over!"}
+        </h1>
+        
+        {isCalculating ? (
+             <div className="flex flex-col items-center mb-6">
+                 <div className="loading-spinner mb-4" />
+                 <p className="animate-pulse">The Judges are deliberating...</p>
+             </div>
+        ) : aiScore !== undefined ? (
+             <div className="bg-[#222] border-4 border-[#fff] p-6 mb-6 flex flex-col items-center animate-pop-in">
+                 <p className="text-[#aaa] text-xs mb-2">COMPETITIVE SCORE</p>
+                 <p className="text-5xl text-[#57a863] mb-4">{aiScore}</p>
+                 <p className="text-xl text-[#f4b400] border-t-2 border-[#555] pt-2 w-full text-center">"{aiTitle}"</p>
+             </div>
+        ) : (
+            <>
+                <p className="mb-2">Final Score: <span className="text-[#f4b400]">{score}</span></p>
+                <p className="mb-5 text-center px-4">{message}</p>
+                {stats && <p className="mb-5 text-sm text-[#aaa]">{stats}</p>}
+            </>
+        )}
+        
         <Button onClick={onRestart}>Home</Button>
     </Overlay>
 );
