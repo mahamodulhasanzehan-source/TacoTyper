@@ -141,7 +141,15 @@ export const saveSpeedTestStats = async (user: User, wpm: number, accuracy: numb
 
 // --- Leaderboard ---
 
-export const saveLeaderboardScore = async (user: User, username: string, score: number, title: string, stats: SessionStats, mode: string) => {
+export const saveLeaderboardScore = async (
+    user: User, 
+    username: string, 
+    score: number, 
+    title: string, 
+    stats: SessionStats, 
+    mode: string,
+    extra?: { accuracy?: number }
+) => {
     if (!isInitialized || !db) return;
     try {
         // Calculate Sort Value
@@ -152,7 +160,7 @@ export const saveLeaderboardScore = async (user: User, username: string, score: 
             sortValue = (stats.levelReached * 1000000) + score;
         }
 
-        await addDoc(collection(db, "leaderboard"), {
+        const data: any = {
             uid: user.uid,
             username: username,
             score: score,
@@ -162,7 +170,13 @@ export const saveLeaderboardScore = async (user: User, username: string, score: 
             mode: mode,
             levelReached: stats.levelReached,
             sortValue: sortValue
-        });
+        };
+
+        if (extra?.accuracy !== undefined) {
+            data.accuracy = extra.accuracy;
+        }
+
+        await addDoc(collection(db, "leaderboard"), data);
     } catch (e) {
         console.error("Error saving score", e);
     }
@@ -172,7 +186,6 @@ export const getLeaderboard = async (mode: string = 'competitive'): Promise<Lead
     if (!isInitialized || !db) return [];
     try {
         // Fetch top 50 scores for the mode, ordered by sortValue
-        // If sortValue doesn't exist (old data), it might be excluded, which is fine for new feature.
         const q = query(
             collection(db, "leaderboard"), 
             where("mode", "==", mode),
@@ -201,7 +214,8 @@ export const getLeaderboard = async (mode: string = 'competitive'): Promise<Lead
                     stats: data.stats,
                     timestamp: data.timestamp,
                     levelReached: data.levelReached || 1,
-                    mode: data.mode
+                    mode: data.mode,
+                    accuracy: data.accuracy
                 });
             }
         });
@@ -210,11 +224,6 @@ export const getLeaderboard = async (mode: string = 'competitive'): Promise<Lead
         return entries.slice(0, 10);
     } catch (e) {
         console.error("Error fetching leaderboard", e);
-        // Fallback for missing index error during dev: try sorting by score if sortValue fails
-        // But for this request, assuming we can't create indexes, we might need client-side sort if this fails.
-        // However, standard orderBy usually requires an index for compound queries. 
-        // Single field orderBy ("sortValue") with where ("mode") requires an index.
-        // If it fails, return empty array.
         return [];
     }
 };

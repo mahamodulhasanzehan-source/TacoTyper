@@ -48,7 +48,7 @@ const LeaderboardWidget: React.FC = () => {
     useEffect(() => {
         setLoading(true);
         const fetch = async () => {
-            const data = await getLeaderboard(mode);
+            const data = await getLeaderboard(mode === 'speed' ? 'speed-test' : mode);
             setEntries(data);
             setLoading(false);
         };
@@ -78,6 +78,12 @@ const LeaderboardWidget: React.FC = () => {
                 >
                     Univ
                 </button>
+                <button 
+                    onClick={() => setMode('speed')} 
+                    className={`text-[9px] px-2 py-1 border ${mode === 'speed' ? 'bg-[#ff2a2a] border-white' : 'bg-transparent border-[#444] text-[#888]'}`}
+                >
+                    Speed
+                </button>
             </div>
 
             {loading ? (
@@ -96,9 +102,14 @@ const LeaderboardWidget: React.FC = () => {
                                     <span className="text-xs text-white">{entry.username}</span>
                                 </div>
                                 <div className="flex flex-col items-end">
-                                    <span className="text-[#57a863] text-xs">{entry.score}</span>
+                                    <span className="text-[#57a863] text-xs">
+                                        {entry.score} {mode === 'speed' ? 'WPM' : ''}
+                                    </span>
                                     {mode === 'competitive' && (
                                         <span className="text-[9px] text-[#aaa]">Lvl {entry.levelReached}</span>
+                                    )}
+                                    {mode === 'speed' && entry.accuracy && (
+                                        <span className="text-[9px] text-[#aaa]">{entry.accuracy}% Acc</span>
                                     )}
                                 </div>
                             </div>

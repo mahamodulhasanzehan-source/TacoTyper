@@ -439,9 +439,24 @@ export default function Game({ user, onLogout }: GameProps) {
   const finishSpeedTest = async (wpm: number, cpm: number, accuracy: number) => {
       setScreen('speed-test-result');
       setSpeedTestResult({ wpm, cpm, accuracy, comment: "Chef is analyzing..." });
+      
       const comment = await aiService.generateSpeedComment(wpm, cpm, accuracy);
       setSpeedTestResult({ wpm, cpm, accuracy, comment });
-      if (user) saveSpeedTestStats(user, wpm, accuracy);
+      
+      if (user) {
+          saveSpeedTestStats(user, wpm, accuracy);
+          if (customUsername) {
+              await saveLeaderboardScore(
+                  user, 
+                  customUsername, 
+                  wpm, 
+                  comment, 
+                  stateRef.current.stats, 
+                  'speed-test', 
+                  { accuracy }
+              );
+          }
+      }
   };
 
   const gameOver = async (reason: string) => {

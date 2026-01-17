@@ -68,4 +68,5 @@ export interface LeaderboardEntry {
   timestamp: number;
   levelReached: number;
   mode: string;
+  accuracy?: number; // Specific for Speed Test
 }
