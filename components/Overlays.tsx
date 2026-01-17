@@ -43,14 +43,13 @@ interface StartScreenProps {
   onUniversal: () => void;
   onSpeedTest: () => void;
   user?: User | null;
-  onLogin?: () => void;
   onLogout?: () => void;
 }
 
-export const StartScreen: React.FC<StartScreenProps> = ({ onStart, onInfinite, onUniversal, onSpeedTest, user, onLogin, onLogout }) => (
+export const StartScreen: React.FC<StartScreenProps> = ({ onStart, onInfinite, onUniversal, onSpeedTest, user, onLogout }) => (
   <Overlay>
      <div className="absolute top-8 right-8 flex gap-4">
-        {user ? (
+        {user && (
             <div className="flex items-center gap-4">
                 <span className="text-[#aaa] text-xs">Chef {user.displayName}</span>
                 <button 
@@ -60,13 +59,6 @@ export const StartScreen: React.FC<StartScreenProps> = ({ onStart, onInfinite, o
                     Log Out
                 </button>
             </div>
-        ) : (
-            <button 
-                onClick={onLogin}
-                className="bg-transparent border-2 border-[#57a863] text-[#57a863] text-xs py-2 px-4 cursor-pointer font-['Press_Start_2P'] hover:bg-[#57a863] hover:text-white hover:scale-105"
-            >
-                Sign In
-            </button>
         )}
         <button 
             onClick={onUniversal}

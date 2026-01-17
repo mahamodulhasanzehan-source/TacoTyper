@@ -21,6 +21,17 @@ export const BOSS_WORD_COUNT = 15;
 export const COMBO_FIESTA = 21;
 export const COMBO_SPICY = 42;
 
+// Speed Test Content (Replaces AI)
+export const SPEED_TEST_TEXTS = [
+  "The history of the taco is the history of Mexico itself. It is believed to date back to the 18th century, referring to the little charges of gunpowder used in silver mines. These 'tacos' were pieces of paper wrapped around gunpowder and inserted into holes in the rock face. Today, it represents a culinary explosion of flavor known worldwide.",
+  
+  "Saffron is the most expensive spice in the world, derived from the flower of Crocus sativus. It takes about 75,000 flowers to produce just one pound of saffron spice. The labor-intensive harvesting process must be done by hand, making it more valuable by weight than gold in some markets.",
+  
+  "The art of fermentation is one of humanity's oldest cooking techniques. From Korean kimchi to German sauerkraut and sourdough bread, cultures around the globe discovered that beneficial bacteria could not only preserve food but unlock complex, savory flavors that fresh ingredients simply cannot match.",
+  
+  "Chocolate was once consumed as a bitter, spicy drink by the Maya and Aztecs. It wasn't until it reached Europe and was mixed with sugar and milk that it became the sweet treat we know today. In ancient times, cacao beans were so valuable they were actually used as a currency for trade."
+];
+
 // Levels
 export const LEVEL_CONFIGS: Record<number, LevelConfig> = {
   1: {

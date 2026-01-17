@@ -11,7 +11,7 @@ interface TypingSpeedGameProps {
 const TypingSpeedGame: React.FC<TypingSpeedGameProps> = ({ targetText, onComplete, onQuit }) => {
   const [inputText, setInputText] = useState('');
   const [startTime, setStartTime] = useState<number | null>(null);
-  const [timeLeft, setTimeLeft] = useState(30);
+  const [timeLeft, setTimeLeft] = useState(60); // Changed to 60s for longer texts
   const [wpm, setWpm] = useState(0);
   const [cpm, setCpm] = useState(0);
   
@@ -75,8 +75,8 @@ const TypingSpeedGame: React.FC<TypingSpeedGameProps> = ({ targetText, onComplet
           durationSecs = 1;
       }
 
-      // If timeUp, force it to exactly 30s (or whatever the limit was)
-      if (timeUp) durationSecs = 30;
+      // If timeUp, force it to exactly 60s (or whatever the limit was)
+      if (timeUp) durationSecs = 60;
       
       // Ensure no division by zero or extremely small numbers
       durationSecs = Math.max(durationSecs, 0.1);
