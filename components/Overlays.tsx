@@ -256,34 +256,63 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
                         />
                     </label>
 
-                    {/* Reduced Motion */}
-                    <label className="flex items-center justify-between cursor-pointer group">
-                        <span className="text-sm">Reduced Motion (No Shake)</span>
-                        <input 
-                            type="checkbox" 
-                            checked={settings.reducedMotion}
-                            onChange={(e) => updateSettings({ reducedMotion: e.target.checked })}
-                            className="w-5 h-5 accent-[#e55934]"
-                        />
-                    </label>
-
                     {/* Theme */}
-                    <div className="flex items-center justify-between">
-                         <span className="text-sm">Visual Theme</span>
-                         <div className="flex gap-2">
-                             <button 
-                                onClick={() => updateSettings({ theme: 'taco' })}
-                                className={`text-[10px] px-3 py-2 border ${settings.theme === 'taco' ? 'bg-[#e55934] border-white' : 'bg-transparent border-[#555] text-[#888]'}`}
-                             >
-                                TACO
-                             </button>
-                             <button 
-                                onClick={() => updateSettings({ theme: 'dark' })}
-                                className={`text-[10px] px-3 py-2 border ${settings.theme === 'dark' ? 'bg-white text-black border-white' : 'bg-transparent border-[#555] text-[#888]'}`}
-                             >
-                                DARK
-                             </button>
+                    <div className="flex flex-col gap-3">
+                         <div className="flex items-center justify-between">
+                             <span className="text-sm">Visual Theme</span>
+                             <div className="flex gap-2">
+                                 <button 
+                                    onClick={() => updateSettings({ theme: 'taco' })}
+                                    className={`text-[10px] px-3 py-2 border transition-all ${settings.theme === 'taco' ? 'bg-[#e55934] border-white' : 'bg-transparent border-[#555] text-[#888]'}`}
+                                 >
+                                    TACO
+                                 </button>
+                                 <button 
+                                    onClick={() => updateSettings({ theme: 'dark' })}
+                                    className={`text-[10px] px-3 py-2 border transition-all ${settings.theme === 'dark' ? 'bg-white text-black border-white' : 'bg-transparent border-[#555] text-[#888]'}`}
+                                 >
+                                    DARK
+                                 </button>
+                                 <button 
+                                    onClick={() => updateSettings({ theme: 'neon', neonColor: settings.neonColor || '#00ff00' })}
+                                    className={`text-[10px] px-3 py-2 border transition-all font-bold ${settings.theme === 'neon' ? 'border-white text-black' : 'bg-transparent border-[#555] text-[#888]'}`}
+                                    style={{ 
+                                        backgroundColor: settings.theme === 'neon' ? settings.neonColor : 'transparent',
+                                        boxShadow: settings.theme === 'neon' ? `0 0 10px ${settings.neonColor}` : 'none'
+                                    }}
+                                 >
+                                    NEON
+                                 </button>
+                             </div>
                          </div>
+                         
+                         {/* Neon Sub-options */}
+                         {settings.theme === 'neon' && (
+                             <div className="flex items-center justify-end gap-2 animate-fade-in p-2 border border-[#333] bg-[#000]">
+                                 <span className="text-[10px] text-[#aaa] mr-2">COLOR:</span>
+                                 <button 
+                                    onClick={() => updateSettings({ neonColor: '#00ffff' })}
+                                    className="w-6 h-6 border border-white"
+                                    style={{ backgroundColor: '#00ffff', boxShadow: settings.neonColor === '#00ffff' ? '0 0 8px #00ffff' : 'none' }}
+                                    title="Blue"
+                                 />
+                                 <button 
+                                    onClick={() => updateSettings({ neonColor: '#00ff00' })}
+                                    className="w-6 h-6 border border-white"
+                                    style={{ backgroundColor: '#00ff00', boxShadow: settings.neonColor === '#00ff00' ? '0 0 8px #00ff00' : 'none' }}
+                                    title="Green"
+                                 />
+                                 <div className="relative group">
+                                     <input 
+                                        type="color" 
+                                        value={settings.neonColor}
+                                        onChange={(e) => updateSettings({ neonColor: e.target.value })}
+                                        className="w-6 h-6 p-0 border border-white cursor-pointer"
+                                        title="Custom"
+                                     />
+                                 </div>
+                             </div>
+                         )}
                     </div>
                 </div>
 

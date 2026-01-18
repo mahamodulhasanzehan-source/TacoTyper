@@ -390,9 +390,7 @@ export default function Game({ user, onLogout }: GameProps) {
   }, [update]);
 
   const triggerShake = () => {
-      // Reduced Motion Setting
-      if (settings.reducedMotion) return;
-
+      // Reduced motion setting removed, default to allow shake or manage elsewhere if needed
       setShake(true);
       setTimeout(() => setShake(false), 500);
   };
@@ -864,11 +862,9 @@ export default function Game({ user, onLogout }: GameProps) {
           animation = shake ? 'shake 0.5s' : 'spicyPulse 2s infinite';
       }
 
-      // Respect Reduced Motion for Container Animation
-      if (settings.reducedMotion) {
-          animation = 'none';
-      }
-
+      // Reduced motion logic was removed from settings context
+      // If we wanted to keep it internally we could default it, but the UI option is gone.
+      
       return {
           width: '100%',
           height: '100%',

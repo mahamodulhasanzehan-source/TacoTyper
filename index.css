@@ -35,20 +35,46 @@ body.theme-dark {
   --color-combo-purple: #cccccc;
   --color-universal: #dddddd;
   
-  --color-rotten: #ffffff; /* We will use text-decoration or shape to distinguish */
+  --color-rotten: #ffffff;
   --color-heart: #888888;
   
-  /* Force grayscale to catch images/emojis */
   filter: grayscale(100%) contrast(1.2);
 }
 
-body.reduce-motion *, 
-body.reduce-motion *::before, 
-body.reduce-motion *::after {
-  animation-duration: 0s !important;
-  animation-iteration-count: 1 !important;
-  transition-duration: 0s !important;
-  scroll-behavior: auto !important;
+body.theme-neon {
+  /* Neon Theme Override */
+  --color-background: #050505;
+  /* The Main border uses the dynamic neon color */
+  --color-game-border: var(--color-neon);
+  --color-text: #ffffff;
+  /* Accents use the neon color */
+  --color-accent: var(--color-neon);
+  --color-correct: var(--color-neon);
+  --color-warn: #ffffff;
+  --color-secondary-btn: #111111;
+  --color-pro: var(--color-neon);
+  --color-combo-red: #ffffff;
+  --color-combo-purple: #ffffff;
+  --color-universal: var(--color-neon);
+  
+  --color-rotten: #ff0000;
+  --color-heart: #ffffff;
+}
+
+/* 
+   CRITICAL: Override all white borders in Neon mode to use the neon color.
+   Using !important to override Tailwind utility classes.
+*/
+body.theme-neon .border-white {
+  border-color: var(--color-neon) !important;
+  box-shadow: 0 0 8px var(--color-neon), inset 0 0 5px var(--color-neon) !important;
+  text-shadow: 0 0 5px var(--color-neon);
+}
+
+/* Also make inputs and specific elements glow */
+body.theme-neon input, 
+body.theme-neon button {
+  text-shadow: none; /* Reset text shadow for readability inside buttons/inputs unless hovered */
 }
 
 /* Custom Scrollbar for the terminal/text feel */
