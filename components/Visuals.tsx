@@ -11,6 +11,7 @@ interface RandomRevealProps {
   distance?: number;
   delay?: number;
   style?: React.CSSProperties;
+  [key: string]: any; // Allow arbitrary props like onClick
 }
 
 export const RandomReveal: React.FC<RandomRevealProps> = ({ 
@@ -21,7 +22,8 @@ export const RandomReveal: React.FC<RandomRevealProps> = ({
   durationMax = 3,
   distance = 800, 
   delay = 0,
-  style: propStyle = {}
+  style: propStyle = {},
+  ...props // Capture remaining props
 }) => {
   const { settings } = useSettings();
   const [animStyle, setAnimStyle] = useState<React.CSSProperties>({
@@ -69,7 +71,7 @@ export const RandomReveal: React.FC<RandomRevealProps> = ({
       mergedStyle.display = 'inline-block';
   }
 
-  return <Component className={className} style={mergedStyle}>{children}</Component>;
+  return <Component className={className} style={mergedStyle} {...props}>{children}</Component>;
 };
 
 export const RandomText: React.FC<{ text: string; className?: string; distance?: number }> = ({ text, className = '', distance = 500 }) => {

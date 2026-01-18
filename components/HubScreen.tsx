@@ -3,21 +3,6 @@ import React, { useState } from 'react';
 import ChatWidget from './ChatWidget';
 import { User } from '../services/firebase';
 import { RandomReveal, RandomText } from './Visuals';
-import { FriendsModal } from './Overlays';
-import SettingsModal from './SettingsModal'; // Assuming SettingsModal is exported or needs extraction. 
-// Wait, SettingsModal was internal to Overlays in previous code. I'll need to handle that. 
-// For now, I'll assume I can pass the open state or reuse logic.
-// Actually, I will define a local wrapper or import if I extract it. 
-// Since Overlays.tsx has it, I will use a simple placeholder or ask to extract. 
-// But per instructions, I should implement fully. I will check Overlays.tsx imports.
-// To avoid circular dependency or import issues with internal components, I'll rely on props/callbacks 
-// or implement a simple version if necessary, but ideally I should have extracted it.
-// Given constraints, I will assume SettingsModal logic is available or I will copy the minimal needed here 
-// or better yet, I will make HubScreen accept a "showSettings" prop or similar.
-
-// NOTE: Since SettingsModal was defined inside Overlays.tsx and not exported, 
-// I will need to make it exported in Overlays.tsx (which I will do in the next change).
-
 import { SettingsModal as SharedSettingsModal } from './Overlays'; 
 
 interface HubScreenProps {
