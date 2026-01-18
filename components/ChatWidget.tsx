@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { User, fetchActiveUsers, sendMessage, subscribeToChat, subscribeToGlobalUnread, saveLastChatPartner, getUserProfile, deleteMessage, uploadVoiceMessage } from '../services/firebase';
+import { User, fetchActiveUsers, sendMessage, subscribeToChat, subscribeToGlobalUnread, saveLastChatPartner, getUserProfile, deleteMessage } from '../services/firebase';
 import { COLORS } from '../constants';
 import { RandomReveal } from './Visuals';
 
@@ -21,15 +21,8 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ user, className = '' }) => {
     const [hasUnreadAlert, setHasUnreadAlert] = useState(false);
     const [contextMenu, setContextMenu] = useState<{x: number, y: number, msgId: string} | null>(null);
     
-    // Voice Recording State
-    const [isRecording, setIsRecording] = useState(false);
-    const [recordedBlob, setRecordedBlob] = useState<Blob | null>(null);
-    const [isUploadingVoice, setIsUploadingVoice] = useState(false);
-    
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const textAreaRef = useRef<HTMLTextAreaElement>(null);
-    const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-    const chunksRef = useRef<Blob[]>([]);
 
     // Initial Load: Get Friends & Last Partner
     useEffect(() => {
@@ -89,26 +82,10 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ user, className = '' }) => {
     }, []);
 
     const handleSend = async () => {
-        if (!activeFriend) return;
-        
-        // Handle Voice Send
-        if (recordedBlob) {
-            setIsUploadingVoice(true);
-            const chatId = user.uid < activeFriend.uid ? `${user.uid}_${activeFriend.uid}` : `${activeFriend.uid}_${user.uid}`;
-            const url = await uploadVoiceMessage(recordedBlob, chatId);
-            if (url) {
-                await sendMessage(user.uid, activeFriend.uid, '', 'audio', url);
-            }
-            setRecordedBlob(null);
-            setIsUploadingVoice(false);
-            return;
-        }
-
-        // Handle Text Send
-        if (!inputText.trim()) return;
+        if (!inputText.trim() || !activeFriend) return;
         const text = inputText;
         setInputText(''); // Optimistic clear
-        await sendMessage(user.uid, activeFriend.uid, text, 'text');
+        await sendMessage(user.uid, activeFriend.uid, text);
         // Force focus back to textarea
         if(textAreaRef.current) textAreaRef.current.focus();
     };
@@ -120,69 +97,9 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ user, className = '' }) => {
         }
     };
 
-    const startRecording = async () => {
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            const recorder = new MediaRecorder(stream);
-            mediaRecorderRef.current = recorder;
-            chunksRef.current = [];
-
-            recorder.ondataavailable = (e) => {
-                chunksRef.current.push(e.data);
-            };
-
-            recorder.onstop = () => {
-                const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
-                setRecordedBlob(blob);
-                chunksRef.current = [];
-            };
-
-            recorder.start();
-            setIsRecording(true);
-            setRecordedBlob(null); // Clear previous if any, though UI prevents this usually
-        } catch (err) {
-            console.error("Error accessing microphone:", err);
-            alert("Could not access microphone.");
-        }
-    };
-
-    const stopRecording = () => {
-        if (mediaRecorderRef.current && isRecording) {
-            mediaRecorderRef.current.stop();
-            mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop());
-            setIsRecording(false);
-        }
-    };
-
-    const cancelRecording = () => {
-        if (mediaRecorderRef.current) {
-            mediaRecorderRef.current.stop();
-            mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop());
-        }
-        setIsRecording(false);
-        setRecordedBlob(null);
-        chunksRef.current = [];
-    };
-
-    const handleMicClick = () => {
-        if (isRecording) {
-            stopRecording();
-        } else {
-            // If we have a recorded blob, clicking mic again doesn't do anything (waiting for send or trash)
-            // But per WhatsApp UX, usually you cancel or send. 
-            // The prompt says "After recording if you click on the microphone icon again it will stop recording"
-            // So this handles the stop. 
-            if (!recordedBlob) {
-                startRecording();
-            }
-        }
-    };
-
     const handleFriendSelect = async (friend: any) => {
         setActiveFriend(friend);
         setView('chat');
-        setRecordedBlob(null); // Reset recording state on chat switch
-        setIsRecording(false);
         await saveLastChatPartner(user.uid, friend.uid);
     };
 
@@ -196,6 +113,9 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ user, className = '' }) => {
 
     const handleContextMenu = (e: React.MouseEvent, msgId: string) => {
         e.preventDefault();
+        // Don't stop propagation here to ensure the global click listener (for closing) works if needed, 
+        // but since we are setting state immediately, we just need to avoid default browser menu.
+        // We set the coordinates relative to the viewport.
         setContextMenu({ x: e.clientX, y: e.clientY, msgId });
     };
 
@@ -262,14 +182,7 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ user, className = '' }) => {
                                             onContextMenu={(e) => handleContextMenu(e, msg.id)}
                                         >
                                             <div className={`max-w-[85%] p-2 text-[10px] break-words border whitespace-pre-wrap ${isMe ? 'bg-[#222] border-[#f4b400] text-white' : 'bg-[#111] border-[#555] text-[#ccc]'} hover:brightness-110 cursor-context-menu`}>
-                                                {msg.audioURL ? (
-                                                    <div className="flex items-center gap-2">
-                                                        <span className="text-xl">🎤</span>
-                                                        <audio controls src={msg.audioURL} className="h-6 w-32 md:w-48" />
-                                                    </div>
-                                                ) : (
-                                                    msg.text
-                                                )}
+                                                {msg.text}
                                             </div>
                                         </div>
                                     );
@@ -279,61 +192,23 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ user, className = '' }) => {
                         )}
                         
                         {/* Input Bar */}
-                        <div className="p-2 bg-[#161616] border-t border-[#333] flex gap-2 items-end relative">
-                            {/* Text Input (Disabled or Hidden when recording/has recording) */}
-                            {!recordedBlob ? (
-                                <textarea
-                                    ref={textAreaRef} 
-                                    value={inputText}
-                                    onChange={(e) => setInputText(e.target.value)}
-                                    onKeyDown={handleKeyDown}
-                                    placeholder={isRecording ? "Recording..." : (activeFriend ? "Type..." : "Select friend")}
-                                    disabled={!activeFriend || isRecording}
-                                    rows={1}
-                                    className={`flex-1 bg-black border border-[#555] p-1 text-[10px] text-white outline-none focus:border-[#f4b400] resize-none overflow-hidden min-h-[24px] ${isRecording ? 'opacity-50' : ''}`}
-                                />
-                            ) : (
-                                <div className="flex-1 flex items-center bg-[#222] border border-[#555] p-1 h-[26px] text-[10px] text-[#aaa]">
-                                    🎤 Audio recorded. Ready to send.
-                                    <button onClick={() => setRecordedBlob(null)} className="ml-auto text-red-500 hover:text-white px-2">Cancel</button>
-                                </div>
-                            )}
-
-                            {/* Mic Button Wrapper */}
-                            <div className="relative">
-                                {/* Trash Can - Appears when recording */}
-                                {isRecording && (
-                                    <button 
-                                        onClick={cancelRecording}
-                                        className="absolute bottom-full left-0 mb-2 w-full flex justify-center animate-pop-in z-20"
-                                    >
-                                        <div className="bg-[#333] border border-white rounded-full p-1.5 hover:bg-red-900 transition-colors shadow-lg">
-                                            🗑️
-                                        </div>
-                                    </button>
-                                )}
-                                
-                                <button
-                                    onClick={handleMicClick}
-                                    disabled={!activeFriend}
-                                    className={`h-full min-h-[26px] px-2 flex items-center justify-center border border-[#555] transition-all duration-200
-                                        ${isRecording 
-                                            ? 'bg-red-600 border-white text-white rounded-full w-[28px] h-[28px] animate-pulse' 
-                                            : 'bg-[#333] hover:bg-[#555] text-white'
-                                        }`}
-                                    title={isRecording ? "Stop Recording" : "Record Voice Message"}
-                                >
-                                    {isRecording ? '' : '🎤'}
-                                </button>
-                            </div>
-
-                            {/* Send Button */}
+                        <div className="p-2 bg-[#161616] border-t border-[#333] flex gap-2 items-end">
+                            <textarea
+                                ref={textAreaRef} 
+                                value={inputText}
+                                onChange={(e) => setInputText(e.target.value)}
+                                onKeyDown={handleKeyDown}
+                                placeholder={activeFriend ? "Type..." : "Select friend"}
+                                disabled={!activeFriend}
+                                rows={1}
+                                className="flex-1 bg-black border border-[#555] p-1 text-[10px] text-white outline-none focus:border-[#f4b400] resize-none overflow-hidden min-h-[24px]"
+                            />
                             <button 
                                 onClick={handleSend}
-                                disabled={!activeFriend || (isRecording && !recordedBlob)}
-                                className={`text-[10px] bg-[#333] px-2 py-1 h-full text-white border border-[#555] hover:bg-[#555] ${isUploadingVoice ? 'cursor-wait opacity-50' : ''}`}
+                                disabled={!activeFriend}
+                                className="text-[10px] bg-[#333] px-2 py-1 h-full text-white border border-[#555] hover:bg-[#555]"
                             >
-                                {isUploadingVoice ? '...' : '>'}
+                                &gt;
                             </button>
                         </div>
                     </div>

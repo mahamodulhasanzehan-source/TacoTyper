@@ -26,12 +26,6 @@ import {
   limit,
   onSnapshot
 } from 'firebase/firestore';
-import { 
-  getStorage, 
-  ref, 
-  uploadBytes, 
-  getDownloadURL 
-} from 'firebase/storage';
 import { LeaderboardEntry, SessionStats } from '../types';
 
 // --- Configuration ---
@@ -70,25 +64,21 @@ const firebaseConfig = {
 let app;
 let authExport;
 let dbExport;
-let storageExport;
 
 try {
     app = initializeApp(firebaseConfig);
     authExport = getAuth(app);
     dbExport = getFirestore(app);
-    storageExport = getStorage(app);
 } catch (e) {
     console.error("Firebase Initialization Failed:", e);
     // Provide a dummy fallback so imports don't crash the entire bundle execution immediately
     // The app will likely still fail when trying to use auth, but it allows the error UI to potentially render
     authExport = {} as any;
     dbExport = {} as any;
-    storageExport = {} as any;
 }
 
 export const auth = authExport;
 export const db = dbExport;
-export const storage = storageExport;
 
 // --- Types ---
 export type User = FirebaseUser;
@@ -121,7 +111,6 @@ export interface ChatMessage {
     senderId: string;
     receiverId: string;
     text: string;
-    audioURL?: string; // Optional audio URL
     timestamp: any;
     read: boolean;
 }
@@ -480,21 +469,8 @@ export const saveLastChatPartner = async (currentUid: string, partnerUid: string
     await updateDoc(userRef, { lastChatPartner: partnerUid });
 };
 
-export const uploadVoiceMessage = async (blob: Blob, chatId: string): Promise<string | null> => {
-    try {
-        if (!storage) return null;
-        const filename = `voice/${chatId}/${Date.now()}.webm`;
-        const storageRef = ref(storage, filename);
-        const snapshot = await uploadBytes(storageRef, blob);
-        return await getDownloadURL(snapshot.ref);
-    } catch (e) {
-        console.error("Error uploading voice message", e);
-        return null;
-    }
-};
-
-export const sendMessage = async (senderId: string, receiverId: string, content: string, type: 'text' | 'audio' = 'text', audioURL?: string) => {
-    if (!content.trim() && type === 'text') return;
+export const sendMessage = async (senderId: string, receiverId: string, text: string) => {
+    if (!text.trim()) return;
     const chatId = getChatId(senderId, receiverId);
     
     try {
@@ -502,8 +478,7 @@ export const sendMessage = async (senderId: string, receiverId: string, content:
             chatId,
             senderId,
             receiverId,
-            text: type === 'text' ? content.trim() : '🎤 Voice Message',
-            audioURL: type === 'audio' ? audioURL : null,
+            text: text.trim(),
             timestamp: serverTimestamp(),
             read: false
         });

@@ -1,7 +1,5 @@
 {
   "name": "Typing for Tacos",
   "description": "A retro-style typing game where you type ingredients to cook tacos, burgers, and more. Featuring multiple levels, boss battles, and infinite modes.",
-  "requestFramePermissions": [
-    "microphone"
-  ]
+  "requestFramePermissions": []
 }
