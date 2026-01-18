@@ -11,8 +11,8 @@ export default defineConfig(({ mode }) => {
   // This ensures variables defined in Vercel project settings are captured
   const combinedEnv = { ...process.env, ...envFiles };
 
-  // 3. Filter and prepare for injection
-  const processEnvValues: Record<string, string> = {};
+  // 3. Filter and prepare keys for individual definition
+  const defines: Record<string, string> = {};
   
   Object.keys(combinedEnv).forEach(key => {
     // We allow VITE_, FIREBASE_, REACT_APP_, and specific keys like API_KEY
@@ -20,25 +20,22 @@ export default defineConfig(({ mode }) => {
       key.startsWith('VITE_') || 
       key.startsWith('FIREBASE_') || 
       key.startsWith('REACT_APP_') || 
-      key === 'API_KEY' ||
-      key === 'NODE_ENV'
+      key === 'API_KEY'
     ) {
-      // JSON.stringify is crucial to ensure values are treated as strings in the code
-      processEnvValues[key] = JSON.stringify(combinedEnv[key]);
+      // Define specific process.env.KEY replacements
+      // JSON.stringify ensures the value is treated as a string literal in the code
+      defines[`process.env.${key}`] = JSON.stringify(combinedEnv[key]);
     }
   });
 
-  // Default NODE_ENV if missing
-  if (!processEnvValues['NODE_ENV']) {
-      processEnvValues['NODE_ENV'] = JSON.stringify(mode);
+  // Ensure NODE_ENV is set
+  if (!defines['process.env.NODE_ENV']) {
+      defines['process.env.NODE_ENV'] = JSON.stringify(mode);
   }
 
   return {
     plugins: [react()],
-    define: {
-      // This replaces 'process.env' in the client code with the constructed object literal
-      'process.env': processEnvValues
-    },
+    define: defines,
     server: {
       host: true,
       port: 5173,
