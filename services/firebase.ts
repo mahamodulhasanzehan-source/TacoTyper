@@ -73,7 +73,8 @@ export const onAuthStateChanged = (
 // Helper to get DB
 const getUsersDB = (): Record<string, UserProfile> => {
     try {
-        return JSON.parse(localStorage.getItem(STORAGE_KEY_USERS_DATA) || '{}');
+        const raw = localStorage.getItem(STORAGE_KEY_USERS_DATA);
+        return raw ? JSON.parse(raw) : {};
     } catch { return {}; }
 };
 
@@ -86,7 +87,7 @@ export const signInWithGoogle = async () => {
     await new Promise(resolve => setTimeout(resolve, 800));
     
     // Generate a new mock user
-    const randomId = Math.floor(Math.random() * 1000);
+    const randomId = Math.floor(Math.random() * 10000);
     const mockUser: User = {
         uid: 'user_' + Math.random().toString(36).substr(2, 9),
         displayName: 'Chef ' + randomId, 
@@ -97,11 +98,12 @@ export const signInWithGoogle = async () => {
     };
     
     // Register user in Mock DB
-    // Initialize with EMPTY username to force the "Identify Yourself" screen on first login
+    // CRITICAL: Initialize with EMPTY username to force the "Identify Yourself" screen on first login.
+    // If we used displayName here, the app would skip the setup screen.
     const users = getUsersDB();
     if (!users[mockUser.uid]) {
         users[mockUser.uid] = {
-            username: '', // Empty triggers setup screen
+            username: '', // Empty triggers setup screen in Game.tsx
             friends: [],
             friendRequests: []
         };
@@ -142,6 +144,7 @@ export const getUserProfile = async (uid: string) => {
 
 export const saveUsername = async (uid: string, username: string) => {
     const users = getUsersDB();
+    // Ensure we don't overwrite friends/requests if they exist
     if (!users[uid]) {
         users[uid] = {
             username: username,
@@ -157,6 +160,7 @@ export const saveUsername = async (uid: string, username: string) => {
 // --- Friend System ---
 
 export const searchUsers = async (query: string, currentUid: string): Promise<{uid: string, username: string, isFriend: boolean, hasPending: boolean}[]> => {
+    // Return empty if query is too short
     if (!query || query.trim().length === 0) return [];
     
     const users = getUsersDB();
@@ -167,9 +171,11 @@ export const searchUsers = async (query: string, currentUid: string): Promise<{u
 
     for (const [uid, profile] of Object.entries(users)) {
         if (uid === currentUid) continue; // Don't show self
-        if (!profile.username) continue; // Skip users without a name
         
-        // Match logic: includes search
+        // Skip users without a name or with empty name
+        if (!profile.username || profile.username.trim() === '') continue;
+        
+        // Match logic: includes search (case insensitive)
         if (profile.username.toLowerCase().includes(lowerQuery)) {
             // Check relationship
             const isFriend = currentUser?.friends.includes(uid) || false;
@@ -202,7 +208,7 @@ export const sendFriendRequest = async (fromUid: string, toUid: string) => {
 
     targetUser.friendRequests.push({
         from: fromUid,
-        fromName: senderUser.username,
+        fromName: senderUser.username || 'Unknown Chef',
         status: 'pending',
         timestamp: Date.now()
     });
@@ -241,6 +247,7 @@ export const getFriendRequests = async (uid: string) => {
 
 export const saveGameStats = async (user: User, score: number, mode: string, level: number) => {
     const users = getUsersDB();
+    // Safety check: ensure user exists, but DON'T overwrite existing data like friends
     if (!users[user.uid]) {
          users[user.uid] = { 
              username: user.displayName || 'Chef',
@@ -264,6 +271,7 @@ export const saveGameStats = async (user: User, score: number, mode: string, lev
 
 export const saveSpeedTestStats = async (user: User, wpm: number, accuracy: number) => {
     const users = getUsersDB();
+    // Safety check: ensure user exists, but DON'T overwrite existing data like friends
     if (!users[user.uid]) {
         users[user.uid] = { 
              username: user.displayName || 'Chef',
