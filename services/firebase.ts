@@ -91,6 +91,8 @@ export interface UserProfile {
     gamesHistory?: any[];
     speedTestHistory?: any[];
     maxWPM?: number;
+    displayName?: string;
+    uid?: string;
 }
 
 export interface FriendRequest {
@@ -124,22 +126,29 @@ export const signInWithGoogle = async () => {
         const userRef = doc(db, "users", user.uid);
         const userSnap = await getDoc(userRef);
 
+        const timestamp = serverTimestamp();
+
         if (!userSnap.exists()) {
-            // Create new profile
+            // Create new profile with requested fields
             await setDoc(userRef, {
+                uid: user.uid,               // Saved as requested
+                displayName: user.displayName || '', // Saved as requested
                 username: '', 
                 usernameLower: '',
                 email: user.email,
-                photoURL: user.photoURL,
+                photoURL: user.photoURL,     // Saved as requested
                 friends: [],
-                createdAt: serverTimestamp()
+                createdAt: timestamp,
+                lastLogin: timestamp
             });
         } else {
-            // Update existing login info
+            // Update existing login info and ensure basic info is fresh
             await updateDoc(userRef, {
+                uid: user.uid,
+                displayName: user.displayName || '',
                 email: user.email,
                 photoURL: user.photoURL,
-                lastLogin: serverTimestamp()
+                lastLogin: timestamp
             });
         }
     } catch (error) {
@@ -180,19 +189,60 @@ export const saveUsername = async (uid: string, username: string) => {
 
 // --- Friend System ---
 
+export const fetchActiveUsers = async (currentUid: string): Promise<{uid: string, username: string, isFriend: boolean, hasPending: boolean}[]> => {
+    try {
+        // 1. Get current user's friends to check status
+        const currentUserRef = doc(db, "users", currentUid);
+        const currentUserSnap = await getDoc(currentUserRef);
+        const currentUserData = currentUserSnap.data() as UserProfile;
+        const myFriends = currentUserData?.friends || [];
+
+        // 2. Get last 100 active users (so the list is populated initially)
+        const usersRef = collection(db, "users");
+        // We order by lastLogin to show active people first
+        const q = query(usersRef, orderBy("lastLogin", "desc"), limit(100));
+        
+        const querySnapshot = await getDocs(q);
+        const results: any[] = [];
+
+        querySnapshot.forEach((doc) => {
+            const uid = doc.id;
+            if (uid === currentUid) return; // Skip self
+
+            const data = doc.data();
+            // Use username if set, otherwise fallback to displayName, otherwise "Unknown Chef"
+            const display = data.username || data.displayName || "Unknown Chef";
+
+            if (display) {
+                results.push({
+                    uid,
+                    username: display,
+                    isFriend: myFriends.includes(uid),
+                    hasPending: false 
+                });
+            }
+        });
+
+        return results;
+    } catch (e) {
+        console.error("Error fetching active users", e);
+        return [];
+    }
+};
+
 export const searchUsers = async (searchTerm: string, currentUid: string): Promise<{uid: string, username: string, isFriend: boolean, hasPending: boolean}[]> => {
+    // Deprecated for UI use in favor of client-side filtering of fetchActiveUsers, 
+    // but kept for specific queries if needed later.
     if (!searchTerm || searchTerm.trim().length === 0) return [];
     
     const lowerTerm = searchTerm.toLowerCase().trim();
     const results: any[] = [];
     
-    // 1. Get current user's friends to check status
     const currentUserRef = doc(db, "users", currentUid);
     const currentUserSnap = await getDoc(currentUserRef);
     const currentUserData = currentUserSnap.data() as UserProfile;
     const myFriends = currentUserData?.friends || [];
 
-    // 2. Query Firestore by usernameLower
     const usersRef = collection(db, "users");
     const q = query(
         usersRef, 
@@ -205,20 +255,18 @@ export const searchUsers = async (searchTerm: string, currentUid: string): Promi
 
     for (const doc of querySnapshot.docs) {
         const uid = doc.id;
-        if (uid === currentUid) continue; // Skip self
+        if (uid === currentUid) continue; 
 
         const data = doc.data();
-        if (!data.username) continue; // Skip incomplete profiles
+        if (!data.username) continue; 
 
         const isFriend = myFriends.includes(uid);
         
-        const hasPending = false; 
-
         results.push({
             uid,
             username: data.username,
             isFriend,
-            hasPending
+            hasPending: false
         });
     }
 
@@ -242,7 +290,7 @@ export const sendFriendRequest = async (fromUid: string, toUid: string) => {
 
         await addDoc(requestsRef, {
             from: fromUid,
-            fromName: senderProfile.username,
+            fromName: senderProfile.username || senderProfile.displayName || "Unknown",
             to: toUid,
             status: 'pending',
             timestamp: serverTimestamp()

@@ -1,8 +1,9 @@
+
 import React, { useEffect, useState } from 'react';
 import { COLORS, LEVEL_CONFIGS } from '../constants';
 import type { User, FriendRequest } from '../services/firebase';
 import { LeaderboardEntry } from '../types';
-import { getLeaderboard, deleteLeaderboardEntry, searchUsers, sendFriendRequest, getFriendRequests, acceptFriendRequest } from '../services/firebase';
+import { getLeaderboard, deleteLeaderboardEntry, fetchActiveUsers, sendFriendRequest, getFriendRequests, acceptFriendRequest } from '../services/firebase';
 import { RandomReveal, RandomText } from './Visuals';
 import { useSettings } from '../contexts/SettingsContext';
 
@@ -239,26 +240,25 @@ interface FriendsModalProps {
 
 const FriendsModal: React.FC<FriendsModalProps> = ({ onClose, currentUser }) => {
     const [searchTerm, setSearchTerm] = useState('');
-    const [searchResults, setSearchResults] = useState<{uid: string, username: string, isFriend: boolean, hasPending: boolean}[]>([]);
+    const [allUsers, setAllUsers] = useState<{uid: string, username: string, isFriend: boolean, hasPending: boolean}[]>([]);
     const [requests, setRequests] = useState<FriendRequest[]>([]);
     const [activeTab, setActiveTab] = useState<'search' | 'requests'>('search');
     const [loading, setLoading] = useState(false);
     const [feedback, setFeedback] = useState<string | null>(null);
 
     useEffect(() => {
-        loadRequests();
+        loadData();
     }, []);
 
-    const loadRequests = async () => {
+    const loadData = async () => {
+        setLoading(true);
+        // Load requests
         const reqs = await getFriendRequests(currentUser.uid);
         setRequests(reqs);
-    };
-
-    const handleSearch = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setLoading(true);
-        const results = await searchUsers(searchTerm, currentUser.uid);
-        setSearchResults(results);
+        
+        // Load all active users for the "Browse" list
+        const users = await fetchActiveUsers(currentUser.uid);
+        setAllUsers(users);
         setLoading(false);
     };
 
@@ -267,7 +267,7 @@ const FriendsModal: React.FC<FriendsModalProps> = ({ onClose, currentUser }) => 
         if (success) {
             setFeedback("Request Sent!");
             // Update local state to reflect change immediately
-            setSearchResults(prev => prev.map(u => u.uid === toUid ? {...u, hasPending: true} : u));
+            setAllUsers(prev => prev.map(u => u.uid === toUid ? {...u, hasPending: true} : u));
         } else {
             setFeedback("Failed to send.");
         }
@@ -277,9 +277,16 @@ const FriendsModal: React.FC<FriendsModalProps> = ({ onClose, currentUser }) => 
     const handleAccept = async (fromUid: string) => {
         await acceptFriendRequest(currentUser.uid, fromUid);
         setRequests(prev => prev.filter(r => r.from !== fromUid));
+        // Update user list to show friendship
+        setAllUsers(prev => prev.map(u => u.uid === fromUid ? {...u, isFriend: true} : u));
         setFeedback("New Friend Added!");
         setTimeout(() => setFeedback(null), 2000);
     };
+
+    // Client-side filtering
+    const filteredUsers = allUsers.filter(u => 
+        u.username.toLowerCase().includes(searchTerm.toLowerCase())
+    );
 
     return (
         <div className="absolute top-0 left-0 w-full h-full bg-black/95 z-[250] flex items-center justify-center p-4">
@@ -314,28 +321,26 @@ const FriendsModal: React.FC<FriendsModalProps> = ({ onClose, currentUser }) => 
 
                 {activeTab === 'search' && (
                     <div className="flex flex-col gap-4 flex-1 overflow-hidden">
-                        <form onSubmit={handleSearch} className="flex gap-2">
+                        <div className="flex gap-2">
                             <input 
                                 type="text" 
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
-                                placeholder="Name (e.g. Chef, Momit)"
+                                placeholder="Filter by Name..."
                                 className="bg-[#000] border border-[#555] p-2 flex-1 text-white text-xs outline-none focus:border-[#f4b400]"
+                                autoFocus
                             />
-                            <button type="submit" className="bg-[#333] text-white px-3 border border-[#555] text-xs hover:bg-[#444]">
-                                🔍
-                            </button>
-                        </form>
+                        </div>
                         
                         <div className="flex-1 overflow-y-auto space-y-2 custom-scrollbar">
                             {loading ? (
-                                <div className="text-center text-[#555] text-xs mt-4">Searching database...</div>
-                            ) : searchResults.length === 0 ? (
+                                <div className="text-center text-[#555] text-xs mt-4">Loading Chefs...</div>
+                            ) : filteredUsers.length === 0 ? (
                                 <div className="text-center text-[#555] text-xs mt-4">
-                                    {searchTerm.length > 0 ? "No chefs found." : "Search to find friends."}
+                                    No chefs found matching "{searchTerm}".
                                 </div>
                             ) : (
-                                searchResults.map(user => (
+                                filteredUsers.map(user => (
                                     <div key={user.uid} className="flex justify-between items-center bg-[#1a1a1a] p-3 border border-[#333]">
                                         <div className="flex flex-col">
                                             <span className="text-xs text-white font-bold">{user.username}</span>
