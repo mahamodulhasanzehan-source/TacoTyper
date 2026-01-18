@@ -1,9 +1,9 @@
 
 import React, { useEffect, useState } from 'react';
 import { COLORS } from '../constants';
-import type { User } from '../services/firebase';
+import type { User, FriendRequest } from '../services/firebase';
 import { LeaderboardEntry } from '../types';
-import { getLeaderboard, deleteLeaderboardEntry } from '../services/firebase';
+import { getLeaderboard, deleteLeaderboardEntry, searchUsers, sendFriendRequest, getFriendRequests, acceptFriendRequest } from '../services/firebase';
 import { RandomReveal, RandomText } from './Visuals';
 import { useSettings } from '../contexts/SettingsContext';
 
@@ -218,6 +218,161 @@ const LeaderboardWidget: React.FC = () => {
     );
 };
 
+// --- Friends / User Search Modal ---
+interface FriendsModalProps {
+    onClose: () => void;
+    currentUser: User;
+}
+
+const FriendsModal: React.FC<FriendsModalProps> = ({ onClose, currentUser }) => {
+    const [searchTerm, setSearchTerm] = useState('');
+    const [searchResults, setSearchResults] = useState<{uid: string, username: string, isFriend: boolean, hasPending: boolean}[]>([]);
+    const [requests, setRequests] = useState<FriendRequest[]>([]);
+    const [activeTab, setActiveTab] = useState<'search' | 'requests'>('search');
+    const [loading, setLoading] = useState(false);
+    const [feedback, setFeedback] = useState<string | null>(null);
+
+    useEffect(() => {
+        loadRequests();
+    }, []);
+
+    const loadRequests = async () => {
+        const reqs = await getFriendRequests(currentUser.uid);
+        setRequests(reqs);
+    };
+
+    const handleSearch = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setLoading(true);
+        const results = await searchUsers(searchTerm, currentUser.uid);
+        setSearchResults(results);
+        setLoading(false);
+    };
+
+    const handleSendRequest = async (toUid: string) => {
+        const success = await sendFriendRequest(currentUser.uid, toUid);
+        if (success) {
+            setFeedback("Request Sent!");
+            // Update local state to reflect change immediately
+            setSearchResults(prev => prev.map(u => u.uid === toUid ? {...u, hasPending: true} : u));
+        } else {
+            setFeedback("Failed to send.");
+        }
+        setTimeout(() => setFeedback(null), 2000);
+    };
+
+    const handleAccept = async (fromUid: string) => {
+        await acceptFriendRequest(currentUser.uid, fromUid);
+        setRequests(prev => prev.filter(r => r.from !== fromUid));
+        setFeedback("New Friend Added!");
+        setTimeout(() => setFeedback(null), 2000);
+    };
+
+    return (
+        <div className="absolute top-0 left-0 w-full h-full bg-black/95 z-[250] flex items-center justify-center p-4">
+            <RandomReveal className="bg-[#111] border-4 border-white p-6 md:p-8 w-full max-w-md flex flex-col gap-6 h-[500px]">
+                <div className="flex justify-between items-center mb-2">
+                    <h2 className="text-xl md:text-2xl text-[#f4b400]">Social Kitchen</h2>
+                    <button onClick={onClose} className="text-red-500 text-xl font-bold">X</button>
+                </div>
+
+                {/* Tabs */}
+                <div className="flex gap-4 border-b border-[#333] pb-2">
+                    <button 
+                        onClick={() => setActiveTab('search')}
+                        className={`text-xs pb-1 transition-colors ${activeTab === 'search' ? 'text-white border-b-2 border-white' : 'text-[#555] hover:text-[#888]'}`}
+                    >
+                        FIND CHEFS
+                    </button>
+                    <button 
+                        onClick={() => setActiveTab('requests')}
+                        className={`text-xs pb-1 transition-colors relative ${activeTab === 'requests' ? 'text-white border-b-2 border-white' : 'text-[#555] hover:text-[#888]'}`}
+                    >
+                        REQUESTS
+                        {requests.length > 0 && (
+                            <span className="absolute -top-2 -right-3 bg-red-500 text-white rounded-full w-4 h-4 flex items-center justify-center text-[8px] animate-bounce">
+                                {requests.length}
+                            </span>
+                        )}
+                    </button>
+                </div>
+
+                {feedback && <div className="text-center text-[#57a863] text-xs animate-pulse">{feedback}</div>}
+
+                {activeTab === 'search' && (
+                    <div className="flex flex-col gap-4 flex-1 overflow-hidden">
+                        <form onSubmit={handleSearch} className="flex gap-2">
+                            <input 
+                                type="text" 
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                placeholder="Search Name..."
+                                className="bg-[#000] border border-[#555] p-2 flex-1 text-white text-xs outline-none focus:border-[#f4b400]"
+                            />
+                            <button type="submit" className="bg-[#333] text-white px-3 border border-[#555] text-xs hover:bg-[#444]">
+                                🔍
+                            </button>
+                        </form>
+                        
+                        <div className="flex-1 overflow-y-auto space-y-2 custom-scrollbar">
+                            {loading ? (
+                                <div className="text-center text-[#555] text-xs mt-4">Searching database...</div>
+                            ) : searchResults.length === 0 ? (
+                                <div className="text-center text-[#555] text-xs mt-4">No chefs found.</div>
+                            ) : (
+                                searchResults.map(user => (
+                                    <div key={user.uid} className="flex justify-between items-center bg-[#1a1a1a] p-3 border border-[#333]">
+                                        <div className="flex flex-col">
+                                            <span className="text-xs text-white font-bold">{user.username}</span>
+                                            <span className="text-[8px] text-[#666]">Chef</span>
+                                        </div>
+                                        {user.isFriend ? (
+                                            <span className="text-[#57a863] text-[10px]">Friends ✓</span>
+                                        ) : user.hasPending ? (
+                                            <span className="text-[#aaa] text-[10px]">Pending...</span>
+                                        ) : (
+                                            <button 
+                                                onClick={() => handleSendRequest(user.uid)}
+                                                className="bg-[#222] hover:bg-[#333] border border-[#555] rounded-full w-6 h-6 flex items-center justify-center text-[#f4b400] transition-colors"
+                                                title="Add Friend"
+                                            >
+                                                +
+                                            </button>
+                                        )}
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                    </div>
+                )}
+
+                {activeTab === 'requests' && (
+                    <div className="flex flex-col gap-2 flex-1 overflow-y-auto custom-scrollbar">
+                        {requests.length === 0 ? (
+                            <div className="text-center text-[#555] text-xs mt-10">No pending requests.</div>
+                        ) : (
+                            requests.map((req, idx) => (
+                                <div key={idx} className="flex justify-between items-center bg-[#1a1a1a] p-3 border border-[#333] animate-pop-in">
+                                    <div className="flex flex-col">
+                                        <span className="text-xs text-white font-bold">{req.fromName}</span>
+                                        <span className="text-[8px] text-[#f4b400]">Wants to connect</span>
+                                    </div>
+                                    <button 
+                                        onClick={() => handleAccept(req.from)}
+                                        className="bg-[#57a863] text-black text-[10px] px-3 py-1 border border-white hover:brightness-110"
+                                    >
+                                        ACCEPT
+                                    </button>
+                                </div>
+                            ))
+                        )}
+                    </div>
+                )}
+            </RandomReveal>
+        </div>
+    );
+};
+
 // --- Settings Modal ---
 interface SettingsModalProps {
     onClose: () => void;
@@ -355,11 +510,18 @@ interface StartScreenProps {
   user?: User | null;
   onLogout?: () => void;
   isGenerating?: boolean;
+  username?: string | null;
 }
 
-export const StartScreen: React.FC<StartScreenProps> = ({ onStart, onInfinite, onUniversal, onSpeedTest, user, onLogout, isGenerating }) => {
+export const StartScreen: React.FC<StartScreenProps> = ({ onStart, onInfinite, onUniversal, onSpeedTest, user, onLogout, isGenerating, username }) => {
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showFriends, setShowFriends] = useState(false);
+
+  // Fix display name logic: Use the custom username if available, otherwise fallback.
+  // We avoid "Chef Chef" by only adding "Chef" if the username doesn't look like a title already.
+  // Actually, user wants "put my name as my name". So just display the name.
+  const displayableName = username || user?.displayName || 'Chef';
 
   return (
       <Overlay>
@@ -377,7 +539,7 @@ export const StartScreen: React.FC<StartScreenProps> = ({ onStart, onInfinite, o
             </button>
             {user && (
                 <RandomReveal distance={100} className="flex items-center gap-4">
-                    <span className="text-[#aaa] text-[10px] md:text-xs">Chef {user.displayName}</span>
+                    <span className="text-[#aaa] text-[10px] md:text-xs">{displayableName}</span>
                     {!showLogoutConfirm ? (
                         <button 
                             onClick={() => setShowLogoutConfirm(true)}
@@ -396,7 +558,20 @@ export const StartScreen: React.FC<StartScreenProps> = ({ onStart, onInfinite, o
             )}
          </div>
 
+         {/* Friends Button - Positioned top right but left of leaderboard */}
+         {/* The leaderboard is absolute right-0 and about 160-300px wide. We position this left of it. */}
+         <div className="absolute top-4 right-[170px] md:right-[320px] z-[160]">
+             <button 
+                onClick={() => setShowFriends(true)}
+                className="text-2xl hover:scale-110 transition-transform"
+                title="Social Kitchen"
+             >
+                👥
+             </button>
+         </div>
+
          {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />}
+         {showFriends && user && <FriendsModal onClose={() => setShowFriends(false)} currentUser={user} />}
          
          <div className="flex flex-col items-center md:mr-[300px]">
             <h1 className="text-3xl md:text-5xl mb-5 text-[#f4b400] shadow-[#e55934] text-center leading-normal" style={{ textShadow: `4px 4px 0px ${COLORS.accent}` }}>

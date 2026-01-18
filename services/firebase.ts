@@ -1,3 +1,4 @@
+
 import { LeaderboardEntry, SessionStats } from '../types';
 
 // Re-export User type for other components
@@ -8,6 +9,22 @@ export interface User {
   emailVerified: boolean;
   isAnonymous: boolean;
   photoURL?: string | null;
+}
+
+export interface UserProfile {
+    username: string;
+    friends: string[]; // List of UIDs
+    friendRequests: FriendRequest[];
+    gamesHistory?: any[];
+    speedTestHistory?: any[];
+    maxWPM?: number;
+}
+
+export interface FriendRequest {
+    from: string; // UID
+    fromName: string;
+    status: 'pending' | 'accepted' | 'rejected';
+    timestamp: number;
 }
 
 // Mock Auth State
@@ -53,19 +70,44 @@ export const onAuthStateChanged = (
     return () => window.removeEventListener('storage', listener);
 };
 
+// Helper to get DB
+const getUsersDB = (): Record<string, UserProfile> => {
+    try {
+        return JSON.parse(localStorage.getItem(STORAGE_KEY_USERS_DATA) || '{}');
+    } catch { return {}; }
+};
+
+const saveUsersDB = (data: Record<string, UserProfile>) => {
+    localStorage.setItem(STORAGE_KEY_USERS_DATA, JSON.stringify(data));
+};
+
 export const signInWithGoogle = async () => {
     // Simulate API delay
     await new Promise(resolve => setTimeout(resolve, 800));
     
+    // Generate a new mock user
+    const randomId = Math.floor(Math.random() * 1000);
     const mockUser: User = {
         uid: 'user_' + Math.random().toString(36).substr(2, 9),
-        displayName: 'Chef ' + Math.floor(Math.random() * 1000),
-        email: 'chef@example.com',
+        displayName: 'Chef ' + randomId, 
+        email: `chef${randomId}@example.com`,
         emailVerified: true,
         isAnonymous: false,
         photoURL: null
     };
     
+    // CRITICAL: Register this user in the Mock DB so they are searchable immediately,
+    // even if they haven't set a custom username yet.
+    const users = getUsersDB();
+    if (!users[mockUser.uid]) {
+        users[mockUser.uid] = {
+            username: mockUser.displayName || 'Unknown Chef',
+            friends: [],
+            friendRequests: []
+        };
+        saveUsersDB(users);
+    }
+
     auth.currentUser = mockUser;
     localStorage.setItem(STORAGE_KEY_USER, JSON.stringify(mockUser));
     
@@ -91,16 +133,6 @@ const saveDB = (key: string, data: any) => {
     localStorage.setItem(key, JSON.stringify(data));
 };
 
-const getUsersDB = () => {
-    try {
-        return JSON.parse(localStorage.getItem(STORAGE_KEY_USERS_DATA) || '{}');
-    } catch { return {}; }
-};
-
-const saveUsersDB = (data: any) => {
-    localStorage.setItem(STORAGE_KEY_USERS_DATA, JSON.stringify(data));
-};
-
 // --- User Profile ---
 
 export const getUserProfile = async (uid: string) => {
@@ -110,14 +142,112 @@ export const getUserProfile = async (uid: string) => {
 
 export const saveUsername = async (uid: string, username: string) => {
     const users = getUsersDB();
-    if (!users[uid]) users[uid] = {};
-    users[uid].username = username;
+    if (!users[uid]) {
+        users[uid] = {
+            username: username,
+            friends: [],
+            friendRequests: []
+        };
+    } else {
+        users[uid].username = username;
+    }
     saveUsersDB(users);
 };
 
+// --- Friend System ---
+
+export const searchUsers = async (query: string, currentUid: string): Promise<{uid: string, username: string, isFriend: boolean, hasPending: boolean}[]> => {
+    if (!query || query.length < 2) return [];
+    
+    const users = getUsersDB();
+    const currentUser = users[currentUid];
+    const results = [];
+    
+    const lowerQuery = query.toLowerCase();
+
+    for (const [uid, profile] of Object.entries(users)) {
+        if (uid === currentUid) continue; // Don't show self
+        
+        if (profile.username.toLowerCase().includes(lowerQuery)) {
+            // Check relationship
+            const isFriend = currentUser?.friends.includes(uid) || false;
+            // Check if WE sent THEM a request (optional, requires checking target's requests)
+            // For simplicity, we just return if they are already friends.
+            // Check if THEY sent US a request
+            const hasIncoming = currentUser?.friendRequests.some(r => r.from === uid && r.status === 'pending') || false;
+
+            results.push({
+                uid,
+                username: profile.username,
+                isFriend,
+                hasPending: hasIncoming
+            });
+        }
+    }
+    return results;
+};
+
+export const sendFriendRequest = async (fromUid: string, toUid: string) => {
+    const users = getUsersDB();
+    const targetUser = users[toUid];
+    const senderUser = users[fromUid];
+
+    if (!targetUser || !senderUser) return false;
+
+    // Check if already friends
+    if (targetUser.friends.includes(fromUid)) return false;
+
+    // Check if request already exists
+    if (targetUser.friendRequests.some(r => r.from === fromUid && r.status === 'pending')) return false;
+
+    targetUser.friendRequests.push({
+        from: fromUid,
+        fromName: senderUser.username,
+        status: 'pending',
+        timestamp: Date.now()
+    });
+
+    saveUsersDB(users);
+    return true;
+};
+
+export const acceptFriendRequest = async (currentUid: string, fromUid: string) => {
+    const users = getUsersDB();
+    const currentUser = users[currentUid];
+    const senderUser = users[fromUid];
+
+    if (!currentUser || !senderUser) return false;
+
+    // Add to friends lists
+    if (!currentUser.friends.includes(fromUid)) currentUser.friends.push(fromUid);
+    if (!senderUser.friends.includes(currentUid)) senderUser.friends.push(currentUid);
+
+    // Remove request
+    currentUser.friendRequests = currentUser.friendRequests.filter(r => r.from !== fromUid);
+
+    saveUsersDB(users);
+    return true;
+};
+
+export const getFriendRequests = async (uid: string) => {
+    const users = getUsersDB();
+    const user = users[uid];
+    if (!user) return [];
+    return user.friendRequests.filter(r => r.status === 'pending');
+};
+
+
+// --- Stats & Leaderboard ---
+
 export const saveGameStats = async (user: User, score: number, mode: string, level: number) => {
     const users = getUsersDB();
-    if (!users[user.uid]) users[user.uid] = {};
+    if (!users[user.uid]) {
+         users[user.uid] = { 
+             username: user.displayName || 'Chef',
+             friends: [],
+             friendRequests: []
+         };
+    }
     
     const u = users[user.uid];
     if (!u.gamesHistory) u.gamesHistory = [];
@@ -134,7 +264,13 @@ export const saveGameStats = async (user: User, score: number, mode: string, lev
 
 export const saveSpeedTestStats = async (user: User, wpm: number, accuracy: number) => {
     const users = getUsersDB();
-    if (!users[user.uid]) users[user.uid] = {};
+    if (!users[user.uid]) {
+        users[user.uid] = { 
+             username: user.displayName || 'Chef',
+             friends: [],
+             friendRequests: []
+         };
+    }
     
     const u = users[user.uid];
     if (!u.speedTestHistory) u.speedTestHistory = [];

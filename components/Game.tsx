@@ -990,6 +990,7 @@ export default function Game({ user, onLogout }: GameProps) {
                     user={user}
                     onLogout={onLogout}
                     isGenerating={isGenerating}
+                    username={customUsername}
                 />
             )}
 
