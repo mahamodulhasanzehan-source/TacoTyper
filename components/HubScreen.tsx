@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import ChatWidget from './ChatWidget';
 import { User } from '../services/firebase';
 import { RandomReveal, RandomText } from './Visuals';
-import { SettingsModal as SharedSettingsModal } from './Overlays'; 
+import { SettingsModal as SharedSettingsModal, FriendsModal } from './Overlays'; 
 
 interface HubScreenProps {
     user: User;
@@ -15,6 +15,7 @@ interface HubScreenProps {
 
 const HubScreen: React.FC<HubScreenProps> = ({ user, onLaunchGame, onLogout, username, onUpdateUsername }) => {
     const [showSettings, setShowSettings] = useState(false);
+    const [showFriends, setShowFriends] = useState(false);
     
     // Fallback name
     const displayableName = username || user.displayName || 'Chef';
@@ -33,13 +34,22 @@ const HubScreen: React.FC<HubScreenProps> = ({ user, onLaunchGame, onLogout, use
                         <span className="text-[10px] md:text-xs text-[#aaa]">Welcome back, {displayableName}</span>
                     </RandomReveal>
                     
-                    <button 
-                        onClick={() => setShowSettings(true)}
-                        className="text-2xl hover:rotate-90 transition-transform duration-300"
-                        title="Settings"
-                    >
-                        ⚙️
-                    </button>
+                    <div className="flex gap-4">
+                        <button 
+                            onClick={() => setShowFriends(true)}
+                            className="text-2xl hover:scale-110 transition-transform duration-300"
+                            title="Social Kitchen"
+                        >
+                            👥
+                        </button>
+                        <button 
+                            onClick={() => setShowSettings(true)}
+                            className="text-2xl hover:rotate-90 transition-transform duration-300"
+                            title="Settings"
+                        >
+                            ⚙️
+                        </button>
+                    </div>
                 </div>
 
                 {/* Grid of Apps */}
@@ -57,19 +67,6 @@ const HubScreen: React.FC<HubScreenProps> = ({ user, onLaunchGame, onLogout, use
                         </div>
                     </RandomReveal>
 
-                    {/* Placeholder for future apps to mimic Neal.fun grid */}
-                    <RandomReveal delay={0.2} className="bg-[#050505] border-4 border-[#333] aspect-square flex flex-col items-center justify-center opacity-50 cursor-not-allowed">
-                        <div className="text-4xl mb-4 grayscale">🍔</div>
-                        <h2 className="text-sm text-[#555]">Burger Builder</h2>
-                        <div className="text-[8px] text-[#333] mt-2">Coming Soon</div>
-                    </RandomReveal>
-
-                     <RandomReveal delay={0.3} className="bg-[#050505] border-4 border-[#333] aspect-square flex flex-col items-center justify-center opacity-50 cursor-not-allowed">
-                        <div className="text-4xl mb-4 grayscale">🥗</div>
-                        <h2 className="text-sm text-[#555]">Salad Slicer</h2>
-                        <div className="text-[8px] text-[#333] mt-2">Coming Soon</div>
-                    </RandomReveal>
-
                 </div>
             </div>
 
@@ -78,14 +75,20 @@ const HubScreen: React.FC<HubScreenProps> = ({ user, onLaunchGame, onLogout, use
                 <ChatWidget user={user} className="h-full border-none" />
             </div>
 
-            {/* Mobile Chat Toggle handled within ChatWidget internally if responsive, but for now enforcing desktop sidebar */}
-            
+            {/* Modals */}
             {showSettings && (
                 <SharedSettingsModal 
                     onClose={() => setShowSettings(false)} 
                     username={displayableName} 
                     onUpdateUsername={onUpdateUsername}
-                    onLogout={onLogout} // Passing logout here
+                    onLogout={onLogout} 
+                />
+            )}
+
+            {showFriends && (
+                <FriendsModal 
+                    onClose={() => setShowFriends(false)} 
+                    currentUser={user} 
                 />
             )}
         </div>
