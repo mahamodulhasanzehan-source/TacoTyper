@@ -110,12 +110,17 @@ export const Button: React.FC<React.ButtonHTMLAttributes<HTMLButtonElement> & { 
 // --- Leaderboard Component ---
 interface LeaderboardWidgetProps {
     className?: string;
+    allowedModes?: string[];
+    defaultMode?: string;
 }
 
-const LeaderboardWidget: React.FC<LeaderboardWidgetProps> = ({ className = '' }) => {
+export const LeaderboardWidget: React.FC<LeaderboardWidgetProps> = ({ className = '', allowedModes, defaultMode }) => {
+    const modes = allowedModes || ['competitive', 'infinite', 'universal', 'speed'];
+    const initialMode = defaultMode && modes.includes(defaultMode) ? defaultMode : modes[0];
+
     const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
     const [loading, setLoading] = useState(true);
-    const [mode, setMode] = useState<string>('competitive');
+    const [mode, setMode] = useState<string>(initialMode);
     const { isAdmin } = useSettings();
 
     const fetchLeaderboard = async () => {
@@ -146,40 +151,42 @@ const LeaderboardWidget: React.FC<LeaderboardWidgetProps> = ({ className = '' })
     };
 
     const getScoreLabel = () => {
+        if (mode === 'iq-test') return 'IQ';
         return mode === 'competitive' ? 'TIME' : 'PTS';
     };
 
-    const modes = ['competitive', 'infinite', 'universal', 'speed'];
     const activeIndex = modes.indexOf(mode);
 
     return (
         <RandomReveal distance={1500} className={`flex flex-col bg-[#0a0a0a] border-l-4 border-white p-2 md:p-4 z-[150] shadow-[-10px_0_30px_rgba(0,0,0,0.8)] ${className}`}>
             <h3 className="text-[#f4b400] text-center mb-2 text-[10px] md:text-xs uppercase border-b-2 border-[#333] pb-2 tracking-widest mt-2">
-                {isAdmin ? 'ADMIN MODE' : 'Top Chefs'}
+                {isAdmin ? 'ADMIN MODE' : (mode === 'iq-test' ? 'Top Minds' : 'Top Chefs')}
             </h3>
             
-            {/* Capsule Slider */}
-            <div className="relative flex w-full bg-[#000] border border-[#333] rounded-full p-1 mb-2 select-none shrink-0">
-                {/* Moving Indicator */}
-                <div 
-                    className="absolute top-1 bottom-1 rounded-full bg-white/20 transition-all duration-300 ease-out"
-                    style={{ 
-                        left: `calc(${activeIndex * 25}% + 2px)`,
-                        width: 'calc(25% - 4px)'
-                    }}
-                />
-                
-                {modes.map(m => (
-                    <button
-                        key={m}
-                        onClick={() => setMode(m)}
-                        className={`flex-1 relative z-10 text-[7px] md:text-[8px] py-1.5 text-center transition-colors duration-200 font-bold uppercase tracking-tight
-                            ${mode === m ? 'text-white' : 'text-[#555] hover:text-[#777]'}`}
-                    >
-                        {m === 'competitive' ? 'COMP' : m === 'infinite' ? 'INF' : m === 'universal' ? 'UNIV' : 'SPEED'}
-                    </button>
-                ))}
-            </div>
+            {/* Capsule Slider - Only show if multiple modes allowed */}
+            {modes.length > 1 && (
+                <div className="relative flex w-full bg-[#000] border border-[#333] rounded-full p-1 mb-2 select-none shrink-0 overflow-hidden">
+                    {/* Moving Indicator */}
+                    <div 
+                        className="absolute top-1 bottom-1 rounded-full bg-white/20 transition-all duration-300 ease-out"
+                        style={{ 
+                            left: `calc(${(activeIndex / modes.length) * 100}% + 2px)`,
+                            width: `calc(${100 / modes.length}% - 4px)`
+                        }}
+                    />
+                    
+                    {modes.map(m => (
+                        <button
+                            key={m}
+                            onClick={() => setMode(m)}
+                            className={`flex-1 relative z-10 text-[7px] md:text-[8px] py-1.5 text-center transition-colors duration-200 font-bold uppercase tracking-tight
+                                ${mode === m ? 'text-white' : 'text-[#555] hover:text-[#777]'}`}
+                        >
+                            {m === 'competitive' ? 'COMP' : m === 'infinite' ? 'INF' : m === 'universal' ? 'UNIV' : m === 'speed' ? 'SPD' : 'IQ'}
+                        </button>
+                    ))}
+                </div>
+            )}
 
             {loading ? (
                 <div className="flex-1 flex flex-col items-center justify-center min-h-0">
@@ -188,7 +195,7 @@ const LeaderboardWidget: React.FC<LeaderboardWidgetProps> = ({ className = '' })
                 </div>
             ) : entries.length === 0 ? (
                 <div className="flex-1 flex items-center justify-center text-center text-[10px] text-[#aaa] leading-5 px-4 min-h-0">
-                    Kitchen is empty.<br/>Be the first to cook!
+                    List is empty.<br/>Be the first!
                 </div>
             ) : (
                 <div className="flex-1 overflow-y-auto pr-1 space-y-2 custom-scrollbar min-h-0">

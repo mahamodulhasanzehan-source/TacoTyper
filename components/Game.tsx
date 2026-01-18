@@ -31,6 +31,7 @@ import { isMobileDevice } from '../utils/device';
 import WordComponent from './WordComponent';
 import TypingSpeedGame from './TypingSpeedGame';
 import HubScreen from './HubScreen';
+import IQGame from './IQGame'; // Import IQGame
 import { 
   StartScreen, 
   LevelSelectScreen, 
@@ -53,7 +54,10 @@ interface GameProps {
 }
 
 export default function Game({ user, onLogout }: GameProps) {
-  // Start at Hub
+  // --- Global App State ---
+  const [activeApp, setActiveApp] = useState<'taco' | 'iq'>('taco');
+
+  // --- Taco Game State ---
   const [screen, setScreen] = useState<GameScreen>('hub');
   const [gameMode, setGameMode] = useState<GameMode>('standard');
   const [playStyle, setPlayStyle] = useState<PlayStyle>('unrated');
@@ -271,8 +275,8 @@ export default function Game({ user, onLogout }: GameProps) {
 
   const update = useCallback((time: number) => {
     const state = stateRef.current;
-    // Don't update game logic if in hub or start screen
-    if (state.screen !== 'playing') {
+    // Don't update game logic if in hub or start screen OR if activeApp is IQ
+    if (state.screen !== 'playing' || activeApp !== 'taco') {
         state.lastTime = time;
         requestRef.current = requestAnimationFrame(update);
         return;
@@ -385,7 +389,7 @@ export default function Game({ user, onLogout }: GameProps) {
 
     state.lastTime = time;
     requestRef.current = requestAnimationFrame(update);
-  }, [generateWord, playStyle, sessionHighScore]);
+  }, [generateWord, playStyle, sessionHighScore, activeApp]);
 
   useEffect(() => {
     requestRef.current = requestAnimationFrame(update);
@@ -761,7 +765,7 @@ export default function Game({ user, onLogout }: GameProps) {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-        if (screen === 'speed-test-playing' || screen === 'username-setup' || showExitConfirm || isMobile || screen === 'hub') return;
+        if (activeApp === 'iq' || screen === 'speed-test-playing' || screen === 'username-setup' || showExitConfirm || isMobile || screen === 'hub') return;
         if (e.key === 'Escape') {
             if (screen === 'playing') {
                 if (playStyle === 'competitive') {
@@ -784,7 +788,7 @@ export default function Game({ user, onLogout }: GameProps) {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [screen, showExitConfirm, isMobile]);
+  }, [screen, showExitConfirm, isMobile, activeApp]);
 
   const handleMobileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
       const val = e.target.value;
@@ -901,6 +905,7 @@ export default function Game({ user, onLogout }: GameProps) {
       }
   };
 
+  // --- Main Render ---
   return (
     <div 
         className="flex justify-center items-center w-full bg-black font-['Press_Start_2P'] text-white overflow-hidden"
@@ -923,15 +928,26 @@ export default function Game({ user, onLogout }: GameProps) {
         {isGenerating && <GeneratingModal message="Generating text for you to cook..." />}
         {isEvaluating && <GeneratingModal message="Evaluating Performance..." />}
 
-        {screen === 'hub' ? (
+        {/* --- APP ROUTING --- */}
+        {activeApp === 'iq' ? (
+             <IQGame 
+                user={user}
+                onBackToHub={() => setActiveApp('taco')}
+                username={customUsername}
+                onUpdateUsername={handleUpdateUsername}
+                onLogout={onLogout}
+             />
+        ) : screen === 'hub' ? (
              <HubScreen 
                 user={user} 
                 onLaunchGame={() => setScreen('start')}
+                onLaunchIQ={() => setActiveApp('iq')}
                 onLogout={onLogout}
                 username={customUsername}
                 onUpdateUsername={handleUpdateUsername}
              />
         ) : (
+            // --- TACO TYPER GAME ---
             <div style={getContainerStyles()} className="relative transition-all duration-500">
                 {sparkles.map(s => (
                     <div key={s.id} className="sparkle" style={{ left: s.x, top: s.y, backgroundColor: s.color, '--tx': s.tx, '--ty': s.ty } as any} />

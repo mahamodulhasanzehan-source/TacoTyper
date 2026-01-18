@@ -8,12 +8,13 @@ import { SettingsModal as SharedSettingsModal, FriendsModal } from './Overlays';
 interface HubScreenProps {
     user: User;
     onLaunchGame: () => void;
+    onLaunchIQ: () => void;
     onLogout: () => void;
     username?: string | null;
     onUpdateUsername: (name: string) => void;
 }
 
-const HubScreen: React.FC<HubScreenProps> = ({ user, onLaunchGame, onLogout, username, onUpdateUsername }) => {
+const HubScreen: React.FC<HubScreenProps> = ({ user, onLaunchGame, onLaunchIQ, onLogout, username, onUpdateUsername }) => {
     const [showSettings, setShowSettings] = useState(false);
     const [showFriends, setShowFriends] = useState(false);
     
@@ -64,6 +65,18 @@ const HubScreen: React.FC<HubScreenProps> = ({ user, onLaunchGame, onLogout, use
                         {/* Play Button Overlay */}
                         <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
                             <span className="bg-[#f4b400] text-black px-4 py-2 text-xs border-2 border-white">PLAY</span>
+                        </div>
+                    </RandomReveal>
+
+                    {/* IQ Test Card */}
+                    <RandomReveal delay={0.2} className="group relative bg-[#111] border-4 border-white aspect-square flex flex-col items-center justify-center cursor-pointer hover:border-[#4facfe] transition-colors" onClick={onLaunchIQ}>
+                        <div className="text-6xl mb-4 group-hover:scale-110 transition-transform">🧠</div>
+                        <h2 className="text-lg md:text-xl text-center group-hover:text-[#4facfe]">IQ Test</h2>
+                        <div className="text-[10px] text-[#555] mt-2">Logic & Patterns</div>
+                        
+                        {/* Play Button Overlay */}
+                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                            <span className="bg-[#4facfe] text-black px-4 py-2 text-xs border-2 border-white">START</span>
                         </div>
                     </RandomReveal>
 

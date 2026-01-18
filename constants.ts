@@ -133,3 +133,67 @@ export const INGREDIENT_MAP: Record<string, string> = {
   // Special
   'heart': '💖', 'default': '🥘'
 };
+
+// --- IQ TEST DATA ---
+export const IQ_POINTS_MAP: Record<string, number> = {
+  "Easy": 3,
+  "Medium": 4.5,
+  "Hard": 6
+};
+
+export const IQ_INFO: Record<string, { comment: string, percentage: string }> = {
+  "69": { "comment": "Below Average. A bit slow today?", "percentage": "Bottom 10%" },
+  "79": { "comment": "Borderline. Needs more coffee.", "percentage": "Bottom 20%" },
+  "89": { "comment": "Low Average. You missed the tricky ones.", "percentage": "Bottom 30%" },
+  "99": { "comment": "Average. You function well in society.", "percentage": "Top 50%" },
+  "109": { "comment": "High Average. Solid logical thinking.", "percentage": "Top 35%" },
+  "119": { "comment": "Superior. Sharp and quick-witted.", "percentage": "Top 15%" },
+  "129": { "comment": "Very Superior. Excellent performance.", "percentage": "Top 5%" },
+  "139": { "comment": "Gifted. An exceptional logical mind.", "percentage": "Top 2%" },
+  "160": { "comment": "Genius. You aced everything.", "percentage": "Top 0.1%" }
+};
+
+export interface Question {
+  difficulty: "Easy" | "Medium" | "Hard";
+  question: string;
+  options: string[];
+  correctAnswer: string;
+}
+
+export const IQ_QUESTIONS: Question[] = [
+  // EASY
+  { difficulty: "Easy", question: "Pattern: Which letter comes next? S, M, T, W, T, F, ?", options: ["A) S", "B) M", "C) T", "D) W"], correctAnswer: "A" },
+  { difficulty: "Easy", question: "Analogy: Finger is to Hand as Leaf is to...", options: ["A) Tree", "B) Branch", "C) Blossom", "D) Bark"], correctAnswer: "B" },
+  { difficulty: "Easy", question: "Pattern: Find the odd one out.", options: ["A) Triangle", "B) Square", "C) Circle", "D) Rectangle"], correctAnswer: "C" },
+  { difficulty: "Easy", question: "Sequence: What number comes next? 2, 4, 8, 16, ?", options: ["A) 24", "B) 32", "C) 48", "D) 64"], correctAnswer: "B" },
+  { difficulty: "Easy", question: "Logic: Which is the odd one out?", options: ["A) Apple", "B) Banana", "C) Carrot", "D) Orange"], correctAnswer: "C" },
+  { difficulty: "Easy", question: "Verbal: Which word is opposite of 'Hot'?", options: ["A) Cold", "B) Warm", "C) Boil", "D) Ice"], correctAnswer: "A" },
+  { difficulty: "Easy", question: "Logic: What day comes after Friday?", options: ["A) Thursday", "B) Sunday", "C) Saturday", "D) Wednesday"], correctAnswer: "C" },
+  { difficulty: "Easy", question: "Math: How many days in a leap year?", options: ["A) 365", "B) 366", "C) 364", "D) 367"], correctAnswer: "B" },
+  { difficulty: "Easy", question: "Verbal: 'Up' is to 'Down' as 'Left' is to...", options: ["A) Right", "B) Straight", "C) Back", "D) Turn"], correctAnswer: "A" },
+  { difficulty: "Easy", question: "Pattern: Which shape has 4 sides?", options: ["A) Triangle", "B) Circle", "C) Square", "D) Hexagon"], correctAnswer: "C" },
+  
+  // MEDIUM
+  { difficulty: "Medium", question: "Logic: Some kings are queens. All queens are beautiful. Therefore...", options: ["A) All kings are beautiful", "B) Some kings are beautiful", "C) No kings are beautiful", "D) All queens are kings"], correctAnswer: "B" },
+  { difficulty: "Medium", question: "Spatial: If you rotate 'b' 180 degrees clockwise, what letter is it?", options: ["A) p", "B) d", "C) q", "D) g"], correctAnswer: "C" },
+  { difficulty: "Medium", question: "Verbal: Opposite of 'Candid'?", options: ["A) Honest", "B) Secretive", "C) Frank", "D) Open"], correctAnswer: "B" },
+  { difficulty: "Medium", question: "Logic: 5 machines make 5 widgets in 5 minutes. 100 machines make 100 widgets in?", options: ["A) 100 minutes", "B) 20 minutes", "C) 5 minutes", "D) 1 minute"], correctAnswer: "C" },
+  { difficulty: "Medium", question: "Sequence: 1, 1, 2, 3, 5, 8, ?", options: ["A) 11", "B) 12", "C) 13", "D) 14"], correctAnswer: "C" },
+  { difficulty: "Medium", question: "Logic: Mary's father has 5 daughters: Nana, Nene, Nini, Nono. The 5th is?", options: ["A) Nunu", "B) Nina", "C) Mary", "D) Nancy"], correctAnswer: "C" },
+  { difficulty: "Medium", question: "Math: Bat + Ball = $1.10. Bat is $1.00 more than Ball. Cost of Ball?", options: ["A) $0.10", "B) $0.05", "C) $0.01", "D) $0.15"], correctAnswer: "B" },
+  { difficulty: "Medium", question: "Logic: Rearrange \"CIFAIPC\". It is a(n):", options: ["A) City", "B) Animal", "C) Ocean", "D) Country"], correctAnswer: "C" },
+  { difficulty: "Medium", question: "Verbal: Anagram of 'LISTEN'?", options: ["A) SILENT", "B) LISTED", "C) TENSE", "D) NETS"], correctAnswer: "A" },
+  { difficulty: "Medium", question: "Sequence: 10, 8, 6, 4, ?", options: ["A) 3", "B) 2", "C) 1", "D) 0"], correctAnswer: "B" },
+
+  // HARD
+  { difficulty: "Hard", question: "Sequence: 2, 6, 12, 20, 30, ?", options: ["A) 40", "B) 42", "C) 44", "D) 46"], correctAnswer: "B" },
+  { difficulty: "Hard", question: "Logic: All A are B. All B are C. Therefore...", options: ["A) All C are A", "B) Some C are not B", "C) All A are C", "D) No A is C"], correctAnswer: "C" },
+  { difficulty: "Hard", question: "Analogy: 'Melt' is to 'Liquid' as 'Freeze' is to...", options: ["A) Ice", "B) Solid", "C) Water", "D) Cold"], correctAnswer: "B" },
+  { difficulty: "Hard", question: "Spatial: Face North. Turn 90 Right, 180 Left. Facing?", options: ["A) West", "B) East", "C) South", "D) North"], correctAnswer: "A" },
+  { difficulty: "Hard", question: "Sequence: 1, 2, 6, 24, 120, ?", options: ["A) 360", "B) 720", "C) 500", "D) 600"], correctAnswer: "B" },
+  { difficulty: "Hard", question: "Pattern: 27, 64, 100, 125. Odd one out?", options: ["A) 27", "B) 64", "C) 100", "D) 125"], correctAnswer: "C" },
+  { difficulty: "Hard", question: "Logic: If yesterday was tomorrow, today would be Friday. What day is it?", options: ["A) Friday", "B) Sunday", "C) Wednesday", "D) Saturday"], correctAnswer: "B" },
+  { difficulty: "Hard", question: "Sequence: 3, 4, 7, 11, 18, 29, ?", options: ["A) 43", "B) 45", "C) 47", "D) 49"], correctAnswer: "C" },
+  { difficulty: "Hard", question: "Math: If 3 cats kill 3 rats in 3 minutes, how long for 100 cats to kill 100 rats?", options: ["A) 100", "B) 3", "C) 30", "D) 1"], correctAnswer: "B" },
+  { difficulty: "Hard", question: "Pattern: What number fits? 14, 28, 20, 40, 32, 64, ?", options: ["A) 52", "B) 56", "C) 96", "D) 128"], correctAnswer: "B" }
+];
