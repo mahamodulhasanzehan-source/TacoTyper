@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { User, fetchActiveUsers, sendMessage, subscribeToChat, subscribeToGlobalUnread, saveLastChatPartner, getUserProfile, deleteMessage } from '../services/firebase';
 import { COLORS } from '../constants';
 import { RandomReveal } from './Visuals';
@@ -85,6 +86,8 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ user, className = '' }) => {
         const text = inputText;
         setInputText(''); // Optimistic clear
         await sendMessage(user.uid, activeFriend.uid, text);
+        // Force focus back to textarea
+        if(textAreaRef.current) textAreaRef.current.focus();
     };
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -110,7 +113,9 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ user, className = '' }) => {
 
     const handleContextMenu = (e: React.MouseEvent, msgId: string) => {
         e.preventDefault();
-        e.stopPropagation(); // Prevent closing immediately
+        // Don't stop propagation here to ensure the global click listener (for closing) works if needed, 
+        // but since we are setting state immediately, we just need to avoid default browser menu.
+        // We set the coordinates relative to the viewport.
         setContextMenu({ x: e.clientX, y: e.clientY, msgId });
     };
 
@@ -176,7 +181,7 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ user, className = '' }) => {
                                             className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}
                                             onContextMenu={(e) => handleContextMenu(e, msg.id)}
                                         >
-                                            <div className={`max-w-[85%] p-2 text-[10px] break-words border whitespace-pre-wrap ${isMe ? 'bg-[#222] border-[#f4b400] text-white' : 'bg-[#111] border-[#555] text-[#ccc]'}`}>
+                                            <div className={`max-w-[85%] p-2 text-[10px] break-words border whitespace-pre-wrap ${isMe ? 'bg-[#222] border-[#f4b400] text-white' : 'bg-[#111] border-[#555] text-[#ccc]'} hover:brightness-110 cursor-context-menu`}>
                                                 {msg.text}
                                             </div>
                                         </div>
@@ -210,20 +215,21 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ user, className = '' }) => {
                 )}
             </div>
 
-            {/* Context Menu */}
-            {contextMenu && (
+            {/* Context Menu - Rendered via Portal to avoid z-index/transform issues */}
+            {contextMenu && createPortal(
                 <div 
                     style={{ top: contextMenu.y, left: contextMenu.x }}
-                    className="fixed z-[999] bg-[#111] border border-white p-2 shadow-lg"
+                    className="fixed z-[9999] bg-[#111] border-2 border-white p-1 shadow-[0_0_10px_rgba(0,0,0,0.8)] min-w-[120px] animate-pop-in"
                     onClick={(e) => e.stopPropagation()} 
                 >
                     <button 
                         onClick={() => handleDeleteMessage(contextMenu.msgId)}
-                        className="text-red-500 text-xs hover:text-red-400 block w-full text-left"
+                        className="text-red-500 text-xs hover:bg-[#222] hover:text-red-400 block w-full text-left px-2 py-1 font-bold"
                     >
                         Delete Message
                     </button>
-                </div>
+                </div>,
+                document.body
             )}
         </RandomReveal>
     );
