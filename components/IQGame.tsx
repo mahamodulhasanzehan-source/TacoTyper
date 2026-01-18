@@ -11,6 +11,7 @@ import { User, saveLeaderboardScore } from '../services/firebase';
 import { RandomReveal, RandomText } from './Visuals';
 import { LeaderboardWidget, SettingsModal, FriendsModal, Button } from './Overlays';
 import ChatWidget from './ChatWidget';
+import { isMobileDevice } from '../utils/device';
 
 interface IQGameProps {
     user: User;
@@ -26,6 +27,8 @@ const IQGame: React.FC<IQGameProps> = ({ user, onBackToHub, username, onUpdateUs
     const [screen, setScreen] = useState<IQScreen>('welcome');
     const [showSettings, setShowSettings] = useState(false);
     const [showFriends, setShowFriends] = useState(false);
+    const [isMobile, setIsMobile] = useState(false);
+    const [showMobileLeaderboard, setShowMobileLeaderboard] = useState(false);
     
     // Game State
     const [questions, setQuestions] = useState<Question[]>([]);
@@ -47,6 +50,10 @@ const IQGame: React.FC<IQGameProps> = ({ user, onBackToHub, username, onUpdateUs
     const timerRef = useRef<number | null>(null);
 
     const displayableName = username || user.displayName || 'Chef';
+
+    useEffect(() => {
+        setIsMobile(isMobileDevice());
+    }, []);
 
     // --- Logic ---
     const startTimer = () => {
@@ -194,26 +201,56 @@ const IQGame: React.FC<IQGameProps> = ({ user, onBackToHub, username, onUpdateUs
     return (
         <div className="flex h-full w-full bg-[#000] text-white overflow-hidden relative font-['Inter',_sans-serif]">
             
-            {/* --- Right Sidebar (Chat & Leaderboard) --- */}
-            <div className="hidden md:flex flex-col absolute top-0 right-0 h-full w-[300px] z-[50] border-l border-[#333]">
-                {/* For IQ Game, we force leaderboard to only show IQ mode */}
-                <LeaderboardWidget className="h-[66%] border-b-0" allowedModes={['iq-test']} defaultMode="iq-test" />
-                <ChatWidget user={user} className="h-[34%]" />
-            </div>
+            {/* --- Right Sidebar (Desktop Only) --- */}
+            {!isMobile && (
+                <div className="flex flex-col absolute top-0 right-0 h-full w-[300px] z-[50] border-l border-[#333]">
+                    <LeaderboardWidget className="h-[66%] border-b-0" allowedModes={['iq-test']} defaultMode="iq-test" />
+                    <ChatWidget user={user} className="h-[34%]" />
+                </div>
+            )}
+
+            {/* --- Mobile Leaderboard Toggle & Modal --- */}
+            {isMobile && (
+                <>
+                    {/* Toggle Button in Header area */}
+                    <div className="absolute top-4 right-4 z-[60]">
+                        <button 
+                            onClick={() => setShowMobileLeaderboard(true)} 
+                            className="text-2xl hover:scale-110 transition-transform bg-[#111] p-2 rounded-full border border-[#f4b400]"
+                            title="Leaderboard"
+                        >
+                            🏆
+                        </button>
+                    </div>
+
+                    {/* Modal */}
+                    {showMobileLeaderboard && (
+                        <div className="fixed inset-0 z-[100] bg-black/95 flex flex-col p-4 animate-fade-in">
+                            <div className="flex justify-between items-center mb-4">
+                                <h2 className="text-[#f4b400] text-xl font-bold">Top Minds</h2>
+                                <button onClick={() => setShowMobileLeaderboard(false)} className="text-red-500 text-2xl font-bold p-2">✕</button>
+                            </div>
+                            <LeaderboardWidget className="flex-1 border-none shadow-none p-0" allowedModes={['iq-test']} defaultMode="iq-test" />
+                        </div>
+                    )}
+                </>
+            )}
 
             {/* --- Top Left Nav --- */}
             <div className="absolute top-4 left-4 flex gap-4 z-[60]">
                 <button onClick={onBackToHub} className="text-2xl hover:scale-110 transition-transform" title="Back to Hub">🏠</button>
                 <button onClick={() => setShowSettings(true)} className="text-2xl hover:rotate-90 transition-transform" title="Settings">⚙️</button>
                 <div className="flex items-center gap-2">
-                     <span className="text-[#aaa] text-xs font-['Press_Start_2P']">{displayableName}</span>
+                     {!isMobile && <span className="text-[#aaa] text-xs font-['Press_Start_2P']">{displayableName}</span>}
                 </div>
             </div>
 
-             {/* Friends Button */}
-             <div className="absolute top-4 right-[320px] z-[60] hidden md:block">
-                 <button onClick={() => setShowFriends(true)} className="text-2xl hover:scale-110 transition-transform" title="Social Kitchen">👥</button>
-             </div>
+             {/* Friends Button (Desktop Only) */}
+             {!isMobile && (
+                 <div className="absolute top-4 right-[320px] z-[60] hidden md:block">
+                     <button onClick={() => setShowFriends(true)} className="text-2xl hover:scale-110 transition-transform" title="Social Kitchen">👥</button>
+                 </div>
+             )}
 
             {/* --- Modals --- */}
             {showSettings && (
@@ -224,7 +261,7 @@ const IQGame: React.FC<IQGameProps> = ({ user, onBackToHub, username, onUpdateUs
                     onLogout={onLogout} 
                 />
             )}
-            {showFriends && (
+            {showFriends && !isMobile && (
                 <FriendsModal 
                     onClose={() => setShowFriends(false)} 
                     currentUser={user} 
@@ -233,11 +270,12 @@ const IQGame: React.FC<IQGameProps> = ({ user, onBackToHub, username, onUpdateUs
 
 
             {/* --- Main Game Area --- */}
-            <div className="flex-1 flex flex-col items-center justify-center p-4 md:mr-[300px] relative z-10">
+            {/* Added logic to center content on mobile since sidebar is gone */}
+            <div className={`flex-1 flex flex-col items-center justify-center p-4 relative z-10 ${isMobile ? '' : 'md:mr-[300px]'}`}>
                 
                 {/* WELCOME SCREEN */}
                 {screen === 'welcome' && (
-                    <RandomReveal className="bg-[#111] border border-[#333] p-8 rounded-xl max-w-md w-full text-center shadow-2xl">
+                    <RandomReveal className="bg-[#111] border border-[#333] p-8 rounded-xl max-w-md w-full text-center shadow-2xl mt-12 md:mt-0">
                         <div className="text-6xl mb-4">🧠</div>
                         <h1 className="text-4xl font-bold mb-2 text-[var(--color-warn)]">IQ Test</h1>
                         <p className="text-gray-400 mb-8">Logic, Verbal, Spatial & Patterns.</p>
@@ -247,17 +285,17 @@ const IQGame: React.FC<IQGameProps> = ({ user, onBackToHub, username, onUpdateUs
 
                 {/* PLAYING SCREEN */}
                 {screen === 'playing' && (
-                    <div className="w-full max-w-lg flex flex-col h-[80vh]">
+                    <div className="w-full max-w-lg flex flex-col h-[85vh] mt-12 md:mt-0">
                         {/* Header */}
                         <div className="flex justify-between items-center mb-2">
-                             <span className="text-sm text-gray-500 font-bold tracking-widest">TEST PROGRESS</span>
-                             <span className={`text-lg font-bold font-mono ${timerSeconds < 60 ? 'text-red-500 animate-pulse' : 'text-[var(--color-accent)]'}`}>
+                             <span className="text-xs md:text-sm text-gray-500 font-bold tracking-widest">TEST PROGRESS</span>
+                             <span className={`text-base md:text-lg font-bold font-mono ${timerSeconds < 60 ? 'text-red-500 animate-pulse' : 'text-[var(--color-accent)]'}`}>
                                  {Math.floor(timerSeconds/60)}:{String(timerSeconds%60).padStart(2, '0')}s
                              </span>
                         </div>
 
                         {/* Progress Bar */}
-                        <div className="w-full bg-[#222] h-2 rounded-full mb-6 overflow-hidden">
+                        <div className="w-full bg-[#222] h-2 rounded-full mb-4 md:mb-6 overflow-hidden shrink-0">
                             <div 
                                 className="h-full bg-[var(--color-universal)] transition-all duration-300"
                                 style={{ width: `${(currentQuestionIndex / questions.length) * 100}%` }}
@@ -265,15 +303,15 @@ const IQGame: React.FC<IQGameProps> = ({ user, onBackToHub, username, onUpdateUs
                         </div>
 
                         {/* Question Card */}
-                        <div className={`flex-1 bg-[#111] border border-[#222] rounded-xl p-6 flex flex-col overflow-y-auto ${contentClass}`}>
-                            <div className="flex gap-3 mb-6">
-                                <span className="text-[var(--color-universal)] font-bold text-xl">{currentQuestionIndex + 1}.</span>
-                                <span className="text-white font-semibold text-lg leading-relaxed">
+                        <div className={`flex-1 bg-[#111] border border-[#222] rounded-xl p-4 md:p-6 flex flex-col overflow-y-auto ${contentClass}`}>
+                            <div className="flex gap-3 mb-4 md:mb-6">
+                                <span className="text-[var(--color-universal)] font-bold text-lg md:text-xl">{currentQuestionIndex + 1}.</span>
+                                <span className="text-white font-semibold text-base md:text-lg leading-relaxed">
                                     {questions[currentQuestionIndex]?.question}
                                 </span>
                             </div>
 
-                            <div className="grid grid-cols-1 gap-3">
+                            <div className="grid grid-cols-1 gap-2 md:gap-3 mb-4">
                                 {questions[currentQuestionIndex]?.options.map((opt) => {
                                     const optKey = opt.trim().charAt(0); // 'A', 'B'...
                                     const isSelected = chosenOption === optKey;
@@ -281,7 +319,7 @@ const IQGame: React.FC<IQGameProps> = ({ user, onBackToHub, username, onUpdateUs
                                         <button
                                             key={opt}
                                             onClick={() => setChosenOption(optKey)}
-                                            className={`text-left p-4 rounded-lg border transition-all duration-200
+                                            className={`text-left p-3 md:p-4 rounded-lg border transition-all duration-200 text-sm md:text-base
                                                 ${isSelected 
                                                     ? 'bg-[var(--color-universal)] border-[var(--color-universal)] text-white font-bold transform scale-[1.02]' 
                                                     : 'bg-[#1a1a1a] border-[#333] text-gray-300 hover:border-[var(--color-universal)] hover:bg-[#252525]'
@@ -293,16 +331,16 @@ const IQGame: React.FC<IQGameProps> = ({ user, onBackToHub, username, onUpdateUs
                                 })}
                             </div>
 
-                            <div className="mt-auto pt-6 flex gap-4">
+                            <div className="mt-auto pt-4 md:pt-6 flex gap-3 md:gap-4">
                                 <button 
                                     onClick={skipQuestion} 
-                                    className="flex-1 py-3 rounded-lg bg-[#222] text-gray-400 hover:bg-[#333] font-bold border border-[#333]"
+                                    className="flex-1 py-3 md:py-3 rounded-lg bg-[#222] text-gray-400 hover:bg-[#333] font-bold border border-[#333] text-sm md:text-base"
                                 >
                                     Skip
                                 </button>
                                 <button 
                                     onClick={processAnswer}
-                                    className="flex-[2] py-3 rounded-lg bg-[var(--color-universal)] text-white font-bold hover:brightness-110 shadow-lg"
+                                    className="flex-[2] py-3 md:py-3 rounded-lg bg-[var(--color-universal)] text-white font-bold hover:brightness-110 shadow-lg text-sm md:text-base"
                                 >
                                     {currentQuestionIndex === questions.length - 1 ? 'Finish Test' : 'Next'}
                                 </button>
@@ -313,8 +351,8 @@ const IQGame: React.FC<IQGameProps> = ({ user, onBackToHub, username, onUpdateUs
 
                 {/* END SCREEN */}
                 {screen === 'end' && (
-                    <RandomReveal className="bg-[#111] border border-[#333] p-8 rounded-xl max-w-md w-full text-center shadow-2xl flex flex-col items-center">
-                        <h1 className="text-2xl font-bold mb-6 text-white">Result Analysis</h1>
+                    <RandomReveal className="bg-[#111] border border-[#333] p-8 rounded-xl max-w-md w-full text-center shadow-2xl flex flex-col items-center mt-12 md:mt-0">
+                        <h1 className="text-xl md:text-2xl font-bold mb-6 text-white">Result Analysis</h1>
                         
                         {/* Circle SVG */}
                         <div className="relative w-[120px] h-[120px] mb-6">

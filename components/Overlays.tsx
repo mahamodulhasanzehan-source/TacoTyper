@@ -7,6 +7,7 @@ import { getLeaderboard, deleteLeaderboardEntry, fetchActiveUsers, sendFriendReq
 import { RandomReveal, RandomText } from './Visuals';
 import { useSettings } from '../contexts/SettingsContext';
 import ChatWidget from './ChatWidget';
+import { isMobileDevice } from '../utils/device';
 
 interface OverlayProps {
   children: React.ReactNode;
@@ -605,17 +606,24 @@ export const StartScreen: React.FC<StartScreenProps> = ({
 }) => {
   const [showSettings, setShowSettings] = useState(false);
   const [showFriends, setShowFriends] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+      setIsMobile(isMobileDevice());
+  }, []);
 
   // Fix display name logic
   const displayableName = username || user?.displayName || 'Chef';
 
   return (
       <Overlay>
-         {/* Right Side Panel: Leaderboard (Top 2/3) + Chat (Bottom 1/3) */}
-         <div className="hidden md:flex flex-col absolute top-0 right-0 h-full w-[160px] md:w-[300px] z-[150]">
-            <LeaderboardWidget className="h-[66%] border-b-0" />
-            {user && <ChatWidget user={user} className="h-[34%]" />}
-         </div>
+         {/* Right Side Panel: Leaderboard (Top 2/3) + Chat (Bottom 1/3) - Desktop Only */}
+         {!isMobile && (
+             <div className="hidden md:flex flex-col absolute top-0 right-0 h-full w-[160px] md:w-[300px] z-[150]">
+                <LeaderboardWidget className="h-[66%] border-b-0" />
+                {user && <ChatWidget user={user} className="h-[34%]" />}
+             </div>
+         )}
          
          <div className="absolute top-4 left-4 md:top-8 md:left-8 flex gap-4 z-[120]">
             <button 
@@ -632,24 +640,25 @@ export const StartScreen: React.FC<StartScreenProps> = ({
             >
                 ⚙️
             </button>
-            {user && (
+            {user && !isMobile && (
                 <RandomReveal distance={100} className="flex items-center gap-4">
                     <span className="text-[#aaa] text-[10px] md:text-xs">{displayableName}</span>
-                    {/* Logout moved to Settings, name remains here for ID */}
                 </RandomReveal>
             )}
          </div>
 
-         {/* Friends Button - Positioned top right but left of leaderboard */}
-         <div className="absolute top-4 right-[170px] md:right-[320px] z-[160]">
-             <button 
-                onClick={() => setShowFriends(true)}
-                className="text-2xl hover:scale-110 transition-transform"
-                title="Social Kitchen"
-             >
-                👥
-             </button>
-         </div>
+         {/* Friends Button - Positioned top right but left of leaderboard - Desktop Only */}
+         {!isMobile && (
+             <div className="absolute top-4 right-[170px] md:right-[320px] z-[160]">
+                 <button 
+                    onClick={() => setShowFriends(true)}
+                    className="text-2xl hover:scale-110 transition-transform"
+                    title="Social Kitchen"
+                 >
+                    👥
+                 </button>
+             </div>
+         )}
 
          {showSettings && (
              <SettingsModal 
@@ -659,9 +668,10 @@ export const StartScreen: React.FC<StartScreenProps> = ({
                 onLogout={onLogout}
              />
          )}
-         {showFriends && user && <FriendsModal onClose={() => setShowFriends(false)} currentUser={user} />}
+         {/* Only show Friends modal if not mobile */}
+         {showFriends && user && !isMobile && <FriendsModal onClose={() => setShowFriends(false)} currentUser={user} />}
          
-         <div className="flex flex-col items-center md:mr-[300px]">
+         <div className={`flex flex-col items-center ${isMobile ? '' : 'md:mr-[300px]'}`}>
             <h1 className="text-3xl md:text-5xl mb-5 text-[#f4b400] shadow-[#e55934] text-center leading-normal" style={{ textShadow: `4px 4px 0px ${COLORS.accent}` }}>
                 <RandomText text="Taco Typer" />
             </h1>
