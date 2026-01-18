@@ -6,6 +6,7 @@ import { LeaderboardEntry } from '../types';
 import { getLeaderboard, deleteLeaderboardEntry, fetchActiveUsers, sendFriendRequest, getFriendRequests, acceptFriendRequest } from '../services/firebase';
 import { RandomReveal, RandomText } from './Visuals';
 import { useSettings } from '../contexts/SettingsContext';
+import ChatWidget from './ChatWidget';
 
 interface OverlayProps {
   children: React.ReactNode;
@@ -107,7 +108,11 @@ export const Button: React.FC<React.ButtonHTMLAttributes<HTMLButtonElement> & { 
 };
 
 // --- Leaderboard Component ---
-const LeaderboardWidget: React.FC = () => {
+interface LeaderboardWidgetProps {
+    className?: string;
+}
+
+const LeaderboardWidget: React.FC<LeaderboardWidgetProps> = ({ className = '' }) => {
     const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
     const [loading, setLoading] = useState(true);
     const [mode, setMode] = useState<string>('competitive');
@@ -148,13 +153,13 @@ const LeaderboardWidget: React.FC = () => {
     const activeIndex = modes.indexOf(mode);
 
     return (
-        <RandomReveal distance={1500} className="absolute top-0 right-0 h-full w-[160px] md:w-[300px] border-l-4 border-white bg-[#0a0a0a] p-2 md:p-4 flex flex-col z-[150] shadow-[-10px_0_30px_rgba(0,0,0,0.8)]">
-            <h3 className="text-[#f4b400] text-center mb-4 text-[10px] md:text-xs uppercase border-b-2 border-[#333] pb-3 tracking-widest mt-4">
+        <RandomReveal distance={1500} className={`flex flex-col bg-[#0a0a0a] border-l-4 border-white p-2 md:p-4 z-[150] shadow-[-10px_0_30px_rgba(0,0,0,0.8)] ${className}`}>
+            <h3 className="text-[#f4b400] text-center mb-2 text-[10px] md:text-xs uppercase border-b-2 border-[#333] pb-2 tracking-widest mt-2">
                 {isAdmin ? 'ADMIN MODE' : 'Top Chefs'}
             </h3>
             
             {/* Capsule Slider */}
-            <div className="relative flex w-full bg-[#000] border border-[#333] rounded-full p-1 mb-4 select-none">
+            <div className="relative flex w-full bg-[#000] border border-[#333] rounded-full p-1 mb-2 select-none shrink-0">
                 {/* Moving Indicator */}
                 <div 
                     className="absolute top-1 bottom-1 rounded-full bg-white/20 transition-all duration-300 ease-out"
@@ -177,16 +182,16 @@ const LeaderboardWidget: React.FC = () => {
             </div>
 
             {loading ? (
-                <div className="flex-1 flex flex-col items-center justify-center">
-                    <div className="loading-spinner mb-4 w-6 h-6 border-2" />
+                <div className="flex-1 flex flex-col items-center justify-center min-h-0">
+                    <div className="loading-spinner mb-4 w-4 h-4 border-2" />
                     <div className="text-[10px] text-[#aaa]">Retrieving Archives...</div>
                 </div>
             ) : entries.length === 0 ? (
-                <div className="flex-1 flex items-center justify-center text-center text-[10px] text-[#aaa] leading-5 px-4">
+                <div className="flex-1 flex items-center justify-center text-center text-[10px] text-[#aaa] leading-5 px-4 min-h-0">
                     Kitchen is empty.<br/>Be the first to cook!
                 </div>
             ) : (
-                <div className="flex-1 overflow-y-auto pr-1 space-y-3 custom-scrollbar">
+                <div className="flex-1 overflow-y-auto pr-1 space-y-2 custom-scrollbar min-h-0">
                     {entries.map((entry, idx) => (
                         <RandomReveal key={entry.id} distance={300} className="flex flex-col bg-[#161616] p-2 border border-[#333] hover:border-[#555] transition-colors relative group">
                             {isAdmin && (
@@ -572,8 +577,10 @@ export const StartScreen: React.FC<StartScreenProps> = ({ onStart, onInfinite, o
 
   return (
       <Overlay>
-         <div className="hidden md:block">
-            <LeaderboardWidget />
+         {/* Right Side Panel: Leaderboard (Top 2/3) + Chat (Bottom 1/3) */}
+         <div className="hidden md:flex flex-col absolute top-0 right-0 h-full w-[160px] md:w-[300px] z-[150]">
+            <LeaderboardWidget className="h-[66%] border-b-0" />
+            {user && <ChatWidget user={user} className="h-[34%]" />}
          </div>
          
          <div className="absolute top-4 left-4 md:top-8 md:left-8 flex gap-4 z-[120]">

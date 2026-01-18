@@ -23,7 +23,8 @@ import {
   arrayUnion,
   serverTimestamp,
   orderBy,
-  limit
+  limit,
+  onSnapshot
 } from 'firebase/firestore';
 import { LeaderboardEntry, SessionStats } from '../types';
 
@@ -93,6 +94,7 @@ export interface UserProfile {
     maxWPM?: number;
     displayName?: string;
     uid?: string;
+    lastChatPartner?: string; // ID of the last person chatted with
 }
 
 export interface FriendRequest {
@@ -102,6 +104,15 @@ export interface FriendRequest {
     to: string; // UID
     status: 'pending' | 'accepted' | 'rejected';
     timestamp: any;
+}
+
+export interface ChatMessage {
+    id: string;
+    senderId: string;
+    receiverId: string;
+    text: string;
+    timestamp: any;
+    read: boolean;
 }
 
 // --- Auth Functions ---
@@ -189,7 +200,7 @@ export const saveUsername = async (uid: string, username: string) => {
 
 // --- Friend System ---
 
-export const fetchActiveUsers = async (currentUid: string): Promise<{uid: string, username: string, isFriend: boolean, hasPending: boolean}[]> => {
+export const fetchActiveUsers = async (currentUid: string): Promise<{uid: string, username: string, isFriend: boolean, hasPending: boolean, photoURL?: string}[]> => {
     try {
         // 1. Get current user's friends to check status
         const currentUserRef = doc(db, "users", currentUid);
@@ -217,6 +228,7 @@ export const fetchActiveUsers = async (currentUid: string): Promise<{uid: string
                 results.push({
                     uid,
                     username: display,
+                    photoURL: data.photoURL,
                     isFriend: myFriends.includes(uid),
                     hasPending: false 
                 });
@@ -444,4 +456,86 @@ export const getLeaderboard = async (mode: string = 'competitive'): Promise<Lead
     });
 
     return entries.slice(0, 10);
+};
+
+// --- Chat System ---
+
+const getChatId = (uid1: string, uid2: string) => {
+    return uid1 < uid2 ? `${uid1}_${uid2}` : `${uid2}_${uid1}`;
+};
+
+export const saveLastChatPartner = async (currentUid: string, partnerUid: string) => {
+    const userRef = doc(db, "users", currentUid);
+    await updateDoc(userRef, { lastChatPartner: partnerUid });
+};
+
+export const sendMessage = async (senderId: string, receiverId: string, text: string) => {
+    if (!text.trim()) return;
+    const chatId = getChatId(senderId, receiverId);
+    
+    await addDoc(collection(db, "messages"), {
+        chatId,
+        senderId,
+        receiverId,
+        text: text.trim(),
+        timestamp: serverTimestamp(),
+        read: false
+    });
+};
+
+export const subscribeToChat = (currentUid: string, partnerUid: string, callback: (messages: ChatMessage[]) => void) => {
+    const chatId = getChatId(currentUid, partnerUid);
+    const messagesRef = collection(db, "messages");
+    const q = query(
+        messagesRef, 
+        where("chatId", "==", chatId),
+        orderBy("timestamp", "asc"),
+        limit(50)
+    );
+
+    return onSnapshot(q, (snapshot) => {
+        const msgs = snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        })) as ChatMessage[];
+        
+        // Mark messages as read if I am the receiver
+        const batchUpdates: any[] = [];
+        snapshot.docs.forEach(doc => {
+            const data = doc.data();
+            if (data.receiverId === currentUid && !data.read) {
+                updateDoc(doc.ref, { read: true });
+            }
+        });
+
+        callback(msgs);
+    });
+};
+
+export const subscribeToGlobalUnread = (currentUid: string, currentPartnerId: string | null, callback: (hasUnread: boolean) => void) => {
+    // This is a simplified check. A full scalable solution requires a separate 'unread' counter or document.
+    // Here we query for ANY message sent to me that is unread.
+    const messagesRef = collection(db, "messages");
+    
+    // Complex queries in Firestore are limited. We'll listen to the last 20 messages sent to me that are unread.
+    const q = query(
+        messagesRef,
+        where("receiverId", "==", currentUid),
+        where("read", "==", false),
+        limit(20)
+    );
+
+    return onSnapshot(q, (snapshot) => {
+        let hasUnreadFromOthers = false;
+        
+        snapshot.docs.forEach(doc => {
+            const data = doc.data();
+            // If the message is from someone who IS NOT the person I'm currently talking to
+            if (data.senderId !== currentPartnerId) {
+                hasUnreadFromOthers = true;
+            }
+        });
+        
+        callback(hasUnreadFromOthers);
+    });
 };
