@@ -9,7 +9,7 @@ import {
   BOSS_WORDS, 
   UNIVERSAL_DICTIONARY,
   TRAP_WORDS,
-  COMBO_FIESTA,
+  COMBO_FIESTA, 
   COMBO_SPICY
 } from '../constants';
 import { 
@@ -453,6 +453,11 @@ export default function Game({ user, onLogout }: GameProps) {
       setScreen('start');
   };
 
+  const handleUpdateUsername = async (name: string) => {
+      setCustomUsername(name);
+      await saveUsername(user.uid, name);
+  };
+
   const startSpeedTest = async () => {
       setIsGenerating(true);
       const text = await aiService.generateSpeedText();
@@ -605,6 +610,7 @@ export default function Game({ user, onLogout }: GameProps) {
   };
 
   const processWordCompletion = (word: WordEntity) => {
+    // ... (processWordCompletion logic remains the same)
     const state = stateRef.current;
     const newWords = state.fallingWords.filter(w => w.id !== word.id);
     state.fallingWords = newWords;
@@ -696,6 +702,7 @@ export default function Game({ user, onLogout }: GameProps) {
   };
 
   const handleInputChar = (char: string) => {
+    // ... (handleInputChar logic remains the same)
     const state = stateRef.current;
     let activeWord = state.fallingWords.find(w => w.id === state.activeWordId);
     if (!activeWord) {
@@ -735,6 +742,7 @@ export default function Game({ user, onLogout }: GameProps) {
   };
 
   const handleBackspace = () => {
+    // ... (handleBackspace logic remains the same)
       const state = stateRef.current;
       const activeWord = state.fallingWords.find(w => w.id === state.activeWordId);
       if (activeWord && activeWord.typed.length > 0) {
@@ -788,6 +796,7 @@ export default function Game({ user, onLogout }: GameProps) {
   };
   
   const addIngredient = (text: string) => {
+    // ... (addIngredient logic remains the same)
     const state = stateRef.current;
     const emoji = INGREDIENT_MAP[text] || INGREDIENT_MAP['default'];
     setIngredientsCollected(prev => [...prev, emoji]);
@@ -802,6 +811,7 @@ export default function Game({ user, onLogout }: GameProps) {
   };
 
   const increaseCombo = () => {
+    // ... (increaseCombo logic remains the same)
       const state = stateRef.current;
       state.streak++;
       setStreak(state.streak);
@@ -819,6 +829,7 @@ export default function Game({ user, onLogout }: GameProps) {
   };
   
   const resetCombo = () => {
+    // ... (resetCombo logic remains the same)
       const state = stateRef.current;
       state.streak = 0;
       setStreak(0);
@@ -827,6 +838,7 @@ export default function Game({ user, onLogout }: GameProps) {
   };
   
   const handleManualSelect = (word: WordEntity) => {
+    // ... (handleManualSelect logic remains the same)
       if (screen !== 'playing') return;
       if (isMobile && hiddenInputRef.current) hiddenInputRef.current.focus();
       const state = stateRef.current;
@@ -843,6 +855,7 @@ export default function Game({ user, onLogout }: GameProps) {
   };
 
   const getContainerStyles = () => {
+    // ... (getContainerStyles logic remains the same)
       let borderColor = COLORS.gameBorder;
       let boxShadow = '0 0 15px rgba(255, 0, 0, 0.5), inset 0 0 10px rgba(255,255,255,0.1)';
       let animation = shake ? 'shake 0.5s' : '';
@@ -991,6 +1004,7 @@ export default function Game({ user, onLogout }: GameProps) {
                     onLogout={onLogout}
                     isGenerating={isGenerating}
                     username={customUsername}
+                    onUpdateUsername={handleUpdateUsername}
                 />
             )}
 

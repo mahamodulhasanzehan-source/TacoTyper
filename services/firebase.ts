@@ -96,12 +96,12 @@ export const signInWithGoogle = async () => {
         photoURL: null
     };
     
-    // CRITICAL: Register this user in the Mock DB so they are searchable immediately,
-    // even if they haven't set a custom username yet.
+    // Register user in Mock DB
+    // Initialize with EMPTY username to force the "Identify Yourself" screen on first login
     const users = getUsersDB();
     if (!users[mockUser.uid]) {
         users[mockUser.uid] = {
-            username: mockUser.displayName || 'Unknown Chef',
+            username: '', // Empty triggers setup screen
             friends: [],
             friendRequests: []
         };
@@ -157,22 +157,22 @@ export const saveUsername = async (uid: string, username: string) => {
 // --- Friend System ---
 
 export const searchUsers = async (query: string, currentUid: string): Promise<{uid: string, username: string, isFriend: boolean, hasPending: boolean}[]> => {
-    if (!query || query.length < 2) return [];
+    if (!query || query.trim().length === 0) return [];
     
     const users = getUsersDB();
     const currentUser = users[currentUid];
     const results = [];
     
-    const lowerQuery = query.toLowerCase();
+    const lowerQuery = query.toLowerCase().trim();
 
     for (const [uid, profile] of Object.entries(users)) {
         if (uid === currentUid) continue; // Don't show self
+        if (!profile.username) continue; // Skip users without a name
         
+        // Match logic: includes search
         if (profile.username.toLowerCase().includes(lowerQuery)) {
             // Check relationship
             const isFriend = currentUser?.friends.includes(uid) || false;
-            // Check if WE sent THEM a request (optional, requires checking target's requests)
-            // For simplicity, we just return if they are already friends.
             // Check if THEY sent US a request
             const hasIncoming = currentUser?.friendRequests.some(r => r.from === uid && r.status === 'pending') || false;
 
