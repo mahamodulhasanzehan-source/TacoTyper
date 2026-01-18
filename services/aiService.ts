@@ -1,138 +1,118 @@
 
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenAI, Type } from "@google/genai";
 import { SPEED_TEST_TEXTS } from '../constants';
 import { SessionStats } from '../types';
 
+// Mock AI Service replaced with Gemini API integration
 class AIService {
-  private ai: GoogleGenAI;
-
+  private ai: GoogleGenAI | null = null;
+  
   constructor() {
-    this.ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    // Initialize Gemini client if API key is present
+    if (process.env.API_KEY) {
+        try {
+            this.ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+        } catch (error) {
+            console.error("Failed to initialize Gemini:", error);
+        }
+    } else {
+        console.warn("API_KEY missing. AI features will use fallback.");
+    }
   }
 
   async generateSpeedText(): Promise<string> {
+    if (!this.ai) return this.getFallbackText();
+
     try {
-      // Dynamic Prompting to avoid cache/repetition
-      const topics = ["obscure culinary history", "molecular gastronomy physics", "ancient grain farming", "coffee fermentation chemistry", "the evolution of silverware", "fungi in cheese making"];
-      const randomTopic = topics[Math.floor(Math.random() * topics.length)];
-      const seed = Math.floor(Math.random() * 10000);
-
-      const prompt = `Generate two distinct, detailed paragraphs (about 50-60 words each) about ${randomTopic} or a similarly obscure food fact.
-      Do not use the word 'Saffron' or 'Taco'.
-      Do not include a title. Just the raw text.
-      Random Seed: ${seed}`; // Seed forces fresh generation
-
-      const response = await this.ai.models.generateContent({
-        model: 'gemini-3-flash-preview',
-        contents: prompt,
-      });
-      const text = response.text;
-      
-      if (!text || text.length < 50) return this.getFallbackText();
-      return text;
-    } catch (error) {
-      console.warn("AI Generation failed, using fallback.", error);
-      return this.getFallbackText();
+        const response = await this.ai.models.generateContent({
+            model: 'gemini-3-flash-preview',
+            contents: "Generate 2 short, interesting paragraphs about culinary history, exotic ingredients, or food science. The text should be educational and engaging, suitable for a typing test. Total length around 60-80 words. Plain text only, no markdown formatting.",
+        });
+        return response.text?.trim() || this.getFallbackText();
+    } catch (e) {
+        console.error("AI Text Gen Error:", e);
+        return this.getFallbackText();
     }
   }
 
   async generateSpeedComment(wpm: number, cpm: number, accuracy: number): Promise<string> {
+    if (!this.ai) {
+        if (accuracy < 90) return "You're making a mess of my kitchen!";
+        if (wpm > 60) return "Fast hands, Chef!";
+        return "Practice your knife skills.";
+    }
+
     try {
-      const prompt = `A player just finished a typing game with ${wpm} WPM and ${accuracy}% accuracy. Write a short 1-sentence witty comment as a strict chef judge. If accuracy is low, insult the mess.`;
-      const response = await this.ai.models.generateContent({
-        model: 'gemini-3-flash-preview',
-        contents: prompt,
-      });
-      return response.text || "Keep cooking!";
-    } catch (error) {
-      if (accuracy < 90) return "You're making a mess of my kitchen!";
-      if (wpm > 60) return "Fast hands, Chef!";
-      return "Practice your knife skills.";
+        const response = await this.ai.models.generateContent({
+            model: 'gemini-3-flash-preview',
+            contents: `Act as a strict but fair head chef. A line cook just completed a prep task (typing test). Stats: ${wpm} WPM, ${accuracy}% Accuracy. Give a one-sentence feedback comment. If accuracy is low, be critical about sloppy work. If fast and accurate, praise them.`,
+        });
+        return response.text?.trim() || "Back to the station, Chef.";
+    } catch (e) {
+        return "Keep cooking, Chef.";
     }
   }
 
   async generateCompetitiveScore(stats: SessionStats, speedTest?: { wpm: number, accuracy: number }): Promise<{ score: number, title: string }> {
-    try {
-        let prompt = "";
+     // Use AI to calculate a "Vibe Score" and Title
+     if (!this.ai) {
+        return this.calculateFallbackScore(stats, speedTest);
+     }
 
-        if (speedTest) {
-            prompt = `
-                You are the Head Judge of a Typing Speed Kitchen.
-                Calculate a 'Quality Score' (0-100) based on WPM and Accuracy.
-                
-                CRITICAL RULES:
-                - Accuracy is King. High WPM with low accuracy is Garbage.
-                - If Accuracy < 80%, Score MUST be below 40.
-                - If Accuracy < 50%, Score MUST be 0.
-                - To get 90+, player needs >90 WPM AND >95% Accuracy.
-                - To get 100, player needs >120 WPM AND >98% Accuracy.
-                
-                Stats:
-                - WPM: ${speedTest.wpm}
-                - Accuracy: ${speedTest.accuracy}%
+     try {
+         const prompt = speedTest 
+            ? `Evaluate this speed typing performance: ${speedTest.wpm} WPM, ${speedTest.accuracy}% Accuracy. Assign a score (0-100) and a creative kitchen rank title (e.g. "Sous Chef", "Dishwasher", "Line Cook", "Executive Chef").`
+            : `Evaluate this cooking game session: 
+               Mistakes: ${stats.mistakes}, 
+               Time: ${stats.timeTaken.toFixed(1)}s, 
+               Ingredients Missed: ${stats.ingredientsMissed}, 
+               Rotten Food Typed: ${stats.rottenWordsTyped}, 
+               Total Score: ${stats.totalScore}, 
+               Level Reached: ${stats.levelReached}.
+               Assign a performance score (0-100) and a creative kitchen rank title.`;
 
-                Return JSON: { "score": number, "title": string }
-                Example Titles: "Dishwasher", "Line Cook", "Sous Chef", "Speed Demon", "Master Chef".
-            `;
-        } else {
-             prompt = `
-                You are the Head Judge of the Culinary Olympics. A player has completed a run.
-                Evaluate their performance and assign a Score from 0 to 100 (Integer) and a Rank Title.
+         const response = await this.ai.models.generateContent({
+            model: 'gemini-3-flash-preview',
+            contents: prompt,
+            config: {
+                responseMimeType: "application/json",
+                responseSchema: {
+                    type: Type.OBJECT,
+                    properties: {
+                        score: { type: Type.INTEGER },
+                        title: { type: Type.STRING }
+                    },
+                    required: ['score', 'title']
+                }
+            }
+         });
+         
+         const jsonStr = response.text;
+         if (jsonStr) {
+             const data = JSON.parse(jsonStr);
+             return { score: data.score, title: data.title };
+         }
+         throw new Error("Empty AI response");
+     } catch (e) {
+         console.error("AI Scoring Error:", e);
+         return this.calculateFallbackScore(stats, speedTest);
+     }
+  }
 
-                Stats:
-                - Level Reached: ${stats.levelReached} (Max 6)
-                - Mistakes: ${stats.mistakes}
-                - Time: ${stats.timeTaken.toFixed(1)}s
-                - Ingredients Dropped: ${stats.ingredientsMissed}
-                - Rotten Eaten: ${stats.rottenWordsTyped}
-                - Raw Points: ${stats.totalScore}
-
-                Scoring Guide:
-                - 90-100: Perfection. Fast, no mistakes, high levels.
-                - 70-89: Good solid performance.
-                - 50-69: Average, some mistakes or drops.
-                - 0-49: Poor performance, many drops or rotten food.
-
-                Return JSON: { "score": number, "title": string }
-                Example Titles: "Sous Chef", "Line Cook", "Executive Chef", "Taco Legend", "Kitchen Disaster".
-            `;
-        }
-
-        const response = await this.ai.models.generateContent({
-          model: 'gemini-3-flash-preview',
-          contents: prompt,
-          config: {
-             responseMimeType: "application/json",
-          }
-        });
-        
-        const text = response.text;
-        if (!text) throw new Error("No response from AI");
-        const json = JSON.parse(text);
-        
-        return {
-            score: Math.min(100, Math.max(0, json.score || 0)),
-            title: json.title || "Kitchen Porter"
-        };
-
-    } catch (error) {
-        console.error("AI Score Generation failed", error);
-        
-        // Fallback Logic
+  private calculateFallbackScore(stats: SessionStats, speedTest?: { wpm: number, accuracy: number }) {
         if (speedTest) {
             let rawScore = speedTest.wpm * Math.pow(speedTest.accuracy / 100, 3);
             if (speedTest.accuracy < 80) rawScore = Math.min(rawScore, 40);
             if (speedTest.accuracy < 50) rawScore = 0;
             let score = Math.round((rawScore / 120) * 100);
-            return { score: Math.min(100, score), title: "Line Cook (Offline)" };
+            return { score: Math.min(100, score), title: "Line Cook (Unranked)" };
         } else {
             let score = 50 + (stats.totalScore / 500) - (stats.mistakes * 2) - (stats.ingredientsMissed * 5);
             if (stats.levelReached > 3) score += 10;
             if (stats.levelReached > 5) score += 20;
             score = Math.min(100, Math.max(0, Math.round(score)));
-            return { score, title: "Line Cook (Offline)" };
+            return { score, title: "Line Cook (Unranked)" };
         }
-    }
   }
 
   private getFallbackText() {

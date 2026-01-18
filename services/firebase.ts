@@ -28,25 +28,49 @@ import {
 import { LeaderboardEntry, SessionStats } from '../types';
 
 // --- Configuration ---
-// process.env is polyfilled by vite.config.ts
-const apiKey = process.env.VITE_FIREBASE_API_KEY || process.env.VITE_API_KEY;
+
+// Direct access ensures the bundler can replace 'process.env' correctly with the defined object
+// We check for the specific keys provided in the Vercel screenshot first
+const apiKey = process.env.FIREBASE_API_KEY || process.env.VITE_FIREBASE_API_KEY;
+const authDomain = process.env.FIREBASE_AUTH_DOMAIN || process.env.VITE_FIREBASE_AUTH_DOMAIN;
+const projectId = process.env.FIREBASE_PROJECT_ID || process.env.VITE_FIREBASE_PROJECT_ID;
+const storageBucket = process.env.FIREBASE_STORAGE_BUCKET || process.env.VITE_FIREBASE_STORAGE_BUCKET;
+const messagingSenderId = process.env.FIREBASE_MESSAGING_SENDER_ID || process.env.VITE_FIREBASE_MESSAGING_SENDER_ID;
+const appId = process.env.FIREBASE_APP_ID || process.env.VITE_FIREBASE_APP_ID;
 
 if (!apiKey) {
-    console.error("CRITICAL: Firebase API Key is missing. Please check your .env file and ensure VITE_FIREBASE_API_KEY is set.");
+    console.error("CRITICAL: Firebase API Key is missing. Please check Vercel Environment Variables.");
 }
 
 const firebaseConfig = {
-  apiKey: apiKey,
-  authDomain: process.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.VITE_FIREBASE_APP_ID
+  apiKey,
+  authDomain,
+  projectId,
+  storageBucket,
+  messagingSenderId,
+  appId
 };
 
-const app = initializeApp(firebaseConfig);
-export const auth = getAuth(app);
-export const db = getFirestore(app);
+// Initialize Firebase only if we have a config, otherwise we risk crashing hard immediately.
+// However, getting Auth will fail if app is not initialized.
+let app;
+let authExport;
+let dbExport;
+
+try {
+    app = initializeApp(firebaseConfig);
+    authExport = getAuth(app);
+    dbExport = getFirestore(app);
+} catch (e) {
+    console.error("Firebase Initialization Failed:", e);
+    // Provide a dummy fallback so imports don't crash the entire bundle execution immediately
+    // The app will likely still fail when trying to use auth, but it allows the error UI to potentially render
+    authExport = {} as any;
+    dbExport = {} as any;
+}
+
+export const auth = authExport;
+export const db = dbExport;
 
 // --- Types ---
 export type User = FirebaseUser;
@@ -78,10 +102,12 @@ export const onAuthStateChanged = (
     nextOrObserver: (user: User | null) => void, 
     _error?: (error: any) => void
 ) => {
+    if (!auth) return () => {};
     return firebaseOnAuthStateChanged(auth, nextOrObserver, _error);
 };
 
 export const signInWithGoogle = async () => {
+    if (!auth) throw new Error("Firebase Auth not initialized");
     const provider = new GoogleAuthProvider();
     try {
         const result = await signInWithPopup(auth, provider);
@@ -93,7 +119,6 @@ export const signInWithGoogle = async () => {
 
         if (!userSnap.exists()) {
             // Create new profile
-            // We set username to empty string to trigger the "Identify Yourself" flow in Game.tsx
             await setDoc(userRef, {
                 username: '', 
                 usernameLower: '',
@@ -103,7 +128,7 @@ export const signInWithGoogle = async () => {
                 createdAt: serverTimestamp()
             });
         } else {
-            // Update existing login info just in case photo changed, but don't touch username
+            // Update existing login info
             await updateDoc(userRef, {
                 email: user.email,
                 photoURL: user.photoURL,
@@ -117,6 +142,7 @@ export const signInWithGoogle = async () => {
 };
 
 export const logout = async () => {
+    if (!auth) return;
     await signOut(auth);
     window.location.reload();
 };
@@ -160,7 +186,6 @@ export const searchUsers = async (searchTerm: string, currentUid: string): Promi
     const myFriends = currentUserData?.friends || [];
 
     // 2. Query Firestore by usernameLower
-    // Note: Firestore string search is prefix-based.
     const usersRef = collection(db, "users");
     const q = query(
         usersRef, 
@@ -195,11 +220,9 @@ export const searchUsers = async (searchTerm: string, currentUid: string): Promi
 
 export const sendFriendRequest = async (fromUid: string, toUid: string) => {
     try {
-        // 1. Get sender details for the notification
         const senderProfile = await getUserProfile(fromUid);
         if (!senderProfile) return false;
 
-        // 2. Check if request already exists
         const requestsRef = collection(db, "requests");
         const q = query(
             requestsRef, 
@@ -208,9 +231,8 @@ export const sendFriendRequest = async (fromUid: string, toUid: string) => {
             where("status", "==", "pending")
         );
         const existing = await getDocs(q);
-        if (!existing.empty) return false; // Already requested
+        if (!existing.empty) return false;
 
-        // 3. Create Request Document
         await addDoc(requestsRef, {
             from: fromUid,
             fromName: senderProfile.username,
@@ -227,7 +249,6 @@ export const sendFriendRequest = async (fromUid: string, toUid: string) => {
 
 export const getFriendRequests = async (uid: string): Promise<FriendRequest[]> => {
     const requestsRef = collection(db, "requests");
-    // Get requests sent TO me that are PENDING
     const q = query(
         requestsRef,
         where("to", "==", uid),
@@ -243,14 +264,12 @@ export const getFriendRequests = async (uid: string): Promise<FriendRequest[]> =
 
 export const acceptFriendRequest = async (currentUid: string, fromUid: string) => {
     try {
-        // 1. Add to both friend lists using arrayUnion (atomic operation)
         const meRef = doc(db, "users", currentUid);
         const themRef = doc(db, "users", fromUid);
 
         await updateDoc(meRef, { friends: arrayUnion(fromUid) });
         await updateDoc(themRef, { friends: arrayUnion(currentUid) });
 
-        // 2. Find and delete/update the request
         const requestsRef = collection(db, "requests");
         const q = query(
             requestsRef, 
@@ -260,7 +279,6 @@ export const acceptFriendRequest = async (currentUid: string, fromUid: string) =
         );
         const snapshot = await getDocs(q);
         
-        // Mark as accepted or delete. Let's delete to keep it clean.
         snapshot.forEach(async (docSnap) => {
             await deleteDoc(doc(db, "requests", docSnap.id));
         });
@@ -308,10 +326,8 @@ export const saveLeaderboardScore = async (
     mode: string,
     extra?: { accuracy?: number }
 ) => {
-    // Sort Value Logic
     let sortValue = score;
     if (mode === 'competitive') {
-         // Sort asc for time
          sortValue = score; 
     } else if (mode !== 'speed-test') {
          sortValue = (stats.levelReached * 1000) + score; 
@@ -344,7 +360,6 @@ export const getLeaderboard = async (mode: string = 'competitive'): Promise<Lead
     let q;
     
     if (mode === 'competitive') {
-        // For competitive (time), lower is better. ASC sort.
         q = query(
             lbRef, 
             where("mode", "==", mode),
@@ -352,7 +367,6 @@ export const getLeaderboard = async (mode: string = 'competitive'): Promise<Lead
             limit(20)
         );
     } else {
-        // For others (points), higher is better. DESC sort.
         q = query(
             lbRef, 
             where("mode", "==", mode),
@@ -363,7 +377,6 @@ export const getLeaderboard = async (mode: string = 'competitive'): Promise<Lead
 
     const snapshot = await getDocs(q);
     
-    // Logic to only show top score per user (client side filtering for simplicity)
     const entries: LeaderboardEntry[] = [];
     const seenUsers = new Set();
     

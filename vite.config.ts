@@ -4,27 +4,40 @@ import react from '@vitejs/plugin-react';
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
-  // Load env file based on `mode` in the current working directory.
-  // Set the third parameter to '' to load all env regardless of the `VITE_` prefix.
-  const env = loadEnv(mode, (process as any).cwd(), '');
+  // 1. Load env vars from .env files
+  const envFiles = loadEnv(mode, '.', '');
+
+  // 2. Combine with system env vars (process.env)
+  // This ensures variables defined in Vercel project settings are captured
+  const combinedEnv = { ...process.env, ...envFiles };
+
+  // 3. Filter and prepare for injection
+  const processEnvValues: Record<string, string> = {};
   
+  Object.keys(combinedEnv).forEach(key => {
+    // We allow VITE_, FIREBASE_, REACT_APP_, and specific keys like API_KEY
+    if (
+      key.startsWith('VITE_') || 
+      key.startsWith('FIREBASE_') || 
+      key.startsWith('REACT_APP_') || 
+      key === 'API_KEY' ||
+      key === 'NODE_ENV'
+    ) {
+      // JSON.stringify is crucial to ensure values are treated as strings in the code
+      processEnvValues[key] = JSON.stringify(combinedEnv[key]);
+    }
+  });
+
+  // Default NODE_ENV if missing
+  if (!processEnvValues['NODE_ENV']) {
+      processEnvValues['NODE_ENV'] = JSON.stringify(mode);
+  }
+
   return {
     plugins: [react()],
     define: {
-      // Polyfill process.env for the app logic that relies on it
-      // CRITICAL: We JSON.stringify values so they are injected as strings, not identifiers.
-      
-      // Ensure API_KEY is available for Google GenAI SDK, checking both naming conventions
-      'process.env.API_KEY': JSON.stringify(env.API_KEY || env.VITE_API_KEY),
-      
-      // Polyfill the rest of process.env object
-      'process.env': {
-         NODE_ENV: JSON.stringify(mode),
-         ...Object.keys(env).reduce((acc: any, key) => {
-            acc[key] = JSON.stringify(env[key]);
-            return acc;
-         }, {})
-      }
+      // This replaces 'process.env' in the client code with the constructed object literal
+      'process.env': processEnvValues
     },
     server: {
       host: true,
