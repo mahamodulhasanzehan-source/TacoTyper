@@ -498,11 +498,13 @@ export const deleteMessage = async (messageId: string) => {
 export const subscribeToChat = (currentUid: string, partnerUid: string, callback: (messages: ChatMessage[]) => void) => {
     const chatId = getChatId(currentUid, partnerUid);
     const messagesRef = collection(db, "messages");
+    
+    // NOTE: We do NOT use orderBy('timestamp') here to avoid causing a "Missing Index" error
+    // for new users. We fetch the collection filtered by chatId and sort client-side.
     const q = query(
         messagesRef, 
-        where("chatId", "==", chatId),
-        orderBy("timestamp", "asc"),
-        limit(50)
+        where("chatId", "==", chatId)
+        // limit(100) - Removed limit to ensure we get all recent messages since we can't sort server-side reliably without index
     );
 
     return onSnapshot(q, (snapshot) => {
@@ -511,8 +513,13 @@ export const subscribeToChat = (currentUid: string, partnerUid: string, callback
             ...doc.data()
         })) as ChatMessage[];
         
+        // Client-side sort
+        msgs.sort((a, b) => {
+            const getT = (t: any) => t ? (t.toMillis ? t.toMillis() : (t.seconds ? t.seconds * 1000 : Date.now())) : Date.now();
+            return getT(a.timestamp) - getT(b.timestamp);
+        });
+
         // Mark messages as read if I am the receiver
-        const batchUpdates: any[] = [];
         snapshot.docs.forEach(doc => {
             const data = doc.data();
             if (data.receiverId === currentUid && !data.read) {
@@ -525,16 +532,14 @@ export const subscribeToChat = (currentUid: string, partnerUid: string, callback
 };
 
 export const subscribeToGlobalUnread = (currentUid: string, currentPartnerId: string | null, callback: (hasUnread: boolean) => void) => {
-    // This is a simplified check. A full scalable solution requires a separate 'unread' counter or document.
-    // Here we query for ANY message sent to me that is unread.
     const messagesRef = collection(db, "messages");
     
-    // Complex queries in Firestore are limited. We'll listen to the last 20 messages sent to me that are unread.
+    // NOTE: Avoid composite index requirement (receiverId + read). 
+    // Just query by receiverId (automatically indexed) and filter 'read' status in memory.
     const q = query(
         messagesRef,
         where("receiverId", "==", currentUid),
-        where("read", "==", false),
-        limit(20)
+        limit(50) 
     );
 
     return onSnapshot(q, (snapshot) => {
@@ -542,8 +547,8 @@ export const subscribeToGlobalUnread = (currentUid: string, currentPartnerId: st
         
         snapshot.docs.forEach(doc => {
             const data = doc.data();
-            // If the message is from someone who IS NOT the person I'm currently talking to
-            if (data.senderId !== currentPartnerId) {
+            // Check if unread AND not from the person I'm currently chatting with
+            if (data.read === false && data.senderId !== currentPartnerId) {
                 hasUnreadFromOthers = true;
             }
         });
