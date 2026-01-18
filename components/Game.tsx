@@ -30,6 +30,7 @@ import type { User } from '../services/firebase';
 import { isMobileDevice } from '../utils/device';
 import WordComponent from './WordComponent';
 import TypingSpeedGame from './TypingSpeedGame';
+import HubScreen from './HubScreen';
 import { 
   StartScreen, 
   LevelSelectScreen, 
@@ -52,7 +53,8 @@ interface GameProps {
 }
 
 export default function Game({ user, onLogout }: GameProps) {
-  const [screen, setScreen] = useState<GameScreen>('start');
+  // Start at Hub
+  const [screen, setScreen] = useState<GameScreen>('hub');
   const [gameMode, setGameMode] = useState<GameMode>('standard');
   const [playStyle, setPlayStyle] = useState<PlayStyle>('unrated');
   const { settings } = useSettings();
@@ -98,7 +100,7 @@ export default function Game({ user, onLogout }: GameProps) {
     lives: 3,
     level: 1,
     gameMode: 'standard' as GameMode,
-    screen: 'start' as GameScreen,
+    screen: 'hub' as GameScreen,
     streak: 0,
     streakState: 'normal' as StreakState,
     consecutivePerfectWords: 0,
@@ -269,6 +271,7 @@ export default function Game({ user, onLogout }: GameProps) {
 
   const update = useCallback((time: number) => {
     const state = stateRef.current;
+    // Don't update game logic if in hub or start screen
     if (state.screen !== 'playing') {
         state.lastTime = time;
         requestRef.current = requestAnimationFrame(update);
@@ -450,7 +453,7 @@ export default function Game({ user, onLogout }: GameProps) {
   const handleUsernameSubmit = async (name: string) => {
       setCustomUsername(name);
       await saveUsername(user.uid, name);
-      setScreen('start');
+      setScreen('hub'); // After username setup, go to hub
   };
 
   const handleUpdateUsername = async (name: string) => {
@@ -758,7 +761,7 @@ export default function Game({ user, onLogout }: GameProps) {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-        if (screen === 'speed-test-playing' || screen === 'username-setup' || showExitConfirm || isMobile) return;
+        if (screen === 'speed-test-playing' || screen === 'username-setup' || showExitConfirm || isMobile || screen === 'hub') return;
         if (e.key === 'Escape') {
             if (screen === 'playing') {
                 if (playStyle === 'competitive') {
@@ -874,9 +877,6 @@ export default function Game({ user, onLogout }: GameProps) {
           boxShadow = `0 0 40px ${COLORS.comboPurple}, inset 0 0 30px rgba(217, 0, 255, 0.3)`;
           animation = shake ? 'shake 0.5s' : 'spicyPulse 2s infinite';
       }
-
-      // Reduced motion logic was removed from settings context
-      // If we wanted to keep it internally we could default it, but the UI option is gone.
       
       return {
           width: '100%',
@@ -923,177 +923,188 @@ export default function Game({ user, onLogout }: GameProps) {
         {isGenerating && <GeneratingModal message="Generating text for you to cook..." />}
         {isEvaluating && <GeneratingModal message="Evaluating Performance..." />}
 
-        <div style={getContainerStyles()} className="relative transition-all duration-500">
-            {sparkles.map(s => (
-                <div key={s.id} className="sparkle" style={{ left: s.x, top: s.y, backgroundColor: s.color, '--tx': s.tx, '--ty': s.ty } as any} />
-            ))}
-            {popups.map(p => (
-                <div key={p.id} className="popup-text" style={{ left: p.x, top: p.y, color: p.color, fontSize: '20px' }}>{p.text}</div>
-            ))}
-            
-            {showHighScoreAlert && (
-                 <div className="absolute top-20 left-1/2 transform -translate-x-1/2 text-[#f4b400] text-xl md:text-2xl animate-bounce z-50 text-center" style={{ textShadow: '2px 2px 0px #000', color: COLORS.warn }}>
-                     NEW HIGH SCORE!
-                 </div>
-            )}
+        {screen === 'hub' ? (
+             <HubScreen 
+                user={user} 
+                onLaunchGame={() => setScreen('start')}
+                onLogout={onLogout}
+                username={customUsername}
+                onUpdateUsername={handleUpdateUsername}
+             />
+        ) : (
+            <div style={getContainerStyles()} className="relative transition-all duration-500">
+                {sparkles.map(s => (
+                    <div key={s.id} className="sparkle" style={{ left: s.x, top: s.y, backgroundColor: s.color, '--tx': s.tx, '--ty': s.ty } as any} />
+                ))}
+                {popups.map(p => (
+                    <div key={p.id} className="popup-text" style={{ left: p.x, top: p.y, color: p.color, fontSize: '20px' }}>{p.text}</div>
+                ))}
+                
+                {showHighScoreAlert && (
+                     <div className="absolute top-20 left-1/2 transform -translate-x-1/2 text-[#f4b400] text-xl md:text-2xl animate-bounce z-50 text-center" style={{ textShadow: '2px 2px 0px #000', color: COLORS.warn }}>
+                         NEW HIGH SCORE!
+                     </div>
+                )}
 
-            {screen === 'playing' && (
-                <div className="absolute top-0 left-0 w-full p-2 box-border bg-white/10 z-10 hidden md:flex flex-col gap-2" style={{ color: COLORS.text }}>
-                    <div className="flex justify-between w-full text-[10px] md:text-base">
-                        <div>
-                            {playStyle === 'competitive' ? `Time: ${formatTimer(elapsedTime)}` : `Score: ${score}`}
-                        </div>
-                        <div>{'❤️'.repeat(lives)}</div>
-                        <div>
-                            {gameMode === 'boss' ? 'BOSS' : 
-                            (gameMode === 'infinite' || gameMode === 'universal') ? `${stateRef.current.infiniteConfig?.speedMult.toFixed(1)}x` : 
-                            `Lvl: ${level}`}
-                        </div>
-                    </div>
-                    {(screen === 'playing' || streak > 0) && (
-                        <div className="w-full h-1.5 md:h-2.5 bg-[#333] border-2 relative" style={{ borderColor: COLORS.text }}>
-                            <div 
-                                className="h-full transition-all duration-300 ease-out"
-                                style={{ 
-                                    width: `${Math.min(100, streak < COMBO_FIESTA ? (streak/COMBO_FIESTA)*50 : 50 + ((streak-COMBO_FIESTA)/(COMBO_SPICY-COMBO_FIESTA))*50)}%`,
-                                    backgroundColor: streak < COMBO_FIESTA ? '#aaa' : (streak < COMBO_SPICY ? COLORS.comboRed : COLORS.comboPurple)
-                                }}
-                            />
-                            <div className="absolute top-2 md:top-3 left-1/2 transform -translate-x-1/2 text-[8px] md:text-[12px] text-[#aaa] shadow-black drop-shadow-md">
-                                Streak: {streak}
+                {screen === 'playing' && (
+                    <div className="absolute top-0 left-0 w-full p-2 box-border bg-white/10 z-10 hidden md:flex flex-col gap-2" style={{ color: COLORS.text }}>
+                        <div className="flex justify-between w-full text-[10px] md:text-base">
+                            <div>
+                                {playStyle === 'competitive' ? `Time: ${formatTimer(elapsedTime)}` : `Score: ${score}`}
+                            </div>
+                            <div>{'❤️'.repeat(lives)}</div>
+                            <div>
+                                {gameMode === 'boss' ? 'BOSS' : 
+                                (gameMode === 'infinite' || gameMode === 'universal') ? `${stateRef.current.infiniteConfig?.speedMult.toFixed(1)}x` : 
+                                `Lvl: ${level}`}
                             </div>
                         </div>
-                    )}
-                </div>
-            )}
+                        {(screen === 'playing' || streak > 0) && (
+                            <div className="w-full h-1.5 md:h-2.5 bg-[#333] border-2 relative" style={{ borderColor: COLORS.text }}>
+                                <div 
+                                    className="h-full transition-all duration-300 ease-out"
+                                    style={{ 
+                                        width: `${Math.min(100, streak < COMBO_FIESTA ? (streak/COMBO_FIESTA)*50 : 50 + ((streak-COMBO_FIESTA)/(COMBO_SPICY-COMBO_FIESTA))*50)}%`,
+                                        backgroundColor: streak < COMBO_FIESTA ? '#aaa' : (streak < COMBO_SPICY ? COLORS.comboRed : COLORS.comboPurple)
+                                    }}
+                                />
+                                <div className="absolute top-2 md:top-3 left-1/2 transform -translate-x-1/2 text-[8px] md:text-[12px] text-[#aaa] shadow-black drop-shadow-md">
+                                    Streak: {streak}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                )}
 
-            {gameMode !== 'universal' && gameMode !== 'speed-test' && (
-                <div className="absolute bottom-5 left-1/2 transform -translate-x-1/2 text-2xl md:text-3xl z-[5] w-[90%] h-[50px] whitespace-nowrap overflow-hidden text-center">
-                    {ingredientsCollected.map((icon, i) => (
-                        <span key={i} className="inline-block mx-[2px] animate-pop-in">{icon}</span>
-                    ))}
-                </div>
-            )}
+                {gameMode !== 'universal' && gameMode !== 'speed-test' && (
+                    <div className="absolute bottom-5 left-1/2 transform -translate-x-1/2 text-2xl md:text-3xl z-[5] w-[90%] h-[50px] whitespace-nowrap overflow-hidden text-center">
+                        {ingredientsCollected.map((icon, i) => (
+                            <span key={i} className="inline-block mx-[2px] animate-pop-in">{icon}</span>
+                        ))}
+                    </div>
+                )}
 
-            {fallingWords.map(word => (
-                <WordComponent 
-                    key={word.id} 
-                    word={word} 
-                    isActive={word.id === activeWordId} 
-                    onClick={handleManualSelect}
-                />
-            ))}
+                {fallingWords.map(word => (
+                    <WordComponent 
+                        key={word.id} 
+                        word={word} 
+                        isActive={word.id === activeWordId} 
+                        onClick={handleManualSelect}
+                    />
+                ))}
 
-            {screen === 'username-setup' && (
-                <UsernameScreen onSubmit={handleUsernameSubmit} />
-            )}
+                {screen === 'username-setup' && (
+                    <UsernameScreen onSubmit={handleUsernameSubmit} />
+                )}
 
-            {screen === 'start' && (
-                <StartScreen 
-                    onStart={() => setScreen('mode-select')}
-                    onInfinite={() => {
-                        setPlayStyle('unrated');
-                        initGame('infinite', 1, 1.0, 1.3);
-                    }}
-                    onUniversal={() => {
-                        setPlayStyle('unrated');
-                        initGame('universal');
-                    }}
-                    onSpeedTest={startSpeedTest}
-                    user={user}
-                    onLogout={onLogout}
-                    isGenerating={isGenerating}
-                    username={customUsername}
-                    onUpdateUsername={handleUpdateUsername}
-                />
-            )}
+                {screen === 'start' && (
+                    <StartScreen 
+                        onStart={() => setScreen('mode-select')}
+                        onInfinite={() => {
+                            setPlayStyle('unrated');
+                            initGame('infinite', 1, 1.0, 1.3);
+                        }}
+                        onUniversal={() => {
+                            setPlayStyle('unrated');
+                            initGame('universal');
+                        }}
+                        onSpeedTest={startSpeedTest}
+                        onBackToHub={() => setScreen('hub')}
+                        user={user}
+                        isGenerating={isGenerating}
+                        username={customUsername}
+                        onUpdateUsername={handleUpdateUsername}
+                        onLogout={onLogout}
+                    />
+                )}
 
-            {screen === 'mode-select' && (
-                <ModeSelectScreen 
-                    onCompetitive={() => {
-                        setPlayStyle('competitive');
-                        initGame('standard', 1);
-                    }}
-                    onUnrated={() => {
-                        setPlayStyle('unrated');
-                        setScreen('level-select');
-                    }}
-                    onBack={() => setScreen('start')}
-                />
-            )}
-            
-            {screen === 'speed-test-playing' && (
-                <TypingSpeedGame 
-                    targetText={speedTestText}
-                    onComplete={finishSpeedTest}
-                    onQuit={handleQuitAttempt}
-                />
-            )}
+                {screen === 'mode-select' && (
+                    <ModeSelectScreen 
+                        onCompetitive={() => {
+                            setPlayStyle('competitive');
+                            initGame('standard', 1);
+                        }}
+                        onUnrated={() => {
+                            setPlayStyle('unrated');
+                            setScreen('level-select');
+                        }}
+                        onBack={() => setScreen('start')}
+                    />
+                )}
+                
+                {screen === 'speed-test-playing' && (
+                    <TypingSpeedGame 
+                        targetText={speedTestText}
+                        onComplete={finishSpeedTest}
+                        onQuit={handleQuitAttempt}
+                    />
+                )}
 
-            {screen === 'speed-test-result' && speedTestResult && (
-                <SpeedResultScreen 
-                    wpm={speedTestResult.wpm}
-                    cpm={speedTestResult.cpm}
-                    accuracy={speedTestResult.accuracy}
-                    comment={speedTestResult.comment}
-                    onRestart={() => setScreen('start')}
-                />
-            )}
+                {screen === 'speed-test-result' && speedTestResult && (
+                    <SpeedResultScreen 
+                        wpm={speedTestResult.wpm}
+                        cpm={speedTestResult.cpm}
+                        accuracy={speedTestResult.accuracy}
+                        comment={speedTestResult.comment}
+                        onRestart={() => setScreen('start')}
+                    />
+                )}
 
-            {screen === 'level-select' && (
-                <LevelSelectScreen 
-                    onSelectLevel={(lvl) => initGame('standard', lvl)}
-                    onBack={() => setScreen('start')}
-                />
-            )}
+                {screen === 'level-select' && (
+                    <LevelSelectScreen 
+                        onSelectLevel={(lvl) => initGame('standard', lvl)}
+                        onBack={() => setScreen('start')}
+                    />
+                )}
 
-            {screen === 'level-complete' && (
-                <LevelCompleteScreen 
-                    levelName={level < 5 ? LEVEL_CONFIGS[level].name : "Kabsa Feast"}
-                    message={playStyle === 'competitive' ? "Ready for next service?" : (level === 3 ? "Delicious noodles! Next up: Prep." : "Level Complete!")}
-                    emoji={LEVEL_CONFIGS[level]?.emoji}
-                    onNext={nextLevelAction}
-                />
-            )}
+                {screen === 'level-complete' && (
+                    <LevelCompleteScreen 
+                        levelName={level < 5 ? LEVEL_CONFIGS[level].name : "Kabsa Feast"}
+                        message={playStyle === 'competitive' ? "Ready for next service?" : (level === 3 ? "Delicious noodles! Next up: Prep." : "Level Complete!")}
+                        emoji={LEVEL_CONFIGS[level]?.emoji}
+                        onNext={nextLevelAction}
+                    />
+                )}
 
-            {screen === 'boss-intro' && (
-                <BossIntroScreen onStart={() => initGame('boss', 6)} />
-            )}
+                {screen === 'boss-intro' && (
+                    <BossIntroScreen onStart={() => initGame('boss', 6)} />
+                )}
 
-            {screen === 'game-over' && (
-                <GameOverScreen 
-                    score={score}
-                    message={infoModalText}
-                    stats={gameMode === 'infinite' ? `Reached Speed: ${stateRef.current.infiniteConfig.speedMult.toFixed(1)}x` : undefined}
-                    onRestart={() => setScreen('start')}
-                    aiTitle={finalAiTitle}
-                    aiScore={finalAiScore}
-                    isCalculating={isCalculatingScore}
-                    isTimeScore={playStyle === 'competitive'}
-                />
-            )}
+                {screen === 'game-over' && (
+                    <GameOverScreen 
+                        score={score}
+                        message={infoModalText}
+                        stats={gameMode === 'infinite' ? `Reached Speed: ${stateRef.current.infiniteConfig.speedMult.toFixed(1)}x` : undefined}
+                        onRestart={() => setScreen('start')}
+                        aiTitle={finalAiTitle}
+                        aiScore={finalAiScore}
+                        isCalculating={isCalculatingScore}
+                        isTimeScore={playStyle === 'competitive'}
+                    />
+                )}
 
-            {screen === 'paused' && !showExitConfirm && (
-                <PauseScreen onResume={() => setScreen('playing')} onQuit={handleQuitAttempt} />
-            )}
+                {screen === 'paused' && !showExitConfirm && (
+                    <PauseScreen onResume={() => setScreen('playing')} onQuit={handleQuitAttempt} />
+                )}
 
-            {showExitConfirm && (
-                <ExitConfirmScreen 
-                    onConfirm={() => {
-                        setShowExitConfirm(false);
-                        setScreen('start');
-                    }}
-                    onCancel={() => {
-                        setShowExitConfirm(false);
-                        setScreen('playing');
-                    }}
-                />
-            )}
+                {showExitConfirm && (
+                    <ExitConfirmScreen 
+                        onConfirm={() => {
+                            setShowExitConfirm(false);
+                            setScreen('start');
+                        }}
+                        onCancel={() => {
+                            setShowExitConfirm(false);
+                            setScreen('playing');
+                        }}
+                    />
+                )}
 
-            {showInfoModal && (
-                <InfoModal text={infoModalText} onClose={() => setShowInfoModal(false)} />
-            )}
-        </div>
+                {showInfoModal && (
+                    <InfoModal text={infoModalText} onClose={() => setShowInfoModal(false)} />
+                )}
+            </div>
+        )}
     </div>
   );
 }

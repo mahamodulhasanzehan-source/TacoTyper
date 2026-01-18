@@ -238,12 +238,12 @@ const LeaderboardWidget: React.FC<LeaderboardWidgetProps> = ({ className = '' })
 };
 
 // --- Friends / User Search Modal ---
-interface FriendsModalProps {
+export interface FriendsModalProps {
     onClose: () => void;
     currentUser: User;
 }
 
-const FriendsModal: React.FC<FriendsModalProps> = ({ onClose, currentUser }) => {
+export const FriendsModal: React.FC<FriendsModalProps> = ({ onClose, currentUser }) => {
     const [searchTerm, setSearchTerm] = useState('');
     const [allUsers, setAllUsers] = useState<{uid: string, username: string, isFriend: boolean, hasPending: boolean}[]>([]);
     const [requests, setRequests] = useState<FriendRequest[]>([]);
@@ -399,15 +399,17 @@ const FriendsModal: React.FC<FriendsModalProps> = ({ onClose, currentUser }) => 
 };
 
 // --- Settings Modal ---
-interface SettingsModalProps {
+export interface SettingsModalProps {
     onClose: () => void;
     username: string | null | undefined;
     onUpdateUsername: (name: string) => void;
+    onLogout?: () => void;
 }
-const SettingsModal: React.FC<SettingsModalProps> = ({ onClose, username, onUpdateUsername }) => {
+export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose, username, onUpdateUsername, onLogout }) => {
     const { settings, updateSettings, isAdmin, setIsAdmin } = useSettings();
     const [passwordInput, setPasswordInput] = useState('');
     const [editName, setEditName] = useState(username || '');
+    const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
     const handleAdminLogin = (e: React.FormEvent) => {
         e.preventDefault();
@@ -526,8 +528,30 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ onClose, username, onUpda
 
                 <div className="h-px bg-[#333] my-2"></div>
 
+                {/* Logout Logic */}
+                {onLogout && (
+                    <div className="border-t border-[#333] pt-4">
+                        {!showLogoutConfirm ? (
+                             <button 
+                                onClick={() => setShowLogoutConfirm(true)}
+                                className="w-full bg-[#333] text-[#ff2a2a] py-2 border border-[#ff2a2a] hover:bg-[#ff2a2a] hover:text-white transition-colors"
+                             >
+                                 LOG OUT
+                             </button>
+                        ) : (
+                             <div className="flex gap-2 items-center justify-between">
+                                 <span className="text-xs text-[#aaa]">Are you sure?</span>
+                                 <div className="flex gap-2">
+                                     <button onClick={onLogout} className="bg-[#ff2a2a] text-white px-3 py-1 text-xs hover:brightness-110">Yes</button>
+                                     <button onClick={() => setShowLogoutConfirm(false)} className="bg-[#333] text-white px-3 py-1 text-xs border border-[#555]">No</button>
+                                 </div>
+                             </div>
+                        )}
+                    </div>
+                )}
+
                 {/* Admin Section */}
-                <div className="mt-auto pt-4">
+                <div className="mt-auto pt-4 border-t border-[#333]">
                      {isAdmin ? (
                          <div className="flex justify-between items-center">
                              <span className="text-green-500 text-xs">Admin Access Active</span>
@@ -560,19 +584,22 @@ interface StartScreenProps {
   onInfinite: () => void;
   onUniversal: () => void;
   onSpeedTest: () => void;
+  onBackToHub: () => void; // New prop
   user?: User | null;
-  onLogout?: () => void;
   isGenerating?: boolean;
   username?: string | null;
   onUpdateUsername: (name: string) => void;
+  onLogout?: () => void; // Passed through to settings
 }
 
-export const StartScreen: React.FC<StartScreenProps> = ({ onStart, onInfinite, onUniversal, onSpeedTest, user, onLogout, isGenerating, username, onUpdateUsername }) => {
-  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+export const StartScreen: React.FC<StartScreenProps> = ({ 
+    onStart, onInfinite, onUniversal, onSpeedTest, onBackToHub, 
+    user, isGenerating, username, onUpdateUsername, onLogout 
+}) => {
   const [showSettings, setShowSettings] = useState(false);
   const [showFriends, setShowFriends] = useState(false);
 
-  // Fix display name logic: Use the custom username if available, otherwise fallback.
+  // Fix display name logic
   const displayableName = username || user?.displayName || 'Chef';
 
   return (
@@ -585,6 +612,13 @@ export const StartScreen: React.FC<StartScreenProps> = ({ onStart, onInfinite, o
          
          <div className="absolute top-4 left-4 md:top-8 md:left-8 flex gap-4 z-[120]">
             <button 
+                onClick={onBackToHub}
+                className="text-2xl hover:scale-110 transition-transform duration-300"
+                title="Back to Hub"
+            >
+                🏠
+            </button>
+            <button 
                 onClick={() => setShowSettings(true)}
                 className="text-2xl hover:rotate-90 transition-transform duration-300"
                 title="Settings"
@@ -594,20 +628,7 @@ export const StartScreen: React.FC<StartScreenProps> = ({ onStart, onInfinite, o
             {user && (
                 <RandomReveal distance={100} className="flex items-center gap-4">
                     <span className="text-[#aaa] text-[10px] md:text-xs">{displayableName}</span>
-                    {!showLogoutConfirm ? (
-                        <button 
-                            onClick={() => setShowLogoutConfirm(true)}
-                            className="bg-transparent border-2 border-[#ff2a2a] text-[#ff2a2a] text-[10px] md:text-xs py-1 px-2 md:py-2 md:px-4 cursor-pointer font-['Press_Start_2P'] hover:bg-[#ff2a2a] hover:text-white"
-                        >
-                            Log Out
-                        </button>
-                    ) : (
-                        <div className="flex gap-2">
-                             <span className="text-[10px] md:text-xs text-white self-center">Sure?</span>
-                             <button onClick={onLogout} className="bg-[#ff2a2a] text-white text-[10px] md:text-xs py-1 px-2 md:py-2 md:px-2 border-2 border-[#ff2a2a] hover:brightness-125">Yes</button>
-                             <button onClick={() => setShowLogoutConfirm(false)} className="bg-transparent text-[#aaa] text-[10px] md:text-xs py-1 px-2 md:py-2 md:px-2 border-2 border-[#aaa] hover:bg-[#333]">No</button>
-                        </div>
-                    )}
+                    {/* Logout moved to Settings, name remains here for ID */}
                 </RandomReveal>
             )}
          </div>
@@ -628,14 +649,14 @@ export const StartScreen: React.FC<StartScreenProps> = ({ onStart, onInfinite, o
                 onClose={() => setShowSettings(false)} 
                 username={displayableName}
                 onUpdateUsername={onUpdateUsername}
+                onLogout={onLogout}
              />
          )}
          {showFriends && user && <FriendsModal onClose={() => setShowFriends(false)} currentUser={user} />}
          
          <div className="flex flex-col items-center md:mr-[300px]">
             <h1 className="text-3xl md:text-5xl mb-5 text-[#f4b400] shadow-[#e55934] text-center leading-normal" style={{ textShadow: `4px 4px 0px ${COLORS.accent}` }}>
-                <RandomText text="Typing for" />
-                <br className="md:hidden"/> <RandomText text="Tacos" />
+                <RandomText text="Taco Typer" />
             </h1>
             <p className="text-xs md:text-base max-w-[500px] leading-normal mb-8 text-center px-4">
                 <RandomText text="Type ingredients to cook!" /><br />

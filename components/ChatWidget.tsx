@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { User, fetchActiveUsers, sendMessage, subscribeToChat, subscribeToGlobalUnread, saveLastChatPartner, getUserProfile } from '../services/firebase';
+import { User, fetchActiveUsers, sendMessage, subscribeToChat, subscribeToGlobalUnread, saveLastChatPartner, getUserProfile, deleteMessage } from '../services/firebase';
 import { COLORS } from '../constants';
 import { RandomReveal } from './Visuals';
 
@@ -18,7 +18,10 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ user, className = '' }) => {
     const [messages, setMessages] = useState<any[]>([]);
     const [inputText, setInputText] = useState('');
     const [hasUnreadAlert, setHasUnreadAlert] = useState(false);
+    const [contextMenu, setContextMenu] = useState<{x: number, y: number, msgId: string} | null>(null);
+    
     const messagesEndRef = useRef<HTMLDivElement>(null);
+    const textAreaRef = useRef<HTMLTextAreaElement>(null);
 
     // Initial Load: Get Friends & Last Partner
     useEffect(() => {
@@ -61,11 +64,34 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ user, className = '' }) => {
         return () => unsubscribe();
     }, [user.uid, activeFriend]);
 
+    // Auto-resize textarea
+    useEffect(() => {
+        if (textAreaRef.current) {
+            textAreaRef.current.style.height = 'auto'; // Reset height
+            const scrollHeight = textAreaRef.current.scrollHeight;
+            textAreaRef.current.style.height = `${Math.min(scrollHeight, 100)}px`; // Cap at 100px
+        }
+    }, [inputText]);
+
+    // Close context menu on click elsewhere
+    useEffect(() => {
+        const handleClickOutside = () => setContextMenu(null);
+        window.addEventListener('click', handleClickOutside);
+        return () => window.removeEventListener('click', handleClickOutside);
+    }, []);
+
     const handleSend = async () => {
         if (!inputText.trim() || !activeFriend) return;
         const text = inputText;
-        setInputText('');
+        setInputText(''); // Optimistic clear
         await sendMessage(user.uid, activeFriend.uid, text);
+    };
+
+    const handleKeyDown = (e: React.KeyboardEvent) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            handleSend();
+        }
     };
 
     const handleFriendSelect = async (friend: any) => {
@@ -80,6 +106,17 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ user, className = '' }) => {
             if (activeFriend) setView('chat');
             else setView('friends'); // Stay on friends if no one selected
         }
+    };
+
+    const handleContextMenu = (e: React.MouseEvent, msgId: string) => {
+        e.preventDefault();
+        e.stopPropagation(); // Prevent closing immediately
+        setContextMenu({ x: e.clientX, y: e.clientY, msgId });
+    };
+
+    const handleDeleteMessage = async (msgId: string) => {
+        await deleteMessage(msgId);
+        setContextMenu(null);
     };
 
     return (
@@ -130,12 +167,16 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ user, className = '' }) => {
                                 Select a friend to chat.
                             </div>
                         ) : (
-                            <div className="flex-1 overflow-y-auto custom-scrollbar p-2 space-y-2">
+                            <div className="flex-1 overflow-y-auto custom-scrollbar p-2 space-y-2 relative">
                                 {messages.map(msg => {
                                     const isMe = msg.senderId === user.uid;
                                     return (
-                                        <div key={msg.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
-                                            <div className={`max-w-[85%] p-2 text-[10px] break-words border ${isMe ? 'bg-[#222] border-[#f4b400] text-white' : 'bg-[#111] border-[#555] text-[#ccc]'}`}>
+                                        <div 
+                                            key={msg.id} 
+                                            className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}
+                                            onContextMenu={(e) => handleContextMenu(e, msg.id)}
+                                        >
+                                            <div className={`max-w-[85%] p-2 text-[10px] break-words border whitespace-pre-wrap ${isMe ? 'bg-[#222] border-[#f4b400] text-white' : 'bg-[#111] border-[#555] text-[#ccc]'}`}>
                                                 {msg.text}
                                             </div>
                                         </div>
@@ -146,20 +187,21 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ user, className = '' }) => {
                         )}
                         
                         {/* Input Bar */}
-                        <div className="p-2 bg-[#161616] border-t border-[#333] flex gap-2">
-                            <input 
-                                type="text"
+                        <div className="p-2 bg-[#161616] border-t border-[#333] flex gap-2 items-end">
+                            <textarea
+                                ref={textAreaRef} 
                                 value={inputText}
                                 onChange={(e) => setInputText(e.target.value)}
-                                onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+                                onKeyDown={handleKeyDown}
                                 placeholder={activeFriend ? "Type..." : "Select friend"}
                                 disabled={!activeFriend}
-                                className="flex-1 bg-black border border-[#555] p-1 text-[10px] text-white outline-none focus:border-[#f4b400]"
+                                rows={1}
+                                className="flex-1 bg-black border border-[#555] p-1 text-[10px] text-white outline-none focus:border-[#f4b400] resize-none overflow-hidden min-h-[24px]"
                             />
                             <button 
                                 onClick={handleSend}
                                 disabled={!activeFriend}
-                                className="text-[10px] bg-[#333] px-2 text-white border border-[#555] hover:bg-[#555]"
+                                className="text-[10px] bg-[#333] px-2 py-1 h-full text-white border border-[#555] hover:bg-[#555]"
                             >
                                 &gt;
                             </button>
@@ -167,6 +209,22 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ user, className = '' }) => {
                     </div>
                 )}
             </div>
+
+            {/* Context Menu */}
+            {contextMenu && (
+                <div 
+                    style={{ top: contextMenu.y, left: contextMenu.x }}
+                    className="fixed z-[999] bg-[#111] border border-white p-2 shadow-lg"
+                    onClick={(e) => e.stopPropagation()} 
+                >
+                    <button 
+                        onClick={() => handleDeleteMessage(contextMenu.msgId)}
+                        className="text-red-500 text-xs hover:text-red-400 block w-full text-left"
+                    >
+                        Delete Message
+                    </button>
+                </div>
+            )}
         </RandomReveal>
     );
 };

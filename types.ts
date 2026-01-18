@@ -11,6 +11,7 @@ export interface WordEntity {
 }
 
 export type GameScreen = 
+  | 'hub'
   | 'start' 
   | 'username-setup'
   | 'mode-select'

@@ -473,14 +473,26 @@ export const sendMessage = async (senderId: string, receiverId: string, text: st
     if (!text.trim()) return;
     const chatId = getChatId(senderId, receiverId);
     
-    await addDoc(collection(db, "messages"), {
-        chatId,
-        senderId,
-        receiverId,
-        text: text.trim(),
-        timestamp: serverTimestamp(),
-        read: false
-    });
+    try {
+        await addDoc(collection(db, "messages"), {
+            chatId,
+            senderId,
+            receiverId,
+            text: text.trim(),
+            timestamp: serverTimestamp(),
+            read: false
+        });
+    } catch (e) {
+        console.error("Error sending message:", e);
+    }
+};
+
+export const deleteMessage = async (messageId: string) => {
+    try {
+        await deleteDoc(doc(db, "messages", messageId));
+    } catch (e) {
+        console.error("Error deleting message:", e);
+    }
 };
 
 export const subscribeToChat = (currentUid: string, partnerUid: string, callback: (messages: ChatMessage[]) => void) => {
