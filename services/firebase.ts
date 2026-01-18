@@ -1,297 +1,300 @@
 
+import { initializeApp } from 'firebase/app';
+import { 
+  getAuth, 
+  GoogleAuthProvider, 
+  signInWithPopup, 
+  signOut, 
+  onAuthStateChanged as firebaseOnAuthStateChanged,
+  User as FirebaseUser
+} from 'firebase/auth';
+import { 
+  getFirestore, 
+  doc, 
+  getDoc, 
+  setDoc, 
+  updateDoc, 
+  collection, 
+  query, 
+  where, 
+  getDocs, 
+  addDoc, 
+  deleteDoc,
+  arrayUnion,
+  serverTimestamp,
+  orderBy,
+  limit
+} from 'firebase/firestore';
 import { LeaderboardEntry, SessionStats } from '../types';
 
-// Re-export User type for other components
-export interface User {
-  uid: string;
-  displayName: string | null;
-  email: string | null;
-  emailVerified: boolean;
-  isAnonymous: boolean;
-  photoURL?: string | null;
+// --- Configuration ---
+// process.env is polyfilled by vite.config.ts
+const apiKey = process.env.VITE_FIREBASE_API_KEY || process.env.VITE_API_KEY;
+
+if (!apiKey) {
+    console.error("CRITICAL: Firebase API Key is missing. Please check your .env file and ensure VITE_FIREBASE_API_KEY is set.");
 }
+
+const firebaseConfig = {
+  apiKey: apiKey,
+  authDomain: process.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.VITE_FIREBASE_APP_ID
+};
+
+const app = initializeApp(firebaseConfig);
+export const auth = getAuth(app);
+export const db = getFirestore(app);
+
+// --- Types ---
+export type User = FirebaseUser;
 
 export interface UserProfile {
     username: string;
+    usernameLower: string; // Helper for case-insensitive search
+    email?: string;
+    photoURL?: string;
     friends: string[]; // List of UIDs
-    friendRequests: FriendRequest[];
     gamesHistory?: any[];
     speedTestHistory?: any[];
     maxWPM?: number;
 }
 
 export interface FriendRequest {
+    id?: string;
     from: string; // UID
     fromName: string;
+    to: string; // UID
     status: 'pending' | 'accepted' | 'rejected';
-    timestamp: number;
+    timestamp: any;
 }
 
-// Mock Auth State
-const STORAGE_KEY_USER = 'taco_app_user';
-const STORAGE_KEY_LEADERBOARD = 'taco_app_leaderboard';
-const STORAGE_KEY_USERS_DATA = 'taco_app_users_data';
-
-// Stub auth object to satisfy function signatures requiring it
-export const auth = {
-    currentUser: null as User | null
-};
-
-// Check local storage for initial user
-try {
-    const stored = localStorage.getItem(STORAGE_KEY_USER);
-    if (stored) {
-        auth.currentUser = JSON.parse(stored);
-    }
-} catch (e) {}
+// --- Auth Functions ---
 
 export const onAuthStateChanged = (
     _authObj: any, 
     nextOrObserver: (user: User | null) => void, 
-    _error?: (error: any) => void,
-    _completed?: () => void
+    _error?: (error: any) => void
 ) => {
-    // Immediate callback with current state
-    nextOrObserver(auth.currentUser);
-    
-    // Listen for storage changes (cross-tab logout)
-    const listener = (event: StorageEvent) => {
-        if (event.key === STORAGE_KEY_USER) {
-            if (event.newValue) {
-                auth.currentUser = JSON.parse(event.newValue);
-                nextOrObserver(auth.currentUser);
-            } else {
-                auth.currentUser = null;
-                nextOrObserver(null);
-            }
-        }
-    };
-    window.addEventListener('storage', listener);
-    return () => window.removeEventListener('storage', listener);
-};
-
-// Helper to get DB
-const getUsersDB = (): Record<string, UserProfile> => {
-    try {
-        const raw = localStorage.getItem(STORAGE_KEY_USERS_DATA);
-        return raw ? JSON.parse(raw) : {};
-    } catch { return {}; }
-};
-
-const saveUsersDB = (data: Record<string, UserProfile>) => {
-    localStorage.setItem(STORAGE_KEY_USERS_DATA, JSON.stringify(data));
+    return firebaseOnAuthStateChanged(auth, nextOrObserver, _error);
 };
 
 export const signInWithGoogle = async () => {
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 800));
-    
-    // Generate a new mock user
-    const randomId = Math.floor(Math.random() * 10000);
-    const mockUser: User = {
-        uid: 'user_' + Math.random().toString(36).substr(2, 9),
-        displayName: 'Chef ' + randomId, 
-        email: `chef${randomId}@example.com`,
-        emailVerified: true,
-        isAnonymous: false,
-        photoURL: null
-    };
-    
-    // Register user in Mock DB
-    // CRITICAL: Initialize with EMPTY username to force the "Identify Yourself" screen on first login.
-    // If we used displayName here, the app would skip the setup screen.
-    const users = getUsersDB();
-    if (!users[mockUser.uid]) {
-        users[mockUser.uid] = {
-            username: '', // Empty triggers setup screen in Game.tsx
-            friends: [],
-            friendRequests: []
-        };
-        saveUsersDB(users);
-    }
+    const provider = new GoogleAuthProvider();
+    try {
+        const result = await signInWithPopup(auth, provider);
+        const user = result.user;
 
-    auth.currentUser = mockUser;
-    localStorage.setItem(STORAGE_KEY_USER, JSON.stringify(mockUser));
-    
-    // Force reload to update app state if listener doesn't catch same-window storage event
-    window.location.reload(); 
+        // Sync Auth to Firestore
+        const userRef = doc(db, "users", user.uid);
+        const userSnap = await getDoc(userRef);
+
+        if (!userSnap.exists()) {
+            // Create new profile
+            // We set username to empty string to trigger the "Identify Yourself" flow in Game.tsx
+            await setDoc(userRef, {
+                username: '', 
+                usernameLower: '',
+                email: user.email,
+                photoURL: user.photoURL,
+                friends: [],
+                createdAt: serverTimestamp()
+            });
+        } else {
+            // Update existing login info just in case photo changed, but don't touch username
+            await updateDoc(userRef, {
+                email: user.email,
+                photoURL: user.photoURL,
+                lastLogin: serverTimestamp()
+            });
+        }
+    } catch (error) {
+        console.error("Error signing in with Google", error);
+        throw error;
+    }
 };
 
 export const logout = async () => {
-    auth.currentUser = null;
-    localStorage.removeItem(STORAGE_KEY_USER);
+    await signOut(auth);
     window.location.reload();
-};
-
-// --- DB Helpers ---
-
-const getDB = (key: string) => {
-    try {
-        return JSON.parse(localStorage.getItem(key) || '[]');
-    } catch { return []; }
-};
-
-const saveDB = (key: string, data: any) => {
-    localStorage.setItem(key, JSON.stringify(data));
 };
 
 // --- User Profile ---
 
-export const getUserProfile = async (uid: string) => {
-    const users = getUsersDB();
-    return users[uid] || null;
+export const getUserProfile = async (uid: string): Promise<UserProfile | null> => {
+    try {
+        const userRef = doc(db, "users", uid);
+        const snap = await getDoc(userRef);
+        if (snap.exists()) {
+            return snap.data() as UserProfile;
+        }
+        return null;
+    } catch (e) {
+        console.error("Error fetching profile", e);
+        return null;
+    }
 };
 
 export const saveUsername = async (uid: string, username: string) => {
-    const users = getUsersDB();
-    // Ensure we don't overwrite friends/requests if they exist
-    if (!users[uid]) {
-        users[uid] = {
-            username: username,
-            friends: [],
-            friendRequests: []
-        };
-    } else {
-        users[uid].username = username;
-    }
-    saveUsersDB(users);
+    const userRef = doc(db, "users", uid);
+    await setDoc(userRef, {
+        username: username,
+        usernameLower: username.toLowerCase() // Save lower case for searching
+    }, { merge: true });
 };
 
 // --- Friend System ---
 
-export const searchUsers = async (query: string, currentUid: string): Promise<{uid: string, username: string, isFriend: boolean, hasPending: boolean}[]> => {
-    // Return empty if query is too short
-    if (!query || query.trim().length === 0) return [];
+export const searchUsers = async (searchTerm: string, currentUid: string): Promise<{uid: string, username: string, isFriend: boolean, hasPending: boolean}[]> => {
+    if (!searchTerm || searchTerm.trim().length === 0) return [];
     
-    const users = getUsersDB();
-    const currentUser = users[currentUid];
-    const results = [];
+    const lowerTerm = searchTerm.toLowerCase().trim();
+    const results: any[] = [];
     
-    const lowerQuery = query.toLowerCase().trim();
+    // 1. Get current user's friends to check status
+    const currentUserRef = doc(db, "users", currentUid);
+    const currentUserSnap = await getDoc(currentUserRef);
+    const currentUserData = currentUserSnap.data() as UserProfile;
+    const myFriends = currentUserData?.friends || [];
 
-    for (const [uid, profile] of Object.entries(users)) {
-        if (uid === currentUid) continue; // Don't show self
-        
-        // Skip users without a name or with empty name
-        if (!profile.username || profile.username.trim() === '') continue;
-        
-        // Match logic: includes search (case insensitive)
-        if (profile.username.toLowerCase().includes(lowerQuery)) {
-            // Check relationship
-            const isFriend = currentUser?.friends.includes(uid) || false;
-            // Check if THEY sent US a request
-            const hasIncoming = currentUser?.friendRequests.some(r => r.from === uid && r.status === 'pending') || false;
+    // 2. Query Firestore by usernameLower
+    // Note: Firestore string search is prefix-based.
+    const usersRef = collection(db, "users");
+    const q = query(
+        usersRef, 
+        where("usernameLower", ">=", lowerTerm),
+        where("usernameLower", "<=", lowerTerm + '\uf8ff'),
+        limit(10)
+    );
 
-            results.push({
-                uid,
-                username: profile.username,
-                isFriend,
-                hasPending: hasIncoming
-            });
-        }
+    const querySnapshot = await getDocs(q);
+
+    for (const doc of querySnapshot.docs) {
+        const uid = doc.id;
+        if (uid === currentUid) continue; // Skip self
+
+        const data = doc.data();
+        if (!data.username) continue; // Skip incomplete profiles
+
+        const isFriend = myFriends.includes(uid);
+        
+        const hasPending = false; 
+
+        results.push({
+            uid,
+            username: data.username,
+            isFriend,
+            hasPending
+        });
     }
+
     return results;
 };
 
 export const sendFriendRequest = async (fromUid: string, toUid: string) => {
-    const users = getUsersDB();
-    const targetUser = users[toUid];
-    const senderUser = users[fromUid];
+    try {
+        // 1. Get sender details for the notification
+        const senderProfile = await getUserProfile(fromUid);
+        if (!senderProfile) return false;
 
-    if (!targetUser || !senderUser) return false;
+        // 2. Check if request already exists
+        const requestsRef = collection(db, "requests");
+        const q = query(
+            requestsRef, 
+            where("from", "==", fromUid), 
+            where("to", "==", toUid),
+            where("status", "==", "pending")
+        );
+        const existing = await getDocs(q);
+        if (!existing.empty) return false; // Already requested
 
-    // Check if already friends
-    if (targetUser.friends.includes(fromUid)) return false;
+        // 3. Create Request Document
+        await addDoc(requestsRef, {
+            from: fromUid,
+            fromName: senderProfile.username,
+            to: toUid,
+            status: 'pending',
+            timestamp: serverTimestamp()
+        });
+        return true;
+    } catch (e) {
+        console.error("Error sending request", e);
+        return false;
+    }
+};
 
-    // Check if request already exists
-    if (targetUser.friendRequests.some(r => r.from === fromUid && r.status === 'pending')) return false;
-
-    targetUser.friendRequests.push({
-        from: fromUid,
-        fromName: senderUser.username || 'Unknown Chef',
-        status: 'pending',
-        timestamp: Date.now()
-    });
-
-    saveUsersDB(users);
-    return true;
+export const getFriendRequests = async (uid: string): Promise<FriendRequest[]> => {
+    const requestsRef = collection(db, "requests");
+    // Get requests sent TO me that are PENDING
+    const q = query(
+        requestsRef,
+        where("to", "==", uid),
+        where("status", "==", "pending")
+    );
+    
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+    })) as FriendRequest[];
 };
 
 export const acceptFriendRequest = async (currentUid: string, fromUid: string) => {
-    const users = getUsersDB();
-    const currentUser = users[currentUid];
-    const senderUser = users[fromUid];
+    try {
+        // 1. Add to both friend lists using arrayUnion (atomic operation)
+        const meRef = doc(db, "users", currentUid);
+        const themRef = doc(db, "users", fromUid);
 
-    if (!currentUser || !senderUser) return false;
+        await updateDoc(meRef, { friends: arrayUnion(fromUid) });
+        await updateDoc(themRef, { friends: arrayUnion(currentUid) });
 
-    // Add to friends lists
-    if (!currentUser.friends.includes(fromUid)) currentUser.friends.push(fromUid);
-    if (!senderUser.friends.includes(currentUid)) senderUser.friends.push(currentUid);
+        // 2. Find and delete/update the request
+        const requestsRef = collection(db, "requests");
+        const q = query(
+            requestsRef, 
+            where("from", "==", fromUid), 
+            where("to", "==", currentUid),
+            where("status", "==", "pending")
+        );
+        const snapshot = await getDocs(q);
+        
+        // Mark as accepted or delete. Let's delete to keep it clean.
+        snapshot.forEach(async (docSnap) => {
+            await deleteDoc(doc(db, "requests", docSnap.id));
+        });
 
-    // Remove request
-    currentUser.friendRequests = currentUser.friendRequests.filter(r => r.from !== fromUid);
-
-    saveUsersDB(users);
-    return true;
+        return true;
+    } catch (e) {
+        console.error("Error accepting friend", e);
+        return false;
+    }
 };
 
-export const getFriendRequests = async (uid: string) => {
-    const users = getUsersDB();
-    const user = users[uid];
-    if (!user) return [];
-    return user.friendRequests.filter(r => r.status === 'pending');
-};
-
-
-// --- Stats & Leaderboard ---
+// --- Stats & Leaderboard (Firestore Implementation) ---
 
 export const saveGameStats = async (user: User, score: number, mode: string, level: number) => {
-    const users = getUsersDB();
-    // Safety check: ensure user exists, but DON'T overwrite existing data like friends
-    if (!users[user.uid]) {
-         users[user.uid] = { 
-             username: user.displayName || 'Chef',
-             friends: [],
-             friendRequests: []
-         };
-    }
-    
-    const u = users[user.uid];
-    if (!u.gamesHistory) u.gamesHistory = [];
-    
-    u.gamesHistory.push({
-        date: new Date().toISOString(),
-        score,
-        mode,
-        levelReached: level
+    const userRef = doc(db, "users", user.uid);
+    await updateDoc(userRef, {
+        gamesHistory: arrayUnion({
+            date: new Date().toISOString(),
+            score,
+            mode,
+            levelReached: level
+        })
     });
-    
-    saveUsersDB(users);
 };
 
 export const saveSpeedTestStats = async (user: User, wpm: number, accuracy: number) => {
-    const users = getUsersDB();
-    // Safety check: ensure user exists, but DON'T overwrite existing data like friends
-    if (!users[user.uid]) {
-        users[user.uid] = { 
-             username: user.displayName || 'Chef',
-             friends: [],
-             friendRequests: []
-         };
-    }
-    
-    const u = users[user.uid];
-    if (!u.speedTestHistory) u.speedTestHistory = [];
-    
-    u.speedTestHistory.push({
-        date: new Date().toISOString(),
-        wpm,
-        accuracy
+    const userRef = doc(db, "users", user.uid);
+    await updateDoc(userRef, {
+        speedTestHistory: arrayUnion({
+            date: new Date().toISOString(),
+            wpm,
+            accuracy
+        })
     });
-    // Track max WPM
-    if (!u.maxWPM || wpm > u.maxWPM) u.maxWPM = wpm;
-    
-    saveUsersDB(users);
 };
 
 // --- Leaderboard ---
@@ -305,65 +308,72 @@ export const saveLeaderboardScore = async (
     mode: string,
     extra?: { accuracy?: number }
 ) => {
-    let leaderboard = getDB(STORAGE_KEY_LEADERBOARD) as LeaderboardEntry[];
-    
     // Sort Value Logic
     let sortValue = score;
     if (mode === 'competitive') {
-         sortValue = 1000000 - score; 
+         // Sort asc for time
+         sortValue = score; 
     } else if (mode !== 'speed-test') {
          sortValue = (stats.levelReached * 1000) + score; 
     }
 
-    const newEntry: any = {
-        id: Math.random().toString(36).substr(2, 9),
+    await addDoc(collection(db, "leaderboard"), {
         uid: user.uid,
         username: username,
         score: score,
         title: title,
         stats: stats,
-        timestamp: Date.now(),
+        timestamp: serverTimestamp(),
         mode: mode,
         levelReached: stats.levelReached,
-        sortValue: sortValue
-    };
-
-    if (extra?.accuracy !== undefined) {
-        newEntry.accuracy = extra.accuracy;
-    }
-
-    leaderboard.push(newEntry);
-    saveDB(STORAGE_KEY_LEADERBOARD, leaderboard);
+        sortValue: sortValue,
+        accuracy: extra?.accuracy || null
+    });
 };
 
 export const deleteLeaderboardEntry = async (id: string) => {
-    let leaderboard = getDB(STORAGE_KEY_LEADERBOARD) as LeaderboardEntry[];
-    leaderboard = leaderboard.filter(e => e.id !== id);
-    saveDB(STORAGE_KEY_LEADERBOARD, leaderboard);
-    return true;
+    try {
+        await deleteDoc(doc(db, "leaderboard", id));
+        return true;
+    } catch { return false; }
 };
 
 export const getLeaderboard = async (mode: string = 'competitive'): Promise<LeaderboardEntry[]> => {
-    let leaderboard = getDB(STORAGE_KEY_LEADERBOARD) as any[];
+    const lbRef = collection(db, "leaderboard");
     
-    // Filter by mode
-    let entries = leaderboard.filter(e => e.mode === mode);
-
-    // Sort
-    entries.sort((a, b) => (b.sortValue || 0) - (a.sortValue || 0));
-
-    // Limit per user (max 3)
-    const userCounts: Record<string, number> = {};
-    const filtered: LeaderboardEntry[] = [];
+    let q;
     
-    for (const entry of entries) {
-        const uid = entry.uid;
-        if (!userCounts[uid]) userCounts[uid] = 0;
-        if (userCounts[uid] < 3) {
-            userCounts[uid]++;
-            filtered.push(entry);
-        }
+    if (mode === 'competitive') {
+        // For competitive (time), lower is better. ASC sort.
+        q = query(
+            lbRef, 
+            where("mode", "==", mode),
+            orderBy("sortValue", "asc"),
+            limit(20)
+        );
+    } else {
+        // For others (points), higher is better. DESC sort.
+        q = query(
+            lbRef, 
+            where("mode", "==", mode),
+            orderBy("sortValue", "desc"),
+            limit(20)
+        );
     }
 
-    return filtered.slice(0, 10);
+    const snapshot = await getDocs(q);
+    
+    // Logic to only show top score per user (client side filtering for simplicity)
+    const entries: LeaderboardEntry[] = [];
+    const seenUsers = new Set();
+    
+    snapshot.forEach(doc => {
+        const data = doc.data();
+        if (!seenUsers.has(data.uid)) {
+            entries.push({ id: doc.id, ...data } as any);
+            seenUsers.add(data.uid);
+        }
+    });
+
+    return entries.slice(0, 10);
 };
