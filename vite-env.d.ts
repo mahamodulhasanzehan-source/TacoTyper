@@ -1,42 +1,18 @@
 /// <reference types="vite/client" />
-import 'react';
 
-declare global {
-  namespace JSX {
-    interface IntrinsicElements {
-      ambientLight: any;
-      directionalLight: any;
-      pointLight: any;
-      spotLight: any;
-      orthographicCamera: any;
-      perspectiveCamera: any;
-      instancedMesh: any;
-      boxGeometry: any;
-      sphereGeometry: any;
-      planeGeometry: any;
-      meshStandardMaterial: any;
-      meshBasicMaterial: any;
-      meshPhongMaterial: any;
-      group: any;
-      mesh: any;
-      primitive: any;
-    }
-  }
+interface ImportMetaEnv {
+  readonly VITE_FIREBASE_API_KEY: string;
+  readonly VITE_FIREBASE_AUTH_DOMAIN: string;
+  readonly VITE_FIREBASE_PROJECT_ID: string;
+  readonly VITE_FIREBASE_STORAGE_BUCKET: string;
+  readonly VITE_FIREBASE_MESSAGING_SENDER_ID: string;
+  readonly VITE_FIREBASE_APP_ID: string;
+  readonly VITE_API_KEY: string;
+  [key: string]: any;
+}
 
-  interface ImportMetaEnv {
-    readonly VITE_FIREBASE_API_KEY: string;
-    readonly VITE_FIREBASE_AUTH_DOMAIN: string;
-    readonly VITE_FIREBASE_PROJECT_ID: string;
-    readonly VITE_FIREBASE_STORAGE_BUCKET: string;
-    readonly VITE_FIREBASE_MESSAGING_SENDER_ID: string;
-    readonly VITE_FIREBASE_APP_ID: string;
-    readonly VITE_API_KEY: string;
-    [key: string]: any;
-  }
-
-  interface ImportMeta {
-    readonly env: ImportMetaEnv;
-  }
+interface ImportMeta {
+  readonly env: ImportMetaEnv;
 }
 
 declare module '*.svg' {

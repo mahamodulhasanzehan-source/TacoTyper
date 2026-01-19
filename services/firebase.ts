@@ -127,7 +127,6 @@ export interface ChatMessage {
     text: string;
     audioURL?: string; // Optional audio URL
     timestamp: any;
-    expiresAt?: any; // Timestamp for deletion
     read: boolean;
     senderName?: string; // Useful for global chat
 }
@@ -505,9 +504,6 @@ export const sendMessage = async (senderId: string, receiverId: string, content:
     if (!content.trim() && type === 'text') return;
     const chatId = getChatId(senderId, receiverId);
     
-    const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 21);
-
     try {
         await addDoc(collection(db, "messages"), {
             chatId,
@@ -516,7 +512,6 @@ export const sendMessage = async (senderId: string, receiverId: string, content:
             text: type === 'text' ? content.trim() : '🎤 Voice Message',
             audioURL: type === 'audio' ? audioURL : null,
             timestamp: serverTimestamp(),
-            expiresAt: Timestamp.fromDate(expiresAt),
             read: false
         });
     } catch (e) {
@@ -527,10 +522,6 @@ export const sendMessage = async (senderId: string, receiverId: string, content:
 export const sendChannelMessage = async (senderId: string, channelId: string, content: string, senderName: string) => {
     if (!content.trim()) return;
     
-    // Channel messages expire faster (24h) to keep it clean
-    const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 1);
-
     try {
         await addDoc(collection(db, "messages"), {
             chatId: channelId, // Reuse chatId field for channel ID
@@ -538,7 +529,6 @@ export const sendChannelMessage = async (senderId: string, channelId: string, co
             senderName,
             text: content.trim(),
             timestamp: serverTimestamp(),
-            expiresAt: Timestamp.fromDate(expiresAt),
             read: true // Always read for global
         });
     } catch (e) {
@@ -560,35 +550,6 @@ export const deleteMessage = async (messageId: string, audioURL?: string) => {
     }
 };
 
-const performCleanup = async (chatId: string) => {
-    try {
-        const messagesRef = collection(db, "messages");
-        const q = query(
-            messagesRef, 
-            where("chatId", "==", chatId),
-            where("expiresAt", "<", Timestamp.now())
-        );
-
-        const snapshot = await getDocs(q);
-        if (snapshot.empty) return;
-
-        for (const docSnap of snapshot.docs) {
-            const data = docSnap.data();
-            if (data.audioURL && storage) {
-                try {
-                    const fileRef = ref(storage, data.audioURL);
-                    await deleteObject(fileRef);
-                } catch (storageErr: any) { }
-            }
-            try {
-                await deleteDoc(docSnap.ref);
-            } catch (dbErr) { }
-        }
-    } catch (e) {
-        console.error("Error during message cleanup routine:", e);
-    }
-};
-
 export const subscribeToChat = (currentUid: string, partnerUid: string, callback: (messages: ChatMessage[]) => void) => {
     const chatId = getChatId(currentUid, partnerUid);
     return subscribeToChannel(chatId, callback, currentUid);
@@ -597,8 +558,6 @@ export const subscribeToChat = (currentUid: string, partnerUid: string, callback
 export const subscribeToChannel = (channelId: string, callback: (messages: ChatMessage[]) => void, currentUid?: string) => {
     const messagesRef = collection(db, "messages");
     
-    performCleanup(channelId);
-
     // Limit to last 50 messages for performance in global chats
     const q = query(
         messagesRef, 
@@ -608,17 +567,10 @@ export const subscribeToChannel = (channelId: string, callback: (messages: ChatM
     );
 
     return onSnapshot(q, (snapshot) => {
-        const now = Date.now();
         const msgs: ChatMessage[] = [];
 
         snapshot.docs.forEach(doc => {
             const data = doc.data();
-            
-            if (data.expiresAt) {
-                const expiry = data.expiresAt.toMillis ? data.expiresAt.toMillis() : data.expiresAt.seconds * 1000;
-                if (expiry < now) return; 
-            }
-
             msgs.push({
                 id: doc.id,
                 ...data
@@ -656,14 +608,9 @@ export const subscribeToGlobalUnread = (currentUid: string, currentPartnerId: st
 
     return onSnapshot(q, (snapshot) => {
         let hasUnreadFromOthers = false;
-        const now = Date.now();
 
         snapshot.docs.forEach(doc => {
             const data = doc.data();
-            if (data.expiresAt) {
-                const expiry = data.expiresAt.toMillis ? data.expiresAt.toMillis() : data.expiresAt.seconds * 1000;
-                if (expiry < now) return;
-            }
             if (data.read === false && data.senderId !== currentPartnerId) {
                 hasUnreadFromOthers = true;
             }
