@@ -38,3 +38,18 @@ declare module '*.gif' { const src: string; export default src; }
 declare module '*.ico' { const src: string; export default src; }
 declare module '*.webp' { const src: string; export default src; }
 declare module '*.bmp' { const src: string; export default src; }
+
+// Extend JSX.IntrinsicElements for React Three Fiber components to fix type errors
+declare namespace JSX {
+  interface IntrinsicElements {
+    mesh: any;
+    group: any;
+    ambientLight: any;
+    directionalLight: any;
+    orthographicCamera: any;
+    instancedMesh: any;
+    boxGeometry: any;
+    meshStandardMaterial: any;
+    meshBasicMaterial: any;
+  }
+}
