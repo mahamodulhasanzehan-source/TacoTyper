@@ -1,5 +1,4 @@
 
-
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { PointerLockControls, Sky } from '@react-three/drei';
@@ -15,15 +14,6 @@ interface WhatToDoGameProps {
     username?: string | null;
 }
 
-// --- TYPES ---
-interface BotEntity {
-    id: string;
-    position: THREE.Vector3;
-    velocity: THREE.Vector3;
-    color: string;
-    moveTimer: number;
-}
-
 // --- CONSTANTS ---
 const CHUNK_SIZE = 2;
 const BLOCK_SIZE = 1;
@@ -31,7 +21,6 @@ const GRAVITY = 30.0;
 const JUMP_FORCE = 9.5;
 const WALK_SPEED = 4.0;
 const RUN_SPEED = 6.0;
-const BOT_COUNT = 10;
 const PLAYER_HEIGHT = 1.8;
 
 // --- UTILS ---
@@ -47,9 +36,9 @@ const useBlockTexture = () => {
             ctx.fillStyle = '#66BB6A'; 
             ctx.fillRect(0, 0, 128, 128);
             
-            // Black Outline
+            // Black Outline (Thinner)
             ctx.strokeStyle = '#000000';
-            ctx.lineWidth = 8; 
+            ctx.lineWidth = 2; 
             ctx.strokeRect(0, 0, 128, 128);
             
             // Inner highlight
@@ -140,8 +129,13 @@ const InfiniteFloor = ({ renderDistance, playerPos, shadowsEnabled }: { renderDi
     const side = (radiusInBlocks * 2) + 1;
     const count = side * side;
 
-    // Optimization: Track last update position to avoid re-calculating 4000 matrices every frame
+    // Optimization: Track last update position to avoid re-calculating matrices every frame
     const lastUpdatePos = useRef({ x: Infinity, z: Infinity });
+
+    // Reset lastUpdatePos when renderDistance changes to force a redraw
+    useEffect(() => {
+        lastUpdatePos.current = { x: Infinity, z: Infinity };
+    }, [renderDistance]);
 
     useFrame(() => {
         if (!meshRef.current) return;
@@ -149,7 +143,7 @@ const InfiniteFloor = ({ renderDistance, playerPos, shadowsEnabled }: { renderDi
         const centerX = Math.floor(playerPos.x / BLOCK_SIZE);
         const centerZ = Math.floor(playerPos.z / BLOCK_SIZE);
 
-        // Only update if player moved a full block
+        // Only update if player moved a full block, AND if we haven't just reset (checked via Infinity)
         if (centerX === lastUpdatePos.current.x && centerZ === lastUpdatePos.current.z) return;
         lastUpdatePos.current = { x: centerX, z: centerZ };
 
@@ -180,76 +174,16 @@ const InfiniteFloor = ({ renderDistance, playerPos, shadowsEnabled }: { renderDi
     });
 
     return (
-        <instancedMesh ref={meshRef} args={[undefined, undefined, count]} receiveShadow={shadowsEnabled} castShadow={shadowsEnabled}>
+        <instancedMesh 
+            ref={meshRef} 
+            args={[undefined, undefined, count]} 
+            receiveShadow={shadowsEnabled} 
+            castShadow={shadowsEnabled}
+            key={count} // Force re-mount when size changes to avoid stale buffer issues
+        >
             <boxGeometry args={[BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE]} />
             <meshStandardMaterial map={texture} />
         </instancedMesh>
-    );
-};
-
-const Bots = ({ 
-    bots 
-}: { 
-    bots: React.MutableRefObject<BotEntity[]> 
-}) => {
-    const groupRef = useRef<THREE.Group>(null);
-    
-    // Initialize Bots
-    useEffect(() => {
-        if (bots.current.length === 0) {
-            for (let i = 0; i < BOT_COUNT; i++) {
-                bots.current.push({
-                    id: Math.random().toString(),
-                    position: new THREE.Vector3((Math.random() - 0.5) * 40, 1, (Math.random() - 0.5) * 40),
-                    velocity: new THREE.Vector3(),
-                    color: '#' + Math.floor(Math.random()*16777215).toString(16),
-                    moveTimer: 0
-                });
-            }
-        }
-    }, []);
-
-    useFrame((state, delta) => {
-        if (!groupRef.current) return;
-
-        bots.current.forEach((bot, i) => {
-            if (state.clock.elapsedTime > bot.moveTimer) {
-                bot.velocity.x = (Math.random() - 0.5) * 4;
-                bot.velocity.z = (Math.random() - 0.5) * 4;
-                bot.moveTimer = state.clock.elapsedTime + 1 + Math.random() * 2;
-            }
-
-            bot.position.x += bot.velocity.x * delta;
-            bot.position.z += bot.velocity.z * delta;
-            
-            // Boundaries
-            if (bot.position.x > 30) bot.position.x = -30;
-            if (bot.position.x < -30) bot.position.x = 30;
-            if (bot.position.z > 30) bot.position.z = -30;
-            if (bot.position.z < -30) bot.position.z = 30;
-
-            const mesh = groupRef.current!.children[i];
-            if (mesh) {
-                mesh.position.copy(bot.position);
-            }
-        });
-    });
-
-    return (
-        <group ref={groupRef}>
-            {bots.current.map((bot) => (
-                <group key={bot.id} position={bot.position}>
-                    <mesh position={[0, 0, 0]} castShadow receiveShadow>
-                        <boxGeometry args={[0.8, 2, 0.8]} />
-                        <meshStandardMaterial color={bot.color} />
-                    </mesh>
-                    <mesh position={[0, 1.5, 0]}>
-                         <planeGeometry args={[1, 0.2]} />
-                         <meshBasicMaterial color="#000" />
-                    </mesh>
-                </group>
-            ))}
-        </group>
     );
 };
 
@@ -309,20 +243,11 @@ const Player = ({
     }, [isJumping, position, velocity]);
 
     useFrame((state, delta) => {
-        // Physics
-        velocity.x -= velocity.x * 10.0 * delta;
-        velocity.z -= velocity.z * 10.0 * delta;
+        // Physics (Gravity only for Y)
         velocity.y -= GRAVITY * delta;
 
+        // Movement Logic (Direct Position Update)
         const speed = isRunning.current ? RUN_SPEED : WALK_SPEED;
-        const direction = new THREE.Vector3();
-        direction.z = Number(moveForward.current) - Number(moveBackward.current);
-        direction.x = Number(moveRight.current) - Number(moveLeft.current);
-        direction.normalize();
-
-        if (moveForward.current || moveBackward.current) velocity.z -= direction.z * 40.0 * delta * speed;
-        if (moveLeft.current || moveRight.current) velocity.x -= direction.x * 40.0 * delta * speed;
-
         const camForward = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
         camForward.y = 0; camForward.normalize();
         const camRight = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion);
@@ -340,7 +265,10 @@ const Player = ({
             position.z += moveVec.z * speed * delta;
         }
 
+        // Apply Vertical Velocity
         position.y += velocity.y * delta;
+        
+        // Ground Collision
         if (position.y < 0) {
             velocity.y = 0;
             position.y = 0;
@@ -376,8 +304,6 @@ export default function WhatToDoGame({ user, onBackToHub, username }: WhatToDoGa
     const [shadowsEnabled, setShadowsEnabled] = useState(true);
     const [renderDist, setRenderDist] = useState(16);
     const [simDist, setSimDist] = useState(4);
-
-    const botsRef = useRef<BotEntity[]>([]);
 
     const [showSettings, setShowSettings] = useState(false);
     const displayableName = username || user.displayName || 'Player';
@@ -455,7 +381,7 @@ export default function WhatToDoGame({ user, onBackToHub, username }: WhatToDoGa
                             ))}
                         </div>
 
-                        <div className="text-white mb-4">Player Name: {displayableName}</div>
+                        <div className="text-white mb-4 font-bold text-lg" style={{ color: 'white' }}>Player Name: {displayableName}</div>
                         <Button onClick={startGame} className="w-full">Confirm</Button>
                     </RandomReveal>
                 </div>
@@ -476,7 +402,6 @@ export default function WhatToDoGame({ user, onBackToHub, username }: WhatToDoGa
                             color={playerColor}
                         />
                         
-                        <Bots bots={botsRef} />
                         <InfiniteFloor renderDistance={renderDist} playerPos={playerPos} shadowsEnabled={shadowsEnabled} />
                         
                         {gameState === 'playing' && !showSettings && (
