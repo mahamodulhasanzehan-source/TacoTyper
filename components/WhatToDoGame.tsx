@@ -1,5 +1,7 @@
+
+
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { Canvas, useFrame, useThree, createPortal } from '@react-three/fiber';
+import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { PointerLockControls, Sky } from '@react-three/drei';
 import * as THREE from 'three';
 import { User } from '../services/firebase';
@@ -22,12 +24,6 @@ interface BotEntity {
     moveTimer: number;
 }
 
-interface BulletEntity {
-    position: THREE.Vector3;
-    velocity: THREE.Vector3;
-    spawnTime: number;
-}
-
 // --- CONSTANTS ---
 const CHUNK_SIZE = 2;
 const BLOCK_SIZE = 1;
@@ -35,7 +31,6 @@ const GRAVITY = 30.0;
 const JUMP_FORCE = 9.5;
 const WALK_SPEED = 4.0;
 const RUN_SPEED = 6.0;
-const BULLET_SPEED = 40.0;
 const BOT_COUNT = 10;
 const PLAYER_HEIGHT = 1.8;
 
@@ -73,20 +68,31 @@ const useBlockTexture = () => {
 
 const FPSCounter = () => {
     const ref = useRef<HTMLDivElement>(null);
-    const frameCount = useRef(0);
-    const lastTime = useRef(performance.now());
 
-    useFrame(() => {
-        frameCount.current++;
-        const time = performance.now();
-        if (time >= lastTime.current + 1000) {
-            if (ref.current) {
-                ref.current.innerText = `FPS: ${frameCount.current}`;
+    useEffect(() => {
+        let frameCount = 0;
+        let lastTime = performance.now();
+        let animationFrameId: number;
+
+        const loop = () => {
+            frameCount++;
+            const time = performance.now();
+            if (time >= lastTime + 1000) {
+                if (ref.current) {
+                    ref.current.innerText = `FPS: ${frameCount}`;
+                }
+                frameCount = 0;
+                lastTime = time;
             }
-            frameCount.current = 0;
-            lastTime.current = time;
-        }
-    });
+            animationFrameId = requestAnimationFrame(loop);
+        };
+
+        loop();
+
+        return () => {
+            cancelAnimationFrame(animationFrameId);
+        };
+    }, []);
 
     return (
         <div 
@@ -181,62 +187,10 @@ const InfiniteFloor = ({ renderDistance, playerPos, shadowsEnabled }: { renderDi
     );
 };
 
-const Bullets = ({ bullets }: { bullets: React.MutableRefObject<BulletEntity[]> }) => {
-    const meshRef = useRef<THREE.InstancedMesh>(null);
-    const dummy = useMemo(() => new THREE.Object3D(), []);
-
-    useFrame((state, delta) => {
-        if (!meshRef.current) return;
-        
-        let activeCount = 0;
-        const bulletsToRemove: number[] = [];
-        const now = Date.now();
-
-        bullets.current.forEach((b, i) => {
-            const moveStep = b.velocity.clone().multiplyScalar(delta);
-            b.position.add(moveStep);
-            
-            if (b.spawnTime + 2000 < now) {
-                bulletsToRemove.push(i);
-            } else {
-                dummy.position.copy(b.position);
-                dummy.scale.set(1, 1, 1);
-                dummy.updateMatrix();
-                meshRef.current!.setMatrixAt(activeCount, dummy.matrix);
-                activeCount++;
-            }
-        });
-
-        // Hide unused instances
-        for (let i = activeCount; i < 50; i++) {
-            dummy.scale.set(0, 0, 0);
-            dummy.updateMatrix();
-            meshRef.current.setMatrixAt(i, dummy.matrix);
-        }
-
-        meshRef.current.instanceMatrix.needsUpdate = true;
-
-        for (let i = bulletsToRemove.length - 1; i >= 0; i--) {
-            bullets.current.splice(bulletsToRemove[i], 1);
-        }
-    });
-
-    return (
-        <instancedMesh ref={meshRef} args={[undefined, undefined, 50]}>
-            <sphereGeometry args={[0.06, 8, 8]} />
-            <meshBasicMaterial color="#FFFF00" />
-        </instancedMesh>
-    );
-};
-
 const Bots = ({ 
-    bots, 
-    bullets, 
-    onKill 
+    bots 
 }: { 
-    bots: React.MutableRefObject<BotEntity[]>, 
-    bullets: React.MutableRefObject<BulletEntity[]>,
-    onKill: () => void 
+    bots: React.MutableRefObject<BotEntity[]> 
 }) => {
     const groupRef = useRef<THREE.Group>(null);
     
@@ -278,15 +232,6 @@ const Bots = ({
             if (mesh) {
                 mesh.position.copy(bot.position);
             }
-
-            // Simple Collision
-            bullets.current.forEach((bullet) => {
-                if (bullet.position.distanceTo(bot.position) < 1.0) {
-                    onKill();
-                    bot.position.set((Math.random() - 0.5) * 40, 1, (Math.random() - 0.5) * 40);
-                    bullet.spawnTime = 0; // mark for removal
-                }
-            });
         });
     });
 
@@ -311,23 +256,17 @@ const Bots = ({
 const Player = ({ 
     position, 
     setPosition, 
-    onShoot,
-    color,
-    shadowsEnabled
+    shadowsEnabled,
+    color
 }: { 
     position: THREE.Vector3, 
     setPosition: (v: THREE.Vector3) => void,
-    onShoot: (pos: THREE.Vector3, dir: THREE.Vector3) => void,
-    color: string,
-    shadowsEnabled: boolean
+    shadowsEnabled: boolean,
+    color: string
 }) => {
     const { camera } = useThree();
     const [velocity] = useState(new THREE.Vector3());
     const [isJumping, setIsJumping] = useState(false);
-    
-    const gunRef = useRef<THREE.Group>(null);
-    const isShooting = useRef(false);
-    const shootTime = useRef(0);
     
     const moveForward = useRef(false);
     const moveBackward = useRef(false);
@@ -360,29 +299,14 @@ const Player = ({
                 case 'ShiftLeft': case 'ShiftRight': isRunning.current = false; break;
             }
         };
-        const onMouseDown = () => {
-            if (document.pointerLockElement) {
-                const dir = new THREE.Vector3();
-                camera.getWorldDirection(dir);
-                const spawnPos = camera.position.clone().add(dir.multiplyScalar(0.5));
-                spawnPos.y -= 0.2;
-                
-                onShoot(spawnPos, dir);
-                
-                isShooting.current = true;
-                shootTime.current = Date.now();
-            }
-        };
 
         document.addEventListener('keydown', onKeyDown);
         document.addEventListener('keyup', onKeyUp);
-        document.addEventListener('mousedown', onMouseDown);
         return () => {
             document.removeEventListener('keydown', onKeyDown);
             document.removeEventListener('keyup', onKeyUp);
-            document.removeEventListener('mousedown', onMouseDown);
         };
-    }, [isJumping, position, velocity, camera, onShoot]);
+    }, [isJumping, position, velocity]);
 
     useFrame((state, delta) => {
         // Physics
@@ -425,30 +349,6 @@ const Player = ({
 
         camera.position.set(position.x, position.y + PLAYER_HEIGHT, position.z);
         setPosition(position.clone());
-
-        // Gun Animation
-        if (gunRef.current) {
-            if (moveForward.current || moveBackward.current || moveLeft.current || moveRight.current) {
-                const bobSpeed = isRunning.current ? 15 : 10;
-                gunRef.current.position.y = -0.4 + Math.sin(state.clock.elapsedTime * bobSpeed) * 0.02;
-            } else {
-                gunRef.current.position.y = -0.4;
-            }
-
-            if (isShooting.current) {
-                const elapsed = Date.now() - shootTime.current;
-                if (elapsed < 150) {
-                    const progress = elapsed / 150;
-                    const value = Math.sin(progress * Math.PI);
-                    gunRef.current.position.z = -0.5 + (value * 0.2);
-                    gunRef.current.rotation.x = value * 0.5;
-                } else {
-                    isShooting.current = false;
-                    gunRef.current.position.z = -0.5;
-                    gunRef.current.rotation.x = 0;
-                }
-            }
-        }
     });
 
     return (
@@ -459,20 +359,6 @@ const Player = ({
                     <boxGeometry args={[0.8, 2, 0.8]} />
                     <meshBasicMaterial color="black" colorWrite={false} />
                 </mesh>
-            )}
-
-            {createPortal(
-                <group ref={gunRef} position={[0.4, -0.4, -0.5]}>
-                    <mesh castShadow={shadowsEnabled}>
-                        <boxGeometry args={[0.2, 0.2, 0.6]} />
-                        <meshStandardMaterial color="#333" />
-                    </mesh>
-                    <mesh position={[0, -0.2, 0.2]} castShadow={shadowsEnabled}>
-                        <boxGeometry args={[0.2, 0.4, 0.2]} />
-                        <meshStandardMaterial color={color} />
-                    </mesh>
-                </group>,
-                camera
             )}
         </group>
     );
@@ -491,7 +377,6 @@ export default function WhatToDoGame({ user, onBackToHub, username }: WhatToDoGa
     const [renderDist, setRenderDist] = useState(16);
     const [simDist, setSimDist] = useState(4);
 
-    const bulletsRef = useRef<BulletEntity[]>([]);
     const botsRef = useRef<BotEntity[]>([]);
 
     const [showSettings, setShowSettings] = useState(false);
@@ -533,18 +418,6 @@ export default function WhatToDoGame({ user, onBackToHub, username }: WhatToDoGa
     const startGame = () => {
         setGameState('playing');
     };
-
-    const handleShoot = useCallback((pos: THREE.Vector3, dir: THREE.Vector3) => {
-        bulletsRef.current.push({
-            position: pos.clone(),
-            velocity: dir.clone().multiplyScalar(BULLET_SPEED),
-            spawnTime: Date.now()
-        });
-    }, []);
-
-    const handleBotKill = useCallback(() => {
-        // Logic for kill confirmation or score could go here
-    }, []);
 
     return (
         <div className="w-full h-full bg-black relative font-['Inter',_sans-serif]">
@@ -598,14 +471,12 @@ export default function WhatToDoGame({ user, onBackToHub, username }: WhatToDoGa
                         
                         <Player 
                             position={playerPos} 
-                            color={playerColor} 
                             setPosition={setPlayerPos}
-                            onShoot={handleShoot}
                             shadowsEnabled={shadowsEnabled}
+                            color={playerColor}
                         />
                         
-                        <Bots bots={botsRef} bullets={bulletsRef} onKill={handleBotKill} />
-                        <Bullets bullets={bulletsRef} />
+                        <Bots bots={botsRef} />
                         <InfiniteFloor renderDistance={renderDist} playerPos={playerPos} shadowsEnabled={shadowsEnabled} />
                         
                         {gameState === 'playing' && !showSettings && (
@@ -673,11 +544,6 @@ export default function WhatToDoGame({ user, onBackToHub, username }: WhatToDoGa
                 <div className="absolute bottom-0 right-0 h-[250px] w-[300px] z-[40] animate-fade-in">
                     <ChatWidget user={user} className="h-full border-b-0 border-r-0 opacity-80 hover:opacity-100 transition-opacity" />
                 </div>
-            )}
-
-            {/* Crosshair (Dot) */}
-            {gameState === 'playing' && !showSettings && (
-                <div className="absolute top-1/2 left-1/2 w-1.5 h-1.5 bg-white rounded-full transform -translate-x-1/2 -translate-y-1/2 z-[30] pointer-events-none mix-blend-difference shadow-[0_0_2px_black] animate-fade-in" />
             )}
             
             {/* Money Mockup */}
