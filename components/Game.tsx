@@ -8,7 +8,7 @@ import {
   INFINITE_POOL, 
   BOSS_WORDS, 
   UNIVERSAL_DICTIONARY, 
-  TRAP_WORDS,
+  TRAP_WORDS, 
   COMBO_FIESTA, 
   COMBO_SPICY
 } from '../constants';
@@ -19,9 +19,9 @@ import {
   WordType, 
   StreakState, 
   InfiniteConfig, 
-  UniversalConfig,
-  PlayStyle,
-  SessionStats
+  UniversalConfig, 
+  PlayStyle, 
+  SessionStats 
 } from '../types';
 import { audioService } from '../services/audioService';
 import { aiService } from '../services/aiService';
@@ -943,7 +943,6 @@ export default function Game({ user, onLogout }: GameProps) {
                 user={user} 
                 onLaunchGame={() => setScreen('start')}
                 onLaunchIQ={() => setActiveApp('iq')}
-                onLaunchWhatToDo={() => {}} // Disabled
                 onLogout={onLogout}
                 username={customUsername}
                 onUpdateUsername={handleUpdateUsername}
