@@ -7,7 +7,7 @@ import {
   INGREDIENT_MAP, 
   INFINITE_POOL, 
   BOSS_WORDS, 
-  UNIVERSAL_DICTIONARY,
+  UNIVERSAL_DICTIONARY, 
   TRAP_WORDS,
   COMBO_FIESTA, 
   COMBO_SPICY
@@ -32,7 +32,6 @@ import WordComponent from './WordComponent';
 import TypingSpeedGame from './TypingSpeedGame';
 import HubScreen from './HubScreen';
 import IQGame from './IQGame'; 
-import WhatToDoGame from './WhatToDoGame';
 import { 
   StartScreen, 
   LevelSelectScreen, 
@@ -56,7 +55,7 @@ interface GameProps {
 
 export default function Game({ user, onLogout }: GameProps) {
   // --- Global App State ---
-  const [activeApp, setActiveApp] = useState<'taco' | 'iq' | 'todo'>('taco');
+  const [activeApp, setActiveApp] = useState<'taco' | 'iq'>('taco');
 
   // --- Taco Game State ---
   const [screen, setScreen] = useState<GameScreen>('hub');
@@ -766,7 +765,7 @@ export default function Game({ user, onLogout }: GameProps) {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
         // Prevent typing interactions if we are in IQ or What-To-Do modes (which is now just IQ)
-        if (activeApp === 'iq' || activeApp === 'todo' || screen === 'speed-test-playing' || screen === 'username-setup' || showExitConfirm || isMobile || screen === 'hub') return;
+        if (activeApp === 'iq' || screen === 'speed-test-playing' || screen === 'username-setup' || showExitConfirm || isMobile || screen === 'hub') return;
         
         if (e.key === 'Escape') {
             if (screen === 'playing') {
@@ -939,18 +938,12 @@ export default function Game({ user, onLogout }: GameProps) {
                 onUpdateUsername={handleUpdateUsername}
                 onLogout={onLogout}
              />
-        ) : activeApp === 'todo' ? (
-            <WhatToDoGame 
-                user={user}
-                onBackToHub={() => setActiveApp('taco')}
-                username={customUsername}
-            />
         ) : screen === 'hub' ? (
              <HubScreen 
                 user={user} 
                 onLaunchGame={() => setScreen('start')}
                 onLaunchIQ={() => setActiveApp('iq')}
-                onLaunchWhatToDo={() => setActiveApp('todo')}
+                onLaunchWhatToDo={() => {}} // Disabled
                 onLogout={onLogout}
                 username={customUsername}
                 onUpdateUsername={handleUpdateUsername}
