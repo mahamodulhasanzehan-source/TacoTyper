@@ -22,6 +22,7 @@ const JUMP_FORCE = 9.5;
 const WALK_SPEED = 4.0;
 const RUN_SPEED = 6.0;
 const PLAYER_HEIGHT = 1.8;
+const REACH_DISTANCE = 4.0;
 
 // --- UTILS ---
 
@@ -86,7 +87,7 @@ const FPSCounter = () => {
     return (
         <div 
             ref={ref} 
-            className="absolute top-2 left-2 text-blue-500 font-bold text-xl z-50 font-mono shadow-black drop-shadow-md pointer-events-none animate-fade-in"
+            className="absolute top-2 left-2 text-red-500 font-bold text-xl z-50 font-mono shadow-black drop-shadow-md pointer-events-none animate-fade-in"
         >
             FPS: 0
         </div>
@@ -129,10 +130,8 @@ const InfiniteFloor = ({ renderDistance, playerPos, shadowsEnabled }: { renderDi
     const side = (radiusInBlocks * 2) + 1;
     const count = side * side;
 
-    // Optimization: Track last update position to avoid re-calculating matrices every frame
     const lastUpdatePos = useRef({ x: Infinity, z: Infinity });
 
-    // Reset lastUpdatePos when renderDistance changes to force a redraw
     useEffect(() => {
         lastUpdatePos.current = { x: Infinity, z: Infinity };
     }, [renderDistance]);
@@ -143,7 +142,6 @@ const InfiniteFloor = ({ renderDistance, playerPos, shadowsEnabled }: { renderDi
         const centerX = Math.floor(playerPos.x / BLOCK_SIZE);
         const centerZ = Math.floor(playerPos.z / BLOCK_SIZE);
 
-        // Only update if player moved a full block, AND if we haven't just reset (checked via Infinity)
         if (centerX === lastUpdatePos.current.x && centerZ === lastUpdatePos.current.z) return;
         lastUpdatePos.current = { x: centerX, z: centerZ };
 
@@ -179,12 +177,183 @@ const InfiniteFloor = ({ renderDistance, playerPos, shadowsEnabled }: { renderDi
             args={[undefined, undefined, count]} 
             receiveShadow={shadowsEnabled} 
             castShadow={shadowsEnabled}
-            key={count} // Force re-mount when size changes to avoid stale buffer issues
+            key={count}
+            name="floor" // Identified for Raycasting
         >
             <boxGeometry args={[BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE]} />
             <meshStandardMaterial map={texture} />
         </instancedMesh>
     );
+};
+
+// --- BUILDING SYSTEM ---
+
+type BlockMap = Map<string, {x: number, y: number, z: number}>;
+
+const PlacedBlocks = ({ blocks, shadowsEnabled }: { blocks: BlockMap, shadowsEnabled: boolean }) => {
+    const meshRef = useRef<THREE.InstancedMesh>(null);
+    const dummy = useMemo(() => new THREE.Object3D(), []);
+    const blockList = useMemo(() => Array.from(blocks.values()), [blocks]);
+
+    useEffect(() => {
+        if (!meshRef.current) return;
+        blockList.forEach((block, i) => {
+            dummy.position.set(block.x, block.y, block.z);
+            dummy.updateMatrix();
+            meshRef.current!.setMatrixAt(i, dummy.matrix);
+        });
+        meshRef.current.instanceMatrix.needsUpdate = true;
+    }, [blockList]);
+
+    return (
+        <instancedMesh 
+            ref={meshRef} 
+            args={[undefined, undefined, 1000]} // Max 1000 blocks for now
+            receiveShadow={shadowsEnabled}
+            castShadow={shadowsEnabled}
+            name="placedBlocks"
+        >
+            <boxGeometry args={[BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE]} />
+            <meshStandardMaterial color="white" />
+        </instancedMesh>
+    );
+};
+
+const Particles = ({ particles }: { particles: any[] }) => {
+    const meshRef = useRef<THREE.InstancedMesh>(null);
+    const dummy = useMemo(() => new THREE.Object3D(), []);
+
+    useFrame((state, delta) => {
+        if (!meshRef.current) return;
+        particles.forEach((p, i) => {
+            if (p.life > 0) {
+                p.life -= delta;
+                p.velocity.y -= GRAVITY * 0.5 * delta; // Gravity effect
+                p.position.add(p.velocity.clone().multiplyScalar(delta));
+                
+                // Floor collision for particles
+                if (p.position.y < 0) {
+                    p.position.y = 0;
+                    p.velocity.y = 0;
+                    p.velocity.x *= 0.5; // Friction
+                    p.velocity.z *= 0.5;
+                }
+
+                dummy.position.copy(p.position);
+                dummy.scale.setScalar(p.size * (p.life / 3)); // Shrink as dying
+                dummy.updateMatrix();
+                meshRef.current!.setMatrixAt(i, dummy.matrix);
+            } else {
+                dummy.scale.setScalar(0);
+                dummy.updateMatrix();
+                meshRef.current!.setMatrixAt(i, dummy.matrix);
+            }
+        });
+        meshRef.current.instanceMatrix.needsUpdate = true;
+    });
+
+    return (
+        <instancedMesh 
+            ref={meshRef} 
+            args={[undefined, undefined, 100]} // Pool size
+        >
+            <boxGeometry args={[0.2, 0.2, 0.2]} />
+            <meshStandardMaterial color="white" />
+        </instancedMesh>
+    );
+};
+
+const InteractionManager = ({ 
+    blocks, 
+    setBlocks, 
+    setParticles, 
+    selectedSlot 
+}: { 
+    blocks: BlockMap, 
+    setBlocks: React.Dispatch<React.SetStateAction<BlockMap>>,
+    setParticles: React.Dispatch<React.SetStateAction<any[]>>,
+    selectedSlot: number 
+}) => {
+    const { camera, scene, raycaster } = useThree();
+
+    useEffect(() => {
+        const onMouseDown = (e: MouseEvent) => {
+            if (document.pointerLockElement !== document.querySelector("#root")) return;
+            
+            // 0 = Left (Break), 2 = Right (Place)
+            if (e.button !== 0 && e.button !== 2) return;
+
+            raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
+            raycaster.far = REACH_DISTANCE;
+            
+            // Intersect floor and placed blocks
+            const intersects = raycaster.intersectObjects(scene.children, true);
+            const hit = intersects.find(i => i.object.name === 'floor' || i.object.name === 'placedBlocks');
+
+            if (hit) {
+                const point = hit.point;
+                const normal = hit.face?.normal;
+                
+                // Calculate grid position based on hit + normal (small offset to get inside/outside block)
+                const isBreak = e.button === 0;
+                
+                // Breaking: Move slightly INTO the block
+                const breakPos = point.clone().add(raycaster.ray.direction.clone().multiplyScalar(0.01));
+                const breakX = Math.floor(breakPos.x);
+                const breakY = Math.floor(breakPos.y);
+                const breakZ = Math.floor(breakPos.z);
+                const breakKey = `${breakX},${breakY},${breakZ}`;
+
+                if (isBreak) {
+                    if (blocks.has(breakKey)) {
+                        // Break Block
+                        const newBlocks = new Map(blocks);
+                        newBlocks.delete(breakKey);
+                        setBlocks(newBlocks);
+
+                        // Spawn Particles
+                        const newParts = [];
+                        for(let i=0; i<8; i++) {
+                            newParts.push({
+                                id: Math.random(),
+                                position: new THREE.Vector3(breakX + 0.5, breakY + 0.5, breakZ + 0.5),
+                                velocity: new THREE.Vector3((Math.random()-0.5)*2, Math.random()*2, (Math.random()-0.5)*2),
+                                life: 3.0,
+                                size: 0.5 + Math.random() * 0.5
+                            });
+                        }
+                        setParticles(prev => [...newParts, ...prev].slice(0, 100)); // Keep pool manageable
+                    }
+                } else {
+                    // Placing: Move slightly OUT of the block using normal
+                    if (selectedSlot !== 0) return; // Only slot 0 (white block) can build
+                    if (!normal) return;
+
+                    const placePos = point.clone().add(normal.clone().multiplyScalar(0.1));
+                    const placeX = Math.floor(placePos.x);
+                    const placeY = Math.floor(placePos.y);
+                    const placeZ = Math.floor(placePos.z);
+                    const placeKey = `${placeX},${placeY},${placeZ}`;
+
+                    // Prevent placing inside player
+                    const playerX = Math.floor(camera.position.x);
+                    const playerZ = Math.floor(camera.position.z);
+                    // Simple check: don't place in player head or feet (approx)
+                    const distToHead = new THREE.Vector3(placeX+0.5, placeY+0.5, placeZ+0.5).distanceTo(camera.position);
+                    if (distToHead < 1.2) return;
+
+                    const newBlocks = new Map(blocks);
+                    newBlocks.set(placeKey, { x: placeX+0.5, y: placeY+0.5, z: placeZ+0.5 });
+                    setBlocks(newBlocks);
+                }
+            }
+        };
+
+        document.addEventListener('mousedown', onMouseDown);
+        return () => document.removeEventListener('mousedown', onMouseDown);
+    }, [camera, scene, blocks, selectedSlot]);
+
+    return null;
 };
 
 const Player = ({ 
@@ -292,6 +461,25 @@ const Player = ({
     );
 };
 
+// --- HOTBAR COMPONENT ---
+const Hotbar = ({ selectedSlot }: { selectedSlot: number }) => {
+    return (
+        <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex gap-2 p-2 bg-black/50 rounded-lg border border-white/20 z-50">
+            {[0, 1, 2].map(i => (
+                <div 
+                    key={i}
+                    className={`w-12 h-12 border-2 flex items-center justify-center transition-all ${selectedSlot === i ? 'border-yellow-400 scale-110 bg-white/20' : 'border-gray-500 bg-black/50'}`}
+                >
+                    {i === 0 && (
+                        <div className="w-6 h-6 bg-white border border-gray-400 shadow-[2px_2px_0_#999]"></div>
+                    )}
+                    <span className="absolute top-0 left-1 text-[8px] text-white shadow-black drop-shadow">{i + 1}</span>
+                </div>
+            ))}
+        </div>
+    );
+};
+
 // --- MAIN GAME COMPONENT ---
 
 export default function WhatToDoGame({ user, onBackToHub, username }: WhatToDoGameProps) {
@@ -300,6 +488,11 @@ export default function WhatToDoGame({ user, onBackToHub, username }: WhatToDoGa
     const [playerColor, setPlayerColor] = useState('#5BC8F0');
     const [playerPos, setPlayerPos] = useState(new THREE.Vector3(0, 5, 0));
     
+    // Game Logic
+    const [blocks, setBlocks] = useState<BlockMap>(new Map());
+    const [particles, setParticles] = useState<any[]>([]);
+    const [selectedSlot, setSelectedSlot] = useState(0);
+
     // Graphics
     const [shadowsEnabled, setShadowsEnabled] = useState(true);
     const [renderDist, setRenderDist] = useState(16);
@@ -323,6 +516,11 @@ export default function WhatToDoGame({ user, onBackToHub, username }: WhatToDoGa
 
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
+            // Hotbar selection
+            if (e.key === '1') setSelectedSlot(0);
+            if (e.key === '2') setSelectedSlot(1);
+            if (e.key === '3') setSelectedSlot(2);
+
             if (gameState === 'graphics-select' || gameState === 'color-select') return;
 
             if (e.key === 'Escape') {
@@ -401,6 +599,16 @@ export default function WhatToDoGame({ user, onBackToHub, username }: WhatToDoGa
                             shadowsEnabled={shadowsEnabled}
                             color={playerColor}
                         />
+
+                        {/* Building System */}
+                        <InteractionManager 
+                            blocks={blocks} 
+                            setBlocks={setBlocks} 
+                            setParticles={setParticles}
+                            selectedSlot={selectedSlot}
+                        />
+                        <PlacedBlocks blocks={blocks} shadowsEnabled={shadowsEnabled} />
+                        <Particles particles={particles} />
                         
                         <InfiniteFloor renderDistance={renderDist} playerPos={playerPos} shadowsEnabled={shadowsEnabled} />
                         
@@ -408,6 +616,8 @@ export default function WhatToDoGame({ user, onBackToHub, username }: WhatToDoGa
                             <PointerLockControls selector="#root" />
                         )}
                     </Canvas>
+
+                    <Hotbar selectedSlot={selectedSlot} />
                 </>
             )}
 
@@ -464,10 +674,15 @@ export default function WhatToDoGame({ user, onBackToHub, username }: WhatToDoGa
                 </div>
             )}
 
-            {/* Chat */}
+            {/* Chat (Global Mode) */}
             {gameState !== 'graphics-select' && gameState !== 'color-select' && (
-                <div className="absolute bottom-0 right-0 h-[250px] w-[300px] z-[40] animate-fade-in">
-                    <ChatWidget user={user} className="h-full border-b-0 border-r-0 opacity-80 hover:opacity-100 transition-opacity" />
+                <div className="absolute bottom-16 left-4 w-[350px] h-[250px] z-[40]">
+                    <ChatWidget 
+                        user={user} 
+                        mode="global"
+                        channelId="global_world_chat"
+                        className="h-full" 
+                    />
                 </div>
             )}
             

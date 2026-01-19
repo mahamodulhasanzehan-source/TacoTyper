@@ -122,12 +122,14 @@ export interface FriendRequest {
 export interface ChatMessage {
     id: string;
     senderId: string;
-    receiverId: string;
+    receiverId?: string; // Optional if channel based
+    channelId?: string;  // For group/global chats
     text: string;
     audioURL?: string; // Optional audio URL
     timestamp: any;
     expiresAt?: any; // Timestamp for deletion
     read: boolean;
+    senderName?: string; // Useful for global chat
 }
 
 // --- Auth Functions ---
@@ -465,7 +467,7 @@ export const getLeaderboard = async (mode: string = 'competitive'): Promise<Lead
     const seenUsers = new Set();
     
     snapshot.forEach(doc => {
-        const data = doc.data();
+        const data = doc.data() as any;
         if (!seenUsers.has(data.uid)) {
             entries.push({ id: doc.id, ...data } as any);
             seenUsers.add(data.uid);
@@ -503,7 +505,6 @@ export const sendMessage = async (senderId: string, receiverId: string, content:
     if (!content.trim() && type === 'text') return;
     const chatId = getChatId(senderId, receiverId);
     
-    // Calculate Expiration (21 days from now)
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 21);
 
@@ -515,7 +516,7 @@ export const sendMessage = async (senderId: string, receiverId: string, content:
             text: type === 'text' ? content.trim() : '🎤 Voice Message',
             audioURL: type === 'audio' ? audioURL : null,
             timestamp: serverTimestamp(),
-            expiresAt: Timestamp.fromDate(expiresAt), // Save as Firestore Timestamp
+            expiresAt: Timestamp.fromDate(expiresAt),
             read: false
         });
     } catch (e) {
@@ -523,13 +524,33 @@ export const sendMessage = async (senderId: string, receiverId: string, content:
     }
 };
 
+export const sendChannelMessage = async (senderId: string, channelId: string, content: string, senderName: string) => {
+    if (!content.trim()) return;
+    
+    // Channel messages expire faster (24h) to keep it clean
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 1);
+
+    try {
+        await addDoc(collection(db, "messages"), {
+            chatId: channelId, // Reuse chatId field for channel ID
+            senderId,
+            senderName,
+            text: content.trim(),
+            timestamp: serverTimestamp(),
+            expiresAt: Timestamp.fromDate(expiresAt),
+            read: true // Always read for global
+        });
+    } catch (e) {
+        console.error("Error sending channel message:", e);
+    }
+};
+
 export const deleteMessage = async (messageId: string, audioURL?: string) => {
     try {
-        // If it's a voice message, try to delete the file first
         if (audioURL && storage) {
              const fileRef = ref(storage, audioURL);
              await deleteObject(fileRef).catch(err => {
-                 // Ignore 404s if file is already gone
                  if (err.code !== 'storage/object-not-found') console.error("Error deleting audio file:", err);
              });
         }
@@ -539,11 +560,9 @@ export const deleteMessage = async (messageId: string, audioURL?: string) => {
     }
 };
 
-// --- Automatic Cleanup Logic ---
 const performCleanup = async (chatId: string) => {
     try {
         const messagesRef = collection(db, "messages");
-        // Query for expired messages in this chat
         const q = query(
             messagesRef, 
             where("chatId", "==", chatId),
@@ -553,32 +572,17 @@ const performCleanup = async (chatId: string) => {
         const snapshot = await getDocs(q);
         if (snapshot.empty) return;
 
-        console.log(`Cleaning up ${snapshot.size} expired messages...`);
-
-        // Process sequentially to ensure storage deletion happens before doc deletion
         for (const docSnap of snapshot.docs) {
             const data = docSnap.data();
-            
-            // 1. Delete Audio File from Storage (if exists)
             if (data.audioURL && storage) {
                 try {
                     const fileRef = ref(storage, data.audioURL);
                     await deleteObject(fileRef);
-                } catch (storageErr: any) {
-                    // It's okay if the file is already missing (e.g. deleted by lifecycle rule)
-                    if (storageErr.code !== 'storage/object-not-found') {
-                        console.warn(`Failed to delete storage file for msg ${docSnap.id}:`, storageErr);
-                        // We continue to delete the doc anyway to prevent ghosts
-                    }
-                }
+                } catch (storageErr: any) { }
             }
-
-            // 2. Delete Firestore Document
             try {
                 await deleteDoc(docSnap.ref);
-            } catch (dbErr) {
-                console.error(`Failed to delete expired doc ${docSnap.id}:`, dbErr);
-            }
+            } catch (dbErr) { }
         }
     } catch (e) {
         console.error("Error during message cleanup routine:", e);
@@ -587,14 +591,20 @@ const performCleanup = async (chatId: string) => {
 
 export const subscribeToChat = (currentUid: string, partnerUid: string, callback: (messages: ChatMessage[]) => void) => {
     const chatId = getChatId(currentUid, partnerUid);
+    return subscribeToChannel(chatId, callback, currentUid);
+};
+
+export const subscribeToChannel = (channelId: string, callback: (messages: ChatMessage[]) => void, currentUid?: string) => {
     const messagesRef = collection(db, "messages");
     
-    // Trigger cleanup in background once when chat loads
-    performCleanup(chatId);
+    performCleanup(channelId);
 
+    // Limit to last 50 messages for performance in global chats
     const q = query(
         messagesRef, 
-        where("chatId", "==", chatId)
+        where("chatId", "==", channelId),
+        orderBy("timestamp", "desc"), 
+        limit(50)
     );
 
     return onSnapshot(q, (snapshot) => {
@@ -604,12 +614,9 @@ export const subscribeToChat = (currentUid: string, partnerUid: string, callback
         snapshot.docs.forEach(doc => {
             const data = doc.data();
             
-            // Check-on-load strategy:
-            // Explicitly filter out expired messages client-side.
-            // This ensures the UI is clean even if the background cleanup hasn't finished yet.
             if (data.expiresAt) {
                 const expiry = data.expiresAt.toMillis ? data.expiresAt.toMillis() : data.expiresAt.seconds * 1000;
-                if (expiry < now) return; // Skip this message
+                if (expiry < now) return; 
             }
 
             msgs.push({
@@ -618,22 +625,21 @@ export const subscribeToChat = (currentUid: string, partnerUid: string, callback
             } as ChatMessage);
         });
         
-        // Client-side sort
+        // Sort ascending for display
         msgs.sort((a, b) => {
             const getT = (t: any) => t ? (t.toMillis ? t.toMillis() : (t.seconds ? t.seconds * 1000 : Date.now())) : Date.now();
             return getT(a.timestamp) - getT(b.timestamp);
         });
 
-        // Mark messages as read if I am the receiver
-        snapshot.docs.forEach(doc => {
-            const data = doc.data();
-            // Don't mark expired messages as read, just ignore them
-            if (data.expiresAt && data.expiresAt.toMillis() < now) return;
-
-            if (data.receiverId === currentUid && !data.read) {
-                updateDoc(doc.ref, { read: true });
-            }
-        });
+        // Mark read if it's a private chat
+        if (currentUid) {
+            snapshot.docs.forEach(doc => {
+                const data = doc.data();
+                if (data.receiverId === currentUid && !data.read) {
+                    updateDoc(doc.ref, { read: true });
+                }
+            });
+        }
 
         callback(msgs);
     });
@@ -642,8 +648,6 @@ export const subscribeToChat = (currentUid: string, partnerUid: string, callback
 export const subscribeToGlobalUnread = (currentUid: string, currentPartnerId: string | null, callback: (hasUnread: boolean) => void) => {
     const messagesRef = collection(db, "messages");
     
-    // NOTE: Avoid composite index requirement (receiverId + read). 
-    // Just query by receiverId (automatically indexed) and filter 'read' status in memory.
     const q = query(
         messagesRef,
         where("receiverId", "==", currentUid),
@@ -656,14 +660,10 @@ export const subscribeToGlobalUnread = (currentUid: string, currentPartnerId: st
 
         snapshot.docs.forEach(doc => {
             const data = doc.data();
-            
-            // Ignore expired in global unread count too
             if (data.expiresAt) {
                 const expiry = data.expiresAt.toMillis ? data.expiresAt.toMillis() : data.expiresAt.seconds * 1000;
                 if (expiry < now) return;
             }
-
-            // Check if unread AND not from the person I'm currently chatting with
             if (data.read === false && data.senderId !== currentPartnerId) {
                 hasUnreadFromOthers = true;
             }
