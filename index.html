@@ -5,14 +5,13 @@
     <meta charset="UTF-8" />
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌮</text></svg>">
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>TacoTyper</title>
-    <meta name="description" content="Test your WPM and accuracy in this fast-paced typing challenge." />
-    <meta name="keywords" content="typing game, typing test, wpm game, typing practice, taco, tacotyping, speed typing" />
+    <title>Taco Hub | Social Playground & Games</title>
+    <meta name="description" content="A social gaming playground featuring TacoTyper, IQ challenges, and real-time chat. Compete on leaderboards and hang out with other chefs." />
+    <meta name="keywords" content="social games, online playground, IQ test, typing game, wpm challenge, mini games, browser games, competitive typing, brain games, taco typer, social hub, chat and play" />
     <meta name="google-site-verification" content="HJCVPX9CiXsC4uojXiWBT7lhKetms-wMqEbdsUxnVqA" />
-    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Creepster&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Creepster&family=Inter:wght@400;700&display=swap" rel="stylesheet">
     <script>
       // CRITICAL POLYFILL: Initializes 'process' before any modules load.
-      // This prevents "process is not defined" errors in services that access env vars immediately (like firebase.ts).
       if (typeof process === 'undefined') {
         window.process = { env: {} };
       }
@@ -89,12 +88,16 @@
       }
       
       body {
-        font-family: 'Press Start 2P', cursive;
+        font-family: 'Inter', sans-serif;
         background-color: #000;
         overflow: hidden;
       }
 
-      /* Creepster font for rotten words */
+      /* Specific classes for retro fonts where needed */
+      .font-press-start {
+        font-family: 'Press Start 2P', cursive;
+      }
+
       .font-creepster {
         font-family: 'Creepster', cursive;
       }
