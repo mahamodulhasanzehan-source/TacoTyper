@@ -5,9 +5,10 @@ import {
   GoogleAuthProvider, 
   signInWithPopup, 
   signOut, 
-  onAuthStateChanged as firebaseOnAuthStateChanged,
-  User as FirebaseUser
+  onAuthStateChanged as firebaseOnAuthStateChanged
 } from 'firebase/auth';
+import type { User as FirebaseUser } from 'firebase/auth';
+
 import { 
   getFirestore, 
   doc, 
@@ -558,12 +559,12 @@ export const subscribeToChat = (currentUid: string, partnerUid: string, callback
 export const subscribeToChannel = (channelId: string, callback: (messages: ChatMessage[]) => void, currentUid?: string) => {
     const messagesRef = collection(db, "messages");
     
-    // Limit to last 50 messages for performance in global chats
+    // We remove orderBy and limit from the server query to avoid requiring composite indices.
+    // This fetches all messages for the chat and we sort/slice them client side.
+    // NOTE: For a massive scale app, this would need pagination/indices, but for this use case it ensures robustness.
     const q = query(
         messagesRef, 
-        where("chatId", "==", channelId),
-        orderBy("timestamp", "desc"), 
-        limit(50)
+        where("chatId", "==", channelId)
     );
 
     return onSnapshot(q, (snapshot) => {
@@ -577,7 +578,7 @@ export const subscribeToChannel = (channelId: string, callback: (messages: ChatM
             } as ChatMessage);
         });
         
-        // Sort ascending for display
+        // Sort ascending for display (oldest first)
         msgs.sort((a, b) => {
             const getT = (t: any) => t ? (t.toMillis ? t.toMillis() : (t.seconds ? t.seconds * 1000 : Date.now())) : Date.now();
             return getT(a.timestamp) - getT(b.timestamp);
@@ -593,13 +594,18 @@ export const subscribeToChannel = (channelId: string, callback: (messages: ChatM
             });
         }
 
-        callback(msgs);
+        // Limit to last 50 for display performance
+        const recentMsgs = msgs.length > 50 ? msgs.slice(msgs.length - 50) : msgs;
+        callback(recentMsgs);
+    }, (error) => {
+        console.error("Error subscribing to chat:", error);
     });
 };
 
 export const subscribeToGlobalUnread = (currentUid: string, currentPartnerId: string | null, callback: (hasUnread: boolean) => void) => {
     const messagesRef = collection(db, "messages");
     
+    // Simplification for reliability - check recent messages for user
     const q = query(
         messagesRef,
         where("receiverId", "==", currentUid),
