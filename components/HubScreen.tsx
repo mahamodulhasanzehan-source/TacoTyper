@@ -79,7 +79,7 @@ const HubScreen: React.FC<HubScreenProps> = ({ user, onLaunchGame, onLaunchIQ, o
                         
                         {/* Play Button Overlay */}
                         <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity z-20">
-                            <span className="bg-[#ff2a2a] text-white px-6 py-3 text-xs md:text-sm border-2 border-white font-bold tracking-wider">ENTER WORLD</span>
+                            <span className="bg-[#ff2a2a] text-white px-6 py-3 text-xs md:text-sm border-2 border-white font-bold tracking-wider">COMING SOON</span>
                         </div>
                     </RandomReveal>
 

@@ -32,7 +32,6 @@ import WordComponent from './WordComponent';
 import TypingSpeedGame from './TypingSpeedGame';
 import HubScreen from './HubScreen';
 import IQGame from './IQGame'; 
-import WhatToDoGame from './WhatToDoGame';
 import { 
   StartScreen, 
   LevelSelectScreen, 
@@ -56,7 +55,7 @@ interface GameProps {
 
 export default function Game({ user, onLogout }: GameProps) {
   // --- Global App State ---
-  const [activeApp, setActiveApp] = useState<'taco' | 'iq' | 'what-to-do'>('taco');
+  const [activeApp, setActiveApp] = useState<'taco' | 'iq'>('taco');
 
   // --- Taco Game State ---
   const [screen, setScreen] = useState<GameScreen>('hub');
@@ -766,7 +765,7 @@ export default function Game({ user, onLogout }: GameProps) {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
         // Prevent typing interactions if we are in IQ or What-To-Do modes (which is now just IQ)
-        if (activeApp === 'iq' || activeApp === 'what-to-do' || screen === 'speed-test-playing' || screen === 'username-setup' || showExitConfirm || isMobile || screen === 'hub') return;
+        if (activeApp === 'iq' || screen === 'speed-test-playing' || screen === 'username-setup' || showExitConfirm || isMobile || screen === 'hub') return;
         
         if (e.key === 'Escape') {
             if (screen === 'playing') {
@@ -939,18 +938,12 @@ export default function Game({ user, onLogout }: GameProps) {
                 onUpdateUsername={handleUpdateUsername}
                 onLogout={onLogout}
              />
-        ) : activeApp === 'what-to-do' ? (
-             <WhatToDoGame 
-                 user={user}
-                 onBackToHub={() => setActiveApp('taco')}
-                 username={customUsername}
-             />
         ) : screen === 'hub' ? (
              <HubScreen 
                 user={user} 
                 onLaunchGame={() => setScreen('start')}
                 onLaunchIQ={() => setActiveApp('iq')}
-                onLaunchWhatToDo={() => setActiveApp('what-to-do')}
+                onLaunchWhatToDo={() => alert("Coming Soon!")}
                 onLogout={onLogout}
                 username={customUsername}
                 onUpdateUsername={handleUpdateUsername}
