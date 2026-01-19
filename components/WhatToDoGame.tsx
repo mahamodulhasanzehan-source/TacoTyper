@@ -1,7 +1,6 @@
-
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { Canvas, useFrame, useThree, extend, createPortal } from '@react-three/fiber';
-import { PointerLockControls, Sky, Stats } from '@react-three/drei';
+import { Canvas, useFrame, useThree, createPortal } from '@react-three/fiber';
+import { PointerLockControls, Sky } from '@react-three/drei';
 import * as THREE from 'three';
 import { User } from '../services/firebase';
 import ChatWidget from './ChatWidget';
@@ -12,6 +11,21 @@ interface WhatToDoGameProps {
     user: User;
     onBackToHub: () => void;
     username?: string | null;
+}
+
+// --- TYPES ---
+interface BotEntity {
+    id: string;
+    position: THREE.Vector3;
+    velocity: THREE.Vector3;
+    color: string;
+    moveTimer: number;
+}
+
+interface BulletEntity {
+    position: THREE.Vector3;
+    velocity: THREE.Vector3;
+    spawnTime: number;
 }
 
 // --- CONSTANTS ---
@@ -27,15 +41,14 @@ const PLAYER_HEIGHT = 1.8;
 
 // --- UTILS ---
 
-// Texture generator for the specific "Block with Outline" look
 const useBlockTexture = () => {
     return useMemo(() => {
         const canvas = document.createElement('canvas');
-        canvas.width = 128; // Higher res for crisp lines
+        canvas.width = 128;
         canvas.height = 128;
         const ctx = canvas.getContext('2d');
         if (ctx) {
-            // Lighter Green Background (0x4CAF50ish but lighter)
+            // Lighter Green Background
             ctx.fillStyle = '#66BB6A'; 
             ctx.fillRect(0, 0, 128, 128);
             
@@ -44,7 +57,7 @@ const useBlockTexture = () => {
             ctx.lineWidth = 8; 
             ctx.strokeRect(0, 0, 128, 128);
             
-            // Inner highlight for 3D feel (subtle)
+            // Inner highlight
             ctx.fillStyle = 'rgba(255,255,255,0.1)';
             ctx.fillRect(4, 4, 120, 120);
         }
@@ -58,7 +71,6 @@ const useBlockTexture = () => {
 
 // --- 3D COMPONENTS ---
 
-// FPS Counter Component
 const FPSCounter = () => {
     const ref = useRef<HTMLDivElement>(null);
     const frameCount = useRef(0);
@@ -79,14 +91,13 @@ const FPSCounter = () => {
     return (
         <div 
             ref={ref} 
-            className="absolute top-2 left-2 text-blue-500 font-bold text-lg md:text-xl z-50 font-mono shadow-black drop-shadow-md pointer-events-none"
+            className="absolute top-2 left-2 text-blue-500 font-bold text-xl z-50 font-mono shadow-black drop-shadow-md pointer-events-none animate-fade-in"
         >
             FPS: 0
         </div>
     );
 };
 
-// Lights
 const GameLights = ({ playerPos, shadowsEnabled }: { playerPos: THREE.Vector3, shadowsEnabled: boolean }) => {
     const lightRef = useRef<THREE.DirectionalLight>(null);
     
@@ -114,22 +125,27 @@ const GameLights = ({ playerPos, shadowsEnabled }: { playerPos: THREE.Vector3, s
     );
 };
 
-// Infinite Floor
 const InfiniteFloor = ({ renderDistance, playerPos, shadowsEnabled }: { renderDistance: number, playerPos: THREE.Vector3, shadowsEnabled: boolean }) => {
     const meshRef = useRef<THREE.InstancedMesh>(null);
     const dummy = useMemo(() => new THREE.Object3D(), []);
     const texture = useBlockTexture();
     
-    // Radius in blocks
     const radiusInBlocks = renderDistance * CHUNK_SIZE; 
     const side = (radiusInBlocks * 2) + 1;
     const count = side * side;
+
+    // Optimization: Track last update position to avoid re-calculating 4000 matrices every frame
+    const lastUpdatePos = useRef({ x: Infinity, z: Infinity });
 
     useFrame(() => {
         if (!meshRef.current) return;
 
         const centerX = Math.floor(playerPos.x / BLOCK_SIZE);
         const centerZ = Math.floor(playerPos.z / BLOCK_SIZE);
+
+        // Only update if player moved a full block
+        if (centerX === lastUpdatePos.current.x && centerZ === lastUpdatePos.current.z) return;
+        lastUpdatePos.current = { x: centerX, z: centerZ };
 
         let i = 0;
         const radiusSq = radiusInBlocks * radiusInBlocks;
@@ -165,8 +181,7 @@ const InfiniteFloor = ({ renderDistance, playerPos, shadowsEnabled }: { renderDi
     );
 };
 
-// Bullet Management
-const Bullets = ({ bullets }: { bullets: React.MutableRefObject<any[]> }) => {
+const Bullets = ({ bullets }: { bullets: React.MutableRefObject<BulletEntity[]> }) => {
     const meshRef = useRef<THREE.InstancedMesh>(null);
     const dummy = useMemo(() => new THREE.Object3D(), []);
 
@@ -175,14 +190,13 @@ const Bullets = ({ bullets }: { bullets: React.MutableRefObject<any[]> }) => {
         
         let activeCount = 0;
         const bulletsToRemove: number[] = [];
+        const now = Date.now();
 
         bullets.current.forEach((b, i) => {
-            // Update position
             const moveStep = b.velocity.clone().multiplyScalar(delta);
             b.position.add(moveStep);
             
-            // Check lifetime/distance
-            if (b.spawnTime + 2000 < Date.now()) {
+            if (b.spawnTime + 2000 < now) {
                 bulletsToRemove.push(i);
             } else {
                 dummy.position.copy(b.position);
@@ -193,7 +207,7 @@ const Bullets = ({ bullets }: { bullets: React.MutableRefObject<any[]> }) => {
             }
         });
 
-        // Hide remaining instances
+        // Hide unused instances
         for (let i = activeCount; i < 50; i++) {
             dummy.scale.set(0, 0, 0);
             dummy.updateMatrix();
@@ -202,7 +216,6 @@ const Bullets = ({ bullets }: { bullets: React.MutableRefObject<any[]> }) => {
 
         meshRef.current.instanceMatrix.needsUpdate = true;
 
-        // Cleanup array
         for (let i = bulletsToRemove.length - 1; i >= 0; i--) {
             bullets.current.splice(bulletsToRemove[i], 1);
         }
@@ -216,19 +229,18 @@ const Bullets = ({ bullets }: { bullets: React.MutableRefObject<any[]> }) => {
     );
 };
 
-// Bot Enemies (Simulated Multiplayer)
 const Bots = ({ 
     bots, 
     bullets, 
     onKill 
 }: { 
-    bots: React.MutableRefObject<any[]>, 
-    bullets: React.MutableRefObject<any[]>,
+    bots: React.MutableRefObject<BotEntity[]>, 
+    bullets: React.MutableRefObject<BulletEntity[]>,
     onKill: () => void 
 }) => {
     const groupRef = useRef<THREE.Group>(null);
     
-    // Initialize Bots once
+    // Initialize Bots
     useEffect(() => {
         if (bots.current.length === 0) {
             for (let i = 0; i < BOT_COUNT; i++) {
@@ -246,9 +258,7 @@ const Bots = ({
     useFrame((state, delta) => {
         if (!groupRef.current) return;
 
-        // Update Bot Logic
         bots.current.forEach((bot, i) => {
-            // AI Movement
             if (state.clock.elapsedTime > bot.moveTimer) {
                 bot.velocity.x = (Math.random() - 0.5) * 4;
                 bot.velocity.z = (Math.random() - 0.5) * 4;
@@ -258,27 +268,23 @@ const Bots = ({
             bot.position.x += bot.velocity.x * delta;
             bot.position.z += bot.velocity.z * delta;
             
-            // Boundary check (keep them somewhat near)
+            // Boundaries
             if (bot.position.x > 30) bot.position.x = -30;
             if (bot.position.x < -30) bot.position.x = 30;
             if (bot.position.z > 30) bot.position.z = -30;
             if (bot.position.z < -30) bot.position.z = 30;
 
-            // Update mesh position
             const mesh = groupRef.current!.children[i];
             if (mesh) {
                 mesh.position.copy(bot.position);
             }
 
-            // Collision with Bullets
-            bullets.current.forEach((bullet, bIdx) => {
-                if (bullet.position.distanceTo(bot.position) < 0.8) {
-                    // Kill Bot
+            // Simple Collision
+            bullets.current.forEach((bullet) => {
+                if (bullet.position.distanceTo(bot.position) < 1.0) {
                     onKill();
-                    // Respawn Bot
                     bot.position.set((Math.random() - 0.5) * 40, 1, (Math.random() - 0.5) * 40);
-                    // Remove bullet (hacky way to move it far away to be cleaned up next frame)
-                    bullet.spawnTime = 0; 
+                    bullet.spawnTime = 0; // mark for removal
                 }
             });
         });
@@ -288,14 +294,11 @@ const Bots = ({
         <group ref={groupRef}>
             {bots.current.map((bot) => (
                 <group key={bot.id} position={bot.position}>
-                    {/* Bot Body */}
-                    <mesh position={[0, 0, 0]} castShadow>
+                    <mesh position={[0, 0, 0]} castShadow receiveShadow>
                         <boxGeometry args={[0.8, 2, 0.8]} />
                         <meshStandardMaterial color={bot.color} />
                     </mesh>
-                    {/* Bot Name Label */}
                     <mesh position={[0, 1.5, 0]}>
-                         {/* Simple visual placeholder for name tag */}
                          <planeGeometry args={[1, 0.2]} />
                          <meshBasicMaterial color="#000" />
                     </mesh>
@@ -305,23 +308,23 @@ const Bots = ({
     );
 };
 
-// Player (Gun + Movement)
 const Player = ({ 
     position, 
     setPosition, 
     onShoot,
-    color
+    color,
+    shadowsEnabled
 }: { 
     position: THREE.Vector3, 
     setPosition: (v: THREE.Vector3) => void,
     onShoot: (pos: THREE.Vector3, dir: THREE.Vector3) => void,
-    color: string
+    color: string,
+    shadowsEnabled: boolean
 }) => {
     const { camera } = useThree();
     const [velocity] = useState(new THREE.Vector3());
     const [isJumping, setIsJumping] = useState(false);
     
-    // Gun Animation State
     const gunRef = useRef<THREE.Group>(null);
     const isShooting = useRef(false);
     const shootTime = useRef(0);
@@ -357,12 +360,12 @@ const Player = ({
                 case 'ShiftLeft': case 'ShiftRight': isRunning.current = false; break;
             }
         };
-        const onMouseDown = (e: MouseEvent) => {
+        const onMouseDown = () => {
             if (document.pointerLockElement) {
                 const dir = new THREE.Vector3();
                 camera.getWorldDirection(dir);
-                const spawnPos = camera.position.clone().add(dir.multiplyScalar(0.5)); // Spawn slightly in front
-                spawnPos.y -= 0.2; // Adjust to match gun height
+                const spawnPos = camera.position.clone().add(dir.multiplyScalar(0.5));
+                spawnPos.y -= 0.2;
                 
                 onShoot(spawnPos, dir);
                 
@@ -382,7 +385,7 @@ const Player = ({
     }, [isJumping, position, velocity, camera, onShoot]);
 
     useFrame((state, delta) => {
-        // Physics & Movement
+        // Physics
         velocity.x -= velocity.x * 10.0 * delta;
         velocity.z -= velocity.z * 10.0 * delta;
         velocity.y -= GRAVITY * delta;
@@ -420,13 +423,11 @@ const Player = ({
             setIsJumping(false);
         }
 
-        // Camera Update
         camera.position.set(position.x, position.y + PLAYER_HEIGHT, position.z);
         setPosition(position.clone());
 
-        // Gun Animation (Recoil & Bob)
+        // Gun Animation
         if (gunRef.current) {
-            // Walking Bob
             if (moveForward.current || moveBackward.current || moveLeft.current || moveRight.current) {
                 const bobSpeed = isRunning.current ? 15 : 10;
                 gunRef.current.position.y = -0.4 + Math.sin(state.clock.elapsedTime * bobSpeed) * 0.02;
@@ -434,14 +435,13 @@ const Player = ({
                 gunRef.current.position.y = -0.4;
             }
 
-            // Recoil
             if (isShooting.current) {
                 const elapsed = Date.now() - shootTime.current;
                 if (elapsed < 150) {
                     const progress = elapsed / 150;
                     const value = Math.sin(progress * Math.PI);
-                    gunRef.current.position.z = -0.5 + (value * 0.2); // Kick back
-                    gunRef.current.rotation.x = value * 0.5; // Rotate up
+                    gunRef.current.position.z = -0.5 + (value * 0.2);
+                    gunRef.current.rotation.x = value * 0.5;
                 } else {
                     isShooting.current = false;
                     gunRef.current.position.z = -0.5;
@@ -453,19 +453,21 @@ const Player = ({
 
     return (
         <group>
-            {/* Gun attached to camera logic is handled by parenting in R3F or manually updating pos. 
-                For R3F, we can put it in a createPortal to the camera, or just sync its position frame-by-frame. 
-                Simpler: Attach to camera via standard R3F parenting if Player was inside Camera, 
-                but Player is independent. We will rely on the fact that we don't render the player body 
-                for self, just the gun floating in front of camera. */}
+            {/* Shadow Caster: Invisible to camera but casts shadow */}
+            {shadowsEnabled && (
+                <mesh position={[position.x, position.y + 1, position.z]} castShadow>
+                    <boxGeometry args={[0.8, 2, 0.8]} />
+                    <meshBasicMaterial color="black" colorWrite={false} />
+                </mesh>
+            )}
+
             {createPortal(
                 <group ref={gunRef} position={[0.4, -0.4, -0.5]}>
-                    <mesh castShadow>
+                    <mesh castShadow={shadowsEnabled}>
                         <boxGeometry args={[0.2, 0.2, 0.6]} />
                         <meshStandardMaterial color="#333" />
                     </mesh>
-                    {/* Handle */}
-                    <mesh position={[0, -0.2, 0.2]} castShadow>
+                    <mesh position={[0, -0.2, 0.2]} castShadow={shadowsEnabled}>
                         <boxGeometry args={[0.2, 0.4, 0.2]} />
                         <meshStandardMaterial color={color} />
                     </mesh>
@@ -479,31 +481,23 @@ const Player = ({
 // --- MAIN GAME COMPONENT ---
 
 export default function WhatToDoGame({ user, onBackToHub, username }: WhatToDoGameProps) {
-    // Game Flow States
     const [gameState, setGameState] = useState<'graphics-select' | 'color-select' | 'playing' | 'paused'>('graphics-select');
     
-    // Player State
-    const [playerColor, setPlayerColor] = useState('#ff0000');
+    const [playerColor, setPlayerColor] = useState('#5BC8F0');
     const [playerPos, setPlayerPos] = useState(new THREE.Vector3(0, 5, 0));
     
-    // Graphics Settings
-    const [graphicsMode, setGraphicsMode] = useState<'normal' | 'low'>('normal');
+    // Graphics
     const [shadowsEnabled, setShadowsEnabled] = useState(true);
     const [renderDist, setRenderDist] = useState(16);
     const [simDist, setSimDist] = useState(4);
 
-    // Gameplay Objects
-    const bulletsRef = useRef<any[]>([]);
-    const botsRef = useRef<any[]>([]);
+    const bulletsRef = useRef<BulletEntity[]>([]);
+    const botsRef = useRef<BotEntity[]>([]);
 
-    // Settings Menu
     const [showSettings, setShowSettings] = useState(false);
-
     const displayableName = username || user.displayName || 'Player';
 
-    // Update settings based on mode
     const selectGraphics = (mode: 'normal' | 'low') => {
-        setGraphicsMode(mode);
         if (mode === 'low') {
             setShadowsEnabled(false);
             setRenderDist(9);
@@ -546,17 +540,16 @@ export default function WhatToDoGame({ user, onBackToHub, username }: WhatToDoGa
             velocity: dir.clone().multiplyScalar(BULLET_SPEED),
             spawnTime: Date.now()
         });
-        // Simple Audio cue could go here
     }, []);
 
     const handleBotKill = useCallback(() => {
-        // Could show a hitmarker or sound here
+        // Logic for kill confirmation or score could go here
     }, []);
 
     return (
         <div className="w-full h-full bg-black relative font-['Inter',_sans-serif]">
             
-            {/* 1. GRAPHICS SELECTION SCREEN */}
+            {/* 1. GRAPHICS SELECTION */}
             {gameState === 'graphics-select' && (
                 <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/90">
                     <RandomReveal className="bg-[#081427] border-4 border-[#A7C7E7] p-8 max-w-lg w-full text-center">
@@ -565,21 +558,13 @@ export default function WhatToDoGame({ user, onBackToHub, username }: WhatToDoGa
                             <Button onClick={() => selectGraphics('normal')}>Normal</Button>
                             <div className="flex items-center justify-center gap-2">
                                 <Button variant="secondary" onClick={() => selectGraphics('low')}>Low End</Button>
-                                <div className="group relative">
-                                    <span className="inline-block w-5 h-5 rounded-full bg-blue-500 text-white text-xs leading-5 cursor-help">i</span>
-                                    <div className="absolute left-8 top-0 bg-black border border-blue-500 p-2 w-48 text-[10px] text-left hidden group-hover:block z-50">
-                                        Render distance: 9 chunks<br/>
-                                        Sim distance: 2 chunks<br/>
-                                        Shadows removed.
-                                    </div>
-                                </div>
                             </div>
                         </div>
                     </RandomReveal>
                 </div>
             )}
 
-            {/* 2. COLOR SELECTION SCREEN */}
+            {/* 2. COLOR SELECTION */}
             {gameState === 'color-select' && (
                 <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/90">
                     <RandomReveal className="bg-[#081427] border-4 border-[#A7C7E7] p-8 max-w-md w-full text-center">
@@ -598,13 +583,12 @@ export default function WhatToDoGame({ user, onBackToHub, username }: WhatToDoGa
                         </div>
 
                         <div className="text-white mb-4">Player Name: {displayableName}</div>
-
                         <Button onClick={startGame} className="w-full">Confirm</Button>
                     </RandomReveal>
                 </div>
             )}
 
-            {/* 3. THE 3D WORLD */}
+            {/* 3. 3D WORLD */}
             {(gameState === 'playing' || gameState === 'paused') && (
                 <>
                     <FPSCounter />
@@ -617,13 +601,13 @@ export default function WhatToDoGame({ user, onBackToHub, username }: WhatToDoGa
                             color={playerColor} 
                             setPosition={setPlayerPos}
                             onShoot={handleShoot}
+                            shadowsEnabled={shadowsEnabled}
                         />
                         
                         <Bots bots={botsRef} bullets={bulletsRef} onKill={handleBotKill} />
                         <Bullets bullets={bulletsRef} />
                         <InfiniteFloor renderDistance={renderDist} playerPos={playerPos} shadowsEnabled={shadowsEnabled} />
                         
-                        {/* Controls only active when playing and settings closed */}
                         {gameState === 'playing' && !showSettings && (
                             <PointerLockControls selector="#root" />
                         )}
@@ -631,23 +615,20 @@ export default function WhatToDoGame({ user, onBackToHub, username }: WhatToDoGa
                 </>
             )}
 
-            {/* 4. OVERLAYS */}
-            
-            {/* Pause Menu (ESC) */}
+            {/* 4. MENUS & HUD */}
             {gameState === 'paused' && (
                 <div className="absolute inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm">
-                    <div className="bg-[#081427] border-2 border-white p-8 min-w-[300px] flex flex-col gap-4">
+                    <RandomReveal className="bg-[#081427] border-2 border-white p-8 min-w-[300px] flex flex-col gap-4 shadow-[0_0_20px_rgba(255,255,255,0.1)]">
                         <h2 className="text-2xl text-white text-center mb-4">Options Menu</h2>
                         <Button onClick={() => setGameState('playing')}>Resume Game</Button>
                         <Button variant="secondary" onClick={() => setShowSettings(true)}>Settings</Button>
                         <Button variant="accent" onClick={onBackToHub}>Exit World</Button>
-                    </div>
+                    </RandomReveal>
                 </div>
             )}
 
-            {/* Settings Menu (P or via Pause) */}
             {showSettings && (
-                <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-[70] bg-[#081427] border-2 border-[#A7C7E7] p-6 w-[400px]">
+                <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-[70] bg-[#081427] border-2 border-[#A7C7E7] p-6 w-[400px] animate-pop-in">
                     <div className="flex justify-between items-center mb-6">
                         <h2 className="text-[#A7C7E7] text-xl font-bold">Settings</h2>
                         <button onClick={() => setShowSettings(false)} className="text-white hover:text-red-500">✕</button>
@@ -683,27 +664,25 @@ export default function WhatToDoGame({ user, onBackToHub, username }: WhatToDoGa
                         </div>
                     </div>
                     
-                    <div className="mt-6 text-[10px] text-[#555] text-center">
-                        Press 'P' to close
-                    </div>
+                    <div className="mt-6 text-[10px] text-[#555] text-center">Press 'P' to close</div>
                 </div>
             )}
 
-            {/* Chat (Visible unless in menu) */}
+            {/* Chat */}
             {gameState !== 'graphics-select' && gameState !== 'color-select' && (
-                <div className="absolute bottom-0 right-0 h-[250px] w-[300px] z-[40]">
+                <div className="absolute bottom-0 right-0 h-[250px] w-[300px] z-[40] animate-fade-in">
                     <ChatWidget user={user} className="h-full border-b-0 border-r-0 opacity-80 hover:opacity-100 transition-opacity" />
                 </div>
             )}
 
-            {/* HUD (Crosshair - Dot) */}
+            {/* Crosshair (Dot) */}
             {gameState === 'playing' && !showSettings && (
-                <div className="absolute top-1/2 left-1/2 w-1.5 h-1.5 bg-white rounded-full transform -translate-x-1/2 -translate-y-1/2 z-[30] pointer-events-none mix-blend-difference shadow-[0_0_2px_black]" />
+                <div className="absolute top-1/2 left-1/2 w-1.5 h-1.5 bg-white rounded-full transform -translate-x-1/2 -translate-y-1/2 z-[30] pointer-events-none mix-blend-difference shadow-[0_0_2px_black] animate-fade-in" />
             )}
             
-            {/* Health / Money (Mocked to match reference style) */}
+            {/* Money Mockup */}
             {gameState === 'playing' && !showSettings && (
-                <div className="absolute top-2 right-2 flex flex-col items-end pointer-events-none z-30">
+                <div className="absolute top-2 right-2 flex flex-col items-end pointer-events-none z-30 animate-fade-in">
                     <div className="flex border-2 border-white bg-[#333] w-[200px] h-[20px] mb-2">
                         <div className="w-full bg-red-600 h-full"></div>
                     </div>
