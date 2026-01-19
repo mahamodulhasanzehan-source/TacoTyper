@@ -170,10 +170,7 @@ const Player = ({ position, color, setPosition }: { position: THREE.Vector3, col
         setPosition(position.clone());
     });
 
-    // Render Player Model (Visible only to self if we had 3rd person, but this is 1st person)
-    // However, the prompt asks for "player being: two blocks tall".
-    // We can render a mesh at the player position for shadow/representation if we look down?
-    // Since it's 1st person, we mostly just need the collision box logic which is handled above.
+    // Render Player Model
     return (
         <group position={[position.x, position.y + 1, position.z]}>
             <mesh>
@@ -206,9 +203,8 @@ export default function WhatToDoGame({ user, onBackToHub, username }: WhatToDoGa
                 setGameState(prev => prev === 'playing' ? 'paused' : 'playing');
                 setShowSettings(false);
             }
-            if ((e.key === 'p' || e.key === 'P') && gameState !== 'color-select') {
-                if (gameState === 'paused') return; // Can't open P menu if main pause menu is open? Or maybe yes?
-                // Prompt says: "settings icon will not be visible to the player only when you press P. Will the settings menu open up."
+            if ((e.key === 'p' || e.key === 'P')) {
+                if (gameState === 'paused') return; 
                 setShowSettings(prev => !prev);
                 // When opening settings, we should unlock cursor to allow interaction
                 if (!showSettings) {
