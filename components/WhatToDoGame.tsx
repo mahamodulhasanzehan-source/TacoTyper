@@ -312,7 +312,7 @@ const InteractionManager = ({
                         setBlocks(newBlocks);
 
                         // Spawn Particles
-                        const newParts = [];
+                        const newParts: any[] = [];
                         for(let i=0; i<8; i++) {
                             newParts.push({
                                 id: Math.random(),
