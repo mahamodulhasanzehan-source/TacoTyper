@@ -36,6 +36,9 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [react()],
     define: defines,
+    resolve: {
+      dedupe: ['three']
+    },
     server: {
       host: true,
       port: 5173,
