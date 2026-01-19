@@ -31,7 +31,8 @@ import { isMobileDevice } from '../utils/device';
 import WordComponent from './WordComponent';
 import TypingSpeedGame from './TypingSpeedGame';
 import HubScreen from './HubScreen';
-import IQGame from './IQGame'; // Import IQGame
+import IQGame from './IQGame'; 
+import WhatToDoGame from './WhatToDoGame'; // Import the new 3D game
 import { 
   StartScreen, 
   LevelSelectScreen, 
@@ -55,7 +56,7 @@ interface GameProps {
 
 export default function Game({ user, onLogout }: GameProps) {
   // --- Global App State ---
-  const [activeApp, setActiveApp] = useState<'taco' | 'iq'>('taco');
+  const [activeApp, setActiveApp] = useState<'taco' | 'iq' | 'what-to-do'>('taco');
 
   // --- Taco Game State ---
   const [screen, setScreen] = useState<GameScreen>('hub');
@@ -275,7 +276,7 @@ export default function Game({ user, onLogout }: GameProps) {
 
   const update = useCallback((time: number) => {
     const state = stateRef.current;
-    // Don't update game logic if in hub or start screen OR if activeApp is IQ
+    // Don't update game logic if in hub or start screen OR if activeApp is not taco
     if (state.screen !== 'playing' || activeApp !== 'taco') {
         state.lastTime = time;
         requestRef.current = requestAnimationFrame(update);
@@ -397,7 +398,6 @@ export default function Game({ user, onLogout }: GameProps) {
   }, [update]);
 
   const triggerShake = () => {
-      // Reduced motion setting removed, default to allow shake or manage elsewhere if needed
       setShake(true);
       setTimeout(() => setShake(false), 500);
   };
@@ -765,7 +765,9 @@ export default function Game({ user, onLogout }: GameProps) {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-        if (activeApp === 'iq' || screen === 'speed-test-playing' || screen === 'username-setup' || showExitConfirm || isMobile || screen === 'hub') return;
+        // Prevent typing interactions if we are in IQ or What-To-Do modes
+        if (activeApp === 'iq' || activeApp === 'what-to-do' || screen === 'speed-test-playing' || screen === 'username-setup' || showExitConfirm || isMobile || screen === 'hub') return;
+        
         if (e.key === 'Escape') {
             if (screen === 'playing') {
                 if (playStyle === 'competitive') {
@@ -929,7 +931,13 @@ export default function Game({ user, onLogout }: GameProps) {
         {isEvaluating && <GeneratingModal message="Evaluating Performance..." />}
 
         {/* --- APP ROUTING --- */}
-        {activeApp === 'iq' ? (
+        {activeApp === 'what-to-do' ? (
+            <WhatToDoGame 
+                user={user}
+                onBackToHub={() => setActiveApp('taco')}
+                username={customUsername}
+            />
+        ) : activeApp === 'iq' ? (
              <IQGame 
                 user={user}
                 onBackToHub={() => setActiveApp('taco')}
@@ -942,6 +950,7 @@ export default function Game({ user, onLogout }: GameProps) {
                 user={user} 
                 onLaunchGame={() => setScreen('start')}
                 onLaunchIQ={() => setActiveApp('iq')}
+                onLaunchWhatToDo={() => setActiveApp('what-to-do')}
                 onLogout={onLogout}
                 username={customUsername}
                 onUpdateUsername={handleUpdateUsername}

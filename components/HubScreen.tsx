@@ -10,12 +10,13 @@ interface HubScreenProps {
     user: User;
     onLaunchGame: () => void;
     onLaunchIQ: () => void;
+    onLaunchWhatToDo: () => void;
     onLogout: () => void;
     username?: string | null;
     onUpdateUsername: (name: string) => void;
 }
 
-const HubScreen: React.FC<HubScreenProps> = ({ user, onLaunchGame, onLaunchIQ, onLogout, username, onUpdateUsername }) => {
+const HubScreen: React.FC<HubScreenProps> = ({ user, onLaunchGame, onLaunchIQ, onLaunchWhatToDo, onLogout, username, onUpdateUsername }) => {
     const [showSettings, setShowSettings] = useState(false);
     const [showFriends, setShowFriends] = useState(false);
     const [isMobile, setIsMobile] = useState(false);
@@ -86,6 +87,18 @@ const HubScreen: React.FC<HubScreenProps> = ({ user, onLaunchGame, onLaunchIQ, o
                         {/* Play Button Overlay */}
                         <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
                             <span className="bg-[#4facfe] text-black px-4 py-2 text-xs border-2 border-white">START</span>
+                        </div>
+                    </RandomReveal>
+
+                    {/* What to do Card (New 3D Game) */}
+                    <RandomReveal delay={0.3} className="group relative bg-[#111] border-4 border-white aspect-square md:aspect-square flex flex-col items-center justify-center cursor-pointer hover:border-[#4caf50] transition-colors min-h-[200px]" onClick={onLaunchWhatToDo}>
+                        <div className="text-6xl mb-4 group-hover:scale-110 transition-transform">🧊</div>
+                        <h2 className="text-lg md:text-xl text-center group-hover:text-[#4caf50]">What to do</h2>
+                        <div className="text-[10px] text-[#555] mt-2">3D Voxel World</div>
+                        
+                        {/* Play Button Overlay */}
+                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                            <span className="bg-[#4caf50] text-black px-4 py-2 text-xs border-2 border-white">EXPLORE</span>
                         </div>
                     </RandomReveal>
 
