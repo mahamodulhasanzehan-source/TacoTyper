@@ -85,6 +85,7 @@ body.theme-neon button {
 /* Custom Scrollbar for the terminal/text feel */
 ::-webkit-scrollbar {
   width: 10px;
+  height: 10px;
 }
 ::-webkit-scrollbar-track {
   background: #111;
@@ -106,6 +107,44 @@ body {
   overflow: hidden;
   background-color: var(--color-background);
   color: var(--color-text);
+  /* Prevent pull-to-refresh on mobile */
+  overscroll-behavior: none; 
+}
+
+/* --- Minesweeper 3D Tiles --- */
+.mine-cell {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  /* Default Raised State */
+  background-color: #333;
+  border-top: 3px solid #666;
+  border-left: 3px solid #666;
+  border-right: 3px solid #111;
+  border-bottom: 3px solid #111;
+  transition: transform 0.05s ease;
+}
+
+.mine-cell:active {
+  /* Pressed State */
+  border-top: 2px solid #111;
+  border-left: 2px solid #111;
+  border-right: 2px solid #444;
+  border-bottom: 2px solid #444;
+  background-color: #222;
+}
+
+.mine-cell.revealed {
+  /* Depressed/Flat State */
+  background-color: #222;
+  border: 1px solid #1a1a1a;
+  box-shadow: inset 1px 1px 3px rgba(0,0,0,0.5);
+}
+
+.mine-cell.revealed.mine {
+  background-color: #8b0000;
+  border-color: #500;
+  box-shadow: inset 0 0 10px #ff0000;
 }
 
 /* --- Global Animations & Styles --- */

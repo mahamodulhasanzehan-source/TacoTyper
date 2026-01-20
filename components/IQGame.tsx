@@ -322,7 +322,7 @@ const IQGame: React.FC<IQGameProps> = ({ user, onBackToHub, username, onUpdateUs
                                         <button
                                             key={opt}
                                             onClick={() => setChosenOption(optKey)}
-                                            className={`text-left p-3 md:p-4 rounded-lg border transition-all duration-200 text-sm md:text-base
+                                            className={`text-left p-4 md:p-4 rounded-lg border transition-all duration-200 text-sm md:text-base min-h-[50px]
                                                 ${isSelected 
                                                     ? 'bg-[var(--color-universal)] border-[var(--color-universal)] text-white font-bold transform scale-[1.02] shadow-[0_0_15px_rgba(79,172,254,0.3)]' 
                                                     : 'bg-[#1a1a1a] border-[#333] text-gray-300 hover:border-[var(--color-universal)] hover:bg-[#252525]'
@@ -337,13 +337,13 @@ const IQGame: React.FC<IQGameProps> = ({ user, onBackToHub, username, onUpdateUs
                             <div className="mt-auto pt-4 md:pt-6 flex gap-3 md:gap-4">
                                 <button 
                                     onClick={skipQuestion} 
-                                    className="flex-1 py-3 md:py-3 rounded-lg bg-[#222] text-gray-400 hover:bg-[#333] font-bold border border-[#333] text-sm md:text-base transition-colors"
+                                    className="flex-1 py-4 md:py-3 rounded-lg bg-[#222] text-gray-400 hover:bg-[#333] font-bold border border-[#333] text-sm md:text-base transition-colors"
                                 >
                                     Skip
                                 </button>
                                 <button 
                                     onClick={processAnswer}
-                                    className="flex-[2] py-3 md:py-3 rounded-lg bg-[var(--color-universal)] text-white font-bold hover:brightness-110 shadow-lg text-sm md:text-base transition-transform active:scale-95"
+                                    className="flex-[2] py-4 md:py-3 rounded-lg bg-[var(--color-universal)] text-white font-bold hover:brightness-110 shadow-lg text-sm md:text-base transition-transform active:scale-95"
                                 >
                                     {currentQuestionIndex === questions.length - 1 ? 'Finish Test' : 'Next'}
                                 </button>

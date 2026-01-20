@@ -155,9 +155,15 @@ export default function Game({ user, onLogout }: GameProps) {
       };
   }, []);
 
+  // Aggressively keep focus on mobile
   useEffect(() => {
-      if (screen === 'playing' && isMobile && hiddenInputRef.current) {
-          hiddenInputRef.current.focus();
+      if (screen === 'playing' && isMobile) {
+          const focusInterval = setInterval(() => {
+              if (hiddenInputRef.current && document.activeElement !== hiddenInputRef.current) {
+                  hiddenInputRef.current.focus();
+              }
+          }, 500);
+          return () => clearInterval(focusInterval);
       }
   }, [screen, isMobile]);
 
@@ -276,7 +282,6 @@ export default function Game({ user, onLogout }: GameProps) {
 
   const update = useCallback((time: number) => {
     const state = stateRef.current;
-    // Don't update game logic if in hub or start screen OR if activeApp is not taco
     if (state.screen !== 'playing' || activeApp !== 'taco') {
         state.lastTime = time;
         requestRef.current = requestAnimationFrame(update);
@@ -291,7 +296,6 @@ export default function Game({ user, onLogout }: GameProps) {
         setElapsedTime(state.stats.timeTaken);
     }
 
-    // 1. Spawning
     let spawnRate = 1800;
     if (state.gameMode === 'infinite' || state.gameMode === 'universal') {
         spawnRate = Math.max(500, 1800 / state.infiniteConfig.speedMult);
@@ -311,7 +315,6 @@ export default function Game({ user, onLogout }: GameProps) {
         }
     }
 
-    // 2. Movement
     let speed = 1.2;
     if (state.gameMode === 'infinite') speed = 1.2 * state.infiniteConfig.speedMult;
     else if (state.gameMode === 'universal') speed = 1.0 * state.infiniteConfig.speedMult;
@@ -403,7 +406,6 @@ export default function Game({ user, onLogout }: GameProps) {
   };
 
   const initGame = (mode: GameMode, startLevel = 1, infiniteMult = 1.0, difficultyInc = 1.1) => {
-    // Only increment play count if it's a new session of the game
     incrementGamePlays('taco_typer');
     
     setScore(0);
@@ -469,7 +471,7 @@ export default function Game({ user, onLogout }: GameProps) {
   };
 
   const startSpeedTest = async () => {
-      incrementGamePlays('taco_typer'); // Speed test counts as taco typer activity
+      incrementGamePlays('taco_typer');
       setIsGenerating(true);
       const text = await aiService.generateSpeedText();
       setIsGenerating(false);
@@ -620,8 +622,46 @@ export default function Game({ user, onLogout }: GameProps) {
       }
   };
 
+  const resetCombo = () => {
+      const state = stateRef.current;
+      setStreak(0);
+      setStreakState('normal');
+      state.streak = 0;
+      state.streakState = 'normal';
+  };
+
+  const increaseCombo = () => {
+      const state = stateRef.current;
+      state.streak++;
+      setStreak(state.streak);
+      
+      let newState: StreakState = 'normal';
+      if (state.streak >= COMBO_SPICY) newState = 'spicy';
+      else if (state.streak >= COMBO_FIESTA) newState = 'fiesta';
+
+      if (newState !== state.streakState) {
+          state.streakState = newState;
+          setStreakState(newState);
+          audioService.playSound('fiesta'); 
+          addPopup(window.innerWidth / 2, window.innerHeight / 2, newState === 'spicy' ? "SPICY!" : "FIESTA!", newState === 'spicy' ? COLORS.comboPurple : COLORS.comboRed);
+      }
+  };
+
+  const addIngredient = (wordText: string) => {
+      const state = stateRef.current;
+      const icon = INGREDIENT_MAP[wordText] || INGREDIENT_MAP['default'];
+      setIngredientsCollected(prev => [...prev, icon].slice(-20));
+      state.ingredientsCount++;
+      
+      if (state.gameMode === 'standard') {
+          const goal = LEVEL_CONFIGS[state.level]?.goal || 7;
+          if (state.ingredientsCount >= goal) {
+              completeLevel();
+          }
+      }
+  };
+
   const processWordCompletion = (word: WordEntity) => {
-    // ... (processWordCompletion logic remains the same)
     const state = stateRef.current;
     const newWords = state.fallingWords.filter(w => w.id !== word.id);
     state.fallingWords = newWords;
@@ -713,7 +753,6 @@ export default function Game({ user, onLogout }: GameProps) {
   };
 
   const handleInputChar = (char: string) => {
-    // ... (handleInputChar logic remains the same)
     const state = stateRef.current;
     let activeWord = state.fallingWords.find(w => w.id === state.activeWordId);
     if (!activeWord) {
@@ -753,7 +792,6 @@ export default function Game({ user, onLogout }: GameProps) {
   };
 
   const handleBackspace = () => {
-    // ... (handleBackspace logic remains the same)
       const state = stateRef.current;
       const activeWord = state.fallingWords.find(w => w.id === state.activeWordId);
       if (activeWord && activeWord.typed.length > 0) {
@@ -769,7 +807,6 @@ export default function Game({ user, onLogout }: GameProps) {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-        // Prevent typing interactions if we are in IQ or What-To-Do modes (which is now just IQ)
         if (activeApp === 'iq' || activeApp === 'mine' || screen === 'speed-test-playing' || screen === 'username-setup' || showExitConfirm || isMobile || screen === 'hub') return;
         
         if (e.key === 'Escape') {
@@ -798,77 +835,42 @@ export default function Game({ user, onLogout }: GameProps) {
 
   const handleMobileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
       const val = e.target.value;
-      const inputType = (e.nativeEvent as any).inputType;
+      // Note: React synthetic events for inputType on mobile can be unreliable for backspace on empty input
+      // so we largely rely on diffing logic or just taking the last char if it grows.
+      const nativeEvent = e.nativeEvent as InputEvent;
+      const inputType = nativeEvent.inputType;
+
       if (inputType === 'deleteContentBackward') {
           handleBackspace();
       } else if (val.length > 0) {
           const char = val.slice(-1);
           handleInputChar(char);
       }
-      if (hiddenInputRef.current) hiddenInputRef.current.value = '';
-  };
-  
-  const addIngredient = (text: string) => {
-    // ... (addIngredient logic remains the same)
-    const state = stateRef.current;
-    const emoji = INGREDIENT_MAP[text] || INGREDIENT_MAP['default'];
-    setIngredientsCollected(prev => [...prev, emoji]);
-    state.ingredientsCount++;
-
-    if (state.gameMode === 'standard') {
-        const goal = LEVEL_CONFIGS[state.level]?.goal || 7;
-        if (state.ingredientsCount >= goal) {
-            setTimeout(completeLevel, 500);
-        }
-    }
-  };
-
-  const increaseCombo = () => {
-    // ... (increaseCombo logic remains the same)
-      const state = stateRef.current;
-      state.streak++;
-      setStreak(state.streak);
-      if (state.streak === COMBO_FIESTA) {
-          state.streakState = 'fiesta';
-          setStreakState('fiesta');
-          audioService.playSound('fiesta');
-          addPopup(window.innerWidth/2 - 80, window.innerHeight/3, "FIESTA TIME!", COLORS.comboRed);
-      } else if (state.streak === COMBO_SPICY) {
-          state.streakState = 'spicy';
-          setStreakState('spicy');
-          audioService.playSound('fiesta');
-          addPopup(window.innerWidth/2 - 80, window.innerHeight/3, "SPICY!!", COLORS.comboPurple);
+      
+      // Keep input empty but focused
+      if (hiddenInputRef.current) {
+          hiddenInputRef.current.value = '';
+          // Scrolling into view often messes up layout on iOS, so we avoid it if possible or handle it via CSS
       }
   };
-  
-  const resetCombo = () => {
-    // ... (resetCombo logic remains the same)
-      const state = stateRef.current;
-      state.streak = 0;
-      setStreak(0);
-      state.streakState = 'normal';
-      setStreakState('normal');
-  };
-  
+
   const handleManualSelect = (word: WordEntity) => {
-    // ... (handleManualSelect logic remains the same)
-      if (screen !== 'playing') return;
-      if (isMobile && hiddenInputRef.current) hiddenInputRef.current.focus();
-      const state = stateRef.current;
-      if (state.activeWordId === word.id) return;
-      if (state.activeWordId) {
-          const prev = state.fallingWords.find(w => w.id === state.activeWordId);
-          if (prev) prev.typed = '';
+      if (stateRef.current.activeWordId !== word.id) {
+          stateRef.current.activeWordId = word.id;
+          setActiveWordId(word.id);
+          if (isMobile && hiddenInputRef.current) {
+              hiddenInputRef.current.focus();
+          }
       }
-      state.activeWordId = word.id;
-      setActiveWordId(word.id);
-      setFallingWords([...state.fallingWords]);
-      audioService.playSound('type');
-      addSparkles(word.x + 20, word.y + 15, COLORS.warn, 5);
   };
 
+  const formatTimer = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+  
   const getContainerStyles = () => {
-    // ... (getContainerStyles logic remains the same)
       let borderColor = COLORS.gameBorder;
       let boxShadow = '0 0 15px rgba(255, 0, 0, 0.5), inset 0 0 10px rgba(255,255,255,0.1)';
       let animation = shake ? 'shake 0.5s' : '';
@@ -899,15 +901,10 @@ export default function Game({ user, onLogout }: GameProps) {
       };
   };
 
-  const formatTimer = (s: number) => {
-      const mins = Math.floor(s / 60);
-      const secs = Math.floor(s % 60);
-      return `${mins}:${secs.toString().padStart(2, '0')}`;
-  };
-
   const handleGameTouch = () => {
       if (screen === 'playing' && isMobile && hiddenInputRef.current) {
-          hiddenInputRef.current.focus();
+          // Prevent default focus scrolling behavior if possible
+          hiddenInputRef.current.focus({ preventScroll: true });
       }
   };
 
@@ -922,7 +919,8 @@ export default function Game({ user, onLogout }: GameProps) {
             <input 
                 ref={hiddenInputRef}
                 type="text" 
-                className="opacity-0 absolute top-0 left-0 w-1 h-1 pointer-events-none"
+                className="opacity-0 absolute top-0 left-0 w-1 h-1"
+                style={{ transform: 'translate(-1000px, -1000px)' }} // Move off-screen instead of pointer-events-none to ensure focus works
                 onChange={handleMobileInput}
                 autoComplete="off"
                 autoCorrect="off"
