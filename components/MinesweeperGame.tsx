@@ -355,11 +355,11 @@ const MinesweeperGame: React.FC<MinesweeperGameProps> = ({ user, onBackToHub, us
                                                 }}
                                                 // Touch Events for Mobile Long Press
                                                 onTouchStart={() => handleTouchStart(rIdx, cIdx)}
-                                                onTouchEnd={(e) => {
+                                                onTouchEnd={() => {
+                                                    // Removed parameter 'e' to fix implicit any error
                                                     handleTouchEnd();
                                                     // If not a long press, treat as click
                                                     if (!isLongPressRef.current) {
-                                                        // Prevent default to avoid double firing with onClick if present, but here we invoke logic directly
                                                         handleCellClick(rIdx, cIdx);
                                                     }
                                                 }}

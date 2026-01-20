@@ -147,6 +147,13 @@ export const LeaderboardWidget: React.FC<LeaderboardWidgetProps> = ({ className 
     const [mode, setMode] = useState<string>(initialMode);
     const { isAdmin } = useSettings();
 
+    // Sync mode with defaultMode prop when it changes
+    useEffect(() => {
+        if (defaultMode && modes.includes(defaultMode)) {
+            setMode(defaultMode);
+        }
+    }, [defaultMode]);
+
     const fetchLeaderboard = async () => {
         setLoading(true);
         const data = await getLeaderboard(mode === 'speed' ? 'speed-test' : mode);
