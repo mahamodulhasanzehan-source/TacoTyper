@@ -5,7 +5,7 @@ import { RandomReveal, RandomText } from './Visuals';
 import { LeaderboardWidget, SettingsModal, FriendsModal, Button } from './Overlays';
 import ChatWidget from './ChatWidget';
 import { isMobileDevice } from '../utils/device';
-import { COLORS } from '../constants';
+import { audioService } from '../services/audioService';
 
 interface MinesweeperGameProps {
     user: User;
@@ -39,6 +39,7 @@ const MinesweeperGame: React.FC<MinesweeperGameProps> = ({ user, onBackToHub, us
     const [minesLeft, setMinesLeft] = useState(0);
     const [timer, setTimer] = useState(0);
     const [firstClick, setFirstClick] = useState(true);
+    const [boardId, setBoardId] = useState(0); // Used to force re-render animations
     
     const [showSettings, setShowSettings] = useState(false);
     const [showFriends, setShowFriends] = useState(false);
@@ -46,7 +47,7 @@ const MinesweeperGame: React.FC<MinesweeperGameProps> = ({ user, onBackToHub, us
     const [showMobileLeaderboard, setShowMobileLeaderboard] = useState(false);
 
     const timerRef = useRef<number | null>(null);
-    const displayableName = username || user.displayName || 'Chef';
+    const displayableName = username || user.displayName || 'Player';
 
     useEffect(() => {
         setIsMobile(isMobileDevice());
@@ -87,6 +88,7 @@ const MinesweeperGame: React.FC<MinesweeperGameProps> = ({ user, onBackToHub, us
         setTimer(0);
         setFirstClick(true);
         setGameState('playing');
+        setBoardId(prev => prev + 1); // Force new animation cycle
         incrementGamePlays('minesweeper');
     };
 
@@ -153,7 +155,7 @@ const MinesweeperGame: React.FC<MinesweeperGameProps> = ({ user, onBackToHub, us
         }
 
         if (currentGrid[r][c].isMine) {
-            // BOOM
+            audioService.playSound('mine_explode');
             currentGrid[r][c].isRevealed = true;
             // Reveal all mines
             currentGrid.forEach(row => row.forEach(cell => {
@@ -164,8 +166,9 @@ const MinesweeperGame: React.FC<MinesweeperGameProps> = ({ user, onBackToHub, us
             return;
         }
 
+        audioService.playSound('mine_click');
         revealCell(r, c, currentGrid);
-        setGrid([...currentGrid]); // Trigger update
+        setGrid([...currentGrid]);
 
         // Check Win
         let unrevealedSafe = 0;
@@ -174,6 +177,7 @@ const MinesweeperGame: React.FC<MinesweeperGameProps> = ({ user, onBackToHub, us
         }));
 
         if (unrevealedSafe === 0) {
+            audioService.playSound('mine_win');
             setGameState('won');
             handleWin();
         }
@@ -187,6 +191,7 @@ const MinesweeperGame: React.FC<MinesweeperGameProps> = ({ user, onBackToHub, us
         newGrid[r][c].isFlagged = !newGrid[r][c].isFlagged;
         setGrid(newGrid);
         setMinesLeft(prev => newGrid[r][c].isFlagged ? prev - 1 : prev + 1);
+        audioService.playSound('mine_flag');
     };
 
     const handleWin = async () => {
@@ -196,7 +201,7 @@ const MinesweeperGame: React.FC<MinesweeperGameProps> = ({ user, onBackToHub, us
             user, 
             displayableName, 
             timer, 
-            "Minesweeper Pro", 
+            "Expert Defuser", 
             {
                 mistakes: 0,
                 timeTaken: timer,
@@ -209,16 +214,20 @@ const MinesweeperGame: React.FC<MinesweeperGameProps> = ({ user, onBackToHub, us
         );
     };
 
+    const cellSize = isMobile ? '24px' : '30px';
+
     // --- Render ---
     return (
-        <div className="flex h-full w-full bg-[#000] text-white overflow-hidden relative font-['Press_Start_2P']">
-            {/* Nav & Overlays similar to other games */}
+        <div className="flex h-full w-full bg-[#000] text-white overflow-hidden relative font-['Inter',_sans-serif]">
+            {/* Desktop Sidebar */}
             {!isMobile && (
                 <div className="flex flex-col absolute top-0 right-0 h-full w-[300px] z-[50] border-l border-[#333] animate-fade-in" style={{ animationDelay: '0.2s' }}>
                     <LeaderboardWidget className="h-[66%] border-b-0" allowedModes={['minesweeper-beginner', 'minesweeper-intermediate', 'minesweeper-expert']} defaultMode={`minesweeper-${difficulty}`} />
                     <ChatWidget user={user} className="h-[34%]" />
                 </div>
             )}
+            
+            {/* Mobile Header Icons */}
              {isMobile && (
                 <>
                     <div className="absolute top-4 right-4 z-[60]">
@@ -227,7 +236,7 @@ const MinesweeperGame: React.FC<MinesweeperGameProps> = ({ user, onBackToHub, us
                     {showMobileLeaderboard && (
                         <div className="fixed inset-0 z-[100] bg-black/95 flex flex-col p-4 animate-fade-in">
                             <div className="flex justify-between items-center mb-4">
-                                <h2 className="text-[#f4b400] text-xl font-bold">Sweeper Ranks</h2>
+                                <h2 className="text-[#f4b400] text-xl font-bold">Defuser Ranks</h2>
                                 <button onClick={() => setShowMobileLeaderboard(false)} className="text-red-500 text-2xl font-bold p-2">✕</button>
                             </div>
                             <LeaderboardWidget className="flex-1 border-none shadow-none p-0" allowedModes={['minesweeper-beginner', 'minesweeper-intermediate', 'minesweeper-expert']} defaultMode={`minesweeper-${difficulty}`} />
@@ -235,6 +244,8 @@ const MinesweeperGame: React.FC<MinesweeperGameProps> = ({ user, onBackToHub, us
                     )}
                 </>
             )}
+            
+            {/* Back Button */}
             <div className="absolute top-4 left-4 flex gap-4 z-[60]">
                 <button onClick={onBackToHub} className="text-2xl hover:scale-110 transition-transform" title="Back to Hub">🏠</button>
                 <button onClick={() => setShowSettings(true)} className="text-2xl hover:rotate-90 transition-transform" title="Settings">⚙️</button>
@@ -247,16 +258,17 @@ const MinesweeperGame: React.FC<MinesweeperGameProps> = ({ user, onBackToHub, us
             <div className={`flex-1 flex flex-col items-center justify-center p-4 relative z-10 ${isMobile ? '' : 'md:mr-[300px]'}`}>
                 
                 {gameState === 'menu' ? (
-                     <RandomReveal className="bg-[#111] border-4 border-white p-8 max-w-lg w-full text-center">
-                        <h1 className="text-3xl text-green-500 mb-8"><RandomText text="MINESWEEPER" /></h1>
+                     <RandomReveal className="bg-[#111] border-4 border-white p-8 max-w-lg w-full text-center shadow-2xl">
+                        <h1 className="text-3xl md:text-4xl text-green-500 mb-8 font-['Press_Start_2P']"><RandomText text="MINESWEEPER" /></h1>
                         <div className="flex flex-col gap-4">
                             {(['beginner', 'intermediate', 'expert'] as Difficulty[]).map(d => (
                                 <button 
                                     key={d}
                                     onClick={() => { setDifficulty(d); initBoard(d); }}
-                                    className="bg-[#222] border border-[#555] p-4 hover:bg-[#333] hover:border-green-500 text-sm uppercase transition-all duration-300 hover:scale-105"
+                                    className="group relative bg-[#222] border-2 border-[#555] p-4 text-white uppercase font-bold tracking-widest hover:border-green-500 hover:bg-[#2a2a2a] transition-all overflow-hidden"
                                 >
-                                    {CONFIG[d].name}
+                                    <span className="relative z-10">{CONFIG[d].name}</span>
+                                    <div className="absolute inset-0 bg-green-500/10 transform -translate-x-full group-hover:translate-x-0 transition-transform duration-300" />
                                 </button>
                             ))}
                         </div>
@@ -264,70 +276,96 @@ const MinesweeperGame: React.FC<MinesweeperGameProps> = ({ user, onBackToHub, us
                 ) : (
                     <div className="flex flex-col items-center animate-fade-in w-full h-full justify-center">
                         {/* Status Bar */}
-                        <div className="bg-[#222] border-4 border-[#555] p-2 mb-4 flex justify-between w-full max-w-2xl text-xl font-mono">
-                             <div className="text-red-500">{String(minesLeft).padStart(3, '0')}</div>
-                             <button onClick={() => setGameState('menu')} className="text-2xl hover:scale-125 transition-transform">
+                        <div className="bg-[#1a1a1a] border-2 border-[#444] p-3 mb-4 flex justify-between items-center w-auto gap-8 rounded-lg shadow-lg font-mono">
+                             <div className="text-red-500 text-2xl font-bold bg-black px-2 py-1 rounded border border-[#333]">
+                                {String(minesLeft).padStart(3, '0')}
+                             </div>
+                             <button 
+                                onClick={() => setGameState('menu')} 
+                                className="text-3xl hover:scale-125 transition-transform"
+                                title="Reset"
+                             >
                                  {gameState === 'playing' ? '🙂' : gameState === 'won' ? '😎' : '😵'}
                              </button>
-                             <div className="text-red-500">{String(timer).padStart(3, '0')}</div>
+                             <div className="text-green-500 text-2xl font-bold bg-black px-2 py-1 rounded border border-[#333]">
+                                {String(timer).padStart(3, '0')}
+                             </div>
                         </div>
 
-                        {/* Grid */}
-                        <div 
-                            className="bg-[#111] border-4 border-[#fff] overflow-auto max-w-full max-h-[70vh] custom-scrollbar shadow-2xl"
-                            onContextMenu={(e) => e.preventDefault()}
-                        >
+                        {/* Grid Container */}
+                        <div className="bg-[#222] p-3 border-4 border-[#555] shadow-2xl rounded-sm max-w-full overflow-auto custom-scrollbar">
                             <div 
                                 style={{ 
                                     display: 'grid', 
-                                    gridTemplateColumns: `repeat(${CONFIG[difficulty].cols}, 24px)`,
+                                    gridTemplateColumns: `repeat(${CONFIG[difficulty].cols}, ${cellSize})`,
+                                    gridTemplateRows: `repeat(${CONFIG[difficulty].rows}, ${cellSize})`,
                                     gap: '1px',
-                                    backgroundColor: '#333'
+                                    backgroundColor: '#444'
                                 }}
                             >
-                                {grid.flat().map((cell, i) => {
-                                    const isRevealed = cell.isRevealed;
-                                    const isFlagged = cell.isFlagged;
-                                    const isMine = cell.isMine;
-                                    
-                                    let content = '';
-                                    let style = 'bg-[#ccc] border-t-2 border-l-2 border-white border-b-2 border-r-2 border-[#888]';
-                                    
-                                    if (isRevealed) {
-                                        style = 'bg-[#222] border border-[#111]';
-                                        if (isMine) {
-                                            content = '💣';
-                                            style = 'bg-red-600 border border-red-800 flex items-center justify-center';
-                                        } else if (cell.neighborMines > 0) {
-                                            content = String(cell.neighborMines);
-                                            const colors = ['blue', 'green', 'red', 'purple', 'maroon', 'turquoise', 'black', 'gray'];
-                                            style += ` text-[${colors[cell.neighborMines-1]}] font-bold flex items-center justify-center text-sm font-sans`;
-                                        }
-                                    } else if (isFlagged) {
-                                        content = '🚩';
-                                        style += ' flex items-center justify-center text-sm';
-                                    }
+                                {grid.map((row, rIdx) => (
+                                    row.map((cell, cIdx) => {
+                                        const isRevealed = cell.isRevealed;
+                                        const isFlagged = cell.isFlagged;
+                                        const isMine = cell.isMine;
+                                        const neighbor = cell.neighborMines;
+                                        
+                                        // Key with boardId forces re-mount and thus re-animation
+                                        const key = `${boardId}-${cell.x}-${cell.y}`;
+                                        
+                                        // Base style for unrevealed
+                                        let bgClass = 'bg-[#c0c0c0] hover:bg-[#d0d0d0]';
+                                        let borderClass = 'border-t-[3px] border-l-[3px] border-white border-b-[3px] border-r-[3px] border-[#777]';
+                                        let content: React.ReactNode = null;
 
-                                    return (
-                                        <div
-                                            key={`${cell.x}-${cell.y}`}
-                                            onClick={() => handleCellClick(cell.y, cell.x)}
-                                            onContextMenu={(e) => handleRightClick(e, cell.y, cell.x)}
-                                            className={`w-6 h-6 cursor-pointer select-none transition-colors duration-100 ${style}`}
-                                        >
-                                            <span className={isRevealed || isFlagged ? 'animate-pop-in block' : ''}>{content}</span>
-                                        </div>
-                                    );
-                                })}
+                                        if (isRevealed) {
+                                            bgClass = 'bg-[#bdbdbd]'; // Flat darker grey for revealed
+                                            borderClass = 'border border-[#999]';
+                                            
+                                            if (isMine) {
+                                                bgClass = 'bg-red-600';
+                                                content = '💣';
+                                            } else if (neighbor > 0) {
+                                                const colors = ['#0000ff', '#008000', '#ff0000', '#000080', '#800000', '#008080', '#000000', '#808080'];
+                                                content = <span style={{ color: colors[neighbor-1] }} className="font-bold font-mono">{neighbor}</span>;
+                                            }
+                                        } else if (isFlagged) {
+                                            content = '🚩';
+                                        }
+
+                                        return (
+                                            <RandomReveal 
+                                                key={key}
+                                                distance={300} // High distance for chaotic entrance
+                                                delay={Math.random() * 0.5} // Random delay for "rain" effect
+                                                duration={0.6}
+                                                className={`
+                                                    flex items-center justify-center cursor-pointer select-none
+                                                    ${bgClass} ${borderClass}
+                                                    text-xs md:text-sm
+                                                `}
+                                                style={{ width: '100%', height: '100%' }} // Ensure fill
+                                                onMouseDown={(e: React.MouseEvent) => {
+                                                    // Handle right click via mousedown for responsiveness
+                                                    if (e.button === 2) handleRightClick(e, rIdx, cIdx);
+                                                    else if (e.button === 0) handleCellClick(rIdx, cIdx);
+                                                }}
+                                                onContextMenu={(e: React.MouseEvent) => e.preventDefault()}
+                                            >
+                                                {content}
+                                            </RandomReveal>
+                                        );
+                                    })
+                                ))}
                             </div>
                         </div>
                         
                         {gameState !== 'playing' && (
                              <RandomReveal className="mt-6 text-center">
-                                 <h2 className={`text-2xl mb-4 ${gameState === 'won' ? 'text-green-500' : 'text-red-500'}`}>
-                                     <RandomText text={gameState === 'won' ? 'CLEARED!' : 'GAME OVER'} />
+                                 <h2 className={`text-2xl mb-4 font-bold ${gameState === 'won' ? 'text-green-500' : 'text-red-500'}`}>
+                                     <RandomText text={gameState === 'won' ? 'MISSION ACCOMPLISHED' : 'DETONATION DETECTED'} />
                                  </h2>
-                                 <Button onClick={() => initBoard(difficulty)}>Play Again</Button>
+                                 <Button onClick={() => initBoard(difficulty)}>Try Again</Button>
                              </RandomReveal>
                         )}
                     </div>
