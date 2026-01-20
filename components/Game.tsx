@@ -25,13 +25,14 @@ import {
 } from '../types';
 import { audioService } from '../services/audioService';
 import { aiService } from '../services/aiService';
-import { saveGameStats, saveSpeedTestStats, getUserProfile, saveUsername, saveLeaderboardScore } from '../services/firebase';
+import { saveGameStats, saveSpeedTestStats, getUserProfile, saveUsername, saveLeaderboardScore, incrementGamePlays } from '../services/firebase';
 import type { User } from '../services/firebase';
 import { isMobileDevice } from '../utils/device';
 import WordComponent from './WordComponent';
 import TypingSpeedGame from './TypingSpeedGame';
 import HubScreen from './HubScreen';
 import IQGame from './IQGame'; 
+import MinesweeperGame from './MinesweeperGame';
 import { 
   StartScreen, 
   LevelSelectScreen, 
@@ -55,7 +56,7 @@ interface GameProps {
 
 export default function Game({ user, onLogout }: GameProps) {
   // --- Global App State ---
-  const [activeApp, setActiveApp] = useState<'taco' | 'iq'>('taco');
+  const [activeApp, setActiveApp] = useState<'taco' | 'iq' | 'mine'>('taco');
 
   // --- Taco Game State ---
   const [screen, setScreen] = useState<GameScreen>('hub');
@@ -402,6 +403,9 @@ export default function Game({ user, onLogout }: GameProps) {
   };
 
   const initGame = (mode: GameMode, startLevel = 1, infiniteMult = 1.0, difficultyInc = 1.1) => {
+    // Only increment play count if it's a new session of the game
+    incrementGamePlays('taco_typer');
+    
     setScore(0);
     setElapsedTime(0);
     setLives(3);
@@ -465,6 +469,7 @@ export default function Game({ user, onLogout }: GameProps) {
   };
 
   const startSpeedTest = async () => {
+      incrementGamePlays('taco_typer'); // Speed test counts as taco typer activity
       setIsGenerating(true);
       const text = await aiService.generateSpeedText();
       setIsGenerating(false);
@@ -765,7 +770,7 @@ export default function Game({ user, onLogout }: GameProps) {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
         // Prevent typing interactions if we are in IQ or What-To-Do modes (which is now just IQ)
-        if (activeApp === 'iq' || screen === 'speed-test-playing' || screen === 'username-setup' || showExitConfirm || isMobile || screen === 'hub') return;
+        if (activeApp === 'iq' || activeApp === 'mine' || screen === 'speed-test-playing' || screen === 'username-setup' || showExitConfirm || isMobile || screen === 'hub') return;
         
         if (e.key === 'Escape') {
             if (screen === 'playing') {
@@ -913,7 +918,7 @@ export default function Game({ user, onLogout }: GameProps) {
         style={{ height: gameDimensions.height, backgroundColor: COLORS.background, color: COLORS.text }} 
         onTouchStart={handleGameTouch}
     >
-        {isMobile && (
+        {isMobile && activeApp === 'taco' && (
             <input 
                 ref={hiddenInputRef}
                 type="text" 
@@ -938,11 +943,20 @@ export default function Game({ user, onLogout }: GameProps) {
                 onUpdateUsername={handleUpdateUsername}
                 onLogout={onLogout}
              />
+        ) : activeApp === 'mine' ? (
+             <MinesweeperGame 
+                user={user}
+                onBackToHub={() => setActiveApp('taco')}
+                username={customUsername}
+                onUpdateUsername={handleUpdateUsername}
+                onLogout={onLogout}
+             />
         ) : screen === 'hub' ? (
              <HubScreen 
                 user={user} 
                 onLaunchGame={() => setScreen('start')}
                 onLaunchIQ={() => setActiveApp('iq')}
+                onLaunchMinesweeper={() => setActiveApp('mine')}
                 onLogout={onLogout}
                 username={customUsername}
                 onUpdateUsername={handleUpdateUsername}

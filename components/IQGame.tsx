@@ -7,7 +7,7 @@ import {
   IQ_INFO,
   Question
 } from '../constants';
-import { User, saveLeaderboardScore } from '../services/firebase';
+import { User, saveLeaderboardScore, incrementGamePlays } from '../services/firebase';
 import { RandomReveal, RandomText } from './Visuals';
 import { LeaderboardWidget, SettingsModal, FriendsModal, Button } from './Overlays';
 import ChatWidget from './ChatWidget';
@@ -77,6 +77,9 @@ const IQGame: React.FC<IQGameProps> = ({ user, onBackToHub, username, onUpdateUs
     };
 
     const setupGame = () => {
+        // Track play
+        incrementGamePlays('iq_test');
+
         // Shuffle and Select (5 Easy, 10 Med, 5 Hard)
         const easyQs = IQ_QUESTIONS.filter(q => q.difficulty === 'Easy').sort(() => 0.5 - Math.random()).slice(0, 5);
         const medQs = IQ_QUESTIONS.filter(q => q.difficulty === 'Medium').sort(() => 0.5 - Math.random()).slice(0, 10);

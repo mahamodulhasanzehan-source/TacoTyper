@@ -26,7 +26,7 @@ import {
   orderBy,
   limit,
   onSnapshot,
-  Timestamp,
+  increment,
   writeBatch
 } from 'firebase/firestore';
 import { 
@@ -36,7 +36,7 @@ import {
   getDownloadURL,
   deleteObject
 } from 'firebase/storage';
-import { LeaderboardEntry, SessionStats } from '../types';
+import { LeaderboardEntry, SessionStats, GlobalGameStats } from '../types';
 
 // --- Configuration ---
 
@@ -399,6 +399,43 @@ export const saveSpeedTestStats = async (user: User, wpm: number, accuracy: numb
     });
 };
 
+// --- Global Stats Tracking ---
+
+export const incrementGamePlays = async (gameKey: 'taco_typer' | 'iq_test' | 'minesweeper') => {
+    const statsRef = doc(db, "system", "global_stats");
+    // Field names match the interface keys: taco_typer_plays, etc.
+    const field = `${gameKey}_plays`;
+    
+    try {
+        // Try to update, if doc doesn't exist, set it
+        await updateDoc(statsRef, {
+            [field]: increment(1)
+        });
+    } catch (e: any) {
+        // If document doesn't exist error code
+        if (e.code === 'not-found') {
+             await setDoc(statsRef, {
+                 taco_typer_plays: gameKey === 'taco_typer' ? 1 : 0,
+                 iq_test_plays: gameKey === 'iq_test' ? 1 : 0,
+                 minesweeper_plays: gameKey === 'minesweeper' ? 1 : 0
+             });
+        }
+    }
+};
+
+export const getGlobalGameStats = async (): Promise<GlobalGameStats> => {
+    try {
+        const statsRef = doc(db, "system", "global_stats");
+        const snap = await getDoc(statsRef);
+        if (snap.exists()) {
+            return snap.data() as GlobalGameStats;
+        }
+        return { taco_typer_plays: 0, iq_test_plays: 0, minesweeper_plays: 0 };
+    } catch (e) {
+        return { taco_typer_plays: 0, iq_test_plays: 0, minesweeper_plays: 0 };
+    }
+};
+
 // --- Leaderboard ---
 
 export const saveLeaderboardScore = async (
@@ -411,8 +448,9 @@ export const saveLeaderboardScore = async (
     extra?: { accuracy?: number }
 ) => {
     let sortValue = score;
-    if (mode === 'competitive') {
-         sortValue = score; // For time based (golf score), we sort asc separately in query
+    if (mode === 'competitive' || mode.includes('minesweeper')) {
+         // Lower is better for time based (golf score)
+         sortValue = score; 
     } else if (mode === 'iq-test') {
          sortValue = score; // High Score = Better, falls into standard desc sort
     } else if (mode !== 'speed-test') {
@@ -445,7 +483,7 @@ export const getLeaderboard = async (mode: string = 'competitive'): Promise<Lead
     
     let q;
     
-    if (mode === 'competitive') {
+    if (mode === 'competitive' || mode.includes('minesweeper')) {
         q = query(
             lbRef, 
             where("mode", "==", mode),

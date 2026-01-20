@@ -71,3 +71,9 @@ export interface LeaderboardEntry {
   mode: string;
   accuracy?: number; // Specific for Speed Test
 }
+
+export interface GlobalGameStats {
+  taco_typer_plays: number;
+  iq_test_plays: number;
+  minesweeper_plays: number;
+}
