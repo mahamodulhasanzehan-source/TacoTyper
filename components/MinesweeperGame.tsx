@@ -16,6 +16,7 @@ interface MinesweeperGameProps {
 }
 
 type Difficulty = 'beginner' | 'intermediate' | 'expert';
+type Tool = 'shovel' | 'flag';
 
 interface Cell {
     x: number;
@@ -40,6 +41,7 @@ const MinesweeperGame: React.FC<MinesweeperGameProps> = ({ user, onBackToHub, us
     const [timer, setTimer] = useState(0);
     const [firstClick, setFirstClick] = useState(true);
     const [boardId, setBoardId] = useState(0);
+    const [activeTool, setActiveTool] = useState<Tool>('shovel');
     
     const [showSettings, setShowSettings] = useState(false);
     const [isMobile, setIsMobile] = useState(false);
@@ -92,6 +94,7 @@ const MinesweeperGame: React.FC<MinesweeperGameProps> = ({ user, onBackToHub, us
         setFirstClick(true);
         setGameState('playing');
         setBoardId(prev => prev + 1);
+        setActiveTool('shovel');
         incrementGamePlays('minesweeper');
     };
 
@@ -112,7 +115,7 @@ const MinesweeperGame: React.FC<MinesweeperGameProps> = ({ user, onBackToHub, us
         }
 
         for (let r = 0; r < rows; r++) {
-            for (let c = 0; c < cols; c++) {
+            for (let c = 0; r < rows && c < cols; c++) {
                 if (!newGrid[r][c].isMine) {
                     let count = 0;
                     for (let dr = -1; dr <= 1; dr++) {
@@ -146,6 +149,16 @@ const MinesweeperGame: React.FC<MinesweeperGameProps> = ({ user, onBackToHub, us
         }
     };
 
+    const handleCellInteraction = (r: number, c: number) => {
+        if (gameState !== 'playing') return;
+        
+        if (activeTool === 'flag') {
+            handleRightClick(null, r, c);
+        } else {
+            handleCellClick(r, c);
+        }
+    };
+
     const handleCellClick = (r: number, c: number) => {
         if (gameState !== 'playing' || grid[r][c].isFlagged) return;
 
@@ -157,7 +170,6 @@ const MinesweeperGame: React.FC<MinesweeperGameProps> = ({ user, onBackToHub, us
 
         if (currentGrid[r][c].isMine) {
             audioService.playSound('mine_explode');
-            // Vibrate on explosion if supported
             if (navigator.vibrate) navigator.vibrate([100, 50, 100, 50, 300]);
             
             currentGrid[r][c].isRevealed = true;
@@ -194,7 +206,7 @@ const MinesweeperGame: React.FC<MinesweeperGameProps> = ({ user, onBackToHub, us
         setGrid(newGrid);
         setMinesLeft(prev => newGrid[r][c].isFlagged ? prev - 1 : prev + 1);
         audioService.playSound('mine_flag');
-        if (navigator.vibrate) navigator.vibrate(50); // Haptic feedback for flag
+        if (navigator.vibrate) navigator.vibrate(50);
     };
 
     const handleWin = async () => {
@@ -206,13 +218,12 @@ const MinesweeperGame: React.FC<MinesweeperGameProps> = ({ user, onBackToHub, us
         );
     };
 
-    // --- Mobile Long Press Logic ---
     const handleTouchStart = (r: number, c: number) => {
         isLongPressRef.current = false;
         longPressTimerRef.current = window.setTimeout(() => {
             isLongPressRef.current = true;
             handleRightClick(null, r, c);
-        }, 400); // 400ms for long press
+        }, 400);
     };
 
     const handleTouchEnd = () => {
@@ -223,18 +234,16 @@ const MinesweeperGame: React.FC<MinesweeperGameProps> = ({ user, onBackToHub, us
     };
 
     const handleTouchMove = () => {
-        // If moving, cancel long press
         if (longPressTimerRef.current) {
             clearTimeout(longPressTimerRef.current);
             longPressTimerRef.current = null;
         }
     };
 
-    const cellSize = isMobile ? '32px' : '30px'; // Slightly larger touch targets on mobile
+    const cellSize = isMobile ? '32px' : '30px';
 
     return (
         <div className="flex h-full w-full bg-[#000] text-white overflow-hidden relative font-['Inter',_sans-serif]">
-            {/* Desktop Sidebar */}
             {!isMobile && (
                 <div className="flex flex-col absolute top-0 right-0 h-full w-[300px] z-[50] border-l border-[#333] animate-fade-in" style={{ animationDelay: '0.2s' }}>
                     <LeaderboardWidget className="h-[66%] border-b-0" allowedModes={['minesweeper-beginner', 'minesweeper-intermediate', 'minesweeper-expert']} defaultMode={`minesweeper-${difficulty}`} />
@@ -242,7 +251,6 @@ const MinesweeperGame: React.FC<MinesweeperGameProps> = ({ user, onBackToHub, us
                 </div>
             )}
             
-            {/* Mobile Header Icons */}
              {isMobile && (
                 <>
                     <div className="absolute top-4 right-4 z-[60]">
@@ -284,11 +292,10 @@ const MinesweeperGame: React.FC<MinesweeperGameProps> = ({ user, onBackToHub, us
                                 </button>
                             ))}
                         </div>
-                        {isMobile && <p className="text-[#666] text-xs mt-6">Long press to place flag 🚩</p>}
+                        {isMobile && <p className="text-[#666] text-xs mt-6">Use tool pallet or long press to flag 🚩</p>}
                      </RandomReveal>
                 ) : (
                     <div className="flex flex-col items-center animate-fade-in w-full h-full justify-start md:justify-center pt-16 md:pt-0">
-                        {/* Status Bar */}
                         <div className="bg-[#c0c0c0] border-t-2 border-l-2 border-white border-b-2 border-r-2 border-[#808080] p-2 mb-4 flex justify-between items-center w-full max-w-[95vw] md:w-auto gap-4 md:gap-8 shadow-lg font-mono box-border">
                              <div className="text-red-600 text-2xl font-bold bg-black px-2 border-t-2 border-l-2 border-[#808080] border-b-2 border-r-2 border-white">
                                 {String(minesLeft).padStart(3, '0')}
@@ -305,14 +312,13 @@ const MinesweeperGame: React.FC<MinesweeperGameProps> = ({ user, onBackToHub, us
                              </div>
                         </div>
 
-                        {/* Grid Container */}
                         <div className="p-1 bg-[#c0c0c0] border-t-[3px] border-l-[3px] border-white border-b-[3px] border-r-[3px] border-[#808080] shadow-2xl max-w-[98vw] max-h-[70vh] overflow-auto custom-scrollbar">
                             <div 
                                 style={{ 
                                     display: 'grid', 
                                     gridTemplateColumns: `repeat(${CONFIG[difficulty].cols}, ${cellSize})`,
                                     gridTemplateRows: `repeat(${CONFIG[difficulty].rows}, ${cellSize})`,
-                                    gap: '0px', // No gap for classic look
+                                    gap: '0px',
                                 }}
                             >
                                 {grid.map((row, rIdx) => (
@@ -324,7 +330,6 @@ const MinesweeperGame: React.FC<MinesweeperGameProps> = ({ user, onBackToHub, us
                                         const key = `${boardId}-${cell.x}-${cell.y}`;
                                         
                                         let content: React.ReactNode = null;
-                                        // mine-cell class handles base 3D styling (index.css)
                                         let className = "mine-cell"; 
 
                                         if (isRevealed) {
@@ -350,17 +355,14 @@ const MinesweeperGame: React.FC<MinesweeperGameProps> = ({ user, onBackToHub, us
                                                 onMouseDown={(e: React.MouseEvent) => {
                                                     if (!isMobile) {
                                                         if (e.button === 2) handleRightClick(e, rIdx, cIdx);
-                                                        else if (e.button === 0) handleCellClick(rIdx, cIdx);
+                                                        else if (e.button === 0) handleCellInteraction(rIdx, cIdx);
                                                     }
                                                 }}
-                                                // Touch Events for Mobile Long Press
                                                 onTouchStart={() => handleTouchStart(rIdx, cIdx)}
                                                 onTouchEnd={() => {
-                                                    // Removed parameter 'e' to fix implicit any error
                                                     handleTouchEnd();
-                                                    // If not a long press, treat as click
                                                     if (!isLongPressRef.current) {
-                                                        handleCellClick(rIdx, cIdx);
+                                                        handleCellInteraction(rIdx, cIdx);
                                                     }
                                                 }}
                                                 onTouchMove={handleTouchMove}
@@ -373,8 +375,27 @@ const MinesweeperGame: React.FC<MinesweeperGameProps> = ({ user, onBackToHub, us
                                 ))}
                             </div>
                         </div>
+
+                        {/* TOOL PALLET */}
+                        {gameState === 'playing' && (
+                            <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 flex bg-[#1a1a1a] border-4 border-white p-2 gap-4 shadow-[0_0_20px_rgba(0,0,0,0.8)] z-[80] animate-pop-in">
+                                <button 
+                                    onClick={() => setActiveTool('shovel')}
+                                    className={`flex flex-col items-center justify-center p-2 md:p-4 border-2 transition-all duration-200 ${activeTool === 'shovel' ? 'border-green-500 bg-green-900/20 scale-110 shadow-[0_0_10px_#57a863]' : 'border-transparent text-gray-500'}`}
+                                >
+                                    <span className="text-2xl md:text-3xl">⛏️</span>
+                                    <span className="text-[10px] md:text-xs font-bold mt-1 uppercase">DIG</span>
+                                </button>
+                                <button 
+                                    onClick={() => setActiveTool('flag')}
+                                    className={`flex flex-col items-center justify-center p-2 md:p-4 border-2 transition-all duration-200 ${activeTool === 'flag' ? 'border-red-500 bg-red-900/20 scale-110 shadow-[0_0_10px_#ff0000]' : 'border-transparent text-gray-500'}`}
+                                >
+                                    <span className="text-2xl md:text-3xl">🚩</span>
+                                    <span className="text-[10px] md:text-xs font-bold mt-1 uppercase">FLAG</span>
+                                </button>
+                            </div>
+                        )}
                         
-                        {/* RESULT OVERLAY */}
                         {(gameState === 'won' || gameState === 'lost') && (
                             <div className="absolute inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
                                 <RandomReveal className="bg-[#111] border-4 border-white p-8 text-center max-w-md w-full shadow-2xl">
@@ -391,7 +412,6 @@ const MinesweeperGame: React.FC<MinesweeperGameProps> = ({ user, onBackToHub, us
                         )}
                     </div>
                 )}
-
             </div>
         </div>
     );
