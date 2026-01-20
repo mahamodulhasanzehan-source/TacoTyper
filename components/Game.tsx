@@ -949,7 +949,7 @@ export default function Game({ user, onLogout }: GameProps) {
              />
         ) : (
             // --- TACO TYPER GAME ---
-            <div style={getContainerStyles()} className="relative transition-all duration-500">
+            <div style={getContainerStyles()} className="relative transition-all duration-500 animate-fade-in">
                 {sparkles.map(s => (
                     <div key={s.id} className="sparkle" style={{ left: s.x, top: s.y, backgroundColor: s.color, '--tx': s.tx, '--ty': s.ty } as any} />
                 ))}
