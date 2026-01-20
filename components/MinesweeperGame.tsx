@@ -374,13 +374,20 @@ const MinesweeperGame: React.FC<MinesweeperGameProps> = ({ user, onBackToHub, us
                             </div>
                         </div>
                         
-                        {gameState !== 'playing' && (
-                             <RandomReveal className="mt-6 text-center bg-[#111] p-4 border-2 border-white">
-                                 <h2 className={`text-xl md:text-2xl mb-4 font-bold ${gameState === 'won' ? 'text-green-500' : 'text-red-500'}`}>
-                                     <RandomText text={gameState === 'won' ? 'MISSION ACCOMPLISHED' : 'DETONATION'} />
-                                 </h2>
-                                 <Button onClick={() => initBoard(difficulty)}>Try Again</Button>
-                             </RandomReveal>
+                        {/* RESULT OVERLAY */}
+                        {(gameState === 'won' || gameState === 'lost') && (
+                            <div className="absolute inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
+                                <RandomReveal className="bg-[#111] border-4 border-white p-8 text-center max-w-md w-full shadow-2xl">
+                                    <div className="text-6xl mb-4 animate-pop-in">{gameState === 'won' ? '😎' : '💥'}</div>
+                                    <h2 className={`text-2xl md:text-3xl mb-6 font-bold ${gameState === 'won' ? 'text-green-500' : 'text-red-600'}`}>
+                                        <RandomText text={gameState === 'won' ? 'MISSION ACCOMPLISHED' : 'DETONATION'} />
+                                    </h2>
+                                    <div className="flex flex-col gap-4">
+                                        <Button onClick={() => initBoard(difficulty)}>{gameState === 'won' ? 'Next Operation' : 'Retry'}</Button>
+                                        <button onClick={() => setGameState('menu')} className="text-xs text-[#aaa] hover:text-white mt-2 border-b border-transparent hover:border-white w-max mx-auto">Return to Menu</button>
+                                    </div>
+                                </RandomReveal>
+                            </div>
                         )}
                     </div>
                 )}
