@@ -943,7 +943,6 @@ export default function Game({ user, onLogout }: GameProps) {
                 user={user} 
                 onLaunchGame={() => setScreen('start')}
                 onLaunchIQ={() => setActiveApp('iq')}
-                onLaunchWhatToDo={() => alert("Coming Soon!")}
                 onLogout={onLogout}
                 username={customUsername}
                 onUpdateUsername={handleUpdateUsername}

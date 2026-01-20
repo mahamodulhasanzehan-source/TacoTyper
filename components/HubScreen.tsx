@@ -10,13 +10,12 @@ interface HubScreenProps {
     user: User;
     onLaunchGame: () => void;
     onLaunchIQ: () => void;
-    onLaunchWhatToDo: () => void;
     onLogout: () => void;
     username?: string | null;
     onUpdateUsername: (name: string) => void;
 }
 
-const HubScreen: React.FC<HubScreenProps> = ({ user, onLaunchGame, onLaunchIQ, onLaunchWhatToDo, onLogout, username, onUpdateUsername }) => {
+const HubScreen: React.FC<HubScreenProps> = ({ user, onLaunchGame, onLaunchIQ, onLogout, username, onUpdateUsername }) => {
     const [showSettings, setShowSettings] = useState(false);
     const [showFriends, setShowFriends] = useState(false);
     const [isMobile, setIsMobile] = useState(false);
@@ -66,23 +65,6 @@ const HubScreen: React.FC<HubScreenProps> = ({ user, onLaunchGame, onLaunchIQ, o
                 {/* Grid of Apps */}
                 <div className={`grid gap-6 auto-rows-min ${isMobile ? 'grid-cols-1 pb-10' : 'grid-cols-1 md:grid-cols-2 pr-2 custom-scrollbar'}`}>
                     
-                    {/* NEW GAME: Look Out for the Castle... (Full Width) */}
-                    <RandomReveal delay={0.1} className="group relative bg-[#111] border-4 border-white flex flex-col items-center justify-center cursor-pointer hover:border-[#ff2a2a] transition-colors min-h-[200px] col-span-1 md:col-span-2 overflow-hidden" onClick={onLaunchWhatToDo}>
-                        <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1599593259462-834c1fd87236?q=80&w=2000&auto=format&fit=crop')] bg-cover bg-center opacity-20 group-hover:opacity-40 transition-opacity" />
-                        <div className="relative z-10 flex flex-col items-center p-4 text-center">
-                            <div className="text-5xl md:text-6xl mb-4 group-hover:scale-110 transition-transform">🏰</div>
-                            <h2 className="text-lg md:text-2xl text-center leading-tight group-hover:text-[#ff2a2a] max-w-2xl">
-                                Look Out for the Castle They Are Coming After It
-                            </h2>
-                            <div className="text-[10px] text-[#777] mt-2 uppercase tracking-widest">Tower Defense • Strategy</div>
-                        </div>
-                        
-                        {/* Play Button Overlay */}
-                        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity z-20">
-                            <span className="bg-[#ff2a2a] text-white px-6 py-3 text-xs md:text-sm border-2 border-white font-bold tracking-wider">COMING SOON</span>
-                        </div>
-                    </RandomReveal>
-
                     {/* Taco Typer Card */}
                     <RandomReveal delay={0.2} className="group relative bg-[#111] border-4 border-white aspect-square flex flex-col items-center justify-center cursor-pointer hover:border-[#f4b400] transition-colors min-h-[200px]" onClick={onLaunchGame}>
                         <div className="text-5xl md:text-6xl mb-4 group-hover:scale-110 transition-transform">🌮</div>
