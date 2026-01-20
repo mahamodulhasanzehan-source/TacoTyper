@@ -34,7 +34,7 @@ const HubScreen: React.FC<HubScreenProps> = ({ user, onLaunchGame, onLaunchIQ, o
                 
                 {/* Header */}
                 <div className="flex justify-between items-start md:items-center mb-8 flex-col md:flex-row gap-4">
-                    <RandomReveal distance={20} className="flex flex-col gap-1">
+                    <RandomReveal distance={200} className="flex flex-col gap-1">
                         <h1 className="text-xl md:text-3xl text-[#f4b400]">
                             <RandomText text="Taco Hub" />
                         </h1>
@@ -44,7 +44,7 @@ const HubScreen: React.FC<HubScreenProps> = ({ user, onLaunchGame, onLaunchIQ, o
                     <div className="flex gap-4 self-end md:self-auto">
                         {/* Mobile: Hide Friends Button */}
                         {!isMobile && (
-                            <RandomReveal delay={0.1} distance={20}>
+                            <RandomReveal delay={0.1} distance={200}>
                                 <button 
                                     onClick={() => setShowFriends(true)}
                                     className="text-2xl hover:scale-110 transition-transform duration-300 ease-[var(--ease-spring)]"
@@ -54,7 +54,7 @@ const HubScreen: React.FC<HubScreenProps> = ({ user, onLaunchGame, onLaunchIQ, o
                                 </button>
                             </RandomReveal>
                         )}
-                        <RandomReveal delay={0.2} distance={20}>
+                        <RandomReveal delay={0.2} distance={200}>
                             <button 
                                 onClick={() => setShowSettings(true)}
                                 className="text-2xl hover:rotate-90 transition-transform duration-500 ease-[var(--ease-smooth)]"
@@ -70,7 +70,7 @@ const HubScreen: React.FC<HubScreenProps> = ({ user, onLaunchGame, onLaunchIQ, o
                 <div className={`grid gap-6 auto-rows-min ${isMobile ? 'grid-cols-1 pb-10' : 'grid-cols-1 md:grid-cols-2 pr-2'}`}>
                     
                     {/* Taco Typer Card */}
-                    <RandomReveal delay={0.3} distance={40} className="group relative bg-[#111] border-4 border-white aspect-square flex flex-col items-center justify-center cursor-pointer hover:border-[#f4b400] transition-colors duration-300 min-h-[200px] hover-scale" onClick={onLaunchGame}>
+                    <RandomReveal delay={0.3} distance={300} className="group relative bg-[#111] border-4 border-white aspect-square flex flex-col items-center justify-center cursor-pointer hover:border-[#f4b400] transition-colors duration-300 min-h-[200px] hover-scale" onClick={onLaunchGame}>
                         <div className="text-5xl md:text-6xl mb-4 group-hover:scale-110 transition-transform duration-300 ease-[var(--ease-spring)]">🌮</div>
                         <h2 className="text-base md:text-xl text-center group-hover:text-[#f4b400] transition-colors duration-300">Taco Typer</h2>
                         <div className="text-[10px] text-[#555] mt-2">The Original</div>
@@ -82,7 +82,7 @@ const HubScreen: React.FC<HubScreenProps> = ({ user, onLaunchGame, onLaunchIQ, o
                     </RandomReveal>
 
                     {/* IQ Test Card */}
-                    <RandomReveal delay={0.4} distance={40} className="group relative bg-[#111] border-4 border-white aspect-square flex flex-col items-center justify-center cursor-pointer hover:border-[#4facfe] transition-colors duration-300 min-h-[200px] hover-scale" onClick={onLaunchIQ}>
+                    <RandomReveal delay={0.4} distance={300} className="group relative bg-[#111] border-4 border-white aspect-square flex flex-col items-center justify-center cursor-pointer hover:border-[#4facfe] transition-colors duration-300 min-h-[200px] hover-scale" onClick={onLaunchIQ}>
                         <div className="text-5xl md:text-6xl mb-4 group-hover:scale-110 transition-transform duration-300 ease-[var(--ease-spring)]">🧠</div>
                         <h2 className="text-base md:text-xl text-center group-hover:text-[#4facfe] transition-colors duration-300">IQ Test</h2>
                         <div className="text-[10px] text-[#555] mt-2">Logic & Patterns</div>

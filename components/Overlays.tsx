@@ -99,7 +99,7 @@ export const Button: React.FC<React.ButtonHTMLAttributes<HTMLButtonElement> & { 
       style={{ 
           backgroundColor: bgColor,
           fontFamily: '"Press Start 2P", cursive',
-          color: 'var(--color-text)' // Ensure text is visible in BW mode if bgcolor is weird
+          color: 'var(--color-text)' 
       }}
       className={`text-xs md:text-base py-3 px-4 md:py-4 md:px-5 border-4 border-white cursor-pointer transition-all duration-200 hover:scale-110 hover:brightness-125 active:scale-95 ${className}`}
     >
@@ -159,9 +159,9 @@ export const LeaderboardWidget: React.FC<LeaderboardWidgetProps> = ({ className 
     const activeIndex = modes.indexOf(mode);
 
     return (
-        <RandomReveal distance={1500} className={`flex flex-col bg-[#0a0a0a] border-l-4 border-white p-2 md:p-4 z-[150] shadow-[-10px_0_30px_rgba(0,0,0,0.8)] ${className}`}>
+        <RandomReveal distance={200} className={`flex flex-col bg-[#0a0a0a] border-l-4 border-white p-2 md:p-4 z-[150] shadow-[-10px_0_30px_rgba(0,0,0,0.8)] ${className}`}>
             <h3 className="text-[#f4b400] text-center mb-2 text-[10px] md:text-xs uppercase border-b-2 border-[#333] pb-2 tracking-widest mt-2">
-                {isAdmin ? 'ADMIN MODE' : (mode === 'iq-test' ? 'Top Minds' : 'Top Chefs')}
+                <RandomText text={isAdmin ? 'ADMIN MODE' : (mode === 'iq-test' ? 'Top Minds' : 'Top Chefs')} />
             </h3>
             
             {/* Capsule Slider - Only show if multiple modes allowed */}
@@ -215,11 +215,14 @@ export const LeaderboardWidget: React.FC<LeaderboardWidgetProps> = ({ className 
                                     <span className={`text-xs font-bold w-5 ${idx === 0 ? 'text-[#f4b400]' : idx === 1 ? 'text-[#ccc]' : idx === 2 ? 'text-[#cd7f32]' : 'text-[#444]'}`}>
                                         #{idx + 1}
                                     </span>
-                                    <span className="text-[10px] text-white truncate max-w-[80px] md:max-w-[110px]">{entry.username}</span>
+                                    {/* Chaos Animation for Names */}
+                                    <div className="text-[10px] text-white truncate max-w-[80px] md:max-w-[110px]">
+                                        <RandomText text={entry.username} distance={100} stagger={0.02} />
+                                    </div>
                                 </div>
                                 <div className="flex flex-col items-end shrink-0 ml-1">
                                     <span className="text-[#57a863] text-[10px] font-bold shadow-black drop-shadow-md">
-                                        {formatScore(entry)} {getScoreLabel()}
+                                        <RandomText text={`${formatScore(entry)} ${getScoreLabel()}`} distance={50} />
                                     </span>
                                 </div>
                             </div>
@@ -265,11 +268,8 @@ export const FriendsModal: React.FC<FriendsModalProps> = ({ onClose, currentUser
 
     const loadData = async () => {
         setLoading(true);
-        // Load requests
         const reqs = await getFriendRequests(currentUser.uid);
         setRequests(reqs);
-        
-        // Load all active users for the "Browse" list
         const users = await fetchActiveUsers(currentUser.uid);
         setAllUsers(users);
         setLoading(false);
@@ -279,7 +279,6 @@ export const FriendsModal: React.FC<FriendsModalProps> = ({ onClose, currentUser
         const success = await sendFriendRequest(currentUser.uid, toUid);
         if (success) {
             setFeedback("Request Sent!");
-            // Update local state to reflect change immediately
             setAllUsers(prev => prev.map(u => u.uid === toUid ? {...u, hasPending: true} : u));
         } else {
             setFeedback("Failed to send.");
@@ -290,13 +289,11 @@ export const FriendsModal: React.FC<FriendsModalProps> = ({ onClose, currentUser
     const handleAccept = async (fromUid: string) => {
         await acceptFriendRequest(currentUser.uid, fromUid);
         setRequests(prev => prev.filter(r => r.from !== fromUid));
-        // Update user list to show friendship
         setAllUsers(prev => prev.map(u => u.uid === fromUid ? {...u, isFriend: true} : u));
         setFeedback("New Friend Added!");
         setTimeout(() => setFeedback(null), 2000);
     };
 
-    // Client-side filtering
     const filteredUsers = allUsers.filter(u => 
         u.username.toLowerCase().includes(searchTerm.toLowerCase())
     );
@@ -305,7 +302,7 @@ export const FriendsModal: React.FC<FriendsModalProps> = ({ onClose, currentUser
         <div className="absolute top-0 left-0 w-full h-full bg-black/95 z-[250] flex items-center justify-center p-4">
             <RandomReveal className="bg-[#111] border-4 border-white p-6 md:p-8 w-full max-w-md flex flex-col gap-6 h-[500px]">
                 <div className="flex justify-between items-center mb-2">
-                    <h2 className="text-xl md:text-2xl text-[#f4b400]">Social Kitchen</h2>
+                    <h2 className="text-xl md:text-2xl text-[#f4b400]"><RandomText text="Social Kitchen" /></h2>
                     <button onClick={onClose} className="text-red-500 text-xl font-bold">X</button>
                 </div>
 
@@ -354,7 +351,7 @@ export const FriendsModal: React.FC<FriendsModalProps> = ({ onClose, currentUser
                                 </div>
                             ) : (
                                 filteredUsers.map(user => (
-                                    <div key={user.uid} className="flex justify-between items-center bg-[#1a1a1a] p-3 border border-[#333]">
+                                    <RandomReveal key={user.uid} distance={50} className="flex justify-between items-center bg-[#1a1a1a] p-3 border border-[#333]">
                                         <div className="flex flex-col">
                                             <span className="text-xs text-white font-bold">{user.username}</span>
                                             <span className="text-[8px] text-[#666]">Chef</span>
@@ -372,7 +369,7 @@ export const FriendsModal: React.FC<FriendsModalProps> = ({ onClose, currentUser
                                                 +
                                             </button>
                                         )}
-                                    </div>
+                                    </RandomReveal>
                                 ))
                             )}
                         </div>
@@ -385,7 +382,7 @@ export const FriendsModal: React.FC<FriendsModalProps> = ({ onClose, currentUser
                             <div className="text-center text-[#555] text-xs mt-10">No pending requests.</div>
                         ) : (
                             requests.map((req, idx) => (
-                                <div key={idx} className="flex justify-between items-center bg-[#1a1a1a] p-3 border border-[#333] animate-pop-in">
+                                <RandomReveal key={idx} className="flex justify-between items-center bg-[#1a1a1a] p-3 border border-[#333]">
                                     <div className="flex flex-col">
                                         <span className="text-xs text-white font-bold">{req.fromName}</span>
                                         <span className="text-[8px] text-[#f4b400]">Wants to connect</span>
@@ -396,7 +393,7 @@ export const FriendsModal: React.FC<FriendsModalProps> = ({ onClose, currentUser
                                     >
                                         ACCEPT
                                     </button>
-                                </div>
+                                </RandomReveal>
                             ))
                         )}
                     </div>
@@ -440,7 +437,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose, username,
         <div className="absolute top-0 left-0 w-full h-full bg-black/95 z-[250] flex items-center justify-center p-4">
             <RandomReveal className="bg-[#111] border-4 border-white p-6 md:p-8 w-full max-w-md flex flex-col gap-6 h-[80vh] overflow-y-auto custom-scrollbar">
                 <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-2xl text-[#f4b400]">Kitchen Settings</h2>
+                    <h2 className="text-2xl text-[#f4b400]"><RandomText text="Kitchen Settings" /></h2>
                     <button onClick={onClose} className="text-red-500 text-xl font-bold">X</button>
                 </div>
 
@@ -463,13 +460,16 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose, username,
                          </div>
                      </div>
 
-                    {/* Fast Boot */}
-                    <label className="flex items-center justify-between cursor-pointer group">
-                        <span className="text-sm">Fast Boot (No Animations)</span>
+                    {/* Reduced Motion (Formerly Fast Boot) */}
+                    <label className="flex items-center justify-between cursor-pointer group hover:bg-[#222] p-2 rounded">
+                        <div className="flex flex-col">
+                            <span className="text-sm text-white">Reduced Motion</span>
+                            <span className="text-[10px] text-[#aaa]">Simple fades instead of chaos</span>
+                        </div>
                         <input 
                             type="checkbox" 
-                            checked={settings.fastBoot}
-                            onChange={(e) => updateSettings({ fastBoot: e.target.checked })}
+                            checked={settings.reducedMotion}
+                            onChange={(e) => updateSettings({ reducedMotion: e.target.checked })}
                             className="w-5 h-5 accent-[#e55934]"
                         />
                     </label>
@@ -592,12 +592,12 @@ interface StartScreenProps {
   onInfinite: () => void;
   onUniversal: () => void;
   onSpeedTest: () => void;
-  onBackToHub: () => void; // New prop
+  onBackToHub: () => void; 
   user?: User | null;
   isGenerating?: boolean;
   username?: string | null;
   onUpdateUsername: (name: string) => void;
-  onLogout?: () => void; // Passed through to settings
+  onLogout?: () => void;
 }
 
 export const StartScreen: React.FC<StartScreenProps> = ({ 

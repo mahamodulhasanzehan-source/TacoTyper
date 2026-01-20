@@ -6,19 +6,19 @@ interface RandomRevealProps {
   children: React.ReactNode;
   className?: string;
   as?: any;
-  duration?: number; // Standardized duration
-  distance?: number;
+  duration?: number;
+  distance?: number; // How far elements fly from in Chaos mode
   delay?: number;
   style?: React.CSSProperties;
-  [key: string]: any; // Allow arbitrary props like onClick
+  [key: string]: any;
 }
 
 export const RandomReveal: React.FC<RandomRevealProps> = ({ 
   children, 
   className = '', 
   as: Component = 'div',
-  duration = 0.6,
-  distance = 50, // Reduced default distance for subtler effect
+  duration = 0.8,
+  distance = 100, 
   delay = 0,
   style: propStyle = {},
   ...props 
@@ -26,63 +26,82 @@ export const RandomReveal: React.FC<RandomRevealProps> = ({
   const { settings } = useSettings();
   const [isVisible, setIsVisible] = useState(false);
 
-  // Randomize direction slightly for organic feel
-  const [angle] = useState(() => Math.random() * Math.PI * 2);
-
-  useEffect(() => {
-    // If fast boot is on, or distance is 0, show immediately without animation logic
-    if (settings.fastBoot || distance === 0) {
-        setIsVisible(true);
-        return;
+  // --- CHAOS CALCULATIONS ---
+  // We calculate these once on mount so they are stable, but random per instance.
+  // This creates the "fly in from everywhere" effect.
+  const [initialTransform] = useState(() => {
+    if (settings.reducedMotion) {
+        // Simple slide up for reduced motion
+        return `translate3d(0, 20px, 0)`;
     }
 
-    // Small timeout to allow React to paint the initial "hidden" state
+    // Chaos Mode:
+    // 1. Random Angle (0 to 360 degrees)
+    const angle = Math.random() * Math.PI * 2;
+    // 2. Random Distance Variance (0.8x to 1.5x the prop distance)
+    const dist = distance * (0.8 + Math.random() * 0.7);
+    const x = Math.cos(angle) * dist;
+    const y = Math.sin(angle) * dist;
+    
+    // 3. Random Rotation (-45deg to 45deg) - Adds to the chaotic feel
+    const rotate = (Math.random() - 0.5) * 90;
+    
+    // 4. Random Scale (Start small or slightly large)
+    const scale = 0.5 + Math.random() * 0.5;
+
+    return `translate3d(${x}px, ${y}px, 0) rotate(${rotate}deg) scale(${scale})`;
+  });
+
+  useEffect(() => {
+    // Determine wait time.
+    // In Reduced Motion, we still stagger slightly but keep it snappy.
+    const wait = 50 + (delay * 1000);
+
     const t = setTimeout(() => {
         setIsVisible(true);
-    }, 50 + (delay * 1000));
+    }, wait);
 
     return () => clearTimeout(t);
-  }, [delay, settings.fastBoot, distance]);
+  }, [delay]);
 
-  // Calculate transform values
-  const x = Math.cos(angle) * distance;
-  const y = Math.sin(angle) * distance;
-
-  const animationStyle: React.CSSProperties = settings.fastBoot ? {
-      opacity: 1,
-      transform: 'none'
-  } : {
+  const animationStyle: React.CSSProperties = {
       opacity: isVisible ? 1 : 0,
-      transform: isVisible ? 'translate3d(0,0,0) scale(1)' : `translate3d(${x}px, ${y}px, 0) scale(0.95)`,
-      transition: `transform ${duration}s var(--ease-out-expo), opacity ${duration}s ease-out`,
-      willChange: 'transform, opacity'
+      transform: isVisible 
+          ? 'translate3d(0,0,0) rotate(0deg) scale(1)' // End state: Perfectly aligned
+          : initialTransform, // Start state: Chaos
+      transition: `transform ${duration}s var(--ease-spring), opacity ${duration}s ease-out`,
+      willChange: 'transform, opacity',
+      ...propStyle
   };
-
-  const mergedStyle = { ...propStyle, ...animationStyle };
   
-  // Ensure elements that need layout allow transform
-  if (Component === 'span' || Component === 'label' || Component === 'a') {
-      mergedStyle.display = 'inline-block';
+  // Inline blocks for text elements to ensure transforms work correctly on spans
+  if (Component === 'span' || Component === 'label' || Component === 'a' || Component === 'strong') {
+      animationStyle.display = 'inline-block';
   }
 
-  return <Component className={className} style={mergedStyle} {...props}>{children}</Component>;
+  return <Component className={className} style={animationStyle} {...props}>{children}</Component>;
 };
 
-export const RandomText: React.FC<{ text: string; className?: string; distance?: number; stagger?: number }> = ({ text, className = '', distance = 20, stagger = 0.03 }) => {
+export const RandomText: React.FC<{ text: string; className?: string; distance?: number; stagger?: number }> = ({ text, className = '', distance = 200, stagger = 0.05 }) => {
+  // Split by character but preserve spaces
   return (
       <span className={className} style={{ display: 'inline-block', wordBreak: 'break-word' }}>
-          {text.split('').map((char, i) => (
-              <RandomReveal 
-                key={i} 
-                as="span" 
-                distance={distance} 
-                delay={i * stagger}
-                duration={0.4}
-                style={{ whiteSpace: 'pre' }}
-              >
-                  {char}
-              </RandomReveal>
-          ))}
+          {text.split('').map((char, i) => {
+              if (char === ' ') {
+                  return <span key={i}>&nbsp;</span>;
+              }
+              return (
+                  <RandomReveal 
+                    key={i} 
+                    as="span" 
+                    distance={distance} // Pass high distance for flying letters
+                    delay={i * stagger}
+                    duration={0.6}
+                  >
+                      {char}
+                  </RandomReveal>
+              );
+          })}
       </span>
   );
 };

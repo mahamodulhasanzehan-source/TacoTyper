@@ -20,7 +20,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, isLoading }) => {
              </h1>
         </div>
         
-        <RandomReveal className="border-4 border-white p-4 md:p-8 bg-[#111] flex flex-col items-center w-full max-w-md" distance={1000}>
+        <RandomReveal className="border-4 border-white p-4 md:p-8 bg-[#111] flex flex-col items-center w-full max-w-md" distance={300}>
             <p className="mb-6 md:mb-8 text-center leading-loose text-xs md:text-sm text-[#aaa]">
                 <RandomText text="Welcome Chef!" />
                 <br/>
@@ -38,7 +38,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, isLoading }) => {
             )}
         </RandomReveal>
         
-        <RandomReveal className="mt-8 text-[10px] md:text-xs text-[#555]" distance={1200}>
+        <RandomReveal className="mt-8 text-[10px] md:text-xs text-[#555]" distance={400}>
             v1.1.0 • Mobile & Desktop
         </RandomReveal>
     </div>

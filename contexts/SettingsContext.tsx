@@ -2,7 +2,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 
 interface Settings {
-  fastBoot: boolean;
+  reducedMotion: boolean; // Renamed from fastBoot
   theme: 'taco' | 'dark' | 'neon';
   neonColor: string;
 }
@@ -15,7 +15,7 @@ interface SettingsContextType {
 }
 
 const defaultSettings: Settings = {
-  fastBoot: false,
+  reducedMotion: false,
   theme: 'taco',
   neonColor: '#00ff00' // Default Neon Green
 };
@@ -36,12 +36,19 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     try {
       const stored = localStorage.getItem('taco_app_settings');
       if (stored) {
-        // Migration: If loading old settings with reducedMotion, it will just be ignored by the new type
         const parsed = JSON.parse(stored);
+        
+        // MIGRATION LOGIC:
+        // If the user had 'fastBoot' enabled previously, map it to 'reducedMotion'
+        let isReduced = parsed.reducedMotion;
+        if (parsed.fastBoot !== undefined && isReduced === undefined) {
+            isReduced = parsed.fastBoot;
+        }
+
         setSettings({ 
             ...defaultSettings, 
             ...parsed,
-            // Ensure neonColor exists if upgrading from old version
+            reducedMotion: !!isReduced, // Ensure boolean
             neonColor: parsed.neonColor || '#00ff00' 
         });
       }
