@@ -5,7 +5,7 @@ interface Settings {
   reducedMotion: boolean; // Renamed from fastBoot
   theme: 'taco' | 'dark' | 'neon';
   neonColor: string;
-  animDuration: number; // 0 to 6 seconds
+  animDuration: number; // 0 to 6 seconds (Acts as a delay multiplier now)
 }
 
 interface SettingsContextType {
@@ -19,7 +19,7 @@ const defaultSettings: Settings = {
   reducedMotion: false,
   theme: 'taco',
   neonColor: '#00ff00', // Default Neon Green
-  animDuration: 1 // Default 1 second
+  animDuration: 1 // Default 1x delay multiplier
 };
 
 const SettingsContext = createContext<SettingsContextType>({
@@ -77,8 +77,12 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       document.documentElement.style.setProperty('--color-neon', settings.neonColor);
     }
 
-    // Apply Animation Duration
-    document.documentElement.style.setProperty('--anim-duration', `${settings.animDuration}s`);
+    // Apply Animation Physics
+    // If setting is 0, everything is instant.
+    // Otherwise, we keep a fixed "snappy" duration for the actual movement (0.6s),
+    // and use the settings.animDuration purely to scale the delays in React components.
+    const cssDuration = settings.animDuration === 0 ? '0s' : '0.6s';
+    document.documentElement.style.setProperty('--anim-duration', cssDuration);
 
   }, [settings, loaded]);
 

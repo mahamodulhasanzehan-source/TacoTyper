@@ -21,12 +21,13 @@
   --color-heart: #ff69b4;
 
   /* Animation Easing */
-  --ease-spring: cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  /* Increased overshoot to 1.4 for more "recoil/bounce" effect */
+  --ease-spring: cubic-bezier(0.175, 0.885, 0.32, 1.4);
   --ease-smooth: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-out-expo: cubic-bezier(0.19, 1, 0.22, 1);
 
-  /* Default Animation Duration (Overridden by JS) */
-  --anim-duration: 1s;
+  /* Default Animation Duration (Overridden by JS settings for ON/OFF state only) */
+  --anim-duration: 0.6s;
 }
 
 body.theme-dark {
