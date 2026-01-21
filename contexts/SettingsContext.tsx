@@ -5,6 +5,7 @@ interface Settings {
   reducedMotion: boolean; // Renamed from fastBoot
   theme: 'taco' | 'dark' | 'neon';
   neonColor: string;
+  animDuration: number; // 0 to 6 seconds
 }
 
 interface SettingsContextType {
@@ -17,7 +18,8 @@ interface SettingsContextType {
 const defaultSettings: Settings = {
   reducedMotion: false,
   theme: 'taco',
-  neonColor: '#00ff00' // Default Neon Green
+  neonColor: '#00ff00', // Default Neon Green
+  animDuration: 1 // Default 1 second
 };
 
 const SettingsContext = createContext<SettingsContextType>({
@@ -49,7 +51,8 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             ...defaultSettings, 
             ...parsed,
             reducedMotion: !!isReduced, // Ensure boolean
-            neonColor: parsed.neonColor || '#00ff00' 
+            neonColor: parsed.neonColor || '#00ff00',
+            animDuration: parsed.animDuration !== undefined ? parsed.animDuration : 1
         });
       }
     } catch (e) {
@@ -73,6 +76,9 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       document.body.classList.add('theme-neon');
       document.documentElement.style.setProperty('--color-neon', settings.neonColor);
     }
+
+    // Apply Animation Duration
+    document.documentElement.style.setProperty('--anim-duration', `${settings.animDuration}s`);
 
   }, [settings, loaded]);
 

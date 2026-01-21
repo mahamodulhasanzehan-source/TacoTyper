@@ -26,6 +26,10 @@ export const RandomReveal: React.FC<RandomRevealProps> = ({
   const { settings } = useSettings();
   const [isVisible, setIsVisible] = useState(false);
 
+  // Use the global setting for duration, ignoring the prop to ensure consistency with the user request
+  // Exception: If setting is 0, duration is 0.
+  const effectiveDuration = settings.animDuration;
+
   // --- CHAOS CALCULATIONS ---
   // We calculate these once on mount so they are stable, but random per instance.
   // This creates the "fly in from everywhere" effect.
@@ -69,7 +73,7 @@ export const RandomReveal: React.FC<RandomRevealProps> = ({
       transform: isVisible 
           ? 'translate3d(0,0,0) rotate(0deg) scale(1)' // End state: Perfectly aligned
           : initialTransform, // Start state: Chaos
-      transition: `transform ${duration}s var(--ease-spring), opacity ${duration}s ease-out`,
+      transition: `transform ${effectiveDuration}s var(--ease-spring), opacity ${effectiveDuration}s ease-out`,
       willChange: 'transform, opacity',
       ...propStyle
   };
@@ -96,7 +100,7 @@ export const RandomText: React.FC<{ text: string; className?: string; distance?:
                     as="span" 
                     distance={distance} // Pass high distance for flying letters
                     delay={i * stagger}
-                    duration={0.6}
+                    duration={0.6} // This prop is now overridden by global settings in RandomReveal
                   >
                       {char}
                   </RandomReveal>

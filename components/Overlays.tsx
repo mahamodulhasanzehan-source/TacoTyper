@@ -484,6 +484,27 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose, username,
                          </div>
                      </div>
 
+                     {/* Animation Speed Slider */}
+                     <div className="flex flex-col gap-2 pb-4 border-b border-[#333]">
+                        <div className="flex justify-between items-center">
+                            <label className="text-sm">Animation Speed</label>
+                            <span className="text-xs text-[#f4b400] font-bold">{settings.animDuration}s</span>
+                        </div>
+                        <input 
+                            type="range" 
+                            min="0" 
+                            max="6" 
+                            step="1"
+                            value={settings.animDuration} 
+                            onChange={(e) => updateSettings({ animDuration: Number(e.target.value) })}
+                            className="w-full accent-[#e55934] h-2 bg-[#333] rounded-lg appearance-none cursor-pointer"
+                        />
+                        <div className="flex justify-between text-[10px] text-[#555]">
+                            <span>Instant</span>
+                            <span>Slow</span>
+                        </div>
+                     </div>
+
                     <label className="flex items-center justify-between cursor-pointer group hover:bg-[#222] p-2 rounded">
                         <div className="flex flex-col">
                             <span className="text-sm text-white">Reduced Motion</span>

@@ -24,6 +24,9 @@
   --ease-spring: cubic-bezier(0.175, 0.885, 0.32, 1.275);
   --ease-smooth: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-out-expo: cubic-bezier(0.19, 1, 0.22, 1);
+
+  /* Default Animation Duration (Overridden by JS) */
+  --anim-duration: 1s;
 }
 
 body.theme-dark {
@@ -193,18 +196,18 @@ body {
 
 /* Utility Classes for Animations */
 .animate-spicy-pulse { animation: spicyPulse 2s var(--ease-smooth) infinite; }
-.animate-pop-in { animation: popIn 0.5s var(--ease-spring) forwards; }
+.animate-pop-in { animation: popIn var(--anim-duration) var(--ease-spring) forwards; }
 .animate-heart-beat { animation: heartBeat 1.2s var(--ease-smooth) infinite; }
-.animate-shake { animation: shake 0.3s var(--ease-spring); }
-.animate-shake-long { animation: shake 0.5s var(--ease-spring); }
+.animate-shake { animation: shake var(--anim-duration) var(--ease-spring); }
+.animate-shake-long { animation: shake var(--anim-duration) var(--ease-spring); }
 .animate-blink { animation: blinker 1.5s linear infinite; }
-.animate-fade-in { animation: fadeIn 0.6s var(--ease-out-expo) forwards; }
+.animate-fade-in { animation: fadeIn var(--anim-duration) var(--ease-out-expo) forwards; }
 
-.word-enter { animation: wordPop 0.4s var(--ease-spring) forwards; will-change: transform, opacity; }
+.word-enter { animation: wordPop var(--anim-duration) var(--ease-spring) forwards; will-change: transform, opacity; }
 
 .popup-text { 
   position: absolute; 
-  animation: floatUp 0.8s var(--ease-out-expo) forwards; 
+  animation: floatUp var(--anim-duration) var(--ease-out-expo) forwards; 
   pointer-events: none; 
   z-index: 100; 
   font-weight: bold; 
@@ -219,7 +222,7 @@ body {
   width: 8px; 
   height: 8px; 
   border-radius: 50%; 
-  animation: sparkleOut 0.6s var(--ease-out-expo) forwards; 
+  animation: sparkleOut var(--anim-duration) var(--ease-out-expo) forwards; 
   pointer-events: none; 
   z-index: 90; 
   box-shadow: 0 0 5px currentColor; 
