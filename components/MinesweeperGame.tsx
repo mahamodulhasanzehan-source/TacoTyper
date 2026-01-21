@@ -1,8 +1,8 @@
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { User, saveLeaderboardScore, incrementGamePlays } from '../services/firebase';
 import { RandomReveal, RandomText } from './Visuals';
-import { LeaderboardWidget, SettingsModal, FriendsModal, Button } from './Overlays';
+import { LeaderboardWidget, SettingsModal, Button } from './Overlays';
 import ChatWidget from './ChatWidget';
 import { isMobileDevice } from '../utils/device';
 import { audioService } from '../services/audioService';
@@ -16,7 +16,6 @@ interface MinesweeperGameProps {
 }
 
 type Difficulty = 'beginner' | 'intermediate' | 'expert';
-type Tool = 'shovel' | 'flag';
 
 interface Cell {
     x: number;
@@ -41,16 +40,15 @@ const MinesweeperGame: React.FC<MinesweeperGameProps> = ({ user, onBackToHub, us
     const [timer, setTimer] = useState(0);
     const [firstClick, setFirstClick] = useState(true);
     const [boardId, setBoardId] = useState(0);
-    const [activeTool, setActiveTool] = useState<Tool>('shovel');
+    
+    // New State for Mobile Selection
+    const [selectedCell, setSelectedCell] = useState<{r: number, c: number} | null>(null);
     
     const [showSettings, setShowSettings] = useState(false);
     const [isMobile, setIsMobile] = useState(false);
     const [showMobileLeaderboard, setShowMobileLeaderboard] = useState(false);
 
     const timerRef = useRef<number | null>(null);
-    // Refs for Long Press handling
-    const longPressTimerRef = useRef<number | null>(null);
-    const isLongPressRef = useRef(false);
     
     const displayableName = username || user.displayName || 'Player';
 
@@ -94,7 +92,7 @@ const MinesweeperGame: React.FC<MinesweeperGameProps> = ({ user, onBackToHub, us
         setFirstClick(true);
         setGameState('playing');
         setBoardId(prev => prev + 1);
-        setActiveTool('shovel');
+        setSelectedCell(null);
         incrementGamePlays('minesweeper');
     };
 
@@ -152,9 +150,14 @@ const MinesweeperGame: React.FC<MinesweeperGameProps> = ({ user, onBackToHub, us
     const handleCellInteraction = (r: number, c: number) => {
         if (gameState !== 'playing') return;
         
-        if (activeTool === 'flag') {
-            handleRightClick(null, r, c);
+        if (isMobile) {
+            // Mobile: Select cell for popup if not revealed
+            if (!grid[r][c].isRevealed) {
+                setSelectedCell({r, c});
+                audioService.playSound('type'); // Feedback click
+            }
         } else {
+            // Desktop: Dig directly
             handleCellClick(r, c);
         }
     };
@@ -218,26 +221,15 @@ const MinesweeperGame: React.FC<MinesweeperGameProps> = ({ user, onBackToHub, us
         );
     };
 
-    const handleTouchStart = (r: number, c: number) => {
-        isLongPressRef.current = false;
-        longPressTimerRef.current = window.setTimeout(() => {
-            isLongPressRef.current = true;
-            handleRightClick(null, r, c);
-        }, 400);
-    };
-
-    const handleTouchEnd = () => {
-        if (longPressTimerRef.current) {
-            clearTimeout(longPressTimerRef.current);
-            longPressTimerRef.current = null;
+    const handleMobileAction = (action: 'dig' | 'flag') => {
+        if (!selectedCell) return;
+        
+        if (action === 'dig') {
+            handleCellClick(selectedCell.r, selectedCell.c);
+        } else {
+            handleRightClick(null, selectedCell.r, selectedCell.c);
         }
-    };
-
-    const handleTouchMove = () => {
-        if (longPressTimerRef.current) {
-            clearTimeout(longPressTimerRef.current);
-            longPressTimerRef.current = null;
-        }
+        setSelectedCell(null);
     };
 
     const cellSize = isMobile ? '32px' : '30px';
@@ -292,7 +284,7 @@ const MinesweeperGame: React.FC<MinesweeperGameProps> = ({ user, onBackToHub, us
                                 </button>
                             ))}
                         </div>
-                        {isMobile && <p className="text-[#666] text-xs mt-6">Use tool pallet or long press to flag 🚩</p>}
+                        {isMobile && <p className="text-[#666] text-xs mt-6">Tap a tile to Dig or Flag 🚩</p>}
                      </RandomReveal>
                 ) : (
                     <div className="flex flex-col items-center animate-fade-in w-full h-full justify-start md:justify-center pt-16 md:pt-0">
@@ -329,6 +321,8 @@ const MinesweeperGame: React.FC<MinesweeperGameProps> = ({ user, onBackToHub, us
                                         const neighbor = cell.neighborMines;
                                         const key = `${boardId}-${cell.x}-${cell.y}`;
                                         
+                                        const isSelected = selectedCell?.r === rIdx && selectedCell?.c === cIdx;
+
                                         let content: React.ReactNode = null;
                                         let className = "mine-cell"; 
 
@@ -345,6 +339,10 @@ const MinesweeperGame: React.FC<MinesweeperGameProps> = ({ user, onBackToHub, us
                                             content = <span className="text-red-600">🚩</span>;
                                         }
 
+                                        if (isSelected) {
+                                            className += " border-[#f4b400] z-20"; // Highlight selected cell on mobile
+                                        }
+
                                         return (
                                             <RandomReveal 
                                                 key={key}
@@ -352,20 +350,15 @@ const MinesweeperGame: React.FC<MinesweeperGameProps> = ({ user, onBackToHub, us
                                                 delay={Math.random() * 0.5} 
                                                 duration={0.4}
                                                 className={`flex items-center justify-center cursor-pointer select-none text-sm md:text-base ${className}`}
+                                                style={isSelected ? { borderColor: '#f4b400', boxShadow: '0 0 5px #f4b400' } : {}}
                                                 onMouseDown={(e: React.MouseEvent) => {
-                                                    if (!isMobile) {
-                                                        if (e.button === 2) handleRightClick(e, rIdx, cIdx);
-                                                        else if (e.button === 0) handleCellInteraction(rIdx, cIdx);
-                                                    }
+                                                    if (isMobile) return;
+                                                    if (e.button === 2) handleRightClick(e, rIdx, cIdx);
+                                                    else if (e.button === 0) handleCellInteraction(rIdx, cIdx);
                                                 }}
-                                                onTouchStart={() => handleTouchStart(rIdx, cIdx)}
-                                                onTouchEnd={() => {
-                                                    handleTouchEnd();
-                                                    if (!isLongPressRef.current) {
-                                                        handleCellInteraction(rIdx, cIdx);
-                                                    }
+                                                onClick={() => {
+                                                    if (isMobile) handleCellInteraction(rIdx, cIdx);
                                                 }}
-                                                onTouchMove={handleTouchMove}
                                                 onContextMenu={(e: React.MouseEvent) => e.preventDefault()}
                                             >
                                                 {content}
@@ -376,23 +369,38 @@ const MinesweeperGame: React.FC<MinesweeperGameProps> = ({ user, onBackToHub, us
                             </div>
                         </div>
 
-                        {/* TOOL PALLET */}
-                        {gameState === 'playing' && (
-                            <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 flex bg-[#1a1a1a] border-4 border-white p-2 gap-4 shadow-[0_0_20px_rgba(0,0,0,0.8)] z-[80] animate-pop-in">
-                                <button 
-                                    onClick={() => setActiveTool('shovel')}
-                                    className={`flex flex-col items-center justify-center p-2 md:p-4 border-2 transition-all duration-200 ${activeTool === 'shovel' ? 'border-green-500 bg-green-900/20 scale-110 shadow-[0_0_10px_#57a863]' : 'border-transparent text-gray-500'}`}
+                        {/* MOBILE ACTION POPUP */}
+                        {isMobile && selectedCell && (
+                            <div 
+                                className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-[2px] animate-fade-in" 
+                                onClick={() => setSelectedCell(null)}
+                            >
+                                <div 
+                                    className="bg-[#222] border-2 border-white p-4 rounded-xl shadow-[0_0_20px_rgba(0,0,0,0.8)] flex gap-4 animate-pop-in" 
+                                    onClick={e => e.stopPropagation()}
                                 >
-                                    <span className="text-2xl md:text-3xl">⛏️</span>
-                                    <span className="text-[10px] md:text-xs font-bold mt-1 uppercase">DIG</span>
-                                </button>
-                                <button 
-                                    onClick={() => setActiveTool('flag')}
-                                    className={`flex flex-col items-center justify-center p-2 md:p-4 border-2 transition-all duration-200 ${activeTool === 'flag' ? 'border-red-500 bg-red-900/20 scale-110 shadow-[0_0_10px_#ff0000]' : 'border-transparent text-gray-500'}`}
-                                >
-                                    <span className="text-2xl md:text-3xl">🚩</span>
-                                    <span className="text-[10px] md:text-xs font-bold mt-1 uppercase">FLAG</span>
-                                </button>
+                                    <button 
+                                        onClick={() => handleMobileAction('flag')}
+                                        className="flex flex-col items-center justify-center w-16 h-16 bg-[#333] border-2 border-[#555] rounded-full hover:bg-[#444] active:scale-95 transition-all text-red-500"
+                                    >
+                                        <span className="text-2xl">🚩</span>
+                                        <span className="text-[10px] text-white mt-1">FLAG</span>
+                                    </button>
+                                    <button 
+                                        onClick={() => handleMobileAction('dig')}
+                                        className="flex flex-col items-center justify-center w-16 h-16 bg-[#333] border-2 border-[#555] rounded-full hover:bg-[#444] active:scale-95 transition-all text-green-500"
+                                    >
+                                        <span className="text-2xl">⛏️</span>
+                                        <span className="text-[10px] text-white mt-1">DIG</span>
+                                    </button>
+                                    <button 
+                                        onClick={() => setSelectedCell(null)}
+                                        className="flex flex-col items-center justify-center w-16 h-16 bg-[#333] border-2 border-[#555] rounded-full hover:bg-[#444] active:scale-95 transition-all text-gray-400"
+                                    >
+                                        <span className="text-2xl">✕</span>
+                                        <span className="text-[10px] text-white mt-1">CANCEL</span>
+                                    </button>
+                                </div>
                             </div>
                         )}
                         
