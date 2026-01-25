@@ -985,8 +985,8 @@ export default function Game({ user, onLogout }: GameProps) {
 
                 {/* --- Leaderboard Widget in Start/GameOver Screen (Desktop) --- */}
                 {!isMobile && (screen === 'start' || screen === 'game-over') && (
-                    <div className="absolute top-0 right-0 h-full w-[300px] z-[60] border-l-4 border-white bg-[#0a0a0a]">
-                        <LeaderboardWidget className="h-full border-none" allowedModes={['competitive', 'infinite', 'universal', 'speed']} defaultMode={gameMode === 'speed-test' ? 'speed' : 'competitive'} />
+                    <div className="absolute top-0 right-0 h-full w-[300px] z-[120] border-l-4 border-white bg-[#0a0a0a]">
+                        <LeaderboardWidget className="h-full border-none" allowedModes={['competitive', 'universal', 'speed']} defaultMode={gameMode === 'speed-test' ? 'speed' : 'competitive'} />
                     </div>
                 )}
 

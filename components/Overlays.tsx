@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { COLORS, LEVEL_CONFIGS } from '../constants';
 import type { User, FriendRequest } from '../services/firebase';
@@ -191,7 +190,16 @@ export const LeaderboardWidget: React.FC<LeaderboardWidgetProps> = ({ className 
         if (isAdmin) return 'ADMIN MODE';
         if (mode === 'iq-test') return 'Top Minds';
         if (mode.includes('minesweeper')) return 'Top Defusers';
+        if (mode === 'speed') return 'Fastest Hands';
         return 'Top Chefs';
+    }
+
+    const getTabLabel = (m: string) => {
+        if (m === 'competitive') return 'COMP';
+        if (m === 'universal') return 'UNIV';
+        if (m === 'speed') return 'SPEED';
+        if (m.startsWith('minesweeper-')) return m.replace('minesweeper-', '').substring(0, 4).toUpperCase();
+        return m.substring(0, 4).toUpperCase();
     }
 
     const activeIndex = modes.indexOf(mode);
@@ -221,7 +229,7 @@ export const LeaderboardWidget: React.FC<LeaderboardWidgetProps> = ({ className 
                             className={`flex-1 relative z-10 text-[7px] md:text-[8px] py-1.5 text-center transition-colors duration-200 font-bold uppercase tracking-tight
                                 ${mode === m ? 'text-white' : 'text-[#555] hover:text-[#777]'}`}
                         >
-                            {m.replace('minesweeper-', '').substring(0, 4).toUpperCase()}
+                            {getTabLabel(m)}
                         </button>
                     ))}
                 </div>
@@ -664,7 +672,7 @@ export const StartScreen: React.FC<StartScreenProps> = ({
 
                 <div className="border-t border-[#333] pt-4 mt-4">
                     <Button onClick={onBackToHub} className="w-full bg-[#333] border-[#555] text-white hover:bg-[#444]">
-                        Back to Hub
+                        Home
                     </Button>
                 </div>
             </RandomReveal>
@@ -693,142 +701,15 @@ export const ModeSelectScreen: React.FC<ModeSelectProps> = ({ onCompetitive, onU
   </Overlay>
 );
 
-export const LevelSelectScreen: React.FC<LevelSelectProps> = ({ onSelectLevel, onBack }) => (
-  <Overlay>
-    <RandomReveal className="bg-[#111] border-4 border-white p-6 md:p-8 max-w-2xl w-full text-center">
-        <h2 className="text-2xl text-[#f4b400] mb-6"><RandomText text="Select Menu" /></h2>
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-            {[1, 2, 3, 4, 5].map(lvl => (
-                <button 
-                    key={lvl}
-                    onClick={() => onSelectLevel(lvl)}
-                    className="p-4 border-2 border-[#555] hover:border-[#f4b400] bg-[#222] hover:bg-[#333] transition-all flex flex-col items-center gap-2 group"
-                >
-                    <span className="text-3xl group-hover:scale-125 transition-transform">{LEVEL_CONFIGS[lvl].emoji}</span>
-                    <span className="text-xs text-white">{LEVEL_CONFIGS[lvl].name}</span>
-                </button>
-            ))}
-        </div>
-        <div className="mt-8">
-            <Button onClick={onBack} variant="secondary">Back</Button>
-        </div>
-    </RandomReveal>
-  </Overlay>
-);
-
-export const LevelCompleteScreen: React.FC<LevelCompleteProps> = ({ levelName, message, emoji, onNext }) => (
-    <Overlay>
-        <RandomReveal className="bg-[#111] border-4 border-white p-8 text-center max-w-md w-full animate-bounce-in">
-            <div className="text-6xl mb-4 animate-spin-slow">{emoji}</div>
-            <h2 className="text-2xl text-[#f4b400] mb-2"><RandomText text={levelName} /></h2>
-            <p className="text-sm text-[#ccc] mb-6">{message}</p>
-            <Button onClick={onNext} className="w-full animate-pulse">Next Level</Button>
-        </RandomReveal>
-    </Overlay>
-);
-
-export const GameOverScreen: React.FC<GameOverProps> = ({ score, message, stats, onRestart, aiTitle, aiScore, isCalculating, isTimeScore }) => (
-    <Overlay>
-        <RandomReveal className="bg-[#111] border-4 border-white p-8 text-center max-w-md w-full shadow-[0_0_50px_rgba(255,0,0,0.3)]">
-            <h2 className="text-3xl text-red-500 mb-4"><RandomText text="GAME OVER" /></h2>
-            <p className="text-sm text-[#ccc] mb-4">{message}</p>
-            
-            <div className="bg-[#222] p-4 mb-6 border border-[#333]">
-                <div className="text-xs text-[#888] mb-1">{isTimeScore ? 'FINAL TIME' : 'FINAL SCORE'}</div>
-                <div className="text-3xl text-white font-bold">{score}{isTimeScore ? 's' : ''}</div>
-                {stats && <div className="text-xs text-[#f4b400] mt-2">{stats}</div>}
-            </div>
-
-            {isCalculating ? (
-                 <div className="mb-6 animate-pulse text-[#f4b400] text-xs">AI Evaluating Performance...</div>
-            ) : aiTitle && (
-                 <div className="mb-6 bg-[#1a1a1a] p-3 border border-[#f4b400] relative overflow-hidden">
-                     <div className="absolute top-0 right-0 bg-[#f4b400] text-black text-[8px] px-2 py-1 font-bold">AI RANK</div>
-                     <div className="text-lg text-[#f4b400] font-bold mt-2">"{aiTitle}"</div>
-                     {aiScore !== undefined && !isTimeScore && <div className="text-xs text-[#888] mt-1">Performance Score: {aiScore}/100</div>}
-                 </div>
-            )}
-
-            <Button onClick={onRestart} className="w-full">Try Again</Button>
-        </RandomReveal>
-    </Overlay>
-);
-
-export const BossIntroScreen: React.FC<BossIntroProps> = ({ onStart }) => (
-    <Overlay>
-        <RandomReveal className="bg-red-900/90 border-4 border-red-500 p-8 text-center max-w-lg w-full shadow-[0_0_100px_rgba(255,0,0,0.5)]">
-            <h1 className="text-4xl text-white mb-4 animate-pulse" style={{ fontFamily: '"Creepster", cursive' }}>BOSS LEVEL</h1>
-            <p className="text-lg text-[#f4b400] mb-6">THE DINNER RUSH</p>
-            <p className="text-xs text-[#ccc] mb-8 leading-relaxed">
-                The restaurant is packed. <br/>
-                Orders are flying in. <br/>
-                Don't mess this up, Chef!
-            </p>
-            <Button onClick={onStart} variant="accent" className="w-full text-xl animate-bounce">LET'S COOK!</Button>
-        </RandomReveal>
-    </Overlay>
-);
-
-export const PauseScreen: React.FC<PauseScreenProps> = ({ onResume, onQuit }) => (
-    <Overlay>
-        <RandomReveal className="bg-[#111] border-4 border-white p-8 text-center min-w-[300px]">
-            <h2 className="text-2xl text-white mb-8">PAUSED</h2>
-            <div className="flex flex-col gap-4">
-                <Button onClick={onResume}>RESUME</Button>
-                <Button onClick={onQuit} variant="secondary">QUIT</Button>
-            </div>
-        </RandomReveal>
-    </Overlay>
-);
-
 export const ExitConfirmScreen: React.FC<ExitConfirmProps> = ({ onConfirm, onCancel }) => (
     <Overlay>
-        <RandomReveal className="bg-[#111] border-4 border-red-500 p-6 text-center max-w-sm">
-            <h3 className="text-red-500 mb-4">Confirm Quit?</h3>
-            <p className="text-xs text-[#aaa] mb-6">Competitive progress will be lost!</p>
+        <RandomReveal className="bg-[#111] border-4 border-red-500 p-8 text-center max-w-sm w-full">
+            <h2 className="text-xl text-red-500 mb-4 font-bold">ABANDON KITCHEN?</h2>
+            <p className="text-xs text-[#aaa] mb-8">Progress will be lost!</p>
             <div className="flex gap-4">
-                <Button onClick={onConfirm} className="flex-1 bg-red-600 border-red-400">Yes</Button>
-                <Button onClick={onCancel} className="flex-1">No</Button>
+                <Button onClick={onConfirm} className="flex-1 bg-red-600 border-red-800 hover:bg-red-700">QUIT</Button>
+                <Button onClick={onCancel} className="flex-1">STAY</Button>
             </div>
-        </RandomReveal>
-    </Overlay>
-);
-
-export const InfoModal: React.FC<InfoModalProps> = ({ text, onClose }) => (
-    <Overlay>
-        <RandomReveal className="bg-[#111] border-2 border-[#f4b400] p-6 text-center max-w-sm shadow-[0_0_30px_rgba(244,180,0,0.2)]">
-            <p className="text-sm text-white mb-6 leading-relaxed">{text}</p>
-            <Button onClick={onClose} className="w-full py-2 text-xs">OK</Button>
-        </RandomReveal>
-    </Overlay>
-);
-
-export const SpeedResultScreen: React.FC<SpeedResultProps> = ({ wpm, cpm, accuracy, comment, onRestart }) => (
-    <Overlay>
-        <RandomReveal className="bg-[#111] border-4 border-[#4facfe] p-8 text-center max-w-md w-full shadow-[0_0_50px_rgba(79,172,254,0.3)]">
-            <h2 className="text-2xl text-[#4facfe] mb-6">SHIFT COMPLETE</h2>
-            
-            <div className="grid grid-cols-3 gap-4 mb-8">
-                <div className="flex flex-col">
-                    <span className="text-3xl text-white font-bold">{wpm}</span>
-                    <span className="text-[10px] text-[#888]">WPM</span>
-                </div>
-                <div className="flex flex-col">
-                    <span className="text-3xl text-white font-bold">{cpm}</span>
-                    <span className="text-[10px] text-[#888]">CPM</span>
-                </div>
-                <div className="flex flex-col">
-                    <span className={`text-3xl font-bold ${accuracy >= 95 ? 'text-green-500' : accuracy >= 80 ? 'text-[#f4b400]' : 'text-red-500'}`}>{accuracy}%</span>
-                    <span className="text-[10px] text-[#888]">ACC</span>
-                </div>
-            </div>
-
-            <div className="bg-[#1a1a1a] p-4 border-l-4 border-[#f4b400] text-left mb-8">
-                <span className="text-[10px] text-[#f4b400] font-bold block mb-1">CHEF'S FEEDBACK:</span>
-                <p className="text-xs text-[#ccc] italic">"{comment}"</p>
-            </div>
-
-            <Button onClick={onRestart} className="w-full">Next Ticket</Button>
         </RandomReveal>
     </Overlay>
 );
@@ -837,30 +718,181 @@ export const UsernameScreen: React.FC<UsernameScreenProps> = ({ onSubmit }) => {
     const [name, setName] = useState('');
     return (
         <Overlay>
-            <RandomReveal className="bg-[#111] border-4 border-white p-8 text-center max-w-sm w-full">
-                <h2 className="text-xl text-[#f4b400] mb-4">Who's Cooking?</h2>
+            <RandomReveal className="bg-[#111] border-4 border-white p-8 max-w-md w-full flex flex-col items-center">
+                <h2 className="text-2xl text-[#f4b400] mb-6">Who are you, Chef?</h2>
                 <input 
                     type="text" 
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     maxLength={12}
-                    placeholder="Enter Chef Name"
-                    className="w-full bg-black border border-[#555] p-3 text-white text-center mb-6 outline-none focus:border-[#f4b400]"
+                    className="w-full bg-black border-2 border-[#555] p-3 text-white text-center mb-6 focus:border-[#f4b400] outline-none font-bold"
+                    placeholder="ENTER NAME"
                     autoFocus
                 />
-                <Button onClick={() => name.trim() && onSubmit(name.trim())} className="w-full" disabled={!name.trim()}>
-                    Start Cooking
+                <Button onClick={() => name.trim() && onSubmit(name.trim())} disabled={!name.trim()} className="w-full">
+                    CLOCK IN
                 </Button>
             </RandomReveal>
         </Overlay>
     );
 };
 
+export const LevelSelectScreen: React.FC<LevelSelectProps> = ({ onSelectLevel, onBack }) => (
+    <Overlay>
+        <RandomReveal className="bg-[#111] border-4 border-white p-8 max-w-lg w-full text-center max-h-[80vh] overflow-y-auto custom-scrollbar">
+            <h2 className="text-2xl text-[#f4b400] mb-6"><RandomText text="Select Level" /></h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {[1, 2, 3, 4, 5].map(lvl => (
+                    <Button 
+                        key={lvl} 
+                        onClick={() => onSelectLevel(lvl)}
+                        className="p-4 flex flex-col items-center gap-2 group"
+                    >
+                        <span className="text-2xl group-hover:scale-125 transition-transform">{LEVEL_CONFIGS[lvl]?.emoji || '🍳'}</span>
+                        <span className="text-xs">{LEVEL_CONFIGS[lvl]?.name || `Level ${lvl}`}</span>
+                    </Button>
+                ))}
+            </div>
+            <div className="mt-8 pt-4 border-t border-[#333]">
+                <Button onClick={onBack} variant="secondary" className="w-full">Back</Button>
+            </div>
+        </RandomReveal>
+    </Overlay>
+);
+
+export const LevelCompleteScreen: React.FC<LevelCompleteProps> = ({ levelName, message, emoji, onNext }) => (
+    <Overlay>
+        <RandomReveal className="bg-[#111] border-4 border-[#57a863] p-8 text-center max-w-md w-full">
+            <div className="text-6xl mb-4 animate-bounce">{emoji}</div>
+            <h2 className="text-2xl text-[#57a863] mb-2"><RandomText text={levelName} /></h2>
+            <p className="text-sm text-white mb-8">{message}</p>
+            <Button onClick={onNext} className="w-full bg-[#57a863] border-[#2e5934] animate-pulse">
+                NEXT SERVICE
+            </Button>
+        </RandomReveal>
+    </Overlay>
+);
+
+export const GameOverScreen: React.FC<GameOverProps> = ({ score, message, stats, onRestart, aiTitle, aiScore, isCalculating, isTimeScore }) => (
+    <Overlay>
+        <div className="flex flex-col md:flex-row gap-4 max-w-4xl w-full items-start justify-center p-4">
+             <RandomReveal className="bg-[#111] border-4 border-white p-8 text-center w-full md:w-[400px] flex flex-col gap-4 relative">
+                {isCalculating ? (
+                    <div className="absolute top-2 right-2 text-[10px] text-[#f4b400] animate-pulse">AI Analyzing...</div>
+                ) : (
+                    aiTitle && (
+                        <div className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-[#f4b400] text-black px-4 py-1 border-2 border-white font-bold text-xs whitespace-nowrap shadow-lg rotate-[-2deg]">
+                            {aiTitle}
+                        </div>
+                    )
+                )}
+
+                <h2 className="text-3xl text-red-500 mt-4 mb-2"><RandomText text="GAME OVER" /></h2>
+                <div className="text-sm text-[#aaa] mb-4 h-10 flex items-center justify-center">{message}</div>
+                
+                <div className="flex flex-col gap-2 bg-[#222] p-4 rounded border border-[#333]">
+                    <div className="text-xs text-[#888] uppercase">{isTimeScore ? "Final Time" : "Final Score"}</div>
+                    <div className="text-4xl text-white font-bold">
+                        {isCalculating ? (
+                            <span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"/>
+                        ) : (
+                            isTimeScore ? (
+                                <span>{Math.floor(score / 60)}:{(score % 60).toString().padStart(2, '0')}</span>
+                            ) : (
+                                <RandomText text={aiScore !== undefined ? aiScore.toString() : score.toString()} />
+                            )
+                        )}
+                    </div>
+                    {stats && <div className="text-xs text-[#f4b400] mt-1">{stats}</div>}
+                </div>
+
+                <Button onClick={onRestart} className="w-full mt-4">PLAY AGAIN</Button>
+            </RandomReveal>
+        </div>
+    </Overlay>
+);
+
+export const BossIntroScreen: React.FC<BossIntroProps> = ({ onStart }) => (
+    <Overlay>
+        <RandomReveal className="bg-[#111] border-4 border-red-600 p-8 text-center max-w-lg w-full shadow-[0_0_50px_rgba(255,0,0,0.3)]">
+            <h1 className="text-4xl text-red-600 mb-4 font-creepster tracking-widest animate-pulse">THE RUSH</h1>
+            <p className="text-sm text-white mb-6 leading-loose">
+                The dinner rush is here.<br/>
+                Socialize with guests while cooking.<br/>
+                <span className="text-[#f4b400]">Don't get distracted!</span>
+            </p>
+            <div className="flex justify-center mb-8 gap-4">
+                 <span className="text-4xl animate-bounce delay-100">🍷</span>
+                 <span className="text-4xl animate-bounce delay-200">🥗</span>
+                 <span className="text-4xl animate-bounce delay-300">🍛</span>
+            </div>
+            <Button onClick={onStart} className="w-full bg-red-600 border-red-800 text-white hover:bg-red-700 hover:scale-110">
+                OPEN DOORS
+            </Button>
+        </RandomReveal>
+    </Overlay>
+);
+
+export const PauseScreen: React.FC<PauseScreenProps> = ({ onResume, onQuit }) => (
+    <Overlay>
+        <RandomReveal className="bg-[#111] border-4 border-white p-8 text-center max-w-sm w-full">
+            <h2 className="text-2xl text-[#f4b400] mb-8"><RandomText text="PAUSED" /></h2>
+            <div className="flex flex-col gap-4">
+                <Button onClick={onResume} className="w-full">RESUME</Button>
+                <Button onClick={onQuit} variant="secondary" className="w-full">QUIT</Button>
+            </div>
+        </RandomReveal>
+    </Overlay>
+);
+
+export const InfoModal: React.FC<InfoModalProps> = ({ text, onClose }) => (
+    <Overlay>
+        <RandomReveal className="bg-[#111] border-4 border-[#f4b400] p-6 text-center max-w-sm w-full">
+            <p className="text-sm text-white mb-6 leading-relaxed">{text}</p>
+            <Button onClick={onClose} className="w-full">OK</Button>
+        </RandomReveal>
+    </Overlay>
+);
+
+export const SpeedResultScreen: React.FC<SpeedResultProps> = ({ wpm, cpm, accuracy, comment, onRestart }) => (
+    <Overlay>
+         <div className="flex flex-col md:flex-row gap-4 max-w-4xl w-full items-start justify-center p-4">
+            <RandomReveal className="bg-[#111] border-4 border-[#4facfe] p-8 text-center w-full md:w-[400px]">
+                <h2 className="text-2xl text-[#4facfe] mb-6">Speed Test Result</h2>
+                
+                <div className="grid grid-cols-2 gap-4 mb-6">
+                    <div className="bg-[#222] p-3 rounded">
+                        <div className="text-[10px] text-[#888]">WPM</div>
+                        <div className="text-2xl text-white font-bold">{wpm}</div>
+                    </div>
+                    <div className="bg-[#222] p-3 rounded">
+                        <div className="text-[10px] text-[#888]">ACCURACY</div>
+                        <div className={`text-2xl font-bold ${accuracy >= 95 ? 'text-green-500' : accuracy >= 80 ? 'text-yellow-500' : 'text-red-500'}`}>
+                            {accuracy}%
+                        </div>
+                    </div>
+                    <div className="bg-[#222] p-3 rounded col-span-2">
+                         <div className="text-[10px] text-[#888]">RAW CPM</div>
+                         <div className="text-xl text-[#ccc]">{cpm}</div>
+                    </div>
+                </div>
+
+                <div className="bg-[#1a1a1a] p-4 rounded border-l-4 border-[#f4b400] mb-8 text-left">
+                    <div className="text-[10px] text-[#f4b400] mb-1">CHEF'S FEEDBACK:</div>
+                    <p className="text-xs text-white italic">"{comment}"</p>
+                </div>
+
+                <Button onClick={onRestart} className="w-full bg-[#4facfe] border-[#2c7bb6]">TRY AGAIN</Button>
+            </RandomReveal>
+        </div>
+    </Overlay>
+);
+
 export const GeneratingModal: React.FC<GeneratingModalProps> = ({ message }) => (
     <Overlay>
-        <div className="flex flex-col items-center animate-pulse">
-            <div className="text-6xl mb-4">🤖</div>
-            <p className="text-[#f4b400] text-sm">{message}</p>
+        <div className="flex flex-col items-center gap-4">
+            <div className="w-12 h-12 border-4 border-[#f4b400] border-t-transparent rounded-full animate-spin"></div>
+            <div className="text-[#f4b400] text-sm animate-pulse">{message}</div>
         </div>
     </Overlay>
 );
