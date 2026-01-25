@@ -33,6 +33,7 @@ import TypingSpeedGame from './TypingSpeedGame';
 import HubScreen from './HubScreen';
 import IQGame from './IQGame'; 
 import MinesweeperGame from './MinesweeperGame';
+import { LeaderboardWidget } from './Overlays'; // Import LeaderboardWidget
 import { 
   StartScreen, 
   LevelSelectScreen, 
@@ -220,7 +221,8 @@ export default function Game({ user, onLogout }: GameProps) {
     }
 
     const lastWord = state.fallingWords[state.fallingWords.length - 1];
-    if (lastWord && lastWord.y < 80) return null;
+    // Ensure words don't overlap too much vertically
+    if (lastWord && lastWord.y < 50) return null;
 
     let type: WordType = 'normal';
     let text = '';
@@ -268,7 +270,9 @@ export default function Game({ user, onLogout }: GameProps) {
     }
 
     state.wordsSpawnedThisLevel++;
-    const spawnX = Math.random() * (width - 150) + 25;
+    // Use a fixed width calculation that doesn't rely on state to avoid resizing issues
+    const safeWidth = width > 0 ? width : 300;
+    const spawnX = Math.random() * (safeWidth - 150) + 25;
 
     return {
         id: Math.random().toString(36).substr(2, 9),
@@ -296,18 +300,20 @@ export default function Game({ user, onLogout }: GameProps) {
         setElapsedTime(state.stats.timeTaken);
     }
 
-    let spawnRate = 1800;
+    // --- Difficulty Tuning ---
+    let spawnRate = 2000;
     if (state.gameMode === 'infinite' || state.gameMode === 'universal') {
-        spawnRate = Math.max(500, 1800 / state.infiniteConfig.speedMult);
+        spawnRate = Math.max(500, 2000 / state.infiniteConfig.speedMult);
     } else if (state.gameMode === 'boss') {
         spawnRate = 1000;
     } else {
-        spawnRate = Math.max(800, 1800 - (state.level * 100));
+        // More lenient spawn rate for early levels
+        spawnRate = Math.max(1000, 2200 - (state.level * 200));
     }
 
     let currentWords = [...state.fallingWords];
 
-    if (time - state.spawnTimer > spawnRate || currentWords.length === 0) {
+    if (time - state.spawnTimer > spawnRate || (currentWords.length === 0 && !state.activeWordId)) {
         const newWord = generateWord();
         if (newWord) {
             currentWords.push(newWord);
@@ -315,13 +321,15 @@ export default function Game({ user, onLogout }: GameProps) {
         }
     }
 
-    let speed = 1.2;
-    if (state.gameMode === 'infinite') speed = 1.2 * state.infiniteConfig.speedMult;
-    else if (state.gameMode === 'universal') speed = 1.0 * state.infiniteConfig.speedMult;
-    else if (state.gameMode === 'boss') speed = 2.5;
-    else speed = 1.2 + (state.level * 0.2);
+    let speed = 1.0;
+    if (state.gameMode === 'infinite') speed = 1.0 * state.infiniteConfig.speedMult;
+    else if (state.gameMode === 'universal') speed = 0.8 * state.infiniteConfig.speedMult;
+    else if (state.gameMode === 'boss') speed = 2.0;
+    else speed = 0.8 + (state.level * 0.15); // Start slower
 
+    // Normalize movement to frame time
     const moveAmount = speed * (deltaTime / 16.66);
+    
     const nextWords: WordEntity[] = [];
     let livesChanged = false;
     let scoreChanged = false;
@@ -973,6 +981,13 @@ export default function Game({ user, onLogout }: GameProps) {
                      <div className="absolute top-20 left-1/2 transform -translate-x-1/2 text-[#f4b400] text-xl md:text-2xl animate-bounce z-50 text-center" style={{ textShadow: '2px 2px 0px #000', color: COLORS.warn }}>
                          NEW HIGH SCORE!
                      </div>
+                )}
+
+                {/* --- Leaderboard Widget in Start/GameOver Screen (Desktop) --- */}
+                {!isMobile && (screen === 'start' || screen === 'game-over') && (
+                    <div className="absolute top-0 right-0 h-full w-[300px] z-[60] border-l-4 border-white bg-[#0a0a0a]">
+                        <LeaderboardWidget className="h-full border-none" allowedModes={['competitive', 'infinite', 'universal', 'speed']} defaultMode={gameMode === 'speed-test' ? 'speed' : 'competitive'} />
+                    </div>
                 )}
 
                 {screen === 'playing' && (

@@ -23,7 +23,8 @@ const WordComponent: React.FC<WordProps> = ({ word, isActive, onClick }) => {
       borderRadius: '4px',
       userSelect: 'none',
       whiteSpace: 'nowrap',
-      transition: 'transform 0.1s linear, background-color 0.2s ease', // Linear transform for falling, ease for interactions
+      // Removed transition for transform to prevent interpolation fighting with JS updates
+      transition: 'background-color 0.2s ease', 
       cursor: 'pointer',
       zIndex: isActive ? 30 : 20,
       willChange: 'transform'
@@ -83,7 +84,7 @@ const WordComponent: React.FC<WordProps> = ({ word, isActive, onClick }) => {
         e.preventDefault();
         onClick(word);
       }}
-      className={`word ${animateClass} hover:border-[#f4b400] text-base md:text-2xl ${word.y < 50 ? 'word-enter' : ''}`}
+      className={`word ${animateClass} hover:border-[#f4b400] text-base md:text-2xl`}
     >
       <span 
         style={{ 

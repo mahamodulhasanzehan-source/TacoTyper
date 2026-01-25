@@ -640,15 +640,24 @@ export const StartScreen: React.FC<StartScreenProps> = ({
 }) => {
     return (
         <Overlay>
-            <RandomReveal className="bg-[#111] border-4 border-white p-8 rounded-none max-w-lg w-full text-center shadow-[10px_10px_0px_#f4b400]">
+            {/* Universal button positioned at top right */}
+            <div className="absolute top-4 right-4 z-20">
+                 <Button onClick={onUniversal} variant="secondary" className="text-xs md:text-sm shadow-md hover:scale-110">
+                    Universal
+                 </Button>
+            </div>
+
+            <RandomReveal className="bg-[#111] border-4 border-white p-8 rounded-none max-w-lg w-full text-center shadow-[10px_10px_0px_#f4b400] relative">
                 <h1 className="text-4xl text-[#f4b400] mb-2 font-['Press_Start_2P']"><RandomText text="TACO TYPER" /></h1>
                 <p className="text-xs text-[#aaa] mb-8">Type fast, don't drop the food!</p>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                    <Button onClick={onStart} className="hover:scale-105">Play Standard</Button>
-                    <Button onClick={onInfinite} variant="accent" className="hover:scale-105">Infinite Mode</Button>
-                    <Button onClick={onUniversal} variant="secondary" className="hover:scale-105">Universal Mode</Button>
-                    <Button onClick={onSpeedTest} variant="pro" className="hover:scale-105" disabled={isGenerating}>
+                <div className="flex flex-col gap-4 mb-6 items-center">
+                    <div className="flex gap-4 w-full">
+                        <Button onClick={onStart} className="flex-1 hover:scale-105 text-lg">Play Standard</Button>
+                        <Button onClick={onInfinite} variant="accent" className="flex-1 hover:scale-105">Infinite Mode</Button>
+                    </div>
+                    
+                    <Button onClick={onSpeedTest} variant="pro" className="w-full hover:scale-105" disabled={isGenerating}>
                         {isGenerating ? 'Generating...' : 'Speed Test (AI)'}
                     </Button>
                 </div>
