@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { User } from '../services/firebase';
 import { aiService } from '../services/aiService';
-import { WORDLE_WORDS } from '../constants/wordleWords';
 
 interface CluelessGameProps {
     user: User;
@@ -21,23 +20,35 @@ const CluelessGame: React.FC<CluelessGameProps> = ({ onBackToHub }) => {
     const [streak, setStreak] = useState(0);
     const [gaveUp, setGaveUp] = useState(false);
     const inputRef = useRef<HTMLInputElement>(null);
+    const [wordQueue, setWordQueue] = useState<string[]>([]);
+    const [isInitializing, setIsInitializing] = useState(true);
 
-    const startNewGame = useCallback(() => {
-        const word = WORDLE_WORDS[Math.floor(Math.random() * WORDLE_WORDS.length)].toLowerCase();
-        setTargetWord(word);
+    const startNewGame = useCallback(async () => {
+        setIsInitializing(true);
+        let currentQueue = [...wordQueue];
+        if (currentQueue.length === 0) {
+            currentQueue = await aiService.generateWordleWords(5);
+        }
+        
+        const word = currentQueue.shift() || 'tacos';
+        setWordQueue(currentQueue);
+        setTargetWord(word.toLowerCase());
         setGuesses([]);
         setGuess('');
         setGameOver(false);
         setMessage('');
         setGaveUp(false);
+        setIsInitializing(false);
         if (inputRef.current) {
             inputRef.current.focus();
         }
-    }, []);
+    }, [wordQueue]);
 
+    // Initial load
     useEffect(() => {
         startNewGame();
-    }, [startNewGame]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     const handleGuess = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -101,7 +112,12 @@ const CluelessGame: React.FC<CluelessGameProps> = ({ onBackToHub }) => {
                 <div className="w-8"></div>
             </div>
 
-            <div className="flex flex-col items-center w-full max-w-lg px-4 z-10 mt-16 h-[calc(100vh-100px)]">
+            {isInitializing ? (
+                <div className="flex-1 flex items-center justify-center z-10">
+                    <div className="loading-spinner"></div>
+                </div>
+            ) : (
+                <div className="flex flex-col items-center w-full max-w-lg px-4 z-10 mt-16 h-[calc(100vh-100px)]">
                 <div className="text-center mb-4 flex justify-between items-center w-full">
                     <p className="text-[#aaa] text-sm">Guess the secret word. Closer meaning = higher score.</p>
                     {!gameOver && (
@@ -167,6 +183,7 @@ const CluelessGame: React.FC<CluelessGameProps> = ({ onBackToHub }) => {
                     </button>
                 )}
             </div>
+            )}
         </div>
     );
 };

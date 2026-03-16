@@ -157,6 +157,107 @@ class AIService {
     }
   }
 
+  async generateWordleWords(count: number): Promise<string[]> {
+    if (!this.ai) {
+        const fallbacks = ["HELLO", "WORLD", "REACT", "GAMES", "TACOS", "CATS", "DOGS", "BIRDS"];
+        return Array.from({ length: count }, () => fallbacks[Math.floor(Math.random() * fallbacks.length)]);
+    }
+
+    try {
+        const response = await this.ai.models.generateContent({
+            model: 'gemini-3-flash-preview',
+            contents: `Generate a list of exactly ${count} unique, common 5-letter English words. Include simple words like "hello" and plural 4-letter words (like "cats" or "dogs"). Return ONLY a JSON array of strings in uppercase.`,
+            config: {
+                responseMimeType: "application/json",
+                responseSchema: {
+                    type: Type.ARRAY,
+                    items: { type: Type.STRING }
+                }
+            }
+        });
+        
+        const jsonStr = response.text;
+        if (jsonStr) {
+            const data = JSON.parse(jsonStr);
+            if (Array.isArray(data) && data.length > 0) {
+                return data.map(w => String(w).toUpperCase().trim()).filter(w => w.length === 5);
+            }
+        }
+        throw new Error("Invalid AI response");
+    } catch (e) {
+        console.error("AI Wordle Gen Error:", e);
+        const fallbacks = ["HELLO", "WORLD", "REACT", "GAMES", "TACOS", "CATS", "DOGS", "BIRDS", "APPLE", "HOUSE"];
+        return Array.from({ length: count }, () => fallbacks[Math.floor(Math.random() * fallbacks.length)]);
+    }
+  }
+
+  async generateMoreLessItems(count: number): Promise<{name: string, value: number, image: string}[]> {
+    if (!this.ai) {
+        const fallbacks = [
+            { name: "Ants on Earth", value: 20000000000000000, image: "🐜" },
+            { name: "Stars in Milky Way", value: 100000000000, image: "⭐" },
+            { name: "Human Population", value: 8000000000, image: "👥" },
+            { name: "Cars in the World", value: 1400000000, image: "🚗" },
+            { name: "Grains of Sand", value: 7500000000000000000, image: "🏖️" },
+            { name: "Drops of Water in Ocean", value: 1386000000000000000000, image: "💧" },
+            { name: "Trees on Earth", value: 3040000000000, image: "🌳" },
+            { name: "Cells in Human Body", value: 30000000000000, image: "🦠" },
+            { name: "Seconds in a Year", value: 31536000, image: "⏱️" },
+            { name: "Miles to the Moon", value: 238855, image: "🌕" }
+        ];
+        // Shuffle and return count items
+        const shuffled = fallbacks.sort(() => 0.5 - Math.random());
+        return shuffled.slice(0, Math.min(count, shuffled.length));
+    }
+
+    try {
+        const response = await this.ai.models.generateContent({
+            model: 'gemini-3-flash-preview',
+            contents: `Generate a list of exactly ${count} unique, interesting items or concepts that have a specific numerical value associated with them (e.g., population, distance, quantity, weight, speed). For each item, provide its name, its estimated numerical value, and a single relevant emoji as an image. Return ONLY a JSON array of objects.`,
+            config: {
+                responseMimeType: "application/json",
+                responseSchema: {
+                    type: Type.ARRAY,
+                    items: {
+                        type: Type.OBJECT,
+                        properties: {
+                            name: { type: Type.STRING },
+                            value: { type: Type.NUMBER },
+                            image: { type: Type.STRING }
+                        },
+                        required: ['name', 'value', 'image']
+                    }
+                }
+            }
+        });
+        
+        const jsonStr = response.text;
+        if (jsonStr) {
+            const data = JSON.parse(jsonStr);
+            if (Array.isArray(data) && data.length > 0) {
+                return data;
+            }
+        }
+        throw new Error("Invalid AI response");
+    } catch (e) {
+        console.error("AI More/Less Gen Error:", e);
+        const fallbacks = [
+            { name: "Ants on Earth", value: 20000000000000000, image: "🐜" },
+            { name: "Stars in Milky Way", value: 100000000000, image: "⭐" },
+            { name: "Human Population", value: 8000000000, image: "👥" },
+            { name: "Cars in the World", value: 1400000000, image: "🚗" },
+            { name: "Grains of Sand", value: 7500000000000000000, image: "🏖️" },
+            { name: "Drops of Water in Ocean", value: 1386000000000000000000, image: "💧" },
+            { name: "Trees on Earth", value: 3040000000000, image: "🌳" },
+            { name: "Cells in Human Body", value: 30000000000000, image: "🦠" },
+            { name: "Seconds in a Year", value: 31536000, image: "⏱️" },
+            { name: "Miles to the Moon", value: 238855, image: "🌕" }
+        ];
+        const shuffled = fallbacks.sort(() => 0.5 - Math.random());
+        return shuffled.slice(0, Math.min(count, shuffled.length));
+    }
+  }
+
   private calculateFallbackScore(stats: SessionStats, speedTest?: { wpm: number, accuracy: number }) {
         if (speedTest) {
             let rawScore = speedTest.wpm * Math.pow(speedTest.accuracy / 100, 3);

@@ -4,7 +4,7 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌮</text></svg>">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>Taco Hub | Social Playground & Games</title>
     <meta name="description" content="A social gaming playground featuring TacoTyper, IQ challenges, and real-time chat. Compete on leaderboards and hang out with other chefs." />
     <meta name="keywords" content="social games, online playground, IQ test, typing game, wpm challenge, mini games, browser games, competitive typing, brain games, taco typer, social hub, chat and play" />
@@ -15,6 +15,26 @@
       if (typeof process === 'undefined') {
         window.process = { env: {} };
       }
+      
+      // Prevent zooming via keyboard and mouse wheel
+      document.addEventListener('wheel', function(e) {
+        if (e.ctrlKey || e.metaKey) {
+          e.preventDefault();
+        }
+      }, { passive: false });
+      
+      document.addEventListener('keydown', function(e) {
+        if ((e.ctrlKey || e.metaKey) && (e.key === '=' || e.key === '-' || e.key === '0' || e.key === '+' || e.code === 'NumpadAdd' || e.code === 'NumpadSubtract')) {
+          e.preventDefault();
+        }
+      });
+
+      // Prevent pinch-to-zoom on touch devices
+      document.addEventListener('touchmove', function(e) {
+        if (e.touches.length > 1) {
+          e.preventDefault();
+        }
+      }, { passive: false });
     </script>
     <style>
       /* --- Global Animations & Styles --- */
@@ -88,10 +108,11 @@
       }
       
       body {
-        font-family: 'Inter', sans-serif;
-        background-color: #000;
-        overflow: hidden;
-      }
+  font-family: 'Inter', sans-serif;
+  background-color: #000;
+  overflow: hidden;
+  touch-action: manipulation;
+}
 
       /* Specific classes for retro fonts where needed */
       .font-press-start {

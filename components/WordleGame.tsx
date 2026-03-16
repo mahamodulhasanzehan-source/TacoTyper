@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { User } from '../services/firebase';
-import { WORDLE_WORDS } from '../constants/wordleWords';
+import { aiService } from '../services/aiService';
 import { isMobileDevice } from '../utils/device';
 
 interface WordleGameProps {
@@ -24,19 +24,31 @@ const WordleGame: React.FC<WordleGameProps> = ({ onBackToHub }) => {
     const [streak, setStreak] = useState(0);
     const [hardMode, setHardMode] = useState(false);
     const [pressedKey, setPressedKey] = useState<string | null>(null);
+    const [wordQueue, setWordQueue] = useState<string[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
 
-    const startNewGame = useCallback(() => {
-        const word = WORDLE_WORDS[Math.floor(Math.random() * WORDLE_WORDS.length)].toUpperCase();
+    const startNewGame = useCallback(async () => {
+        setIsLoading(true);
+        let currentQueue = [...wordQueue];
+        if (currentQueue.length === 0) {
+            currentQueue = await aiService.generateWordleWords(5);
+        }
+        
+        const word = currentQueue.shift() || 'TACOS';
+        setWordQueue(currentQueue);
         setTargetWord(word);
         setGuesses([]);
         setCurrentGuess('');
         setGameOver(false);
         setMessage('');
-    }, []);
+        setIsLoading(false);
+    }, [wordQueue]);
 
+    // Initial load
     useEffect(() => {
         startNewGame();
-    }, [startNewGame]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     const getLetterStatus = (letter: string, index: number, guess: string) => {
         if (targetWord[index] === letter) return 'correct';
@@ -61,14 +73,6 @@ const WordleGame: React.FC<WordleGameProps> = ({ onBackToHub }) => {
         if (key === 'ENTER') {
             if (currentGuess.length !== COLS) {
                 setMessage('Not enough letters');
-                setShakeRow(guesses.length);
-                setTimeout(() => setShakeRow(-1), 500);
-                setTimeout(() => setMessage(''), 1500);
-                return;
-            }
-            
-            if (!WORDLE_WORDS.map(w => w.toUpperCase()).includes(currentGuess)) {
-                setMessage('Not in word list');
                 setShakeRow(guesses.length);
                 setTimeout(() => setShakeRow(-1), 500);
                 setTimeout(() => setMessage(''), 1500);
@@ -178,7 +182,13 @@ const WordleGame: React.FC<WordleGameProps> = ({ onBackToHub }) => {
                 </div>
             )}
 
-            <div className="flex flex-col gap-2 mb-8 z-10 mt-4">
+            {isLoading ? (
+                <div className="flex-1 flex items-center justify-center z-10">
+                    <div className="loading-spinner"></div>
+                </div>
+            ) : (
+                <>
+                    <div className="flex flex-col gap-2 mb-8 z-10 mt-4">
                 {Array.from({ length: ROWS }).map((_, rowIndex) => {
                     const guess = guesses[rowIndex] || (rowIndex === guesses.length ? currentGuess : '');
                     const isSubmitted = rowIndex < guesses.length;
@@ -240,13 +250,15 @@ const WordleGame: React.FC<WordleGameProps> = ({ onBackToHub }) => {
                 ))}
             </div>
 
-            {gameOver && (
-                <button 
-                    onClick={startNewGame}
-                    className="mt-8 px-6 py-3 bg-[#57a863] text-white font-bold rounded hover:bg-[#468a4f] transition-colors z-10 font-['Press_Start_2P'] text-sm animate-pop-in"
-                >
-                    PLAY AGAIN
-                </button>
+                    {gameOver && (
+                        <button 
+                            onClick={startNewGame}
+                            className="mt-8 px-6 py-3 bg-[#57a863] text-white font-bold rounded hover:bg-[#468a4f] transition-colors z-10 font-['Press_Start_2P'] text-sm animate-pop-in"
+                        >
+                            PLAY AGAIN
+                        </button>
+                    )}
+                </>
             )}
         </div>
     );

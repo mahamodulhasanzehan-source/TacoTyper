@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { User } from '../services/firebase';
-import { MORE_LESS_DATA } from '../constants/moreLessData';
+import { aiService } from '../services/aiService';
 
 interface MoreLessGameProps {
     user: User;
@@ -12,31 +12,27 @@ interface MoreLessGameProps {
 
 const MoreLessGame: React.FC<MoreLessGameProps> = ({ onBackToHub }) => {
     const [score, setScore] = useState(0);
-    const [item1, setItem1] = useState(MORE_LESS_DATA[0]);
-    const [item2, setItem2] = useState(MORE_LESS_DATA[1]);
+    const [itemsQueue, setItemsQueue] = useState<{name: string, value: number, image: string}[]>([]);
+    const [item1, setItem1] = useState<{name: string, value: number, image: string} | null>(null);
+    const [item2, setItem2] = useState<{name: string, value: number, image: string} | null>(null);
     const [gameOver, setGameOver] = useState(false);
     const [win, setWin] = useState(false);
     const [showValue, setShowValue] = useState(false);
     const [isCorrectGuess, setIsCorrectGuess] = useState<boolean | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
 
-    const getRandomItem = (exclude: any) => {
-        let item;
-        do {
-            item = MORE_LESS_DATA[Math.floor(Math.random() * MORE_LESS_DATA.length)];
-        } while (item.name === exclude.name);
-        return item;
-    };
-
-    const startNewGame = useCallback(() => {
-        const first = MORE_LESS_DATA[Math.floor(Math.random() * MORE_LESS_DATA.length)];
-        const second = getRandomItem(first);
-        setItem1(first);
-        setItem2(second);
+    const startNewGame = useCallback(async () => {
+        setIsLoading(true);
+        const items = await aiService.generateMoreLessItems(8);
+        setItemsQueue(items);
+        setItem1(items[0]);
+        setItem2(items[1]);
         setScore(0);
         setGameOver(false);
         setWin(false);
         setShowValue(false);
         setIsCorrectGuess(null);
+        setIsLoading(false);
     }, []);
 
     useEffect(() => {
@@ -44,7 +40,7 @@ const MoreLessGame: React.FC<MoreLessGameProps> = ({ onBackToHub }) => {
     }, [startNewGame]);
 
     const handleChoice = (choice: 'higher' | 'lower') => {
-        if (gameOver) return;
+        if (gameOver || !item1 || !item2) return;
 
         setShowValue(true);
         const isCorrect = choice === 'higher' ? item2.value >= item1.value : item2.value <= item1.value;
@@ -59,7 +55,7 @@ const MoreLessGame: React.FC<MoreLessGameProps> = ({ onBackToHub }) => {
                         setGameOver(true);
                     } else {
                         setItem1(item2);
-                        setItem2(getRandomItem(item2));
+                        setItem2(itemsQueue[newScore + 1]);
                         setShowValue(false);
                         setIsCorrectGuess(null);
                     }
@@ -82,12 +78,16 @@ const MoreLessGame: React.FC<MoreLessGameProps> = ({ onBackToHub }) => {
                 <div className="text-xl font-bold">Score: {score}/7</div>
             </div>
 
-            {!gameOver ? (
+            {isLoading ? (
+                <div className="flex-1 flex items-center justify-center z-10">
+                    <div className="loading-spinner"></div>
+                </div>
+            ) : !gameOver && item1 && item2 ? (
                 <div className="flex flex-col md:flex-row items-center justify-center gap-8 w-full max-w-4xl px-4 z-10 mt-16 overflow-hidden">
                     <div key={item1.name} className="flex flex-col items-center justify-center w-full md:w-1/2 h-64 bg-[#111] border-4 border-[#333] rounded-xl p-4 animate-slide-in-right">
                         <div className="text-6xl mb-4">{item1.image}</div>
                         <h2 className="text-2xl font-bold text-center">{item1.name}</h2>
-                        <div className="text-xl text-[#aaa] mt-2">has a population of</div>
+                        <div className="text-xl text-[#aaa] mt-2">has a value of</div>
                         <div className="text-3xl font-bold text-[#ff2a2a] mt-2">{item1.value.toLocaleString()}</div>
                     </div>
 
@@ -98,7 +98,7 @@ const MoreLessGame: React.FC<MoreLessGameProps> = ({ onBackToHub }) => {
                     <div key={item2.name} className={`flex flex-col items-center justify-center w-full md:w-1/2 h-64 bg-[#111] border-4 rounded-xl p-4 animate-slide-in-right transition-colors duration-500 ${isCorrectGuess === true ? 'border-[#57a863] bg-[#1a3320]' : isCorrectGuess === false ? 'border-[#ff2a2a] bg-[#331111] animate-shake' : 'border-[#333]'}`}>
                         <div className="text-6xl mb-4">{item2.image}</div>
                         <h2 className="text-2xl font-bold text-center">{item2.name}</h2>
-                        <div className="text-xl text-[#aaa] mt-2">has a population of</div>
+                        <div className="text-xl text-[#aaa] mt-2">has a value of</div>
                         
                         {showValue ? (
                             <div className={`text-3xl font-bold mt-2 animate-pop-in ${isCorrectGuess ? 'text-[#57a863]' : 'text-[#ff2a2a]'}`}>
@@ -122,7 +122,7 @@ const MoreLessGame: React.FC<MoreLessGameProps> = ({ onBackToHub }) => {
                         )}
                     </div>
                 </div>
-            ) : (
+            ) : item1 && item2 ? (
                 <div className="flex flex-col items-center justify-center gap-6 z-10 mt-16 animate-pop-in">
                     <h2 className={`text-4xl font-bold font-['Press_Start_2P'] ${win ? 'text-[#57a863]' : 'text-[#ff2a2a]'}`}>
                         {win ? 'YOU WIN!' : 'GAME OVER'}
@@ -149,7 +149,7 @@ const MoreLessGame: React.FC<MoreLessGameProps> = ({ onBackToHub }) => {
                         PLAY AGAIN
                     </button>
                 </div>
-            )}
+            ) : null}
         </div>
     );
 };
