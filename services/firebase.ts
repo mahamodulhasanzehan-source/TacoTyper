@@ -401,7 +401,7 @@ export const saveSpeedTestStats = async (user: User, wpm: number, accuracy: numb
 
 // --- Global Stats Tracking ---
 
-export const incrementGamePlays = async (gameKey: 'taco_typer' | 'iq_test' | 'minesweeper') => {
+export const incrementGamePlays = async (gameKey: 'taco_typer' | 'iq_test' | 'minesweeper' | 'wordle' | 'angle' | 'more_less' | 'spelling_bee' | 'clueless') => {
     const statsRef = doc(db, "system", "global_stats");
     // Field names match the interface keys: taco_typer_plays, etc.
     const field = `${gameKey}_plays`;
@@ -417,7 +417,12 @@ export const incrementGamePlays = async (gameKey: 'taco_typer' | 'iq_test' | 'mi
              await setDoc(statsRef, {
                  taco_typer_plays: gameKey === 'taco_typer' ? 1 : 0,
                  iq_test_plays: gameKey === 'iq_test' ? 1 : 0,
-                 minesweeper_plays: gameKey === 'minesweeper' ? 1 : 0
+                 minesweeper_plays: gameKey === 'minesweeper' ? 1 : 0,
+                 wordle_plays: gameKey === 'wordle' ? 1 : 0,
+                 angle_plays: gameKey === 'angle' ? 1 : 0,
+                 more_less_plays: gameKey === 'more_less' ? 1 : 0,
+                 spelling_bee_plays: gameKey === 'spelling_bee' ? 1 : 0,
+                 clueless_plays: gameKey === 'clueless' ? 1 : 0
              });
         }
     }
@@ -430,9 +435,9 @@ export const getGlobalGameStats = async (): Promise<GlobalGameStats> => {
         if (snap.exists()) {
             return snap.data() as GlobalGameStats;
         }
-        return { taco_typer_plays: 0, iq_test_plays: 0, minesweeper_plays: 0 };
+        return { taco_typer_plays: 0, iq_test_plays: 0, minesweeper_plays: 0, wordle_plays: 0, angle_plays: 0, more_less_plays: 0, spelling_bee_plays: 0, clueless_plays: 0 };
     } catch (e) {
-        return { taco_typer_plays: 0, iq_test_plays: 0, minesweeper_plays: 0 };
+        return { taco_typer_plays: 0, iq_test_plays: 0, minesweeper_plays: 0, wordle_plays: 0, angle_plays: 0, more_less_plays: 0, spelling_bee_plays: 0, clueless_plays: 0 };
     }
 };
 

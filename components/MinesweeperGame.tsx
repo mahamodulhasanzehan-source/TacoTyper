@@ -236,6 +236,9 @@ const MinesweeperGame: React.FC<MinesweeperGameProps> = ({ user, onBackToHub, us
 
     return (
         <div className="flex h-full w-full bg-[#000] text-white overflow-hidden relative font-['Inter',_sans-serif]">
+            {/* Random Doodles */}
+            <div className="absolute inset-0 opacity-10 pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at 70% 30%, #57a863 2px, transparent 2px), radial-gradient(circle at 30% 70%, #57a863 2px, transparent 2px)', backgroundSize: '100px 100px' }}></div>
+            
             {!isMobile && (
                 <div className="flex flex-col absolute top-0 right-0 h-full w-[300px] z-[50] border-l border-[#333] animate-fade-in" style={{ animationDelay: '0.2s' }}>
                     <LeaderboardWidget className="h-[66%] border-b-0" allowedModes={['minesweeper-beginner', 'minesweeper-intermediate', 'minesweeper-expert']} defaultMode={`minesweeper-${difficulty}`} />

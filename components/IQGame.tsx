@@ -202,6 +202,8 @@ const IQGame: React.FC<IQGameProps> = ({ user, onBackToHub, username, onUpdateUs
     // --- Render ---
     return (
         <div className="flex h-full w-full bg-[#000] text-white overflow-hidden relative font-['Inter',_sans-serif]">
+            {/* Random Doodles */}
+            <div className="absolute inset-0 opacity-10 pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at 20% 80%, #4facfe 2px, transparent 2px), radial-gradient(circle at 80% 20%, #4facfe 2px, transparent 2px)', backgroundSize: '100px 100px' }}></div>
             
             {/* --- Right Sidebar (Desktop Only) --- */}
             {!isMobile && (

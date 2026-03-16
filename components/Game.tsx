@@ -33,6 +33,11 @@ import TypingSpeedGame from './TypingSpeedGame';
 import HubScreen from './HubScreen';
 import IQGame from './IQGame'; 
 import MinesweeperGame from './MinesweeperGame';
+import WordleGame from './WordleGame';
+import AngleGame from './AngleGame';
+import MoreLessGame from './MoreLessGame';
+import SpellingBeeGame from './SpellingBeeGame';
+import CluelessGame from './CluelessGame';
 import { LeaderboardWidget } from './Overlays'; // Import LeaderboardWidget
 import { 
   StartScreen, 
@@ -57,7 +62,7 @@ interface GameProps {
 
 export default function Game({ user, onLogout }: GameProps) {
   // --- Global App State ---
-  const [activeApp, setActiveApp] = useState<'taco' | 'iq' | 'mine'>('taco');
+  const [activeApp, setActiveApp] = useState<'taco' | 'iq' | 'mine' | 'wordle' | 'angle' | 'more-less' | 'spelling-bee' | 'clueless'>('taco');
 
   // --- Taco Game State ---
   const [screen, setScreen] = useState<GameScreen>('hub');
@@ -957,12 +962,57 @@ export default function Game({ user, onLogout }: GameProps) {
                 onUpdateUsername={handleUpdateUsername}
                 onLogout={onLogout}
              />
+        ) : activeApp === 'wordle' ? (
+             <WordleGame 
+                user={user}
+                onBackToHub={() => setActiveApp('taco')}
+                username={customUsername}
+                onUpdateUsername={handleUpdateUsername}
+                onLogout={onLogout}
+             />
+        ) : activeApp === 'angle' ? (
+             <AngleGame 
+                user={user}
+                onBackToHub={() => setActiveApp('taco')}
+                username={customUsername}
+                onUpdateUsername={handleUpdateUsername}
+                onLogout={onLogout}
+             />
+        ) : activeApp === 'more-less' ? (
+             <MoreLessGame 
+                user={user}
+                onBackToHub={() => setActiveApp('taco')}
+                username={customUsername}
+                onUpdateUsername={handleUpdateUsername}
+                onLogout={onLogout}
+             />
+        ) : activeApp === 'spelling-bee' ? (
+             <SpellingBeeGame 
+                user={user}
+                onBackToHub={() => setActiveApp('taco')}
+                username={customUsername}
+                onUpdateUsername={handleUpdateUsername}
+                onLogout={onLogout}
+             />
+        ) : activeApp === 'clueless' ? (
+             <CluelessGame 
+                user={user}
+                onBackToHub={() => setActiveApp('taco')}
+                username={customUsername}
+                onUpdateUsername={handleUpdateUsername}
+                onLogout={onLogout}
+             />
         ) : screen === 'hub' ? (
              <HubScreen 
                 user={user} 
                 onLaunchGame={() => setScreen('start')}
                 onLaunchIQ={() => setActiveApp('iq')}
                 onLaunchMinesweeper={() => setActiveApp('mine')}
+                onLaunchWordle={() => setActiveApp('wordle')}
+                onLaunchAngle={() => setActiveApp('angle')}
+                onLaunchMoreLess={() => setActiveApp('more-less')}
+                onLaunchSpellingBee={() => setActiveApp('spelling-bee')}
+                onLaunchClueless={() => setActiveApp('clueless')}
                 onLogout={onLogout}
                 username={customUsername}
                 onUpdateUsername={handleUpdateUsername}
@@ -970,6 +1020,9 @@ export default function Game({ user, onLogout }: GameProps) {
         ) : (
             // --- TACO TYPER GAME ---
             <div style={getContainerStyles()} className="relative transition-all duration-500 animate-fade-in">
+                {/* Random Doodles */}
+                <div className="absolute inset-0 opacity-10 pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at 10% 10%, #f4b400 2px, transparent 2px), radial-gradient(circle at 90% 90%, #f4b400 2px, transparent 2px)', backgroundSize: '120px 120px' }}></div>
+                
                 {sparkles.map(s => (
                     <div key={s.id} className="sparkle" style={{ left: s.x, top: s.y, backgroundColor: s.color, '--tx': s.tx, '--ty': s.ty } as any} />
                 ))}

@@ -12,6 +12,11 @@ interface HubScreenProps {
     onLaunchGame: () => void;
     onLaunchIQ: () => void;
     onLaunchMinesweeper: () => void;
+    onLaunchWordle: () => void;
+    onLaunchAngle: () => void;
+    onLaunchMoreLess: () => void;
+    onLaunchSpellingBee: () => void;
+    onLaunchClueless: () => void;
     onLogout: () => void;
     username?: string | null;
     onUpdateUsername: (name: string) => void;
@@ -27,20 +32,18 @@ interface GameCard {
     action: () => void;
 }
 
-const HubScreen: React.FC<HubScreenProps> = ({ user, onLaunchGame, onLaunchIQ, onLaunchMinesweeper, onLogout, username, onUpdateUsername }) => {
+const HubScreen: React.FC<HubScreenProps> = ({ user, onLaunchGame, onLaunchIQ, onLaunchMinesweeper, onLaunchWordle, onLaunchAngle, onLaunchMoreLess, onLaunchSpellingBee, onLaunchClueless, onLogout, username, onUpdateUsername }) => {
     const [showSettings, setShowSettings] = useState(false);
     const [showFriends, setShowFriends] = useState(false);
     const [isMobile, setIsMobile] = useState(false);
-    const [stats, setStats] = useState<GlobalGameStats>({ taco_typer_plays: 0, iq_test_plays: 0, minesweeper_plays: 0 });
+    const [stats, setStats] = useState<GlobalGameStats>({ taco_typer_plays: 0, iq_test_plays: 0, minesweeper_plays: 0, wordle_plays: 0, angle_plays: 0, more_less_plays: 0, spelling_bee_plays: 0, clueless_plays: 0 });
     const [sortedGames, setSortedGames] = useState<GameCard[]>([]);
     
-    // Fallback name
     const displayableName = username || user.displayName || 'Chef';
 
     useEffect(() => {
         setIsMobile(isMobileDevice());
         
-        // Fetch stats on mount to determine order
         const loadStats = async () => {
             const s = await getGlobalGameStats();
             setStats(s);
@@ -49,7 +52,6 @@ const HubScreen: React.FC<HubScreenProps> = ({ user, onLaunchGame, onLaunchIQ, o
     }, []);
 
     useEffect(() => {
-        // Define base games
         const games: GameCard[] = [
             {
                 id: 'taco',
@@ -77,21 +79,65 @@ const HubScreen: React.FC<HubScreenProps> = ({ user, onLaunchGame, onLaunchIQ, o
                 color: '#57a863',
                 plays: stats.minesweeper_plays,
                 action: onLaunchMinesweeper
+            },
+            {
+                id: 'wordle',
+                title: 'Wordle',
+                description: 'Guess the Hidden Word',
+                icon: '📝',
+                color: '#57a863',
+                plays: stats.wordle_plays || 0,
+                action: onLaunchWordle
+            },
+            {
+                id: 'angle',
+                title: 'Angle',
+                description: 'Estimate the Angle',
+                icon: '📐',
+                color: '#d900ff',
+                plays: stats.angle_plays || 0,
+                action: onLaunchAngle
+            },
+            {
+                id: 'moreless',
+                title: 'More / Less',
+                description: 'Compare the Values',
+                icon: '⚖️',
+                color: '#ff2a2a',
+                plays: stats.more_less_plays || 0,
+                action: onLaunchMoreLess
+            },
+            {
+                id: 'spellingbee',
+                title: 'Spelling Bee',
+                description: 'Listen and Spell',
+                icon: '🐝',
+                color: '#f4b400',
+                plays: stats.spelling_bee_plays || 0,
+                action: onLaunchSpellingBee
+            },
+            {
+                id: 'clueless',
+                title: 'Clueless',
+                description: 'Semantic Guessing Game',
+                icon: '🕵️',
+                color: '#4facfe',
+                plays: stats.clueless_plays || 0,
+                action: onLaunchClueless
             }
         ];
 
-        // Sort by plays descending
         games.sort((a, b) => b.plays - a.plays);
         setSortedGames(games);
 
-    }, [stats, onLaunchGame, onLaunchIQ, onLaunchMinesweeper]);
+    }, [stats, onLaunchGame, onLaunchIQ, onLaunchMinesweeper, onLaunchWordle, onLaunchAngle, onLaunchMoreLess, onLaunchSpellingBee, onLaunchClueless]);
 
     return (
         <div className="flex h-full w-full bg-[#000] text-white overflow-hidden relative font-['Press_Start_2P']">
-            {/* Main Content Area */}
+            <div className="absolute inset-0 opacity-10 pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at 40% 60%, #fff 2px, transparent 2px), radial-gradient(circle at 60% 40%, #fff 2px, transparent 2px)', backgroundSize: '150px 150px' }}></div>
+            
             <div className="flex-1 flex flex-col p-4 md:p-8 relative z-10 overflow-y-auto custom-scrollbar">
                 
-                {/* Header */}
                 <div className="flex justify-between items-start md:items-center mb-8 flex-col md:flex-row gap-4">
                     <RandomReveal distance={200} className="flex flex-col gap-1">
                         <h1 className="text-xl md:text-3xl text-[#f4b400]">

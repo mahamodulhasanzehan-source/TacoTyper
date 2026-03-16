@@ -99,6 +99,64 @@ class AIService {
      }
   }
 
+  async generateSpellingBeeWord(difficulty: number): Promise<{ word: string, meaning: string, sentence: string }> {
+    if (!this.ai) {
+        const fallbacks = [
+            { word: "restaurant", meaning: "A place where people pay to sit and eat meals that are cooked and served on the premises.", sentence: "We had dinner at a nice Italian restaurant." },
+            { word: "ingredient", meaning: "Any of the foods or substances that are combined to make a particular dish.", sentence: "Pork is an important ingredient in many Chinese dishes." },
+            { word: "delicious", meaning: "Highly pleasant to the taste.", sentence: "The cake was absolutely delicious." }
+        ];
+        return fallbacks[Math.min(difficulty - 1, fallbacks.length - 1)] || fallbacks[0];
+    }
+
+    try {
+        const response = await this.ai.models.generateContent({
+            model: 'gemini-3-flash-preview',
+            contents: `Generate a spelling bee word for difficulty level ${difficulty} (1 is easy, 10 is very hard). Return the word, its meaning, and an example sentence.`,
+            config: {
+                responseMimeType: "application/json",
+                responseSchema: {
+                    type: Type.OBJECT,
+                    properties: {
+                        word: { type: Type.STRING },
+                        meaning: { type: Type.STRING },
+                        sentence: { type: Type.STRING }
+                    },
+                    required: ['word', 'meaning', 'sentence']
+                }
+            }
+        });
+        
+        const jsonStr = response.text;
+        if (jsonStr) {
+            const data = JSON.parse(jsonStr);
+            return { word: data.word.toLowerCase(), meaning: data.meaning, sentence: data.sentence };
+        }
+        throw new Error("Empty AI response");
+    } catch (e) {
+        console.error("AI Spelling Bee Error:", e);
+        return { word: "error", meaning: "An error occurred.", sentence: "There was an error." };
+    }
+  }
+
+  async getSemanticSimilarity(word1: string, word2: string): Promise<number> {
+    if (!this.ai) return Math.floor(Math.random() * 100);
+
+    try {
+        const response = await this.ai.models.generateContent({
+            model: 'gemini-3-flash-preview',
+            contents: `Rate the semantic similarity between the word "${word1}" and the word "${word2}" on a scale of 0 to 100. Return ONLY the integer number.`,
+        });
+        
+        const text = response.text?.trim();
+        const score = parseInt(text || '0', 10);
+        return isNaN(score) ? 0 : Math.min(100, Math.max(0, score));
+    } catch (e) {
+        console.error("AI Similarity Error:", e);
+        return 0;
+    }
+  }
+
   private calculateFallbackScore(stats: SessionStats, speedTest?: { wpm: number, accuracy: number }) {
         if (speedTest) {
             let rawScore = speedTest.wpm * Math.pow(speedTest.accuracy / 100, 3);

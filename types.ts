@@ -76,4 +76,9 @@ export interface GlobalGameStats {
   taco_typer_plays: number;
   iq_test_plays: number;
   minesweeper_plays: number;
+  wordle_plays: number;
+  angle_plays: number;
+  more_less_plays: number;
+  spelling_bee_plays: number;
+  clueless_plays: number;
 }
