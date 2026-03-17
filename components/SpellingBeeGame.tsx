@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { User } from '../services/firebase';
 import { aiService } from '../services/aiService';
+import { LoadingScreen } from './LoadingScreen';
 
 interface SpellingBeeGameProps {
     user: User;
@@ -12,6 +13,7 @@ interface SpellingBeeGameProps {
 
 const SpellingBeeGame: React.FC<SpellingBeeGameProps> = ({ onBackToHub }) => {
     const [difficulty, setDifficulty] = useState(1);
+    const [wordQueue, setWordQueue] = useState<{ word: string, meaning: string, sentence: string }[]>([]);
     const [wordData, setWordData] = useState<{ word: string, meaning: string, sentence: string } | null>(null);
     const [guess, setGuess] = useState('');
     const [loading, setLoading] = useState(false);
@@ -21,25 +23,43 @@ const SpellingBeeGame: React.FC<SpellingBeeGameProps> = ({ onBackToHub }) => {
     const [inputState, setInputState] = useState<'idle' | 'correct' | 'wrong'>('idle');
     const inputRef = useRef<HTMLInputElement>(null);
 
-    const fetchWord = useCallback(async (diff: number) => {
+    const fetchWords = useCallback(async (diff: number) => {
         setLoading(true);
         setFeedback(null);
         setGuess('');
         setInputState('idle');
-        const data = await aiService.generateSpellingBeeWord(diff);
-        setWordData(data);
+        const data = await aiService.generateSpellingBeeWordsBatch(5, diff);
+        setWordQueue(data.slice(1));
+        setWordData(data[0]);
         setLoading(false);
         if (inputRef.current) {
             inputRef.current.focus();
         }
     }, []);
 
+    const nextWord = useCallback(async () => {
+        if (wordQueue.length > 0) {
+            setFeedback(null);
+            setGuess('');
+            setInputState('idle');
+            setWordData(wordQueue[0]);
+            setWordQueue(prev => prev.slice(1));
+            if (inputRef.current) {
+                inputRef.current.focus();
+            }
+        } else {
+            const newDiff = Math.min(10, difficulty + 1);
+            setDifficulty(newDiff);
+            await fetchWords(newDiff);
+        }
+    }, [wordQueue, difficulty, fetchWords]);
+
     const startNewGame = useCallback(() => {
         setDifficulty(1);
         setStreak(0);
         setGameOver(false);
-        fetchWord(1);
-    }, [fetchWord]);
+        fetchWords(1);
+    }, [fetchWords]);
 
     useEffect(() => {
         startNewGame();
@@ -65,9 +85,7 @@ const SpellingBeeGame: React.FC<SpellingBeeGameProps> = ({ onBackToHub }) => {
             setStreak(newStreak);
             
             setTimeout(() => {
-                const newDiff = Math.min(10, difficulty + 1);
-                setDifficulty(newDiff);
-                fetchWord(newDiff);
+                nextWord();
             }, 1500);
         } else {
             setFeedback({ message: `Incorrect!`, color: '#ff2a2a' });
@@ -91,7 +109,7 @@ const SpellingBeeGame: React.FC<SpellingBeeGameProps> = ({ onBackToHub }) => {
 
             <div className="flex flex-col items-center justify-center w-full max-w-2xl px-4 z-10 mt-16">
                 {loading ? (
-                    <div className="text-2xl font-bold animate-pulse text-[#f4b400]">Loading word...</div>
+                    <LoadingScreen text="Loading words..." color="#f4b400" />
                 ) : wordData ? (
                     <div key={wordData.word} className="flex flex-col items-center w-full bg-[#111] border-4 border-[#333] rounded-xl p-6 gap-6 animate-pop-in">
                         <div className="flex gap-4">

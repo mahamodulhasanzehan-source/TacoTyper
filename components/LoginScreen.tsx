@@ -3,6 +3,7 @@ import React from 'react';
 import { COLORS } from '../constants';
 import { Button } from './Overlays';
 import { RandomReveal, RandomText } from './Visuals';
+import { LoadingScreen } from './LoadingScreen';
 
 interface LoginScreenProps {
   onLogin: () => void;
@@ -28,7 +29,9 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, isLoading }) => {
             </p>
             
             {isLoading ? (
-                <div className="loading-spinner"></div>
+                <div className="w-full h-32 relative">
+                    <LoadingScreen text="Signing in..." color="#f4b400" />
+                </div>
             ) : (
                 <RandomReveal delay={0.5} className="w-full">
                     <Button onClick={onLogin} className="w-full text-xs md:text-base">

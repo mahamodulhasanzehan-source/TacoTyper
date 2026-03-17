@@ -5,6 +5,7 @@ import { LeaderboardEntry } from '../types';
 import { getLeaderboard, deleteLeaderboardEntry, fetchActiveUsers, sendFriendRequest, getFriendRequests, acceptFriendRequest } from '../services/firebase';
 import { RandomReveal, RandomText } from './Visuals';
 import { useSettings } from '../contexts/SettingsContext';
+import { LoadingScreen } from './LoadingScreen';
 
 interface OverlayProps {
   children: React.ReactNode;
@@ -237,8 +238,7 @@ export const LeaderboardWidget: React.FC<LeaderboardWidgetProps> = ({ className 
 
             {loading ? (
                 <div className="flex-1 flex flex-col items-center justify-center min-h-0">
-                    <div className="loading-spinner mb-4 w-4 h-4 border-2" />
-                    <div className="text-[10px] text-[#aaa]">Retrieving Archives...</div>
+                    <LoadingScreen text="Retrieving Archives..." color="#aaa" compact={true} />
                 </div>
             ) : entries.length === 0 ? (
                 <div className="flex-1 flex items-center justify-center text-center text-[10px] text-[#aaa] leading-5 px-4 min-h-0">

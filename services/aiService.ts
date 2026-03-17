@@ -99,30 +99,39 @@ class AIService {
      }
   }
 
-  async generateSpellingBeeWord(difficulty: number): Promise<{ word: string, meaning: string, sentence: string }> {
+  async generateSpellingBeeWordsBatch(count: number, difficulty: number): Promise<{ word: string, meaning: string, sentence: string }[]> {
     if (!this.ai) {
         const fallbacks = [
             { word: "restaurant", meaning: "A place where people pay to sit and eat meals that are cooked and served on the premises.", sentence: "We had dinner at a nice Italian restaurant." },
             { word: "ingredient", meaning: "Any of the foods or substances that are combined to make a particular dish.", sentence: "Pork is an important ingredient in many Chinese dishes." },
-            { word: "delicious", meaning: "Highly pleasant to the taste.", sentence: "The cake was absolutely delicious." }
+            { word: "delicious", meaning: "Highly pleasant to the taste.", sentence: "The cake was absolutely delicious." },
+            { word: "kitchen", meaning: "A room or area where food is prepared and cooked.", sentence: "The chef is in the kitchen." },
+            { word: "recipe", meaning: "A set of instructions for preparing a particular dish.", sentence: "I followed the recipe exactly." }
         ];
-        return fallbacks[Math.min(difficulty - 1, fallbacks.length - 1)] || fallbacks[0];
+        return fallbacks.slice(0, count);
     }
 
     try {
+        const randomTopics = ["science", "nature", "history", "technology", "art", "literature", "geography", "music", "food", "space", "animals", "emotions", "architecture", "sports", "philosophy", "medicine", "botany", "astronomy", "mythology", "oceanography"];
+        const randomTopic = randomTopics[Math.floor(Math.random() * randomTopics.length)];
+        const randomSeed = Math.floor(Math.random() * 10000);
+
         const response = await this.ai.models.generateContent({
             model: 'gemini-3-flash-preview',
-            contents: `Generate a spelling bee word for difficulty level ${difficulty} (1 is easy, 10 is very hard). Return the word, its meaning, and an example sentence.`,
+            contents: `Generate a list of exactly ${count} unique spelling bee words for difficulty level ${difficulty} (1 is easy, 10 is very hard). To ensure variety, focus on words related to the topic of "${randomTopic}" or use random seed ${randomSeed}. The words MUST NOT be the same common words you always pick. For each word, return the word, its meaning, and an example sentence. Return ONLY a JSON array of objects.`,
             config: {
                 responseMimeType: "application/json",
                 responseSchema: {
-                    type: Type.OBJECT,
-                    properties: {
-                        word: { type: Type.STRING },
-                        meaning: { type: Type.STRING },
-                        sentence: { type: Type.STRING }
-                    },
-                    required: ['word', 'meaning', 'sentence']
+                    type: Type.ARRAY,
+                    items: {
+                        type: Type.OBJECT,
+                        properties: {
+                            word: { type: Type.STRING },
+                            meaning: { type: Type.STRING },
+                            sentence: { type: Type.STRING }
+                        },
+                        required: ['word', 'meaning', 'sentence']
+                    }
                 }
             }
         });
@@ -130,12 +139,14 @@ class AIService {
         const jsonStr = response.text;
         if (jsonStr) {
             const data = JSON.parse(jsonStr);
-            return { word: data.word.toLowerCase(), meaning: data.meaning, sentence: data.sentence };
+            if (Array.isArray(data) && data.length > 0) {
+                return data.map((d: any) => ({ word: String(d.word).toLowerCase(), meaning: String(d.meaning), sentence: String(d.sentence) }));
+            }
         }
         throw new Error("Empty AI response");
     } catch (e) {
         console.error("AI Spelling Bee Error:", e);
-        return { word: "error", meaning: "An error occurred.", sentence: "There was an error." };
+        return [{ word: "error", meaning: "An error occurred.", sentence: "There was an error." }];
     }
   }
 

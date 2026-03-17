@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { User } from '../services/firebase';
 import { aiService } from '../services/aiService';
+import { LoadingScreen } from './LoadingScreen';
 import { isMobileDevice } from '../utils/device';
 
 interface WordleGameProps {
@@ -183,8 +184,8 @@ const WordleGame: React.FC<WordleGameProps> = ({ onBackToHub }) => {
             )}
 
             {isLoading ? (
-                <div className="flex-1 flex items-center justify-center z-10">
-                    <div className="loading-spinner"></div>
+                <div className="flex-1 flex items-center justify-center z-10 w-full">
+                    <LoadingScreen text="Loading words..." color="#57a863" />
                 </div>
             ) : (
                 <>

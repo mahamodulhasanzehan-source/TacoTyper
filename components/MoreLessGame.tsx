@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { User } from '../services/firebase';
 import { aiService } from '../services/aiService';
+import { LoadingScreen } from './LoadingScreen';
 
 interface MoreLessGameProps {
     user: User;
@@ -77,8 +78,8 @@ const MoreLessGame: React.FC<MoreLessGameProps> = ({ onBackToHub }) => {
             </div>
 
             {isLoading ? (
-                <div className="flex-1 flex items-center justify-center z-10">
-                    <div className="loading-spinner"></div>
+                <div className="flex-1 flex items-center justify-center z-10 w-full">
+                    <LoadingScreen text="Loading items..." color="#ff2a2a" />
                 </div>
             ) : !gameOver && item1 && item2 ? (
                 <div className="flex flex-col md:flex-row items-center justify-center gap-4 md:gap-8 w-full max-w-4xl px-4 z-10 mt-8 md:mt-16 overflow-hidden">

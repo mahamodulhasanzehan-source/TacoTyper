@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { User } from '../services/firebase';
 import { aiService } from '../services/aiService';
+import { LoadingScreen } from './LoadingScreen';
 
 interface CluelessGameProps {
     user: User;
@@ -113,8 +114,8 @@ const CluelessGame: React.FC<CluelessGameProps> = ({ onBackToHub }) => {
             </div>
 
             {isInitializing ? (
-                <div className="flex-1 flex items-center justify-center z-10">
-                    <div className="loading-spinner"></div>
+                <div className="flex-1 flex items-center justify-center z-10 w-full">
+                    <LoadingScreen text="Loading words..." color="#4facfe" />
                 </div>
             ) : (
                 <div className="flex flex-col items-center w-full max-w-lg px-4 z-10 mt-16 h-[calc(100vh-100px)]">
