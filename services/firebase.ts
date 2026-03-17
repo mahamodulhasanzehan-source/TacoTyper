@@ -442,6 +442,27 @@ export const getGlobalGameStats = async (): Promise<GlobalGameStats> => {
     }
 };
 
+export const resetGlobalGameStats = async () => {
+    const statsRef = doc(db, "system", "global_stats");
+    try {
+        await setDoc(statsRef, {
+            taco_typer_plays: 0,
+            iq_test_plays: 0,
+            minesweeper_plays: 0,
+            wordle_plays: 0,
+            angle_plays: 0,
+            more_less_plays: 0,
+            spelling_bee_plays: 0,
+            tic_tac_toe_plays: 0,
+            connect_4_plays: 0
+        });
+        return true;
+    } catch (e) {
+        console.error("Error resetting global stats", e);
+        return false;
+    }
+};
+
 // --- Leaderboard ---
 
 export const saveLeaderboardScore = async (
@@ -454,7 +475,9 @@ export const saveLeaderboardScore = async (
     extra?: { accuracy?: number }
 ) => {
     let sortValue = score;
-    if (mode === 'competitive' || mode.includes('minesweeper') || mode === 'connect_4') {
+    const isTimeBased = mode === 'competitive' || mode.includes('minesweeper') || mode === 'connect_4';
+    
+    if (isTimeBased) {
          // Lower is better for time based (golf score)
          sortValue = score; 
     } else if (mode === 'iq-test' || mode === 'tic_tac_toe') {
@@ -463,6 +486,7 @@ export const saveLeaderboardScore = async (
          sortValue = (stats.levelReached * 1000) + score; 
     }
 
+    // Add new score
     await addDoc(collection(db, "leaderboard"), {
         uid: user.uid,
         username: username,
@@ -475,6 +499,28 @@ export const saveLeaderboardScore = async (
         sortValue: sortValue,
         accuracy: extra?.accuracy || null
     });
+
+    // Enforce max 3 entries per user per mode
+    try {
+        const lbRef = collection(db, "leaderboard");
+        const q = query(
+            lbRef,
+            where("uid", "==", user.uid),
+            where("mode", "==", mode),
+            orderBy("sortValue", isTimeBased ? "asc" : "desc")
+        );
+        const snapshot = await getDocs(q);
+        
+        if (snapshot.docs.length > 3) {
+            // Delete all entries after the top 3
+            const docsToDelete = snapshot.docs.slice(3);
+            for (const docSnap of docsToDelete) {
+                await deleteDoc(doc(db, "leaderboard", docSnap.id));
+            }
+        }
+    } catch (e) {
+        console.error("Error enforcing max 3 entries limit", e);
+    }
 };
 
 export const deleteLeaderboardEntry = async (id: string) => {

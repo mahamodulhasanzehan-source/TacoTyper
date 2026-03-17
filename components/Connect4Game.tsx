@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { User, saveLeaderboardScore, incrementGamePlays } from '../services/firebase';
 import { LeaderboardWidget } from './Overlays';
 import ChatWidget from './ChatWidget';
@@ -24,8 +24,13 @@ export default function Connect4Game({ user, onBackToHub, username }: Connect4Ga
     const [winner, setWinner] = useState<Player | 'Draw'>(null);
     const [startTime, setStartTime] = useState<number | null>(null);
     const [elapsedTime, setElapsedTime] = useState(0);
+    const elapsedTimeRef = useRef(0);
     const [isMobile, setIsMobile] = useState(false);
     const [showMobileLeaderboard, setShowMobileLeaderboard] = useState(false);
+
+    useEffect(() => {
+        elapsedTimeRef.current = elapsedTime;
+    }, [elapsedTime]);
 
     useEffect(() => {
         setIsMobile(isMobileDevice());
@@ -121,9 +126,114 @@ export default function Connect4Game({ user, onBackToHub, username }: Connect4Ga
         return currentBoard;
     };
 
+    const evaluateBoard = (currentBoard: Player[][], player: Player): number => {
+        let score = 0;
+        const opponent = player === 'Y' ? 'R' : 'Y';
+
+        const evaluateWindow = (window: (Player | null)[]) => {
+            let pCount = 0;
+            let oCount = 0;
+            let emptyCount = 0;
+            for (const cell of window) {
+                if (cell === player) pCount++;
+                else if (cell === opponent) oCount++;
+                else emptyCount++;
+            }
+            if (pCount === 4) return 100;
+            if (pCount === 3 && emptyCount === 1) return 5;
+            if (pCount === 2 && emptyCount === 2) return 2;
+            if (oCount === 3 && emptyCount === 1) return -4;
+            return 0;
+        };
+
+        // Horizontal
+        for (let r = 0; r < ROWS; r++) {
+            for (let c = 0; c < COLS - 3; c++) {
+                const window = [currentBoard[r][c], currentBoard[r][c+1], currentBoard[r][c+2], currentBoard[r][c+3]];
+                score += evaluateWindow(window);
+            }
+        }
+        // Vertical
+        for (let r = 0; r < ROWS - 3; r++) {
+            for (let c = 0; c < COLS; c++) {
+                const window = [currentBoard[r][c], currentBoard[r+1][c], currentBoard[r+2][c], currentBoard[r+3][c]];
+                score += evaluateWindow(window);
+            }
+        }
+        // Diagonal Right
+        for (let r = 0; r < ROWS - 3; r++) {
+            for (let c = 0; c < COLS - 3; c++) {
+                const window = [currentBoard[r][c], currentBoard[r+1][c+1], currentBoard[r+2][c+2], currentBoard[r+3][c+3]];
+                score += evaluateWindow(window);
+            }
+        }
+        // Diagonal Left
+        for (let r = 3; r < ROWS; r++) {
+            for (let c = 0; c < COLS - 3; c++) {
+                const window = [currentBoard[r][c], currentBoard[r-1][c+1], currentBoard[r-2][c+2], currentBoard[r-3][c+3]];
+                score += evaluateWindow(window);
+            }
+        }
+        
+        // Center column preference
+        let centerCount = 0;
+        for (let r = 0; r < ROWS; r++) {
+            if (currentBoard[r][3] === player) centerCount++;
+        }
+        score += centerCount * 3;
+
+        return score;
+    };
+
+    const minimax = (currentBoard: Player[][], depth: number, alpha: number, beta: number, isMaximizing: boolean): { score: number, col?: number } => {
+        const result = checkWinner(currentBoard);
+        if (result === 'Y') return { score: 1000000 - depth };
+        if (result === 'R') return { score: -1000000 + depth };
+        if (result === 'Draw') return { score: 0 };
+        if (depth === 0) return { score: evaluateBoard(currentBoard, 'Y') };
+
+        const availableCols = [];
+        for (let c = 0; c < COLS; c++) {
+            if (currentBoard[0][c] === null) availableCols.push(c);
+        }
+
+        // Sort columns to prioritize center
+        availableCols.sort((a, b) => Math.abs(3 - a) - Math.abs(3 - b));
+
+        if (isMaximizing) {
+            let bestScore = -Infinity;
+            let bestCol = availableCols[0];
+            for (const col of availableCols) {
+                const nextBoard = dropPiece(currentBoard, col, 'Y');
+                const score = minimax(nextBoard, depth - 1, alpha, beta, false).score;
+                if (score > bestScore) {
+                    bestScore = score;
+                    bestCol = col;
+                }
+                alpha = Math.max(alpha, bestScore);
+                if (alpha >= beta) break;
+            }
+            return { score: bestScore, col: bestCol };
+        } else {
+            let bestScore = Infinity;
+            let bestCol = availableCols[0];
+            for (const col of availableCols) {
+                const nextBoard = dropPiece(currentBoard, col, 'R');
+                const score = minimax(nextBoard, depth - 1, alpha, beta, true).score;
+                if (score < bestScore) {
+                    bestScore = score;
+                    bestCol = col;
+                }
+                beta = Math.min(beta, bestScore);
+                if (alpha >= beta) break;
+            }
+            return { score: bestScore, col: bestCol };
+        }
+    };
+
     const getBestMove = (currentBoard: Player[][]): number => {
-        // 90% accurate AI
-        if (Math.random() > 0.9) {
+        // 5% chance to make a random move to not be completely unbeatable
+        if (Math.random() < 0.05) {
             const availableCols = [];
             for (let c = 0; c < COLS; c++) {
                 if (currentBoard[0][c] === null) availableCols.push(c);
@@ -133,31 +243,9 @@ export default function Connect4Game({ user, onBackToHub, username }: Connect4Ga
             }
         }
 
-        // Check if AI can win
-        for (let c = 0; c < COLS; c++) {
-            if (currentBoard[0][c] === null) {
-                const testBoard = dropPiece(currentBoard, c, 'Y');
-                if (checkWinner(testBoard) === 'Y') return c;
-            }
-        }
-
-        // Check if Player can win and block
-        for (let c = 0; c < COLS; c++) {
-            if (currentBoard[0][c] === null) {
-                const testBoard = dropPiece(currentBoard, c, 'R');
-                if (checkWinner(testBoard) === 'R') return c;
-            }
-        }
-
-        // Pick center if available
-        if (currentBoard[0][3] === null) return 3;
-
-        // Pick random available
-        const availableCols = [];
-        for (let c = 0; c < COLS; c++) {
-            if (currentBoard[0][c] === null) availableCols.push(c);
-        }
-        return availableCols[Math.floor(Math.random() * availableCols.length)];
+        // Use depth 4 for a good balance of speed and intelligence
+        const { col } = minimax(currentBoard, 4, -Infinity, Infinity, true);
+        return col !== undefined ? col : 0;
     };
 
     useEffect(() => {
@@ -185,12 +273,13 @@ export default function Connect4Game({ user, onBackToHub, username }: Connect4Ga
         setWinner(result);
         
         if (result === 'R') {
+            const finalTime = elapsedTimeRef.current;
             await saveLeaderboardScore(
                 user, 
                 username || user.displayName || 'Chef', 
-                elapsedTime, 
+                finalTime, 
                 'Connect 4 Master', 
-                { mistakes: 0, timeTaken: elapsedTime, ingredientsMissed: 0, rottenWordsTyped: 0, totalScore: elapsedTime, levelReached: 1 }, 
+                { mistakes: 0, timeTaken: finalTime, ingredientsMissed: 0, rottenWordsTyped: 0, totalScore: finalTime, levelReached: 1 }, 
                 'connect_4'
             );
         }
@@ -255,11 +344,11 @@ export default function Connect4Game({ user, onBackToHub, username }: Connect4Ga
                                 <div
                                     key={`${rIdx}-${cIdx}`}
                                     onClick={() => handleColumnClick(cIdx)}
-                                    className={`w-8 h-8 sm:w-10 sm:h-10 md:w-14 md:h-14 rounded-full flex items-center justify-center transition-colors cursor-pointer
-                                        ${cell === 'R' ? 'bg-[#ff2a2a] shadow-[inset_0_0_10px_rgba(0,0,0,0.5)]' : 
-                                          cell === 'Y' ? 'bg-[#f4b400] shadow-[inset_0_0_10px_rgba(0,0,0,0.5)]' : 
-                                          'bg-[#0a1f3a] shadow-[inset_0_0_10px_rgba(0,0,0,0.8)]'}`}
+                                    className="w-8 h-8 sm:w-10 sm:h-10 md:w-14 md:h-14 rounded-full flex items-center justify-center cursor-pointer bg-[#0a1f3a] shadow-[inset_0_0_10px_rgba(0,0,0,0.8)] overflow-hidden"
                                 >
+                                    {cell && (
+                                        <div className={`w-full h-full rounded-full shadow-[inset_0_0_10px_rgba(0,0,0,0.5)] animate-drop ${cell === 'R' ? 'bg-[#ff2a2a]' : 'bg-[#f4b400]'}`}></div>
+                                    )}
                                 </div>
                             ))}
                         </div>

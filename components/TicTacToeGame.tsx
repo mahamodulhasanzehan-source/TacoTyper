@@ -29,6 +29,7 @@ export default function TicTacToeGame({ user, onBackToHub, username }: TicTacToe
     const [message, setMessage] = useState('');
     const [isMobile, setIsMobile] = useState(false);
     const [showMobileLeaderboard, setShowMobileLeaderboard] = useState(false);
+    const [aiPlaysFirst, setAiPlaysFirst] = useState(false);
 
     useEffect(() => {
         setIsMobile(isMobileDevice());
@@ -36,12 +37,12 @@ export default function TicTacToeGame({ user, onBackToHub, username }: TicTacToe
 
     const startNewGame = useCallback(() => {
         setBoard(Array(9).fill(null));
-        setIsPlayerTurn(true);
+        setIsPlayerTurn(!aiPlaysFirst);
         setGameOver(false);
         setWinner(null);
         setMessage('');
         incrementGamePlays('tic_tac_toe' as any);
-    }, []);
+    }, [aiPlaysFirst]);
 
     useEffect(() => {
         startNewGame();
@@ -59,37 +60,67 @@ export default function TicTacToeGame({ user, onBackToHub, username }: TicTacToe
     };
 
     const getBestMove = (squares: Player[]): number => {
-        // 90% accurate AI
-        if (Math.random() > 0.9) {
-            // Make a random move
+        // 5% chance to make a random move to not be completely unbeatable
+        if (Math.random() < 0.05) {
             const available = squares.map((val, idx) => val === null ? idx : null).filter(val => val !== null) as number[];
             if (available.length > 0) {
                 return available[Math.floor(Math.random() * available.length)];
             }
         }
 
-        // Try to win
-        for (let i = 0; i < WINNING_COMBINATIONS.length; i++) {
-            const [a, b, c] = WINNING_COMBINATIONS[i];
-            if (squares[a] === 'O' && squares[b] === 'O' && squares[c] === null) return c;
-            if (squares[a] === 'O' && squares[c] === 'O' && squares[b] === null) return b;
-            if (squares[b] === 'O' && squares[c] === 'O' && squares[a] === null) return a;
-        }
-
-        // Block player
-        for (let i = 0; i < WINNING_COMBINATIONS.length; i++) {
-            const [a, b, c] = WINNING_COMBINATIONS[i];
-            if (squares[a] === 'X' && squares[b] === 'X' && squares[c] === null) return c;
-            if (squares[a] === 'X' && squares[c] === 'X' && squares[b] === null) return b;
-            if (squares[b] === 'X' && squares[c] === 'X' && squares[a] === null) return a;
-        }
-
-        // Take center
-        if (squares[4] === null) return 4;
-
-        // Take random available
+        let bestScore = -Infinity;
+        let move = -1;
         const available = squares.map((val, idx) => val === null ? idx : null).filter(val => val !== null) as number[];
-        return available[Math.floor(Math.random() * available.length)];
+        
+        // If it's the first move, pick a random corner or center to add variety
+        if (available.length === 9) {
+            const openers = [0, 2, 4, 6, 8];
+            return openers[Math.floor(Math.random() * openers.length)];
+        }
+
+        for (let i = 0; i < 9; i++) {
+            if (squares[i] === null) {
+                squares[i] = 'O';
+                let score = minimax(squares, 0, false);
+                squares[i] = null;
+                if (score > bestScore) {
+                    bestScore = score;
+                    move = i;
+                }
+            }
+        }
+        return move;
+    };
+
+    const minimax = (squares: Player[], depth: number, isMaximizing: boolean): number => {
+        const result = checkWinner(squares);
+        if (result === 'O') return 10 - depth;
+        if (result === 'X') return depth - 10;
+        if (result === 'Draw') return 0;
+
+        if (isMaximizing) {
+            let bestScore = -Infinity;
+            for (let i = 0; i < 9; i++) {
+                if (squares[i] === null) {
+                    squares[i] = 'O';
+                    let score = minimax(squares, depth + 1, false);
+                    squares[i] = null;
+                    bestScore = Math.max(score, bestScore);
+                }
+            }
+            return bestScore;
+        } else {
+            let bestScore = Infinity;
+            for (let i = 0; i < 9; i++) {
+                if (squares[i] === null) {
+                    squares[i] = 'X';
+                    let score = minimax(squares, depth + 1, true);
+                    squares[i] = null;
+                    bestScore = Math.min(score, bestScore);
+                }
+            }
+            return bestScore;
+        }
     };
 
     useEffect(() => {
@@ -121,6 +152,7 @@ export default function TicTacToeGame({ user, onBackToHub, username }: TicTacToe
             const newStreak = streak + 1;
             setStreak(newStreak);
             setMessage('You Win! 🎉');
+            setAiPlaysFirst(true);
             await saveLeaderboardScore(
                 user, 
                 username || user.displayName || 'Chef', 
@@ -132,6 +164,7 @@ export default function TicTacToeGame({ user, onBackToHub, username }: TicTacToe
         } else if (result === 'O') {
             setStreak(0);
             setMessage('You Lose! 😢');
+            setAiPlaysFirst(false);
         } else {
             setMessage('Draw! 🤝');
             // Streak is not broken

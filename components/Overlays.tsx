@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { COLORS, LEVEL_CONFIGS } from '../constants';
 import type { User, FriendRequest } from '../services/firebase';
 import { LeaderboardEntry } from '../types';
-import { getLeaderboard, deleteLeaderboardEntry, fetchActiveUsers, sendFriendRequest, getFriendRequests, acceptFriendRequest } from '../services/firebase';
+import { getLeaderboard, deleteLeaderboardEntry, fetchActiveUsers, sendFriendRequest, getFriendRequests, acceptFriendRequest, resetGlobalGameStats } from '../services/firebase';
 import { RandomReveal, RandomText } from './Visuals';
 import { useSettings } from '../contexts/SettingsContext';
 import { LoadingScreen } from './LoadingScreen';
@@ -471,6 +471,18 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose, username,
         }
     };
 
+    const handleResetPopularity = async () => {
+        if (window.confirm("Are you sure you want to reset all game play counts? This cannot be undone.")) {
+            const success = await resetGlobalGameStats();
+            if (success) {
+                alert("Game popularity has been reset!");
+                window.location.reload();
+            } else {
+                alert("Failed to reset popularity.");
+            }
+        }
+    };
+
     return (
         <div className="absolute top-0 left-0 w-full h-full bg-black/95 z-[250] flex items-center justify-center p-4">
             <RandomReveal className="bg-[#111] border-4 border-white p-6 md:p-8 w-full max-w-md flex flex-col gap-6 h-[80vh] overflow-y-auto custom-scrollbar">
@@ -507,7 +519,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose, username,
                             type="range" 
                             min="0" 
                             max="6" 
-                            step="1"
+                            step="0.5"
                             value={settings.animDuration} 
                             onChange={(e) => updateSettings({ animDuration: Number(e.target.value) })}
                             className="w-full accent-[#e55934] h-2 bg-[#333] rounded-lg appearance-none cursor-pointer"
@@ -614,9 +626,20 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose, username,
 
                 <div className="mt-auto pt-4 border-t border-[#333]">
                      {isAdmin ? (
-                         <div className="flex justify-between items-center">
-                             <span className="text-green-500 text-xs">Admin Access Active</span>
-                             <button onClick={() => setIsAdmin(false)} className="text-red-500 text-xs border border-red-500 px-2 py-1 hover:bg-red-900">Logout</button>
+                         <div className="flex flex-col gap-4">
+                             <div className="flex justify-between items-center">
+                                 <span className="text-green-500 text-xs">Admin Access Active</span>
+                                 <button onClick={() => setIsAdmin(false)} className="text-red-500 text-xs border border-red-500 px-2 py-1 hover:bg-red-900">Logout</button>
+                             </div>
+                             <div className="border border-green-500/30 p-3 bg-green-900/10 flex flex-col gap-2">
+                                 <h3 className="text-green-500 text-xs font-bold mb-1">Admin Perks</h3>
+                                 <button 
+                                     onClick={handleResetPopularity}
+                                     className="bg-[#222] text-white text-[10px] py-2 border border-[#555] hover:border-green-500 transition-colors w-full"
+                                 >
+                                     Reset Game Popularity
+                                 </button>
+                             </div>
                          </div>
                      ) : (
                          <form onSubmit={handleAdminLogin} className="flex flex-col gap-2">
