@@ -13,12 +13,12 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({ text = "Loading...
         // Simulate a progress bar that goes up to 90% and waits
         const interval = setInterval(() => {
             setProgress(prev => {
-                if (prev >= 90) {
+                const next = prev + Math.floor(Math.random() * 10) + 5;
+                if (next >= 90) {
                     clearInterval(interval);
                     return 90;
                 }
-                // Random increment between 5 and 15
-                return prev + Math.floor(Math.random() * 10) + 5;
+                return next;
             });
         }, 300);
 

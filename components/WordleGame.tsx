@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { User } from '../services/firebase';
+import { User, saveLeaderboardScore, incrementGamePlays } from '../services/firebase';
 import { aiService } from '../services/aiService';
 import { LoadingScreen } from './LoadingScreen';
 import { isMobileDevice } from '../utils/device';
@@ -43,6 +43,7 @@ const WordleGame: React.FC<WordleGameProps> = ({ onBackToHub }) => {
         setGameOver(false);
         setMessage('');
         setIsLoading(false);
+        incrementGamePlays('wordle');
     }, [wordQueue]);
 
     // Initial load

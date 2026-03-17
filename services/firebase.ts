@@ -401,7 +401,7 @@ export const saveSpeedTestStats = async (user: User, wpm: number, accuracy: numb
 
 // --- Global Stats Tracking ---
 
-export const incrementGamePlays = async (gameKey: 'taco_typer' | 'iq_test' | 'minesweeper' | 'wordle' | 'angle' | 'more_less' | 'spelling_bee' | 'clueless') => {
+export const incrementGamePlays = async (gameKey: 'taco_typer' | 'iq_test' | 'minesweeper' | 'wordle' | 'angle' | 'more_less' | 'spelling_bee' | 'tic_tac_toe' | 'connect_4') => {
     const statsRef = doc(db, "system", "global_stats");
     // Field names match the interface keys: taco_typer_plays, etc.
     const field = `${gameKey}_plays`;
@@ -422,7 +422,8 @@ export const incrementGamePlays = async (gameKey: 'taco_typer' | 'iq_test' | 'mi
                  angle_plays: gameKey === 'angle' ? 1 : 0,
                  more_less_plays: gameKey === 'more_less' ? 1 : 0,
                  spelling_bee_plays: gameKey === 'spelling_bee' ? 1 : 0,
-                 clueless_plays: gameKey === 'clueless' ? 1 : 0
+                 tic_tac_toe_plays: gameKey === 'tic_tac_toe' ? 1 : 0,
+                 connect_4_plays: gameKey === 'connect_4' ? 1 : 0
              });
         }
     }
@@ -435,9 +436,9 @@ export const getGlobalGameStats = async (): Promise<GlobalGameStats> => {
         if (snap.exists()) {
             return snap.data() as GlobalGameStats;
         }
-        return { taco_typer_plays: 0, iq_test_plays: 0, minesweeper_plays: 0, wordle_plays: 0, angle_plays: 0, more_less_plays: 0, spelling_bee_plays: 0, clueless_plays: 0 };
+        return { taco_typer_plays: 0, iq_test_plays: 0, minesweeper_plays: 0, wordle_plays: 0, angle_plays: 0, more_less_plays: 0, spelling_bee_plays: 0, tic_tac_toe_plays: 0, connect_4_plays: 0 };
     } catch (e) {
-        return { taco_typer_plays: 0, iq_test_plays: 0, minesweeper_plays: 0, wordle_plays: 0, angle_plays: 0, more_less_plays: 0, spelling_bee_plays: 0, clueless_plays: 0 };
+        return { taco_typer_plays: 0, iq_test_plays: 0, minesweeper_plays: 0, wordle_plays: 0, angle_plays: 0, more_less_plays: 0, spelling_bee_plays: 0, tic_tac_toe_plays: 0, connect_4_plays: 0 };
     }
 };
 
@@ -453,10 +454,10 @@ export const saveLeaderboardScore = async (
     extra?: { accuracy?: number }
 ) => {
     let sortValue = score;
-    if (mode === 'competitive' || mode.includes('minesweeper')) {
+    if (mode === 'competitive' || mode.includes('minesweeper') || mode === 'connect_4') {
          // Lower is better for time based (golf score)
          sortValue = score; 
-    } else if (mode === 'iq-test') {
+    } else if (mode === 'iq-test' || mode === 'tic_tac_toe') {
          sortValue = score; // High Score = Better, falls into standard desc sort
     } else if (mode !== 'speed-test') {
          sortValue = (stats.levelReached * 1000) + score; 
@@ -488,7 +489,7 @@ export const getLeaderboard = async (mode: string = 'competitive'): Promise<Lead
     
     let q;
     
-    if (mode === 'competitive' || mode.includes('minesweeper')) {
+    if (mode === 'competitive' || mode.includes('minesweeper') || mode === 'connect_4') {
         q = query(
             lbRef, 
             where("mode", "==", mode),

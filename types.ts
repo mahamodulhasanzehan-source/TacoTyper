@@ -80,5 +80,6 @@ export interface GlobalGameStats {
   angle_plays: number;
   more_less_plays: number;
   spelling_bee_plays: number;
-  clueless_plays: number;
+  tic_tac_toe_plays: number;
+  connect_4_plays: number;
 }

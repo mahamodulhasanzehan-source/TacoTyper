@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { User } from '../services/firebase';
+import { User, incrementGamePlays } from '../services/firebase';
 import { aiService } from '../services/aiService';
 import { LoadingScreen } from './LoadingScreen';
 
@@ -59,6 +59,7 @@ const SpellingBeeGame: React.FC<SpellingBeeGameProps> = ({ onBackToHub }) => {
         setStreak(0);
         setGameOver(false);
         fetchWords(1);
+        incrementGamePlays('spelling_bee');
     }, [fetchWords]);
 
     useEffect(() => {

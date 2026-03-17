@@ -16,7 +16,8 @@ interface HubScreenProps {
     onLaunchAngle: () => void;
     onLaunchMoreLess: () => void;
     onLaunchSpellingBee: () => void;
-    onLaunchClueless: () => void;
+    onLaunchTicTacToe: () => void;
+    onLaunchConnect4: () => void;
     onLogout: () => void;
     username?: string | null;
     onUpdateUsername: (name: string) => void;
@@ -32,11 +33,11 @@ interface GameCard {
     action: () => void;
 }
 
-const HubScreen: React.FC<HubScreenProps> = ({ user, onLaunchGame, onLaunchIQ, onLaunchMinesweeper, onLaunchWordle, onLaunchAngle, onLaunchMoreLess, onLaunchSpellingBee, onLaunchClueless, onLogout, username, onUpdateUsername }) => {
+const HubScreen: React.FC<HubScreenProps> = ({ user, onLaunchGame, onLaunchIQ, onLaunchMinesweeper, onLaunchWordle, onLaunchAngle, onLaunchMoreLess, onLaunchSpellingBee, onLaunchTicTacToe, onLaunchConnect4, onLogout, username, onUpdateUsername }) => {
     const [showSettings, setShowSettings] = useState(false);
     const [showFriends, setShowFriends] = useState(false);
     const [isMobile, setIsMobile] = useState(false);
-    const [stats, setStats] = useState<GlobalGameStats>({ taco_typer_plays: 0, iq_test_plays: 0, minesweeper_plays: 0, wordle_plays: 0, angle_plays: 0, more_less_plays: 0, spelling_bee_plays: 0, clueless_plays: 0 });
+    const [stats, setStats] = useState<GlobalGameStats>({ taco_typer_plays: 0, iq_test_plays: 0, minesweeper_plays: 0, wordle_plays: 0, angle_plays: 0, more_less_plays: 0, spelling_bee_plays: 0, tic_tac_toe_plays: 0, connect_4_plays: 0 });
     const [sortedGames, setSortedGames] = useState<GameCard[]>([]);
     
     const displayableName = username || user.displayName || 'Chef';
@@ -117,20 +118,29 @@ const HubScreen: React.FC<HubScreenProps> = ({ user, onLaunchGame, onLaunchIQ, o
                 action: onLaunchSpellingBee
             },
             {
-                id: 'clueless',
-                title: 'Clueless',
-                description: 'Semantic Guessing Game',
-                icon: '🕵️',
+                id: 'tictactoe',
+                title: 'Tic Tac Toe',
+                description: 'Classic 3x3 Strategy',
+                icon: '❌',
                 color: '#4facfe',
-                plays: stats.clueless_plays || 0,
-                action: onLaunchClueless
+                plays: stats.tic_tac_toe_plays || 0,
+                action: onLaunchTicTacToe
+            },
+            {
+                id: 'connect4',
+                title: 'Connect 4',
+                description: 'Drop and Connect',
+                icon: '🔴',
+                color: '#ff2a2a',
+                plays: stats.connect_4_plays || 0,
+                action: onLaunchConnect4
             }
         ];
 
         games.sort((a, b) => b.plays - a.plays);
         setSortedGames(games);
 
-    }, [stats, onLaunchGame, onLaunchIQ, onLaunchMinesweeper, onLaunchWordle, onLaunchAngle, onLaunchMoreLess, onLaunchSpellingBee, onLaunchClueless]);
+    }, [stats, onLaunchGame, onLaunchIQ, onLaunchMinesweeper, onLaunchWordle, onLaunchAngle, onLaunchMoreLess, onLaunchSpellingBee, onLaunchTicTacToe, onLaunchConnect4]);
 
     return (
         <div className="flex h-full w-full bg-[#000] text-white overflow-hidden relative font-['Press_Start_2P']">

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { User } from '../services/firebase';
+import { User, incrementGamePlays } from '../services/firebase';
 import { aiService } from '../services/aiService';
 import { LoadingScreen } from './LoadingScreen';
 
@@ -34,6 +34,7 @@ const MoreLessGame: React.FC<MoreLessGameProps> = ({ onBackToHub }) => {
         setShowValue(false);
         setIsCorrectGuess(null);
         setIsLoading(false);
+        incrementGamePlays('more_less');
     }, []);
 
     useEffect(() => {

@@ -173,7 +173,7 @@ export const LeaderboardWidget: React.FC<LeaderboardWidgetProps> = ({ className 
     };
 
     const formatScore = (entry: LeaderboardEntry) => {
-        if (mode === 'competitive' || mode.includes('minesweeper')) {
+        if (mode === 'competitive' || mode.includes('minesweeper') || mode === 'connect_4') {
             const mins = Math.floor(entry.score / 60);
             const secs = Math.floor(entry.score % 60);
             return `${mins}:${secs.toString().padStart(2, '0')}`;
@@ -183,7 +183,8 @@ export const LeaderboardWidget: React.FC<LeaderboardWidgetProps> = ({ className 
 
     const getScoreLabel = () => {
         if (mode === 'iq-test') return 'IQ';
-        if (mode.includes('minesweeper')) return 'TIME';
+        if (mode.includes('minesweeper') || mode === 'connect_4') return 'TIME';
+        if (mode === 'tic_tac_toe') return 'STREAK';
         return mode === 'competitive' ? 'TIME' : 'PTS';
     };
 
@@ -192,6 +193,8 @@ export const LeaderboardWidget: React.FC<LeaderboardWidgetProps> = ({ className 
         if (mode === 'iq-test') return 'Top Minds';
         if (mode.includes('minesweeper')) return 'Top Defusers';
         if (mode === 'speed') return 'Fastest Hands';
+        if (mode === 'tic_tac_toe') return 'Top Strategists';
+        if (mode === 'connect_4') return 'Fastest Connectors';
         return 'Top Chefs';
     }
 
@@ -199,6 +202,8 @@ export const LeaderboardWidget: React.FC<LeaderboardWidgetProps> = ({ className 
         if (m === 'competitive') return 'COMP';
         if (m === 'universal') return 'UNIV';
         if (m === 'speed') return 'SPEED';
+        if (m === 'tic_tac_toe') return 'TICTAC';
+        if (m === 'connect_4') return 'CONN4';
         if (m.startsWith('minesweeper-')) return m.replace('minesweeper-', '').substring(0, 4).toUpperCase();
         return m.substring(0, 4).toUpperCase();
     }

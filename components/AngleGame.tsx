@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { User } from '../services/firebase';
+import { User, incrementGamePlays } from '../services/firebase';
 
 interface AngleGameProps {
     user: User;
@@ -25,6 +25,7 @@ const AngleGame: React.FC<AngleGameProps> = ({ onBackToHub }) => {
         setGameOver(false);
         setLastDiff(null);
         setPreviousGuesses([]);
+        incrementGamePlays('angle');
     }, []);
 
     useEffect(() => {
@@ -35,16 +36,23 @@ const AngleGame: React.FC<AngleGameProps> = ({ onBackToHub }) => {
         e.preventDefault();
         if (gameOver) return;
 
-        const numGuess = parseInt(guess, 10);
+        let numGuess = parseInt(guess, 10);
         if (isNaN(numGuess) || numGuess < 0 || numGuess > 360) {
             setFeedback({ message: 'Enter a valid angle (0-360)', color: '#f4b400', arrow: '' });
             return;
         }
+        
+        if (numGuess === 360) numGuess = 0;
+        const actualTarget = targetAngle === 360 ? 0 : targetAngle;
 
-        const diff = Math.abs(targetAngle - numGuess);
+        let diff = Math.abs(actualTarget - numGuess);
+        if (diff > 180) {
+            diff = 360 - diff;
+        }
+
         setPreviousGuesses(prev => [...prev, numGuess]);
         
-        if (diff === 0 || diff <= 2) {
+        if (diff === 0) {
             setFeedback({ message: 'Perfect!', color: '#57a863', arrow: '🎯' });
             setGameOver(true);
             setStreak(s => s + 1);
@@ -69,12 +77,22 @@ const AngleGame: React.FC<AngleGameProps> = ({ onBackToHub }) => {
                 else { tempMsg = 'Cold! ❄️'; color = '#4facfe'; }
             }
 
-            const arrow = numGuess < targetAngle ? '⬆️ Higher' : '⬇️ Lower';
+            // Calculate shortest path direction
+            let arrow = '';
+            let clockwiseDiff = actualTarget - numGuess;
+            if (clockwiseDiff < 0) clockwiseDiff += 360;
+            
+            if (clockwiseDiff <= 180) {
+                arrow = '⬆️ Higher'; // Need to go clockwise (increase angle)
+            } else {
+                arrow = '⬇️ Lower'; // Need to go counter-clockwise (decrease angle)
+            }
+
             setFeedback({ message: tempMsg, color, arrow });
             setLastDiff(diff);
             if (previousGuesses.length >= 5) {
                 setGameOver(true);
-                setFeedback({ message: `Game Over! Angle was ${targetAngle}°`, color: '#ff2a2a', arrow: '' });
+                setFeedback({ message: `Game Over! Angle was ${actualTarget}°`, color: '#ff2a2a', arrow: '' });
                 setStreak(0);
             }
         }

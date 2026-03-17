@@ -37,7 +37,8 @@ import WordleGame from './WordleGame';
 import AngleGame from './AngleGame';
 import MoreLessGame from './MoreLessGame';
 import SpellingBeeGame from './SpellingBeeGame';
-import CluelessGame from './CluelessGame';
+import TicTacToeGame from './TicTacToeGame';
+import Connect4Game from './Connect4Game';
 import { LeaderboardWidget } from './Overlays'; // Import LeaderboardWidget
 import { 
   StartScreen, 
@@ -62,7 +63,7 @@ interface GameProps {
 
 export default function Game({ user, onLogout }: GameProps) {
   // --- Global App State ---
-  const [activeApp, setActiveApp] = useState<'taco' | 'iq' | 'mine' | 'wordle' | 'angle' | 'more-less' | 'spelling-bee' | 'clueless'>('taco');
+  const [activeApp, setActiveApp] = useState<'taco' | 'iq' | 'mine' | 'wordle' | 'angle' | 'more-less' | 'spelling-bee' | 'tic-tac-toe' | 'connect-4'>('taco');
 
   // --- Taco Game State ---
   const [screen, setScreen] = useState<GameScreen>('hub');
@@ -994,8 +995,16 @@ export default function Game({ user, onLogout }: GameProps) {
                 onUpdateUsername={handleUpdateUsername}
                 onLogout={onLogout}
              />
-        ) : activeApp === 'clueless' ? (
-             <CluelessGame 
+        ) : activeApp === 'tic-tac-toe' ? (
+             <TicTacToeGame 
+                user={user}
+                onBackToHub={() => setActiveApp('taco')}
+                username={customUsername}
+                onUpdateUsername={handleUpdateUsername}
+                onLogout={onLogout}
+             />
+        ) : activeApp === 'connect-4' ? (
+             <Connect4Game 
                 user={user}
                 onBackToHub={() => setActiveApp('taco')}
                 username={customUsername}
@@ -1012,7 +1021,8 @@ export default function Game({ user, onLogout }: GameProps) {
                 onLaunchAngle={() => setActiveApp('angle')}
                 onLaunchMoreLess={() => setActiveApp('more-less')}
                 onLaunchSpellingBee={() => setActiveApp('spelling-bee')}
-                onLaunchClueless={() => setActiveApp('clueless')}
+                onLaunchTicTacToe={() => setActiveApp('tic-tac-toe')}
+                onLaunchConnect4={() => setActiveApp('connect-4')}
                 onLogout={onLogout}
                 username={customUsername}
                 onUpdateUsername={handleUpdateUsername}
