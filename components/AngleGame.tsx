@@ -96,14 +96,41 @@ const AngleGame: React.FC<AngleGameProps> = ({ onBackToHub }) => {
 
             <div className="flex flex-col items-center gap-8 z-10 mt-16">
                 <div className="relative w-64 h-64 bg-[#111] rounded-full border-4 border-[#333] flex items-center justify-center">
-                    <div className="absolute w-1/2 h-1 bg-white right-0 origin-left" style={{ top: 'calc(50% - 0.5px)', left: '50%' }}></div>
-                    <div className="absolute w-1/2 h-1 bg-[#d900ff] right-0 origin-left transition-transform duration-1000 ease-out" style={{ top: 'calc(50% - 0.5px)', left: '50%', transform: `rotate(-${targetAngle}deg)` }}></div>
-                    
-                    {previousGuesses.map((g, i) => (
-                        <div key={i} className="absolute w-1/2 h-0.5 bg-[#555] right-0 origin-left opacity-50" style={{ top: 'calc(50% - 0.25px)', left: '50%', transform: `rotate(-${g}deg)` }}></div>
-                    ))}
-                    
-                    <div className="absolute w-4 h-4 bg-white rounded-full"></div>
+                    <svg className="absolute inset-0 w-full h-full" viewBox="0 0 100 100" style={{ transform: 'rotate(-90deg)' }}>
+                        {/* Arc */}
+                        <circle 
+                            cx="50" cy="50" r="15" 
+                            fill="none" stroke="#d900ff" strokeWidth="4" strokeOpacity="0.5"
+                            strokeDasharray={2 * Math.PI * 15}
+                            strokeDashoffset={2 * Math.PI * 15 * (1 - targetAngle / 360)}
+                            className="transition-all duration-1000 ease-out"
+                        />
+                        {/* Fixed line */}
+                        <line x1="50" y1="50" x2="100" y2="50" stroke="white" strokeWidth="2" />
+                        
+                        {/* Previous guesses */}
+                        {previousGuesses.map((g, i) => (
+                            <line 
+                                key={i}
+                                x1="50" y1="50" 
+                                x2="100" y2="50" 
+                                stroke="#555" strokeWidth="1" strokeOpacity="0.5"
+                                style={{ transform: `rotate(${g}deg)`, transformOrigin: '50px 50px' }}
+                            />
+                        ))}
+                        
+                        {/* Moving line */}
+                        <line 
+                            x1="50" y1="50" 
+                            x2="100" y2="50" 
+                            stroke="#d900ff" strokeWidth="2" 
+                            className="transition-all duration-1000 ease-out"
+                            style={{ transform: `rotate(${targetAngle}deg)`, transformOrigin: '50px 50px' }}
+                        />
+                        
+                        {/* Center dot */}
+                        <circle cx="50" cy="50" r="3" fill="white" />
+                    </svg>
                 </div>
 
                 <form onSubmit={handleGuess} className="flex flex-col items-center gap-4">
@@ -140,12 +167,35 @@ const AngleGame: React.FC<AngleGameProps> = ({ onBackToHub }) => {
                 </div>
 
                 {gameOver && (
-                    <button 
-                        onClick={startNewGame}
-                        className="px-6 py-3 bg-[#57a863] text-white font-bold rounded hover:bg-[#468a4f] transition-colors z-10 font-['Press_Start_2P'] text-sm animate-pop-in"
-                    >
-                        PLAY AGAIN
-                    </button>
+                    <div className="absolute inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+                        <div className="bg-[#1a1a1b] border border-[#3a3a3c] rounded-lg p-8 max-w-sm w-full flex flex-col items-center gap-6 animate-pop-in shadow-2xl">
+                            <h2 className="text-2xl font-bold font-['Press_Start_2P'] text-center text-white">
+                                {feedback?.message.includes('Perfect') ? 'YOU WIN!' : 'GAME OVER'}
+                            </h2>
+                            
+                            <div className="text-center">
+                                <p className="text-[#aaa] mb-2">The angle was</p>
+                                <div className="text-3xl font-bold text-[#d900ff] tracking-widest uppercase">
+                                    {targetAngle}°
+                                </div>
+                            </div>
+
+                            <div className="flex gap-4 w-full mt-4">
+                                <button 
+                                    onClick={onBackToHub}
+                                    className="flex-1 py-3 bg-[#3a3a3c] text-white font-bold rounded hover:bg-[#565758] transition-colors font-['Press_Start_2P'] text-xs"
+                                >
+                                    HOME
+                                </button>
+                                <button 
+                                    onClick={startNewGame}
+                                    className="flex-1 py-3 bg-[#d900ff] text-white font-bold rounded hover:bg-[#b000cc] transition-colors font-['Press_Start_2P'] text-xs"
+                                >
+                                    REPLAY
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 )}
             </div>
         </div>

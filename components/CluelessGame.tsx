@@ -175,12 +175,35 @@ const CluelessGame: React.FC<CluelessGameProps> = ({ onBackToHub }) => {
                 </div>
 
                 {gameOver && (
-                    <button 
-                        onClick={startNewGame}
-                        className="mt-6 px-6 py-3 bg-[#57a863] text-white font-bold rounded hover:bg-[#468a4f] transition-colors font-['Press_Start_2P'] text-sm shrink-0 animate-pop-in"
-                    >
-                        PLAY AGAIN
-                    </button>
+                    <div className="absolute inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+                        <div className="bg-[#1a1a1b] border border-[#3a3a3c] rounded-lg p-8 max-w-sm w-full flex flex-col items-center gap-6 animate-pop-in shadow-2xl">
+                            <h2 className="text-2xl font-bold font-['Press_Start_2P'] text-center text-white">
+                                {gaveUp ? 'GAVE UP!' : 'YOU WIN!'}
+                            </h2>
+                            
+                            <div className="text-center">
+                                <p className="text-[#aaa] mb-2">The word was</p>
+                                <div className="text-3xl font-bold text-[#4facfe] tracking-widest uppercase">
+                                    {targetWord}
+                                </div>
+                            </div>
+
+                            <div className="flex gap-4 w-full mt-4">
+                                <button 
+                                    onClick={onBackToHub}
+                                    className="flex-1 py-3 bg-[#3a3a3c] text-white font-bold rounded hover:bg-[#565758] transition-colors font-['Press_Start_2P'] text-xs"
+                                >
+                                    HOME
+                                </button>
+                                <button 
+                                    onClick={startNewGame}
+                                    className="flex-1 py-3 bg-[#4facfe] text-black font-bold rounded hover:bg-[#3b8edb] transition-colors font-['Press_Start_2P'] text-xs"
+                                >
+                                    REPLAY
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 )}
             </div>
             )}

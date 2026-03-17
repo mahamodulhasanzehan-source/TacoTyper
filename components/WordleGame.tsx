@@ -176,7 +176,7 @@ const WordleGame: React.FC<WordleGameProps> = ({ onBackToHub }) => {
                 <div className="w-8"></div>
             </div>
 
-            {message && (
+            {message && !gameOver && (
                 <div className="absolute top-24 bg-white text-black px-4 py-2 rounded font-bold z-20 animate-pop-in">
                     {message}
                 </div>
@@ -250,14 +250,37 @@ const WordleGame: React.FC<WordleGameProps> = ({ onBackToHub }) => {
                 ))}
             </div>
 
-                    {gameOver && (
-                        <button 
-                            onClick={startNewGame}
-                            className="mt-8 px-6 py-3 bg-[#57a863] text-white font-bold rounded hover:bg-[#468a4f] transition-colors z-10 font-['Press_Start_2P'] text-sm animate-pop-in"
-                        >
-                            PLAY AGAIN
-                        </button>
-                    )}
+            {gameOver && (
+                <div className="absolute inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+                    <div className="bg-[#1a1a1b] border border-[#3a3a3c] rounded-lg p-8 max-w-sm w-full flex flex-col items-center gap-6 animate-pop-in shadow-2xl">
+                        <h2 className="text-2xl font-bold font-['Press_Start_2P'] text-center text-white">
+                            {message === 'You win!' ? 'YOU WIN!' : 'GAME OVER'}
+                        </h2>
+                        
+                        <div className="text-center">
+                            <p className="text-[#aaa] mb-2">The word was</p>
+                            <div className="text-3xl font-bold text-[#538d4e] tracking-widest uppercase">
+                                {targetWord}
+                            </div>
+                        </div>
+
+                        <div className="flex gap-4 w-full mt-4">
+                            <button 
+                                onClick={onBackToHub}
+                                className="flex-1 py-3 bg-[#3a3a3c] text-white font-bold rounded hover:bg-[#565758] transition-colors font-['Press_Start_2P'] text-xs"
+                            >
+                                HOME
+                            </button>
+                            <button 
+                                onClick={startNewGame}
+                                className="flex-1 py-3 bg-[#538d4e] text-white font-bold rounded hover:bg-[#468a4f] transition-colors font-['Press_Start_2P'] text-xs"
+                            >
+                                REPLAY
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
                 </>
             )}
         </div>
