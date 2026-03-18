@@ -163,9 +163,9 @@
 
     <div class="interaction-prompt" id="interactionPrompt">Press [F] to Open Armory</div>
 
-    <div class="controls-help">[W,A,S,D]: Move | [SPACE]: Jump |[SHIFT]: Run<br>
-        [C]: Slide | [SCROLL WHEEL]: Swap Weapons<br>[LEFT CLICK]: Shoot | [RIGHT CLICK]: ADS (Aim)<br>
-        [B]: Toggle Fire Mode | [F]: Armory | [P]: Spawns Menu | [V]: Audio Settings | [T]: Toggle Spawns<br>[ESC] or [CTRL]: Pause Game
+    <div class="controls-help">[W,A,S,D]: Move | [SPACE]: Jump | [SHIFT]: Run<br>
+        [C]: Slide | [SCROLL WHEEL]: Swap Weapons<br>[LEFT CLICK]: Shoot |[RIGHT CLICK]: ADS (Aim)<br>
+        [B]: Toggle Fire Mode | [F]: Armory |[P]: Spawns Menu | [V]: Audio Settings | [T]: Toggle Spawns<br>[ESC] or [CTRL]: Pause Game
     </div>
 
     <!-- Menus and Overlays -->
@@ -188,14 +188,14 @@
         <div class="modal-window" style="width: 1000px; max-width: 95%;">
             <div class="modal-header" style="color: #F2C94C; border-bottom: 2px solid rgba(242, 201, 76, 0.3); text-shadow: 0 0 10px rgba(242, 201, 76, 0.4);">BUY STATION</div>
             <div class="armory-layout">
-                <div class="armory-column">
+                <div class="armory-column" id="col-survival">
                     <div class="column-title" style="color: #F2C94C;">Survival</div>
                     <div class="weapon-btn" onclick="buyBandAid()">
                         <span class="weapon-btn-name">Band Aid</span>
                         <span class="weapon-btn-stats" style="color: #27AE60; font-weight: bold; font-size: 1rem;">$50</span>
                     </div>
                 </div>
-                <div class="armory-column">
+                <div class="armory-column" id="col-basic-guns">
                     <div class="column-title" style="color: #F2C94C;">Basic Guns</div>
                     <div class="weapon-btn" id="btnBuyPistol" onclick="buySurvivalGun('pistol')">
                         <span class="weapon-btn-name">Basic Pistol</span>
@@ -210,7 +210,7 @@
                         <span class="weapon-btn-stats" id="costAR" style="color: #27AE60; font-weight: bold; font-size: 1rem;">Buy $300</span>
                     </div>
                 </div>
-                <div class="armory-column">
+                <div class="armory-column" id="col-upgrades">
                     <div class="column-title" style="color: #F2C94C;">Upgrades</div>
                     <div class="weapon-btn" id="btnBuyGs50" onclick="buySurvivalGun('gs50')">
                         <span class="weapon-btn-name">.50 Cal (Grekova)</span>
@@ -552,6 +552,7 @@
         dirLight.position.set(10, 20, 10);
         scene.add(dirLight);
 
+        // Map is exactly 200x200 (-100 to 100 boundaries)
         const gridHelper = new THREE.GridHelper(200, 100, 0x00ff9d, 0x222222);
         gridHelper.position.y = 0;
         scene.add(gridHelper);
@@ -679,7 +680,7 @@
             document.querySelector('.hud-container').style.display = 'none';
             document.getElementById('survivalHud').style.display = 'block';
             
-            document.querySelector('.controls-help').innerHTML = "[W,A,S,D]: Move | [SPACE]: Jump | [SHIFT]: Run<br>[C]: Slide | [SCROLL WHEEL] or[1,2,3]: Swap Weapons<br>[LEFT CLICK]: Shoot | [RIGHT CLICK]: ADS (Aim)<br>[R]: Reload | [F]: Buy Station | [B]: Quick Band-Aid<br>[P]: Brightness Settings | [M] / [N]: Cheat Codes<br>[ESC] or [CTRL]: Pause Game";
+            document.querySelector('.controls-help').innerHTML = "[W,A,S,D]: Move | [SPACE]: Jump | [SHIFT]: Run<br>[C]: Slide |[SCROLL WHEEL] or[1,2,3]: Swap Weapons<br>[LEFT CLICK]: Shoot | [RIGHT CLICK]: ADS (Aim)<br>[R]: Reload | [F]: Buy Station | [B]: Quick Band-Aid<br>[P]: Brightness Settings | [M] / [N]: Cheat Codes<br>[ESC] or [CTRL]: Pause Game";
             
             // Globally apply default brightness from the slider (default 40%)
             updateBrightness();
@@ -696,15 +697,16 @@
         });
 
         document.addEventListener('pointerlockchange', () => {
-            window.parent.postMessage({ type: 'pointer_lock_change', isLocked: document.pointerLockElement === document.body }, '*');
+            const isLocked = document.pointerLockElement === document.body;
+            window.parent.postMessage({ type: 'pointer_lock_change', isLocked }, '*');
             const isEndgame = state.gameMode === 'survival' && (state.survival.waveState === 'GAMEOVER' || state.survival.waveState === 'VICTORY');
             
-            if (document.pointerLockElement !== document.body && state.menuOpen === null && !isEndgame && state.gameMode !== null) {
+            if (!isLocked && state.menuOpen === null && !isEndgame && state.gameMode !== null) {
                 document.getElementById('startScreen').style.display = 'flex';
                 document.getElementById('startScreen').querySelector('h1').innerText = "PAUSED";
                 document.getElementById('startBtn').innerText = "Resume";
                 state.paused = true; 
-            } else if (document.pointerLockElement === document.body && !isEndgame) {
+            } else if (isLocked && !isEndgame) {
                 state.paused = false;
                 document.getElementById('startScreen').style.display = 'none';
             }
@@ -968,24 +970,36 @@
             const inv = state.survival.inventory;
             document.getElementById('survMoneyText').innerText = `$${state.survival.money}`;
             
-            document.getElementById('costPistol').innerText = inv['Pistol'].id === 'gs50' ? `Owned` : `Ammo $10`;
-            document.getElementById('costGs50').innerText = inv['Pistol'].id === 'gs50' ? `Ammo $10` : `Buy $100`;
-            
-            if (inv['SMG'] && inv['SMG'].id === 'vector_smg') {
-                document.getElementById('costSMG').innerText = `Owned`; document.getElementById('costVector').innerText = `Ammo $30`;
-            } else if (inv['SMG'] && inv['SMG'].id === 'smg') {
-                document.getElementById('costSMG').innerText = `Ammo $20`; document.getElementById('costVector').innerText = `Buy $600`;
+            const pistolUpgraded = inv['Pistol'] && inv['Pistol'].id === 'gs50';
+            const smgUpgraded = inv['SMG'] && inv['SMG'].id === 'vector_smg';
+            const arUpgraded = inv['AR'] && inv['AR'].id === 'odin';
+
+            // Hide basic guns if their upgraded version is owned
+            document.getElementById('btnBuyPistol').style.display = pistolUpgraded ? 'none' : 'block';
+            document.getElementById('btnBuySMG').style.display = smgUpgraded ? 'none' : 'block';
+            document.getElementById('btnBuyAR').style.display = arUpgraded ? 'none' : 'block';
+
+            // If all 3 are upgraded, hide the entire column so 'Upgrades' shifts to the middle
+            if (pistolUpgraded && smgUpgraded && arUpgraded) {
+                document.getElementById('col-basic-guns').style.display = 'none';
             } else {
-                document.getElementById('costSMG').innerText = `Buy $100`; document.getElementById('costVector').innerText = `Buy $600`;
+                document.getElementById('col-basic-guns').style.display = 'flex';
             }
+
+            if (!pistolUpgraded) document.getElementById('costPistol').innerText = `Ammo $10`;
+            document.getElementById('costGs50').innerText = pistolUpgraded ? `Ammo $10` : `Buy $100`;
             
-            if (inv['AR'] && inv['AR'].id === 'odin') {
-                document.getElementById('costAR').innerText = `Owned`; document.getElementById('costOdin').innerText = `Ammo $70`;
-            } else if (inv['AR'] && inv['AR'].id === 'ak47') {
-                document.getElementById('costAR').innerText = `Ammo $50`; document.getElementById('costOdin').innerText = `Buy $800`;
-            } else {
-                document.getElementById('costAR').innerText = `Buy $300`; document.getElementById('costOdin').innerText = `Buy $800`;
+            if (!smgUpgraded) {
+                if (inv['SMG'] && inv['SMG'].id === 'smg') document.getElementById('costSMG').innerText = `Ammo $20`;
+                else document.getElementById('costSMG').innerText = `Buy $100`;
             }
+            document.getElementById('costVector').innerText = smgUpgraded ? `Ammo $30` : `Buy $600`;
+            
+            if (!arUpgraded) {
+                if (inv['AR'] && inv['AR'].id === 'ak47') document.getElementById('costAR').innerText = `Ammo $50`;
+                else document.getElementById('costAR').innerText = `Buy $300`;
+            }
+            document.getElementById('costOdin').innerText = arUpgraded ? `Ammo $70` : `Buy $800`;
         }
 
         function buySurvivalGun(id) {
@@ -1097,7 +1111,11 @@
                 for (let i = 0; i < count; i++) {
                     const zData = SURVIVAL_ZOMBIES[type];
                     const angle = Math.random() * Math.PI * 2; const dist = 30 + Math.random() * 20;
-                    const px = yawObj.position.x + Math.cos(angle) * dist; const pz = yawObj.position.z + Math.sin(angle) * dist;
+                    let px = yawObj.position.x + Math.cos(angle) * dist; let pz = yawObj.position.z + Math.sin(angle) * dist;
+
+                    // Strictly clamp zombie spawns to inside the floor grid boundaries
+                    px = Math.max(-98, Math.min(98, px));
+                    pz = Math.max(-98, Math.min(98, pz));
 
                     let mesh;
                     if (zData.height > 2) {
@@ -1210,6 +1228,12 @@
                 yawObj.position.y = THREE.MathUtils.lerp(yawObj.position.y, targetGroundHeight, delta * 15);
                 if (targetGroundHeight - yawObj.position.y < 0.05) yawObj.position.y = targetGroundHeight;
                 if (state.player.velocity.y < 0) state.player.velocity.y = 0;
+            }
+
+            // Invisible Map Barrier Logic - Floor grid is exactly -100 to 100 
+            if (state.gameMode === 'survival') {
+                yawObj.position.x = Math.max(-99.5, Math.min(99.5, yawObj.position.x));
+                yawObj.position.z = Math.max(-99.5, Math.min(99.5, yawObj.position.z));
             }
 
             stationMesh.rotation.y += delta;
@@ -1526,7 +1550,15 @@
                     }
                 }
 
-                if (distToPlayer > z.radius + 0.8 && canMove) z.mesh.position.addScaledVector(targetDir, z.speed * delta);
+                if (distToPlayer > z.radius + 0.8 && canMove) {
+                    z.mesh.position.addScaledVector(targetDir, z.speed * delta);
+                    
+                    // Clamp zombies to boundary forcefully if in Survival Mode
+                    if (state.gameMode === 'survival') {
+                        z.mesh.position.x = Math.max(-98, Math.min(98, z.mesh.position.x));
+                        z.mesh.position.z = Math.max(-98, Math.min(98, z.mesh.position.z));
+                    }
+                }
                 z.mesh.lookAt(yawObj.position.x, z.mesh.position.y, yawObj.position.z);
             });
 
