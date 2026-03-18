@@ -696,6 +696,7 @@
         });
 
         document.addEventListener('pointerlockchange', () => {
+            window.parent.postMessage({ type: 'pointer_lock_change', isLocked: document.pointerLockElement === document.body }, '*');
             const isEndgame = state.gameMode === 'survival' && (state.survival.waveState === 'GAMEOVER' || state.survival.waveState === 'VICTORY');
             
             if (document.pointerLockElement !== document.body && state.menuOpen === null && !isEndgame && state.gameMode !== null) {
@@ -784,9 +785,6 @@
         }
 
         document.addEventListener('keydown', e => {
-            if (e.key === 'Escape') {
-                window.parent.postMessage('escape_pressed', '*');
-            }
             if (!state.gameMode) return;
             const k = e.key.toLowerCase();
             state.keys[k] = true;

@@ -5,12 +5,11 @@ import type { User } from './services/firebase';
 import LoginScreen from './components/LoginScreen';
 import Game from './components/Game';
 import { SettingsProvider } from './contexts/SettingsContext';
-import { LoadingScreen } from './components/LoadingScreen';
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
   const [authChecked, setAuthChecked] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -76,18 +75,14 @@ export default function App() {
       setUser(null);
   };
 
-  if (isLoading) {
-      return (
-          <div className="flex w-full h-screen bg-black items-center justify-center text-white flex-col gap-4">
-              <LoadingScreen text="Loading Kitchen..." color="#fff" />
-          </div>
-      );
+  if (!authChecked) {
+      return <div className="w-full h-screen bg-black"></div>;
   }
 
   return (
     <SettingsProvider>
       {!user ? (
-        <LoginScreen onLogin={handleLogin} isLoading={false} />
+        <LoginScreen onLogin={handleLogin} isLoading={isLoading} />
       ) : (
         <Game user={user} onLogout={handleLogout} />
       )}
