@@ -82,4 +82,5 @@ export interface GlobalGameStats {
   spelling_bee_plays: number;
   tic_tac_toe_plays: number;
   connect_4_plays: number;
+  gun_game_plays: number;
 }

@@ -39,6 +39,7 @@ import MoreLessGame from './MoreLessGame';
 import SpellingBeeGame from './SpellingBeeGame';
 import TicTacToeGame from './TicTacToeGame';
 import Connect4Game from './Connect4Game';
+import GunGameComponent from './GunGameComponent';
 import { LeaderboardWidget } from './Overlays'; // Import LeaderboardWidget
 import { 
   StartScreen, 
@@ -63,7 +64,7 @@ interface GameProps {
 
 export default function Game({ user, onLogout }: GameProps) {
   // --- Global App State ---
-  const [activeApp, setActiveApp] = useState<'taco' | 'iq' | 'mine' | 'wordle' | 'angle' | 'more-less' | 'spelling-bee' | 'tic-tac-toe' | 'connect-4'>('taco');
+  const [activeApp, setActiveApp] = useState<'taco' | 'iq' | 'mine' | 'wordle' | 'angle' | 'more-less' | 'spelling-bee' | 'tic-tac-toe' | 'connect-4' | 'gun-game'>('taco');
 
   // --- Taco Game State ---
   const [screen, setScreen] = useState<GameScreen>('hub');
@@ -1011,6 +1012,10 @@ export default function Game({ user, onLogout }: GameProps) {
                 onUpdateUsername={handleUpdateUsername}
                 onLogout={onLogout}
              />
+        ) : activeApp === 'gun-game' ? (
+            <GunGameComponent 
+                onBackToHub={() => setActiveApp('taco')}
+            />
         ) : screen === 'hub' ? (
              <HubScreen 
                 user={user} 
@@ -1023,6 +1028,7 @@ export default function Game({ user, onLogout }: GameProps) {
                 onLaunchSpellingBee={() => setActiveApp('spelling-bee')}
                 onLaunchTicTacToe={() => setActiveApp('tic-tac-toe')}
                 onLaunchConnect4={() => setActiveApp('connect-4')}
+                onLaunchGunGame={() => setActiveApp('gun-game')}
                 onLogout={onLogout}
                 username={customUsername}
                 onUpdateUsername={handleUpdateUsername}
