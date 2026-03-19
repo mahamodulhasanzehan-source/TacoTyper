@@ -143,13 +143,7 @@ const HubScreen: React.FC<HubScreenProps> = ({ user, onLaunchGame, onLaunchIQ, o
                 icon: '🔫',
                 color: '#57a863',
                 plays: stats.gun_game_plays || 0,
-                action: () => {
-                    if (isMobile) {
-                        alert("This game is not compatible on this device.");
-                    } else {
-                        onLaunchGunGame();
-                    }
-                }
+                action: onLaunchGunGame
             }
         ];
 
