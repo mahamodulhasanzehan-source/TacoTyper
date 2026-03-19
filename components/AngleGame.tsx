@@ -100,7 +100,7 @@ const AngleGame: React.FC<AngleGameProps> = ({ onBackToHub }) => {
     };
 
     return (
-        <div className="flex flex-col items-center justify-center w-full h-full bg-[#000] text-white font-['Inter'] relative overflow-hidden">
+        <div className="flex flex-col items-center justify-start pt-20 md:justify-center md:pt-0 w-full h-full bg-[#000] text-white font-['Inter'] fixed inset-0 overflow-hidden">
             <div className="absolute inset-0 opacity-10 pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at 10% 20%, #d900ff 2px, transparent 2px), radial-gradient(circle at 90% 80%, #d900ff 2px, transparent 2px)', backgroundSize: '150px 150px' }}></div>
             
             <div className="flex justify-between items-center w-full max-w-md p-4 z-10 absolute top-0">
@@ -112,8 +112,8 @@ const AngleGame: React.FC<AngleGameProps> = ({ onBackToHub }) => {
                 <div className="w-8"></div>
             </div>
 
-            <div className="flex flex-col items-center gap-8 z-10 mt-16">
-                <div className="relative w-64 h-64 bg-[#111] rounded-full border-4 border-[#333] flex items-center justify-center">
+            <div className="flex flex-col items-center gap-4 md:gap-8 z-10 mt-4 md:mt-16">
+                <div className="relative w-48 h-48 md:w-64 md:h-64 bg-[#111] rounded-full border-4 border-[#333] flex items-center justify-center">
                     <svg className="absolute inset-0 w-full h-full" viewBox="0 0 100 100" style={{ transform: 'rotate(-90deg)' }}>
                         {/* Arc */}
                         <circle 

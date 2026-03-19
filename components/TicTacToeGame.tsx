@@ -60,24 +60,44 @@ export default function TicTacToeGame({ user, onBackToHub, username }: TicTacToe
     };
 
     const getBestMove = (squares: Player[]): number => {
-        // 5% chance to make a random move to not be completely unbeatable
-        if (Math.random() < 0.05) {
-            const available = squares.map((val, idx) => val === null ? idx : null).filter(val => val !== null) as number[];
-            if (available.length > 0) {
-                return available[Math.floor(Math.random() * available.length)];
-            }
-        }
-
-        let bestScore = -Infinity;
-        let move = -1;
         const available = squares.map((val, idx) => val === null ? idx : null).filter(val => val !== null) as number[];
-        
+        if (available.length === 0) return -1;
+
         // If it's the first move, pick a random corner or center to add variety
         if (available.length === 9) {
             const openers = [0, 2, 4, 6, 8];
             return openers[Math.floor(Math.random() * openers.length)];
         }
 
+        // 1. Check for immediate win
+        for (let i of available) {
+            squares[i] = 'O';
+            if (checkWinner(squares) === 'O') {
+                squares[i] = null;
+                return i;
+            }
+            squares[i] = null;
+        }
+
+        // 2. Check for immediate block
+        for (let i of available) {
+            squares[i] = 'X';
+            if (checkWinner(squares) === 'X') {
+                squares[i] = null;
+                return i;
+            }
+            squares[i] = null;
+        }
+
+        // 3. 50% chance to make a random move instead of perfect minimax
+        // This makes it beatable (it won't set up perfect forks) but it will never miss a 1-move win/loss.
+        if (Math.random() < 0.5) {
+            return available[Math.floor(Math.random() * available.length)];
+        }
+
+        let bestScore = -Infinity;
+        let move = -1;
+        
         for (let i = 0; i < 9; i++) {
             if (squares[i] === null) {
                 squares[i] = 'O';
