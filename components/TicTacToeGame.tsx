@@ -63,12 +63,6 @@ export default function TicTacToeGame({ user, onBackToHub, username }: TicTacToe
         const available = squares.map((val, idx) => val === null ? idx : null).filter(val => val !== null) as number[];
         if (available.length === 0) return -1;
 
-        // If it's the first move, pick a random corner or center to add variety
-        if (available.length === 9) {
-            const openers = [0, 2, 4, 6, 8];
-            return openers[Math.floor(Math.random() * openers.length)];
-        }
-
         // 1. Check for immediate win
         for (let i of available) {
             squares[i] = 'O';
@@ -89,58 +83,13 @@ export default function TicTacToeGame({ user, onBackToHub, username }: TicTacToe
             squares[i] = null;
         }
 
-        // 3. 50% chance to make a random move instead of perfect minimax
-        // This makes it beatable (it won't set up perfect forks) but it will never miss a 1-move win/loss.
-        if (Math.random() < 0.5) {
-            return available[Math.floor(Math.random() * available.length)];
+        // 3. If center is available, 50% chance to take it (makes it slightly strategic but not perfect)
+        if (squares[4] === null && Math.random() > 0.5) {
+            return 4;
         }
 
-        let bestScore = -Infinity;
-        let move = -1;
-        
-        for (let i = 0; i < 9; i++) {
-            if (squares[i] === null) {
-                squares[i] = 'O';
-                let score = minimax(squares, 0, false);
-                squares[i] = null;
-                if (score > bestScore) {
-                    bestScore = score;
-                    move = i;
-                }
-            }
-        }
-        return move;
-    };
-
-    const minimax = (squares: Player[], depth: number, isMaximizing: boolean): number => {
-        const result = checkWinner(squares);
-        if (result === 'O') return 10 - depth;
-        if (result === 'X') return depth - 10;
-        if (result === 'Draw') return 0;
-
-        if (isMaximizing) {
-            let bestScore = -Infinity;
-            for (let i = 0; i < 9; i++) {
-                if (squares[i] === null) {
-                    squares[i] = 'O';
-                    let score = minimax(squares, depth + 1, false);
-                    squares[i] = null;
-                    bestScore = Math.max(score, bestScore);
-                }
-            }
-            return bestScore;
-        } else {
-            let bestScore = Infinity;
-            for (let i = 0; i < 9; i++) {
-                if (squares[i] === null) {
-                    squares[i] = 'X';
-                    let score = minimax(squares, depth + 1, true);
-                    squares[i] = null;
-                    bestScore = Math.min(score, bestScore);
-                }
-            }
-            return bestScore;
-        }
+        // 4. Otherwise, pick a random available square
+        return available[Math.floor(Math.random() * available.length)];
     };
 
     useEffect(() => {
