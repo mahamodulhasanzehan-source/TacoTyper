@@ -35,18 +35,18 @@ export default function TicTacToeGame({ user, onBackToHub, username }: TicTacToe
         setIsMobile(isMobileDevice());
     }, []);
 
-    const startNewGame = useCallback(() => {
+    const startNewGame = () => {
         setBoard(Array(9).fill(null));
         setIsPlayerTurn(!aiPlaysFirst);
         setGameOver(false);
         setWinner(null);
         setMessage('');
         incrementGamePlays('tic_tac_toe' as any);
-    }, [aiPlaysFirst]);
+    };
 
     useEffect(() => {
-        startNewGame();
-    }, [startNewGame]);
+        incrementGamePlays('tic_tac_toe' as any);
+    }, []);
 
     const checkWinner = (squares: Player[]): Player | 'Draw' => {
         for (let i = 0; i < WINNING_COMBINATIONS.length; i++) {
@@ -187,7 +187,7 @@ export default function TicTacToeGame({ user, onBackToHub, username }: TicTacToe
             setAiPlaysFirst(false);
         } else {
             setMessage('Draw! 🤝');
-            // Streak is not broken
+            setAiPlaysFirst(prev => !prev);
         }
     };
 
