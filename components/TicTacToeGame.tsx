@@ -131,7 +131,28 @@ export default function TicTacToeGame({ user, onBackToHub, username }: TicTacToe
             return available[Math.floor(Math.random() * available.length)];
         }
 
-        // Hard: Minimax
+        // Hard: Minimax (with 10% chance of making a sub-optimal move to make it slightly easier)
+        if (Math.random() < 0.1) {
+            // Try to take immediate wins or block immediate threats first
+            for (let i of available) {
+                squares[i] = 'O';
+                if (checkWinner(squares) === 'O') {
+                    squares[i] = null;
+                    return i;
+                }
+                squares[i] = null;
+            }
+            for (let i of available) {
+                squares[i] = 'X';
+                if (checkWinner(squares) === 'X') {
+                    squares[i] = null;
+                    return i;
+                }
+                squares[i] = null;
+            }
+            return available[Math.floor(Math.random() * available.length)];
+        }
+
         let bestScore = -Infinity;
         let move = -1;
         for (let i = 0; i < squares.length; i++) {
@@ -174,20 +195,27 @@ export default function TicTacToeGame({ user, onBackToHub, username }: TicTacToe
         setWinner(result);
         
         if (result === 'X') {
-            const newStreak = streak + 1;
-            setStreak(newStreak);
-            setMessage('You Win! 🎉');
-            setAiPlaysFirst(true);
-            await saveLeaderboardScore(
-                user, 
-                username || user.displayName || 'Chef', 
-                newStreak, 
-                'Tic Tac Toe Master', 
-                { mistakes: 0, timeTaken: 0, ingredientsMissed: 0, rottenWordsTyped: 0, totalScore: newStreak, levelReached: newStreak }, 
-                'tic_tac_toe'
-            );
+            if (difficulty === 2) {
+                const newStreak = streak + 1;
+                setStreak(newStreak);
+                setMessage('You Win! 🎉');
+                setAiPlaysFirst(true);
+                await saveLeaderboardScore(
+                    user, 
+                    username || user.displayName || 'Chef', 
+                    newStreak, 
+                    'Tic Tac Toe Master', 
+                    { mistakes: 0, timeTaken: 0, ingredientsMissed: 0, rottenWordsTyped: 0, totalScore: newStreak, levelReached: newStreak }, 
+                    'tic_tac_toe'
+                );
+            } else {
+                setMessage('You Win! 🎉');
+                setAiPlaysFirst(true);
+            }
         } else if (result === 'O') {
-            setStreak(0);
+            if (difficulty === 2) {
+                setStreak(0);
+            }
             setMessage('You Lose! 😢');
             setAiPlaysFirst(false);
         } else {
@@ -221,7 +249,10 @@ export default function TicTacToeGame({ user, onBackToHub, username }: TicTacToe
                     max="2"
                     step="1"
                     value={difficulty}
-                    onChange={(e) => setDifficulty(parseInt(e.target.value))}
+                    onChange={(e) => {
+                        setDifficulty(parseInt(e.target.value));
+                        setStreak(0);
+                    }}
                     className="w-48 h-2 rounded-lg appearance-none cursor-pointer absolute origin-center -rotate-90"
                     style={{
                         background: `linear-gradient(to right, ${difficultyColors[0]} 0%, ${difficultyColors[1]} 50%, ${difficultyColors[2]} 100%)`,
@@ -283,7 +314,11 @@ export default function TicTacToeGame({ user, onBackToHub, username }: TicTacToe
                 <button onClick={onBackToHub} className="text-2xl hover:scale-110 transition-transform">⬅️</button>
                 <div className="flex flex-col items-center">
                     <h1 className="text-xl md:text-2xl font-bold font-['Press_Start_2P'] text-[#4facfe]">TIC TAC TOE</h1>
-                    <div className="text-xs text-[#aaa] mt-1">Win Streak: {streak}</div>
+                    {difficulty === 2 ? (
+                        <div className="text-xs text-[#aaa] mt-1">Win Streak: {streak}</div>
+                    ) : (
+                        <div className="text-[10px] md:text-xs text-[#ff2a2a] mt-1 font-bold">⚠️ Streaks only count in Hard mode</div>
+                    )}
                 </div>
                 <div className="w-8"></div>
             </div>
