@@ -28,6 +28,9 @@ const WordleGame: React.FC<WordleGameProps> = ({ onBackToHub }) => {
     const [wordQueue, setWordQueue] = useState<string[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isCheckingWord, setIsCheckingWord] = useState(false);
+    const [isWon, setIsWon] = useState(false);
+    const [isLost, setIsLost] = useState(false);
+    const [showGameOverPopup, setShowGameOverPopup] = useState(false);
 
     const startNewGame = useCallback(async () => {
         setIsLoading(true);
@@ -42,6 +45,9 @@ const WordleGame: React.FC<WordleGameProps> = ({ onBackToHub }) => {
         setGuesses([]);
         setCurrentGuess('');
         setGameOver(false);
+        setShowGameOverPopup(false);
+        setIsWon(false);
+        setIsLost(false);
         setMessage('');
         setIsLoading(false);
         incrementGamePlays('wordle');
@@ -126,12 +132,20 @@ const WordleGame: React.FC<WordleGameProps> = ({ onBackToHub }) => {
 
             if (currentGuess === targetWord) {
                 setGameOver(true);
-                setMessage('You won!');
                 setStreak(s => s + 1);
+                setTimeout(() => {
+                    setIsWon(true);
+                    setMessage('You won!');
+                    setShowGameOverPopup(true);
+                }, 1500);
             } else if (newGuesses.length >= ROWS) {
                 setGameOver(true);
-                setMessage(`Game Over! The word was ${targetWord}`);
                 setStreak(0);
+                setTimeout(() => {
+                    setIsLost(true);
+                    setMessage(`Game Over! The word was ${targetWord}`);
+                    setShowGameOverPopup(true);
+                }, 1500);
             }
         } else if (key === 'BACKSPACE') {
             setCurrentGuess(prev => prev.slice(0, -1));
@@ -208,7 +222,7 @@ const WordleGame: React.FC<WordleGameProps> = ({ onBackToHub }) => {
                 </div>
             ) : (
                 <>
-                    <div className="flex flex-col gap-2 mb-8 z-10 mt-4">
+                    <div className={`flex flex-col gap-2 mb-8 z-10 mt-4 ${isWon ? 'animate-bounce' : ''} ${isLost ? 'animate-shake' : ''}`}>
                 {Array.from({ length: ROWS }).map((_, rowIndex) => {
                     const guess = guesses[rowIndex] || (rowIndex === guesses.length ? currentGuess : '');
                     const isSubmitted = rowIndex < guesses.length;
@@ -270,16 +284,16 @@ const WordleGame: React.FC<WordleGameProps> = ({ onBackToHub }) => {
                 ))}
             </div>
 
-            {gameOver && (
+            {showGameOverPopup && (
                 <div className="absolute inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-                    <div className="bg-[#1a1a1b] border border-[#3a3a3c] rounded-lg p-8 max-w-sm w-full flex flex-col items-center gap-6 animate-pop-in shadow-2xl">
-                        <h2 className="text-2xl font-bold font-['Press_Start_2P'] text-center text-white">
-                            {message === 'You win!' ? 'YOU WIN!' : 'GAME OVER'}
+                    <div className={`bg-[#1a1a1b] border ${isWon ? 'border-[#538d4e]' : 'border-[#ff2a2a]'} rounded-lg p-8 max-w-sm w-full flex flex-col items-center gap-6 animate-pop-in shadow-[0_0_30px_rgba(0,0,0,0.5)] ${isWon ? 'shadow-[#538d4e]/30' : 'shadow-[#ff2a2a]/30'}`}>
+                        <h2 className={`text-2xl font-bold font-['Press_Start_2P'] text-center ${isWon ? 'text-[#538d4e]' : 'text-[#ff2a2a]'}`}>
+                            {isWon ? 'YOU WON!' : 'GAME OVER'}
                         </h2>
                         
                         <div className="text-center">
                             <p className="text-[#aaa] mb-2">The word was</p>
-                            <div className="text-3xl font-bold text-[#538d4e] tracking-widest uppercase">
+                            <div className="text-3xl font-bold text-white tracking-widest uppercase">
                                 {targetWord}
                             </div>
                         </div>
