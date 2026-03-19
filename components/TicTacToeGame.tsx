@@ -30,6 +30,11 @@ export default function TicTacToeGame({ user, onBackToHub, username }: TicTacToe
     const [isMobile, setIsMobile] = useState(false);
     const [showMobileLeaderboard, setShowMobileLeaderboard] = useState(false);
     const [aiPlaysFirst, setAiPlaysFirst] = useState(false);
+    const [difficulty, setDifficulty] = useState(2); // 0: Easy, 1: Medium, 2: Hard
+    const [showMobileDifficulty, setShowMobileDifficulty] = useState(false);
+
+    const difficultyColors = ['#34A853', '#FBBC05', '#EA4335']; // Green, Yellow, Red
+    const difficultyLabels = ['Easy', 'Medium', 'Hard'];
 
     useEffect(() => {
         setIsMobile(isMobileDevice());
@@ -59,37 +64,88 @@ export default function TicTacToeGame({ user, onBackToHub, username }: TicTacToe
         return null;
     };
 
+    const minimax = (squares: Player[], depth: number, isMaximizing: boolean): number => {
+        const result = checkWinner(squares);
+        if (result === 'O') return 10 - depth;
+        if (result === 'X') return depth - 10;
+        if (result === 'Draw') return 0;
+
+        if (isMaximizing) {
+            let bestScore = -Infinity;
+            for (let i = 0; i < squares.length; i++) {
+                if (squares[i] === null) {
+                    squares[i] = 'O';
+                    let score = minimax(squares, depth + 1, false);
+                    squares[i] = null;
+                    bestScore = Math.max(score, bestScore);
+                }
+            }
+            return bestScore;
+        } else {
+            let bestScore = Infinity;
+            for (let i = 0; i < squares.length; i++) {
+                if (squares[i] === null) {
+                    squares[i] = 'X';
+                    let score = minimax(squares, depth + 1, true);
+                    squares[i] = null;
+                    bestScore = Math.min(score, bestScore);
+                }
+            }
+            return bestScore;
+        }
+    };
+
     const getBestMove = (squares: Player[]): number => {
         const available = squares.map((val, idx) => val === null ? idx : null).filter(val => val !== null) as number[];
         if (available.length === 0) return -1;
 
-        // 1. Check for immediate win
-        for (let i of available) {
-            squares[i] = 'O';
-            if (checkWinner(squares) === 'O') {
+        if (difficulty === 0) {
+            // Easy: completely random
+            return available[Math.floor(Math.random() * available.length)];
+        }
+
+        if (difficulty === 1) {
+            // Medium: block immediate threats, take immediate wins, 50% center, random
+            for (let i of available) {
+                squares[i] = 'O';
+                if (checkWinner(squares) === 'O') {
+                    squares[i] = null;
+                    return i;
+                }
                 squares[i] = null;
-                return i;
             }
-            squares[i] = null;
-        }
 
-        // 2. Check for immediate block
-        for (let i of available) {
-            squares[i] = 'X';
-            if (checkWinner(squares) === 'X') {
+            for (let i of available) {
+                squares[i] = 'X';
+                if (checkWinner(squares) === 'X') {
+                    squares[i] = null;
+                    return i;
+                }
                 squares[i] = null;
-                return i;
             }
-            squares[i] = null;
+
+            if (squares[4] === null && Math.random() > 0.5) {
+                return 4;
+            }
+
+            return available[Math.floor(Math.random() * available.length)];
         }
 
-        // 3. If center is available, 50% chance to take it (makes it slightly strategic but not perfect)
-        if (squares[4] === null && Math.random() > 0.5) {
-            return 4;
+        // Hard: Minimax
+        let bestScore = -Infinity;
+        let move = -1;
+        for (let i = 0; i < squares.length; i++) {
+            if (squares[i] === null) {
+                squares[i] = 'O';
+                let score = minimax(squares, 0, false);
+                squares[i] = null;
+                if (score > bestScore) {
+                    bestScore = score;
+                    move = i;
+                }
+            }
         }
-
-        // 4. Otherwise, pick a random available square
-        return available[Math.floor(Math.random() * available.length)];
+        return move;
     };
 
     useEffect(() => {
@@ -155,19 +211,59 @@ export default function TicTacToeGame({ user, onBackToHub, username }: TicTacToe
         }
     };
 
+    const DifficultySlider = () => (
+        <div className="flex flex-col items-center justify-center p-4 bg-[#111] rounded-xl border border-[#333]">
+            <h3 className="text-white font-bold mb-8 text-sm uppercase tracking-widest">Difficulty</h3>
+            <div className="relative h-48 w-8 flex items-center justify-center">
+                <input
+                    type="range"
+                    min="0"
+                    max="2"
+                    step="1"
+                    value={difficulty}
+                    onChange={(e) => setDifficulty(parseInt(e.target.value))}
+                    className="w-48 h-2 rounded-lg appearance-none cursor-pointer absolute origin-center -rotate-90"
+                    style={{
+                        background: `linear-gradient(to right, ${difficultyColors[0]} 0%, ${difficultyColors[1]} 50%, ${difficultyColors[2]} 100%)`,
+                        accentColor: difficultyColors[difficulty]
+                    }}
+                />
+            </div>
+            <div className="mt-8 text-sm font-bold uppercase tracking-widest transition-colors duration-300" style={{ color: difficultyColors[difficulty] }}>
+                {difficultyLabels[difficulty]}
+            </div>
+        </div>
+    );
+
     return (
         <div className="flex flex-col items-center justify-center w-full h-full bg-[#000] text-white font-['Inter'] relative overflow-hidden">
             <div className="absolute inset-0 opacity-10 pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at 50% 50%, #4facfe 2px, transparent 2px)', backgroundSize: '80px 80px' }}></div>
             
             {!isMobile && (
-                <div className="flex flex-col absolute top-0 right-0 h-full w-[300px] z-[50] border-l border-[#333] animate-fade-in" style={{ animationDelay: '0.2s' }}>
-                    <LeaderboardWidget className="h-[66%] border-b-0" allowedModes={['tic_tac_toe']} defaultMode="tic_tac_toe" />
-                    <ChatWidget user={user} className="h-[34%]" />
-                </div>
+                <>
+                    <div className="absolute top-0 left-0 h-full w-[200px] z-[50] border-r border-[#333] flex items-center justify-center bg-black/50 backdrop-blur-sm animate-fade-in" style={{ animationDelay: '0.2s' }}>
+                        <DifficultySlider />
+                    </div>
+                    <div className="flex flex-col absolute top-0 right-0 h-full w-[300px] z-[50] border-l border-[#333] animate-fade-in" style={{ animationDelay: '0.2s' }}>
+                        <LeaderboardWidget className="h-[66%] border-b-0" allowedModes={['tic_tac_toe']} defaultMode="tic_tac_toe" />
+                        <ChatWidget user={user} className="h-[34%]" />
+                    </div>
+                </>
             )}
             
              {isMobile && (
                 <>
+                    <div className="absolute top-4 left-4 z-[60]">
+                        <button onClick={() => setShowMobileDifficulty(true)} className="text-2xl hover:scale-110 transition-transform bg-[#111] p-2 rounded-full border border-[#333]" style={{ borderColor: difficultyColors[difficulty] }}>⚙️</button>
+                    </div>
+                    {showMobileDifficulty && (
+                        <div className="fixed inset-0 z-[100] bg-black/95 flex flex-col items-center justify-center p-4 animate-fade-in">
+                            <div className="absolute top-4 right-4">
+                                <button onClick={() => setShowMobileDifficulty(false)} className="text-red-500 text-2xl font-bold p-2">✕</button>
+                            </div>
+                            <DifficultySlider />
+                        </div>
+                    )}
                     <div className="absolute top-4 right-4 z-[60]">
                         <button onClick={() => setShowMobileLeaderboard(true)} className="text-2xl hover:scale-110 transition-transform bg-[#111] p-2 rounded-full border border-[#f4b400]">🏆</button>
                     </div>

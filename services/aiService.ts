@@ -170,14 +170,14 @@ class AIService {
 
   async generateWordleWords(count: number): Promise<string[]> {
     if (!this.ai) {
-        const fallbacks = ["HELLO", "WORLD", "REACT", "GAMES", "TACOS", "CATS", "DOGS", "BIRDS"];
+        const fallbacks = ["HELLO", "WORLD", "REACT", "GAMES", "TACOS", "BIRDS", "BEARS", "APPLE", "HOUSE"];
         return Array.from({ length: count }, () => fallbacks[Math.floor(Math.random() * fallbacks.length)]);
     }
 
     try {
         const response = await this.ai.models.generateContent({
             model: 'gemini-3-flash-preview',
-            contents: `Generate a list of exactly ${count} unique, common 5-letter English words. Include simple words like "hello" and plural 4-letter words (like "cats" or "dogs"). Return ONLY a JSON array of strings in uppercase.`,
+            contents: `Generate a list of exactly ${count} unique, common 5-letter English words. Return ONLY a JSON array of strings in uppercase.`,
             config: {
                 responseMimeType: "application/json",
                 responseSchema: {
@@ -197,7 +197,7 @@ class AIService {
         throw new Error("Invalid AI response");
     } catch (e) {
         console.error("AI Wordle Gen Error:", e);
-        const fallbacks = ["HELLO", "WORLD", "REACT", "GAMES", "TACOS", "CATS", "DOGS", "BIRDS", "APPLE", "HOUSE"];
+        const fallbacks = ["HELLO", "WORLD", "REACT", "GAMES", "TACOS", "BIRDS", "BEARS", "APPLE", "HOUSE", "WATER", "TRAIN"];
         return Array.from({ length: count }, () => fallbacks[Math.floor(Math.random() * fallbacks.length)]);
     }
   }

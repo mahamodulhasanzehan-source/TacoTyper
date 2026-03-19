@@ -32,8 +32,7 @@ const AngleGame: React.FC<AngleGameProps> = ({ onBackToHub }) => {
         startNewGame();
     }, [startNewGame]);
 
-    const handleGuess = (e: React.FormEvent) => {
-        e.preventDefault();
+    const handleGuess = () => {
         if (gameOver) return;
 
         let numGuess = parseInt(guess, 10);
@@ -99,6 +98,36 @@ const AngleGame: React.FC<AngleGameProps> = ({ onBackToHub }) => {
         setGuess('');
     };
 
+    const handleKeypadClick = useCallback((num: string) => {
+        if (gameOver) return;
+        if (num === 'DEL') {
+            setGuess(prev => prev.slice(0, -1));
+        } else if (num === 'ENTER') {
+            handleGuess();
+        } else {
+            setGuess(prev => {
+                const newVal = prev + num;
+                if (parseInt(newVal, 10) > 360) return prev;
+                return newVal;
+            });
+        }
+    }, [guess, gameOver, handleGuess]);
+
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (gameOver) return;
+            if (e.key >= '0' && e.key <= '9') {
+                handleKeypadClick(e.key);
+            } else if (e.key === 'Backspace') {
+                handleKeypadClick('DEL');
+            } else if (e.key === 'Enter') {
+                handleKeypadClick('ENTER');
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [handleKeypadClick, gameOver]);
+
     return (
         <div className="flex flex-col items-center justify-start pt-20 md:justify-center md:pt-0 w-full h-full bg-[#000] text-white font-['Inter'] fixed inset-0 overflow-hidden">
             <div className="absolute inset-0 opacity-10 pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at 10% 20%, #d900ff 2px, transparent 2px), radial-gradient(circle at 90% 80%, #d900ff 2px, transparent 2px)', backgroundSize: '150px 150px' }}></div>
@@ -151,31 +180,33 @@ const AngleGame: React.FC<AngleGameProps> = ({ onBackToHub }) => {
                     </svg>
                 </div>
 
-                <form onSubmit={handleGuess} className="flex flex-col items-center gap-4">
+                <div className="flex flex-col items-center gap-4">
                     <div className="text-sm text-[#aaa]">Guesses left: {6 - previousGuesses.length}</div>
                     <div className="flex items-center gap-2">
-                        <input 
-                            type="number" 
-                            value={guess} 
-                            onChange={(e) => setGuess(e.target.value)} 
-                            className="w-24 p-2 text-center text-2xl bg-[#222] border-2 border-[#555] rounded focus:outline-none focus:border-[#d900ff] text-white"
-                            placeholder="0"
-                            min="0"
-                            max="360"
-                            disabled={gameOver}
-                            autoFocus
-                        />
+                        <div 
+                            className="w-24 p-2 text-center text-2xl bg-[#222] border-2 border-[#555] rounded text-white h-12 flex items-center justify-center"
+                        >
+                            {guess || '0'}
+                        </div>
                         <span className="text-2xl">°</span>
                     </div>
                     
                     {!gameOver && (
-                        <button type="submit" className="px-6 py-2 bg-[#d900ff] text-white font-bold rounded hover:bg-[#b000cc] transition-colors font-['Press_Start_2P'] text-xs">
-                            GUESS
-                        </button>
+                        <div className="grid grid-cols-3 gap-2 mt-2">
+                            {['1', '2', '3', '4', '5', '6', '7', '8', '9', 'DEL', '0', 'ENTER'].map((key) => (
+                                <button
+                                    key={key}
+                                    onClick={() => handleKeypadClick(key)}
+                                    className={`w-16 h-12 sm:w-20 sm:h-14 bg-[#333] text-white font-bold rounded hover:bg-[#444] transition-colors flex items-center justify-center ${key === 'ENTER' ? 'bg-[#d900ff] hover:bg-[#b000cc] text-[10px] sm:text-xs font-["Press_Start_2P"]' : 'text-xl sm:text-2xl'}`}
+                                >
+                                    {key === 'DEL' ? '⌫' : key}
+                                </button>
+                            ))}
+                        </div>
                     )}
-                </form>
+                </div>
 
-                <div className="h-24 flex flex-col items-center justify-center">
+                <div className="h-16 flex flex-col items-center justify-center">
                     {feedback && (
                         <div key={Date.now()} className="flex flex-col items-center gap-2 animate-pop-in">
                             <span className="text-xl font-bold" style={{ color: feedback.color }}>{feedback.message}</span>

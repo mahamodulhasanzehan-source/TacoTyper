@@ -27,6 +27,7 @@ const WordleGame: React.FC<WordleGameProps> = ({ onBackToHub }) => {
     const [pressedKey, setPressedKey] = useState<string | null>(null);
     const [wordQueue, setWordQueue] = useState<string[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [isCheckingWord, setIsCheckingWord] = useState(false);
 
     const startNewGame = useCallback(async () => {
         setIsLoading(true);
@@ -66,8 +67,8 @@ const WordleGame: React.FC<WordleGameProps> = ({ onBackToHub }) => {
         return 'absent';
     };
 
-    const handleKeyPress = useCallback((key: string) => {
-        if (gameOver) return;
+    const handleKeyPress = useCallback(async (key: string) => {
+        if (gameOver || isCheckingWord) return;
 
         setPressedKey(key);
         setTimeout(() => setPressedKey(null), 100);
@@ -80,6 +81,23 @@ const WordleGame: React.FC<WordleGameProps> = ({ onBackToHub }) => {
                 setTimeout(() => setMessage(''), 1500);
                 return;
             }
+
+            setIsCheckingWord(true);
+            try {
+                const res = await fetch(`https://api.datamuse.com/words?sp=${currentGuess}&max=1`);
+                const data = await res.json();
+                if (!data || data.length === 0 || data[0].word.toLowerCase() !== currentGuess.toLowerCase()) {
+                    setIsCheckingWord(false);
+                    setMessage('Not in word list');
+                    setShakeRow(guesses.length);
+                    setTimeout(() => setShakeRow(-1), 500);
+                    setTimeout(() => setMessage(''), 1500);
+                    return;
+                }
+            } catch (e) {
+                console.error('Dictionary API error', e);
+            }
+            setIsCheckingWord(false);
 
             if (hardMode && guesses.length > 0) {
                 const lastGuess = guesses[guesses.length - 1];
@@ -120,7 +138,7 @@ const WordleGame: React.FC<WordleGameProps> = ({ onBackToHub }) => {
         } else if (/^[A-Z]$/.test(key) && currentGuess.length < COLS) {
             setCurrentGuess(prev => prev + key);
         }
-    }, [currentGuess, gameOver, guesses, targetWord, hardMode]);
+    }, [currentGuess, gameOver, guesses, targetWord, hardMode, isCheckingWord]);
 
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
