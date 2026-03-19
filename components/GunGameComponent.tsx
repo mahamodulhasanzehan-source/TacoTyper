@@ -18,9 +18,37 @@ export default function GunGameComponent({ onBackToHub }: GunGameProps) {
         };
         
         window.addEventListener('message', handleMessage);
+
+        const requestFullscreen = async () => {
+            try {
+                if (document.documentElement.requestFullscreen) {
+                    await document.documentElement.requestFullscreen();
+                } else if ((document.documentElement as any).webkitRequestFullscreen) {
+                    await (document.documentElement as any).webkitRequestFullscreen();
+                } else if ((document.documentElement as any).msRequestFullscreen) {
+                    await (document.documentElement as any).msRequestFullscreen();
+                }
+            } catch (err) {
+                console.warn("Fullscreen request failed:", err);
+            }
+        };
+        requestFullscreen();
         
         return () => {
             window.removeEventListener('message', handleMessage);
+            if (document.fullscreenElement) {
+                try {
+                    if (document.exitFullscreen) {
+                        document.exitFullscreen();
+                    } else if ((document as any).webkitExitFullscreen) {
+                        (document as any).webkitExitFullscreen();
+                    } else if ((document as any).msExitFullscreen) {
+                        (document as any).msExitFullscreen();
+                    }
+                } catch (err) {
+                    console.warn("Exit fullscreen failed:", err);
+                }
+            }
         };
     }, []);
 
@@ -39,6 +67,7 @@ export default function GunGameComponent({ onBackToHub }: GunGameProps) {
                 src="/GunGame.html" 
                 className="w-full h-full border-none"
                 title="Gun Game"
+                allow="fullscreen"
             />
         </div>
     );

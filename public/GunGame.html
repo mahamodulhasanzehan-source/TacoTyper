@@ -438,7 +438,22 @@
         const lookZone = document.getElementById('lookZone');
         const joystickZone = document.getElementById('joystickZone');
         const joystickKnob = document.getElementById('joystickKnob');
+        let isHudCustomizing = false;
         
+        // Make all UI buttons responsive to touch
+        document.addEventListener('touchstart', (e) => {
+            if (isHudCustomizing) return;
+            let target = e.target;
+            while (target && target !== document.body) {
+                if (target.tagName === 'BUTTON' || target.classList.contains('weapon-btn') || target.classList.contains('start-btn') || target.classList.contains('pause-btn') || target.id === 'btnSettings') {
+                    e.preventDefault();
+                    target.click();
+                    return;
+                }
+                target = target.parentElement;
+            }
+        }, { passive: false });
+
         let isMobile = false;
         function checkMobile() {
             isMobile = window.matchMedia("(max-width: 1024px)").matches;
@@ -669,7 +684,6 @@
         });
 
         // HUD Customization
-        let isHudCustomizing = false;
         let dragTarget = null;
         let dragOffset = { x: 0, y: 0 };
 

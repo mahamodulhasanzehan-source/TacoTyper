@@ -1028,7 +1028,20 @@ export default function Game({ user, onLogout }: GameProps) {
                 onLaunchSpellingBee={() => setActiveApp('spelling-bee')}
                 onLaunchTicTacToe={() => setActiveApp('tic-tac-toe')}
                 onLaunchConnect4={() => setActiveApp('connect-4')}
-                onLaunchGunGame={() => setActiveApp('gun-game')}
+                onLaunchGunGame={() => {
+                    setActiveApp('gun-game');
+                    try {
+                        if (document.documentElement.requestFullscreen) {
+                            document.documentElement.requestFullscreen();
+                        } else if ((document.documentElement as any).webkitRequestFullscreen) {
+                            (document.documentElement as any).webkitRequestFullscreen();
+                        } else if ((document.documentElement as any).msRequestFullscreen) {
+                            (document.documentElement as any).msRequestFullscreen();
+                        }
+                    } catch (err) {
+                        console.warn("Fullscreen request failed:", err);
+                    }
+                }}
                 onLogout={onLogout}
                 username={customUsername}
                 onUpdateUsername={handleUpdateUsername}

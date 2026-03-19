@@ -131,8 +131,8 @@ export default function TicTacToeGame({ user, onBackToHub, username }: TicTacToe
             return available[Math.floor(Math.random() * available.length)];
         }
 
-        // Hard: Minimax (with 10% chance of making a sub-optimal move to make it slightly easier)
-        if (Math.random() < 0.1) {
+        // Hard: Minimax (with 25% chance of making a sub-optimal move to make it slightly easier)
+        if (Math.random() < 0.25) {
             // Try to take immediate wins or block immediate threats first
             for (let i of available) {
                 squares[i] = 'O';
