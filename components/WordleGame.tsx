@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { User, saveLeaderboardScore, incrementGamePlays } from '../services/firebase';
-import { aiService } from '../services/aiService';
 import { LoadingScreen } from './LoadingScreen';
 import { isMobileDevice } from '../utils/device';
+import { UNIVERSAL_DICTIONARY } from '../constants';
 
 interface WordleGameProps {
     user: User;
@@ -36,7 +36,9 @@ const WordleGame: React.FC<WordleGameProps> = ({ onBackToHub }) => {
         setIsLoading(true);
         let currentQueue = [...wordQueue];
         if (currentQueue.length === 0) {
-            currentQueue = await aiService.generateWordleWords(5);
+            const fiveLetterWords = UNIVERSAL_DICTIONARY.filter(w => w.length === 5);
+            const shuffled = [...fiveLetterWords].sort(() => 0.5 - Math.random());
+            currentQueue = shuffled.slice(0, 5).map(w => w.toUpperCase());
         }
         
         const word = currentQueue.shift() || 'TACOS';

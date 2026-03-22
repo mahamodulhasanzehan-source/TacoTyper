@@ -170,15 +170,18 @@ class AIService {
 
   async generateWordleWords(count: number): Promise<string[]> {
     if (!this.ai) {
-        const fallbacks = ["HELLO", "WORLD", "REACT", "GAMES", "TACOS", "BIRDS", "BEARS", "APPLE", "HOUSE"];
-        return Array.from({ length: count }, () => fallbacks[Math.floor(Math.random() * fallbacks.length)]);
+        const fallbacks = ["HELLO", "WORLD", "REACT", "GAMES", "TACOS", "BIRDS", "BEARS", "APPLE", "HOUSE", "WATER", "TRAIN", "PLANT", "GHOST", "SMILE", "BRAIN", "CLOCK"];
+        const shuffled = [...fallbacks].sort(() => 0.5 - Math.random());
+        return shuffled.slice(0, count);
     }
 
     try {
+        const randomSeed = Math.floor(Math.random() * 1000000);
         const response = await this.ai.models.generateContent({
             model: 'gemini-3-flash-preview',
-            contents: `Generate a list of exactly ${count} unique, common 5-letter English words. Return ONLY a JSON array of strings in uppercase.`,
+            contents: `Generate a list of exactly ${count} completely random, unique, common 5-letter English words. Pick words from the entire English dictionary. Do not use any specific category. Use random seed ${randomSeed} to ensure maximum variety. Return ONLY a JSON array of strings in uppercase.`,
             config: {
+                temperature: 1,
                 responseMimeType: "application/json",
                 responseSchema: {
                     type: Type.ARRAY,
@@ -191,14 +194,23 @@ class AIService {
         if (jsonStr) {
             const data = JSON.parse(jsonStr);
             if (Array.isArray(data) && data.length > 0) {
-                return data.map(w => String(w).toUpperCase().trim()).filter(w => w.length === 5);
+                const words = data.map(w => String(w).toUpperCase().trim()).filter(w => w.length === 5);
+                for (let i = words.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [words[i], words[j]] = [words[j], words[i]];
+                }
+                return words;
             }
         }
         throw new Error("Invalid AI response");
     } catch (e) {
         console.error("AI Wordle Gen Error:", e);
-        const fallbacks = ["HELLO", "WORLD", "REACT", "GAMES", "TACOS", "BIRDS", "BEARS", "APPLE", "HOUSE", "WATER", "TRAIN"];
-        return Array.from({ length: count }, () => fallbacks[Math.floor(Math.random() * fallbacks.length)]);
+        const fallbacks = ["HELLO", "WORLD", "REACT", "GAMES", "TACOS", "BIRDS", "BEARS", "APPLE", "HOUSE", "WATER", "TRAIN", "PLANT", "GHOST", "SMILE", "BRAIN", "CLOCK", "CHAIR", "TABLE", "PHONE", "MOUSE"];
+        for (let i = fallbacks.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [fallbacks[i], fallbacks[j]] = [fallbacks[j], fallbacks[i]];
+        }
+        return fallbacks.slice(0, count);
     }
   }
 

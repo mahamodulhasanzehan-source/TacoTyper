@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { incrementGamePlays } from '../services/firebase';
+import { isMobileDevice } from '../utils/device';
 
 interface GunGameProps {
     onBackToHub: () => void;
@@ -7,6 +8,7 @@ interface GunGameProps {
 
 export default function GunGameComponent({ onBackToHub }: GunGameProps) {
     const [showHomeButton, setShowHomeButton] = useState(true);
+    const isMobile = isMobileDevice();
 
     useEffect(() => {
         incrementGamePlays('gun_game');
@@ -64,7 +66,7 @@ export default function GunGameComponent({ onBackToHub }: GunGameProps) {
                 </button>
             )}
             <iframe 
-                src="/GunGame.html" 
+                src={isMobile ? "/GunGameMobile.html" : "/GunGamePC.html"} 
                 className="w-full h-full border-none"
                 title="Gun Game"
                 allow="fullscreen"
