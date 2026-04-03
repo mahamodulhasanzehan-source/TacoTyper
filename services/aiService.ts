@@ -25,7 +25,7 @@ class AIService {
 
     try {
         const response = await this.ai.models.generateContent({
-            model: 'gemini-3-flash-preview',
+            model: 'gemini-3.1-flash-lite-preview',
             contents: "Generate 2 short, interesting paragraphs about culinary history, exotic ingredients, or food science. The text should be educational and engaging, suitable for a typing test. Total length around 60-80 words. Plain text only, no markdown formatting.",
         });
         return response.text?.trim() || this.getFallbackText();
@@ -44,7 +44,7 @@ class AIService {
 
     try {
         const response = await this.ai.models.generateContent({
-            model: 'gemini-3-flash-preview',
+            model: 'gemini-3.1-flash-lite-preview',
             contents: `Act as a strict but fair head chef. A line cook just completed a prep task (typing test). Stats: ${wpm} WPM, ${accuracy}% Accuracy. Give a one-sentence feedback comment. If accuracy is low, be critical about sloppy work. If fast and accurate, praise them.`,
         });
         return response.text?.trim() || "Back to the station, Chef.";
@@ -72,7 +72,7 @@ class AIService {
                Assign a performance score (0-100) and a creative kitchen rank title.`;
 
          const response = await this.ai.models.generateContent({
-            model: 'gemini-3-flash-preview',
+            model: 'gemini-3.1-flash-lite-preview',
             contents: prompt,
             config: {
                 responseMimeType: "application/json",
@@ -117,7 +117,7 @@ class AIService {
         const randomSeed = Math.floor(Math.random() * 10000);
 
         const response = await this.ai.models.generateContent({
-            model: 'gemini-3-flash-preview',
+            model: 'gemini-3.1-flash-lite-preview',
             contents: `Generate a list of exactly ${count} unique spelling bee words for difficulty level ${difficulty} (1 is easy, 10 is very hard). To ensure variety, focus on words related to the topic of "${randomTopic}" or use random seed ${randomSeed}. The words MUST NOT be the same common words you always pick. For each word, return the word, its meaning, and an example sentence. Return ONLY a JSON array of objects.`,
             config: {
                 responseMimeType: "application/json",
@@ -155,7 +155,7 @@ class AIService {
 
     try {
         const response = await this.ai.models.generateContent({
-            model: 'gemini-3-flash-preview',
+            model: 'gemini-3.1-flash-lite-preview',
             contents: `Rate the semantic similarity between the word "${word1}" and the word "${word2}" on a scale of 0 to 100. Return ONLY the integer number.`,
         });
         
@@ -178,7 +178,7 @@ class AIService {
     try {
         const randomSeed = Math.floor(Math.random() * 1000000);
         const response = await this.ai.models.generateContent({
-            model: 'gemini-3-flash-preview',
+            model: 'gemini-3.1-flash-lite-preview',
             contents: `Generate a list of exactly ${count} completely random, unique, common 5-letter English words. Pick words from the entire English dictionary. Do not use any specific category. Use random seed ${randomSeed} to ensure maximum variety. Return ONLY a JSON array of strings in uppercase.`,
             config: {
                 temperature: 1,
@@ -235,7 +235,7 @@ class AIService {
 
     try {
         const response = await this.ai.models.generateContent({
-            model: 'gemini-3-flash-preview',
+            model: 'gemini-3.1-flash-lite-preview',
             contents: `Generate a list of exactly ${count} unique, interesting items or concepts that have a specific numerical value associated with them (e.g., population, distance, quantity, weight, speed). For each item, provide its name, its estimated numerical value, and a single relevant emoji as an image. Return ONLY a JSON array of objects.`,
             config: {
                 responseMimeType: "application/json",
