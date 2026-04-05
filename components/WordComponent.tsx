@@ -74,8 +74,8 @@ const WordComponent: React.FC<WordProps> = ({ word, isActive, onClick }) => {
 
   const remainingText = word.text.substring(word.typed.length);
 
-  // Apply heart-beat class only if it's a heart type
-  const animateClass = word.type === 'heart' ? 'animate-heart-beat' : '';
+  // Removed animate-heart-beat to prevent transform conflicts
+  const animateClass = '';
 
   return (
     <div

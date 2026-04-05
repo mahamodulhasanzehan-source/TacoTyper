@@ -91,19 +91,29 @@ const WordleGame: React.FC<WordleGameProps> = ({ onBackToHub }) => {
             }
 
             setIsCheckingWord(true);
-            try {
-                const res = await fetch(`https://api.datamuse.com/words?sp=${currentGuess}&max=1`);
-                const data = await res.json();
-                if (!data || data.length === 0 || data[0].word.toLowerCase() !== currentGuess.toLowerCase()) {
-                    setIsCheckingWord(false);
-                    setMessage('Not in word list');
-                    setShakeRow(guesses.length);
-                    setTimeout(() => setShakeRow(-1), 500);
-                    setTimeout(() => setMessage(''), 1500);
-                    return;
+            let isValidWord = false;
+            
+            if (UNIVERSAL_DICTIONARY.map(w => w.toUpperCase()).includes(currentGuess)) {
+                isValidWord = true;
+            } else {
+                try {
+                    const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${currentGuess}`);
+                    if (res.ok) {
+                        isValidWord = true;
+                    }
+                } catch (e) {
+                    console.error('Dictionary API error', e);
+                    // Fail closed to prevent fake words
                 }
-            } catch (e) {
-                console.error('Dictionary API error', e);
+            }
+
+            if (!isValidWord) {
+                setIsCheckingWord(false);
+                setMessage('Not in word list');
+                setShakeRow(guesses.length);
+                setTimeout(() => setShakeRow(-1), 500);
+                setTimeout(() => setMessage(''), 1500);
+                return;
             }
             setIsCheckingWord(false);
 

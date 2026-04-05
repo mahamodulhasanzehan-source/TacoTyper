@@ -66,7 +66,7 @@ export default function GunGameComponent({ onBackToHub }: GunGameProps) {
                 </button>
             )}
             <iframe 
-                src={isMobile ? "/GunGameMobile.html" : "/GunGamePC.html"} 
+                src={isMobile ? "/GunGame.mobile/index.html" : "/GunGame.PC/index.html"} 
                 className="w-full h-full border-none"
                 title="Gun Game"
                 allow="fullscreen"

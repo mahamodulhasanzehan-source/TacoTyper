@@ -129,19 +129,15 @@ const AngleGame: React.FC<AngleGameProps> = ({ onBackToHub }) => {
     }, [handleKeypadClick, gameOver]);
 
     return (
-        <div className="flex flex-col items-center justify-start pt-20 md:justify-center md:pt-0 w-full h-full bg-[#000] text-white font-['Inter'] fixed inset-0 overflow-hidden">
+        <div className="flex flex-col items-center justify-start w-full h-full bg-[#000] text-white font-['Inter'] fixed inset-0 overflow-hidden">
             <div className="absolute inset-0 opacity-10 pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at 10% 20%, #d900ff 2px, transparent 2px), radial-gradient(circle at 90% 80%, #d900ff 2px, transparent 2px)', backgroundSize: '150px 150px' }}></div>
             
-            <div className="flex justify-between items-center w-full max-w-md p-4 z-10 absolute top-0">
+            <div className="flex justify-between items-center w-full max-w-md p-4 z-10 mt-2">
                 <button onClick={onBackToHub} className="text-2xl hover:scale-110 transition-transform">⬅️</button>
-                <div className="flex flex-col items-center">
-                    <h1 className="text-xl md:text-2xl font-bold font-['Press_Start_2P'] text-[#d900ff]">ANGLE</h1>
-                    <div className="text-xs text-[#aaa] mt-1">Streak: {streak}</div>
-                </div>
-                <div className="w-8"></div>
+                <div className="text-sm text-[#aaa] font-bold">Streak: {streak}</div>
             </div>
 
-            <div className="flex flex-col items-center gap-4 md:gap-8 z-10 mt-4 md:mt-16">
+            <div className="flex flex-col items-center gap-4 md:gap-8 z-10 mt-4">
                 <div className="relative w-48 h-48 md:w-64 md:h-64 bg-[#111] rounded-full border-4 border-[#333] flex items-center justify-center">
                     <svg className="absolute inset-0 w-full h-full" viewBox="0 0 100 100" style={{ transform: 'rotate(-90deg)' }}>
                         {/* Arc */}
