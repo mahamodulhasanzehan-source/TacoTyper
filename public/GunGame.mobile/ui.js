@@ -93,7 +93,19 @@ const base64Gun = "data:audio/x-m4a;base64,AAAAHGZ0eXBpc29tAAACAGlzb21pc28ybXA0M
         };
 
         
-// --- MODE SELECTION ---
+        function updateBrightness() {
+            const val = parseInt(document.getElementById('brightSlider').value);
+            const overlay = document.getElementById('brightnessOverlay');
+            if (val <= 30) {
+                overlay.style.backgroundColor = 'black';
+                overlay.style.opacity = (30 - val) / 30; 
+            } else {
+                overlay.style.backgroundColor = 'white';
+                overlay.style.opacity = ((val - 30) / 70) * 0.4; 
+            }
+        }
+
+        // --- MODE SELECTION ---
         document.getElementById('btnTester').addEventListener('click', () => {
             state.gameMode = 'tester';
             document.getElementById('modeSelectScreen').style.display = 'none';
@@ -143,10 +155,6 @@ const base64Gun = "data:audio/x-m4a;base64,AAAAHGZ0eXBpc29tAAACAGlzb21pc28ybXA0M
             window.parent.postMessage({ type: 'pointer_lock_change', isLocked }, '*');
 
             if (!isLocked && state.menuOpen === null && !isEndgame && state.gameMode !== null) {
-                document.getElementById('startScreen').style.display = 'flex';
-                document.getElementById('startScreen').querySelector('h1').innerText = "PAUSED";
-                document.getElementById('startBtn').innerText = "Resume";
-                state.paused = true; 
             } else if (isLocked && !isEndgame) {
                 state.paused = false;
                 document.getElementById('startScreen').style.display = 'none';
@@ -154,7 +162,7 @@ const base64Gun = "data:audio/x-m4a;base64,AAAAHGZ0eXBpc29tAAACAGlzb21pc28ybXA0M
         });
 
         document.addEventListener('mousemove', (e) => {
-            if (document.pointerLockElement === document.body && !state.paused) {
+            if (!state.paused) {
                 let baseSens = 0.002;
                 const activeId = getActiveWeaponId();
                 if (state.gameMode === 'tester') {
@@ -186,7 +194,7 @@ const base64Gun = "data:audio/x-m4a;base64,AAAAHGZ0eXBpc29tAAACAGlzb21pc28ybXA0M
         }
 
         document.addEventListener('wheel', (e) => {
-            if (state.menuOpen || state.paused || document.pointerLockElement !== document.body) return;
+            if (state.menuOpen || state.paused) return;
             if (e.deltaY !== 0) {
                 if (state.gameMode === 'survival') {
                     const types =['Pistol', 'SMG', 'AR'];
@@ -233,7 +241,17 @@ const base64Gun = "data:audio/x-m4a;base64,AAAAHGZ0eXBpc29tAAACAGlzb21pc28ybXA0M
             state.keys[k] = true;
 
             if (k === 'control' || e.key === 'Escape') {
-                if (document.pointerLockElement === document.body) document.exitPointerLock(); 
+                if (document.pointerLockElement === document.body) {
+                    document.exitPointerLock(); 
+                } else if (!state.paused) {
+                    const isEndgame = state.gameMode === 'survival' && (state.survival.waveState === 'GAMEOVER' || state.survival.waveState === 'VICTORY');
+                    if (!isEndgame) {
+                        document.getElementById('startScreen').style.display = 'flex';
+                        document.getElementById('startScreen').querySelector('h1').innerText = "PAUSED";
+                        document.getElementById('startBtn').innerText = "Resume";
+                        state.paused = true; 
+                    }
+                }
             }
 
             if (state.gameMode === 'tester') {
@@ -319,7 +337,7 @@ const base64Gun = "data:audio/x-m4a;base64,AAAAHGZ0eXBpc29tAAACAGlzb21pc28ybXA0M
         document.addEventListener('keyup', e => state.keys[e.key.toLowerCase()] = false);
         
         document.addEventListener('mousedown', (e) => {
-            if(document.pointerLockElement === document.body && !state.paused) {
+            if(!state.paused) {
                 if (e.button === 0) { state.mouse = true; state.mouseJustPressed = true; }
                 if (e.button === 2) state.player.ads = true;
             }

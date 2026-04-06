@@ -33,7 +33,7 @@ const SURVIVAL_WEAPONS = {
     odin: { id: 'odin', cat: 'ar', name: "Odin", type: 'auto', rpm: 200, damage: 11.97, pierce: 3, pierceChance: 100, mag: 50, reserve: 500, reload: 2, cost: 800, ammoCost: 35, color: "#998877", hitscan: true, speed: 200 }
 };
 
-function getActiveWeaponId(state) {
+function getActiveWeaponId() {
     if (state.gameMode === 'survival') {
         const inv = state.survival.inventory[state.survival.activeType];
         return inv ? inv.id : 'pistol';
@@ -42,12 +42,12 @@ function getActiveWeaponId(state) {
     }
 }
 
-function getActiveWeaponStats(state) {
+function getActiveWeaponStats() {
     if (state.gameMode === 'survival') {
         const inv = state.survival.inventory[state.survival.activeType];
         if (!inv) return SURVIVAL_WEAPONS['pistol'];
         return SURVIVAL_WEAPONS[Object.keys(SURVIVAL_WEAPONS).find(k => SURVIVAL_WEAPONS[k].id === inv.id)];
     } else {
-        return WEAPONS[getActiveWeaponId(state)];
+        return WEAPONS[getActiveWeaponId()];
     }
 }
