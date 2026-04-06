@@ -313,7 +313,7 @@ const clock = new THREE.Clock();
                                     updateSurvivalHUD(); createFloatingText(z.mesh.position, `+$${z.userData.money}`, 0x27ae60);
                                 } else {
                                     state.gameplay.kills++; document.getElementById('hudZombieCount').innerText = state.gameplay.kills;
-                                    if (state.gameplay.spawns) spawnZombies(Math.random() < state.gameplay.prob ? 2 : 1);
+                                    if (state.gameplay.spawns) spawnZombies(state, scene, yawObj, Math.random() < state.gameplay.prob ? 2 : 1);
                                 }
                             } else playSound('hit');
 
@@ -373,7 +373,7 @@ const clock = new THREE.Clock();
                                 createFloatingText(z.mesh.position, `+$${z.userData.money}`, 0x27ae60);
                             } else {
                                 state.gameplay.kills++; document.getElementById('hudZombieCount').innerText = state.gameplay.kills;
-                                if (state.gameplay.spawns) spawnZombies(Math.random() < state.gameplay.prob ? 2 : 1);
+                                if (state.gameplay.spawns) spawnZombies(state, scene, yawObj, Math.random() < state.gameplay.prob ? 2 : 1);
                             }
                         } else playSound('hit');
 
@@ -396,7 +396,7 @@ const clock = new THREE.Clock();
                     document.getElementById('survZombiesLeftText').innerText = '';
                     if (surv.countdownTimer <= 0) {
                         surv.waveState = 'PLAYING'; playSound('waveStart');
-                        spawnSurvivalZombies(WAVE_CONFIGS[surv.wave].initialSpawn);
+                        spawnSurvivalZombies(state, scene, yawObj, WAVE_CONFIGS[surv.wave].initialSpawn);
                     }
                 } else if (surv.waveState === 'PLAYING') {
                     const waveConf = WAVE_CONFIGS[surv.wave]; const rem = Math.max(0, waveConf.totalZombies - surv.zombiesKilledThisWave);
@@ -405,7 +405,7 @@ const clock = new THREE.Clock();
                     
                     if (waveConf.phases && surv.currentPhase < waveConf.phases.length) {
                         let pt = waveConf.phases[surv.currentPhase];
-                        if (surv.zombiesKilledThisPhase >= pt.triggerKills) { spawnSurvivalZombies(pt.spawn); surv.currentPhase++; surv.zombiesKilledThisPhase = 0; }
+                        if (surv.zombiesKilledThisPhase >= pt.triggerKills) { spawnSurvivalZombies(state, scene, yawObj, pt.spawn); surv.currentPhase++; surv.zombiesKilledThisPhase = 0; }
                     }
                     if (surv.zombiesKilledThisWave >= waveConf.totalZombies && surv.activeZombies <= 0) {
                         if (surv.wave < Object.keys(WAVE_CONFIGS).length) {
@@ -487,5 +487,5 @@ const clock = new THREE.Clock();
             renderer.setSize(window.innerWidth, window.innerHeight);
         });
 
-        buildWeaponMesh('pistol');
+        currentWeaponMesh = buildWeaponMesh('pistol', currentWeaponMesh, viewmodel);
         gameLoop();
