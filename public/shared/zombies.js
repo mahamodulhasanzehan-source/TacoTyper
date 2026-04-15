@@ -18,16 +18,4 @@ const SURVIVAL_ZOMBIES = {
     "ThreeBlockBlackZombie": { color: 0x111111, height: 3, scale: 1, hp: 250, speed: 14.28, dmg: 4, dmgChance: 30, bonusDmg: 3, cooldown: 0.1, money: 250, blitz: true }
 };
 
-const WAVE_CONFIGS = {
-    1: { initialSpawn: {"NormalZombie": 5}, totalZombies: 5, phases:[] },
-    2: { initialSpawn: {"NormalZombie": 5, "ThreeBlockGreenZombie": 2}, totalZombies: 7, phases:[] },
-    3: { initialSpawn: {"NormalZombie": 5, "ThreeBlockGreenZombie": 1}, totalZombies: 7, phases:[ {triggerKills: 5, spawn: {"TwoBlockRedZombie": 1}} ] },
-    4: { initialSpawn: {"NormalZombie": 5, "ThreeBlockGreenZombie": 1}, totalZombies: 8, phases:[ {triggerKills: 5, spawn: {"TwoBlockRedZombie": 1, "ThreeBlockRedZombie": 1}} ] },
-    5: { initialSpawn: {"NormalZombie": 5, "ThreeBlockGreenZombie": 1}, totalZombies: 9, phases:[ {triggerKills: 5, spawn: {"TwoBlockRedZombie": 1}}, {triggerKills: 1, spawn: {"TwoBlockBlueZombie": 1, "ThreeBlockRedZombie": 1}} ] },
-    6: { initialSpawn: {"NormalZombie": 10}, totalZombies: 16, phases:[ {triggerKills: 5, spawn: {"ThreeBlockGreenZombie": 3}}, {triggerKills: 3, spawn: {"ThreeBlockBlueZombie": 1, "ThreeBlockRedZombie": 2}} ] },
-    7: { initialSpawn: {"NormalZombie": 10}, totalZombies: 17, phases:[ {triggerKills: 5, spawn: {"ThreeBlockGreenZombie": 3}}, {triggerKills: 3, spawn: {"ThreeBlockRedZombie": 2, "ThreeBlockBlueZombie": 1}}, {triggerKills: 2, spawn: {"TwoBlockPurpleZombie": 1}} ] },
-    8: { initialSpawn: {"NormalZombie": 10}, totalZombies: 16, phases:[ {triggerKills: 5, spawn: {"ThreeBlockGreenZombie": 3}}, {triggerKills: 3, spawn: {"ThreeBlockBlueZombie": 2, "ThreeBlockPurpleZombie": 1}} ] },
-    9: { initialSpawn: {"NormalZombie": 10}, totalZombies: 46, phases:[ {triggerKills: 5, spawn: {"ThreeBlockGreenZombie": 3}}, {triggerKills: 3, spawn: {"ThreeBlockBlueZombie": 1, "ThreeBlockRedZombie": 2}}, {triggerKills: 3, spawn: {"NormalZombie": 20, "ThreeBlockGreenZombie": 10}} ] },
-    10: { initialSpawn: {"TwoBlockRedZombie": 5, "ThreeBlockBlueZombie": 1}, totalZombies: 7, phases:[ {triggerKills: 6, spawn: {"TwoBlockBlackZombie": 1}} ] },
-    11: { initialSpawn: {"TwoBlockPurpleZombie": 2, "ThreeBlockPurpleZombie": 1}, totalZombies: 4, phases:[ {triggerKills: 3, spawn: {"ThreeBlockBlackZombie": 1}} ] }
-};
+

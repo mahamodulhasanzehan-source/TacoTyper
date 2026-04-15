@@ -40,6 +40,7 @@ import SpellingBeeGame from './SpellingBeeGame';
 import TicTacToeGame from './TicTacToeGame';
 import Connect4Game from './Connect4Game';
 import GunGameComponent from './GunGameComponent';
+import ColorMemoryComponent from './ColorMemoryComponent';
 import { LeaderboardWidget } from './Overlays'; // Import LeaderboardWidget
 import { 
   StartScreen, 
@@ -64,7 +65,7 @@ interface GameProps {
 
 export default function Game({ user, onLogout }: GameProps) {
   // --- Global App State ---
-  const [activeApp, setActiveApp] = useState<'taco' | 'iq' | 'mine' | 'wordle' | 'angle' | 'more-less' | 'spelling-bee' | 'tic-tac-toe' | 'connect-4' | 'gun-game'>('taco');
+  const [activeApp, setActiveApp] = useState<'taco' | 'iq' | 'mine' | 'wordle' | 'angle' | 'more-less' | 'spelling-bee' | 'tic-tac-toe' | 'connect-4' | 'gun-game' | 'color-memory'>('taco');
 
   // --- Taco Game State ---
   const [screen, setScreen] = useState<GameScreen>('hub');
@@ -1016,6 +1017,10 @@ export default function Game({ user, onLogout }: GameProps) {
             <GunGameComponent 
                 onBackToHub={() => setActiveApp('taco')}
             />
+        ) : activeApp === 'color-memory' ? (
+            <ColorMemoryComponent 
+                onBackToHub={() => setActiveApp('taco')}
+            />
         ) : screen === 'hub' ? (
              <HubScreen 
                 user={user} 
@@ -1042,6 +1047,7 @@ export default function Game({ user, onLogout }: GameProps) {
                         console.warn("Fullscreen request failed:", err);
                     }
                 }}
+                onLaunchColorMemory={() => setActiveApp('color-memory')}
                 onLogout={onLogout}
                 username={customUsername}
                 onUpdateUsername={handleUpdateUsername}

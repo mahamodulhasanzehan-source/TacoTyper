@@ -83,4 +83,5 @@ export interface GlobalGameStats {
   tic_tac_toe_plays: number;
   connect_4_plays: number;
   gun_game_plays: number;
+  color_memory_plays: number;
 }

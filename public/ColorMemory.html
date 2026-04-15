@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Color Memory Challenge: ULTRA EDITION</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Poppins:wght@300;500;700&display=swap');
+
+        :root {
+            /* Using clamp for responsive but stable dimensions */
+            --square-size: clamp(250px, 35vw, 450px);
+            --slider-thickness: 35px;
+            
+            --bg-color: #000000;
+            --panel-bg: rgba(20, 20, 25, 0.6);
+            --panel-border: rgba(255, 255, 255, 0.1);
+            --text-main: #ffffff;
+            --text-muted: #888899;
+            --accent: #00ffaa;
+            --danger: #ff3366;
+            --glass-blur: blur(12px);
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            font-family: 'Poppins', sans-serif;
+            display: grid;
+            grid-template-columns: 250px 1fr 300px;
+            grid-template-rows: 100px 1fr 100px;
+            min-height: 100vh;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        /* Ambient Dynamic Glow */
+        #ambient-glow {
+            position: absolute;
+            top: 50%; left: 50%;
+            width: 70vw; height: 70vw;
+            transform: translate(-50%, -50%);
+            background: radial-gradient(circle, rgba(255,255,255,0.05) 0%, rgba(0,0,0,0) 70%);
+            pointer-events: none;
+            z-index: 0;
+            transition: background 0.5s ease;
+        }
+
+        /* Particle Canvas */
+        #particle-canvas {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none;
+            z-index: 100;
+        }
+
+        /* Panels Shared Setup */
+        .glass-panel {
+            background: var(--panel-bg);
+            backdrop-filter: var(--glass-blur);
+            -webkit-backdrop-filter: var(--glass-blur);
+            border: 1px solid var(--panel-border);
+            border-radius: 16px;
+            padding: 20px;
+            z-index: 10;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.5);
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Header */
+        header {
+            grid-column: 1 / -1;
+            grid-row: 1;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 40px;
+            z-index: 10;
+        }
+
+        h1 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: clamp(1.5rem, 2.5vw, 2.5rem);
+            margin: 0;
+            background: linear-gradient(90deg, #fff, var(--text-muted));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+        }
+
+        /* Timer */
+        .timer-container {
+            position: relative;
+            width: 80px; height: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 0.3s;
+            transform: scale(0.8);
+        }
+        .timer-container.active { opacity: 1; transform: scale(1); }
+        .timer-svg { position: absolute; top: 0; left: 0; transform: rotate(-90deg); }
+        .timer-circle-bg { fill: none; stroke: rgba(255,255,255,0.1); stroke-width: 6; }
+        .timer-circle-fg { fill: none; stroke: var(--accent); stroke-width: 6; stroke-dasharray: 226; stroke-dashoffset: 0; transition: stroke-dashoffset 1s linear; }
+        .timer-text { font-family: 'Orbitron', sans-serif; font-size: 2rem; font-weight: 900; color: var(--accent); text-shadow: 0 0 10px var(--accent); }
+
+        /* Sidebars */
+        aside.stats-sidebar { grid-column: 1; grid-row: 2; margin: 0 0 0 20px; align-self: center; height: 70%; }
+        aside.history-sidebar { grid-column: 3; grid-row: 2; margin: 0 20px 0 0; align-self: center; height: 80%; overflow: hidden; }
+        
+        .stat-box { margin-bottom: 20px; }
+        .stat-label { font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; }
+        .stat-value { font-family: 'Orbitron', sans-serif; font-size: 1.5rem; font-weight: 700; color: #fff; }
+        .rank-title { font-size: 1.1rem; color: #ffaa00; text-shadow: 0 0 8px rgba(255, 170, 0, 0.5); font-weight: bold; }
+
+        .history-list { flex-grow: 1; overflow-y: auto; padding-right: 10px; display: flex; flex-direction: column; gap: 10px; }
+        .history-list::-webkit-scrollbar { width: 6px; }
+        .history-list::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); border-radius: 10px; }
+        .history-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 10px; }
+
+        .history-item { display: flex; align-items: center; justify-content: space-between; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 8px; animation: slideIn 0.3s ease-out forwards; }
+        @keyframes slideIn { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
+        .hist-colors { width: 40px; height: 40px; border-radius: 50%; position: relative; overflow: hidden; border: 2px solid #333; }
+        .hist-target, .hist-user { position: absolute; top:0; width: 50%; height: 100%; }
+        .hist-target { left: 0; }
+        .hist-user { right: 0; }
+        .hist-score { font-family: 'Orbitron', sans-serif; font-weight: bold; font-size: 0.9rem; }
+
+        /* Main Game Area */
+        main {
+            grid-column: 2;
+            grid-row: 2;
+            display: flex;
+            flex-direction: row; /* Strict row alignment */
+            align-items: center;
+            justify-content: center;
+            gap: 40px; /* Space between sliders and square */
+            z-index: 10;
+        }
+
+        /* STRICT SLIDER CSS FIX */
+        .sliders-panel {
+            display: flex;
+            flex-direction: row;
+            gap: 20px;
+            padding: 20px 25px;
+        }
+
+        .slider-column {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px; /* Gap between slider and its label */
+        }
+
+        .slider-wrapper {
+            position: relative;
+            /* Wrapper strictly defines the visible bounds */
+            width: var(--slider-thickness);
+            height: var(--square-size);
+        }
+
+        input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            margin: 0;
+            padding: 0;
+            position: absolute;
+            top: 0; 
+            left: 0;
+            /* Length becomes width, thickness becomes height prior to rotation */
+            width: var(--square-size);
+            height: var(--slider-thickness);
+            border-radius: calc(var(--slider-thickness) / 2);
+            border: 2px solid rgba(255,255,255,0.2);
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.8);
+            
+            /* The ultimate fix for perfect CSS rotation positioning */
+            transform-origin: top left;
+            transform: rotate(-90deg) translateX(-100%);
+            
+            transition: opacity 0.3s, filter 0.3s;
+        }
+
+        input[type="range"]:disabled { filter: grayscale(100%) brightness(0.4); cursor: not-allowed; }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none; appearance: none;
+            width: calc(var(--slider-thickness) * 1.1);
+            height: calc(var(--slider-thickness) * 1.1);
+            border-radius: 50%;
+            background: #fff;
+            border: 4px solid #000;
+            cursor: pointer;
+            box-shadow: 0 0 15px rgba(255,255,255,0.6);
+            transition: transform 0.1s;
+        }
+        input[type="range"]:not(:disabled)::-webkit-slider-thumb:hover { transform: scale(1.2); }
+
+        .slider-label {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            letter-spacing: 2px;
+        }
+
+        /* Central Square Area */
+        .square-container {
+            position: relative;
+            width: var(--square-size);
+            height: var(--square-size);
+            border-radius: 2vw;
+            background: #000;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8), 0 0 0 2px rgba(255,255,255,0.1) inset;
+            overflow: hidden;
+            transition: box-shadow 0.3s ease;
+        }
+
+        .color-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; transition: clip-path 0.8s cubic-bezier(0.77, 0, 0.175, 1), background-color 0.2s ease; }
+        #layer-target { clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%); z-index: 2; }
+        #layer-user { clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%); z-index: 1; }
+        .split-view #layer-target { clip-path: polygon(0 0, 50% 0, 50% 100%, 0 100%); }
+        
+        .layer-label { position: absolute; bottom: 20px; width: 100%; text-align: center; font-family: 'Orbitron', sans-serif; font-size: 1.2rem; font-weight: bold; color: white; text-shadow: 0 2px 10px rgba(0,0,0,0.8); opacity: 0; transition: opacity 0.5s; }
+        #layer-target .layer-label { left: -25%; }
+        #layer-user .layer-label { left: 25%; }
+        .split-view .layer-label { opacity: 1; transition-delay: 0.5s; }
+
+        /* Footer Controls */
+        footer { grid-column: 1 / -1; grid-row: 3; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 10; }
+        .controls { display: flex; gap: 30px; align-items: center; }
+
+        button { position: relative; padding: 15px 50px; font-family: 'Orbitron', sans-serif; font-size: 1.2rem; font-weight: 900; text-transform: uppercase; letter-spacing: 2px; background: rgba(255,255,255,0.05); color: #fff; border: 2px solid rgba(255,255,255,0.2); border-radius: 50px; cursor: pointer; overflow: hidden; transition: all 0.2s; box-shadow: 0 0 15px rgba(0,0,0,0.5); }
+        button::before { content: ''; position: absolute; top: 0; left: -100%; width: 100%; height: 100%; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent); transition: left 0.5s; }
+        button:hover:not(:disabled) { border-color: #fff; box-shadow: 0 0 20px rgba(255,255,255,0.3); transform: translateY(-2px); }
+        button:hover:not(:disabled)::before { left: 100%; }
+        button:active:not(:disabled) { transform: translateY(1px); }
+        button:disabled { opacity: 0.3; cursor: not-allowed; border-color: rgba(255,255,255,0.1); }
+        #btnConfirm { color: var(--accent); border-color: rgba(0, 255, 170, 0.3); }
+        #btnConfirm:hover:not(:disabled) { border-color: var(--accent); box-shadow: 0 0 20px rgba(0, 255, 170, 0.4); }
+
+        .result-display { margin-top: -15px; font-family: 'Orbitron', sans-serif; text-align: center; height: 60px; display: flex; flex-direction: column; justify-content: center; opacity: 0; transform: translateY(10px); transition: all 0.4s; }
+        .result-display.show { opacity: 1; transform: translateY(0); }
+        .score-main { font-size: 2.5rem; font-weight: 900; }
+        .score-sub { font-family: 'Poppins', sans-serif; font-size: 0.9rem; color: var(--text-muted); margin-top: 5px; }
+
+        /* Modal Overlay */
+        #intro-modal { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.85); backdrop-filter: blur(10px); display: flex; align-items: center; justify-content: center; z-index: 1000; transition: opacity 0.5s; }
+        .modal-content { background: var(--bg-color); border: 1px solid var(--panel-border); border-radius: 20px; padding: 50px; max-width: 600px; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,0.8), 0 0 0 1px inset rgba(255,255,255,0.1); }
+        .modal-content h2 { font-family: 'Orbitron', sans-serif; color: var(--accent); font-size: 2rem; margin-top: 0; }
+        .modal-content p { font-size: 1.1rem; line-height: 1.6; color: #ccc; margin-bottom: 30px; }
+        
+        /* Responsive adjustments */
+        @media (max-width: 1200px) {
+            body { display: flex; flex-direction: column; overflow-y: auto; gap: 30px; }
+            main { flex-wrap: wrap; margin-bottom: 20px; }
+            aside.stats-sidebar, aside.history-sidebar { width: 90%; max-width: 600px; margin: 0 auto; height: auto; }
+            aside.history-sidebar { height: 300px; }
+            footer { margin-bottom: 50px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="ambient-glow"></div>
+    <canvas id="particle-canvas"></canvas>
+
+    <div id="intro-modal">
+        <div class="modal-content">
+            <h2>Color Memory: ULTRA</h2>
+            <p><strong>Phase 1:</strong> Memorize the color displayed in the square for 3 seconds.<br><br>
+               <strong>Phase 2:</strong> Use the Hue, Saturation, and Brightness sliders to perfectly reconstruct the color.<br><br>
+               <strong>Phase 3:</strong> Confirm to see how accurate your human optics are. Rack up streaks and rank up!</p>
+            <button id="btnInit" style="border-color: var(--accent); color: var(--accent);">INITIALIZE SYSTEM</button>
+        </div>
+    </div>
+
+    <header>
+        <h1>Chromatics</h1>
+        <div class="timer-container" id="timerContainer">
+            <svg class="timer-svg" width="80" height="80">
+                <circle class="timer-circle-bg" cx="40" cy="40" r="36" />
+                <circle class="timer-circle-fg" id="timerRing" cx="40" cy="40" r="36" />
+            </svg>
+            <div class="timer-text" id="timerText">3</div>
+        </div>
+    </header>
+
+    <aside class="stats-sidebar glass-panel">
+        <h3 style="font-family: 'Orbitron'; margin-top:0; color: #fff; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px;">TELEMETRY</h3>
+        <div class="stat-box"><div class="stat-label">Rank</div><div class="rank-title" id="statRank">Unranked</div></div>
+        <div class="stat-box"><div class="stat-label">Best Score</div><div class="stat-value" id="statBest">0.00</div></div>
+        <div class="stat-box"><div class="stat-label">Average Accuracy</div><div class="stat-value" id="statAvg">0.00</div></div>
+        <div class="stat-box"><div class="stat-label">Current Streak (>8.0)</div><div class="stat-value" id="statStreak">0</div></div>
+        <div class="stat-box"><div class="stat-label">Matches Played</div><div class="stat-value" id="statPlayed">0</div></div>
+    </aside>
+
+    <main>
+        <!-- The Sliders explicitly placed to the left -->
+        <div class="sliders-panel glass-panel">
+            <div class="slider-column">
+                <div class="slider-wrapper">
+                    <input type="range" id="sliderH" min="0" max="360" value="0" disabled>
+                </div>
+                <div class="slider-label">HUE</div>
+            </div>
+            <div class="slider-column">
+                <div class="slider-wrapper">
+                    <input type="range" id="sliderS" min="0" max="100" value="0" disabled>
+                </div>
+                <div class="slider-label">SAT</div>
+            </div>
+            <div class="slider-column">
+                <div class="slider-wrapper">
+                    <input type="range" id="sliderV" min="0" max="100" value="100" disabled>
+                </div>
+                <div class="slider-label">BRT</div>
+            </div>
+        </div>
+
+        <!-- The Central Square explicitly placed to the right -->
+        <div class="square-container" id="squareContainer">
+            <div class="color-layer" id="layer-user"><div class="layer-label">YOURS</div></div>
+            <div class="color-layer" id="layer-target"><div class="layer-label">TARGET</div></div>
+        </div>
+    </main>
+
+    <aside class="history-sidebar glass-panel">
+        <h3 style="font-family: 'Orbitron'; margin-top:0; color: #fff; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px;">DATABASE</h3>
+        <div class="history-list" id="historyList"><div style="color: var(--text-muted); font-size: 0.8rem; text-align: center; margin-top: 20px;">No records found.</div></div>
+    </aside>
+
+    <footer>
+        <div class="controls">
+            <button id="btnStart">ENGAGE</button>
+            <button id="btnConfirm" disabled>VERIFY</button>
+        </div>
+        <div class="result-display" id="resultDisplay">
+            <div class="score-main" id="scoreValue">0.00 / 10</div>
+            <div class="score-sub" id="scoreDetails">TARGET: #000000 | YOURS: #FFFFFF</div>
+        </div>
+    </footer>
+
+    <script>
+        // Web Audio API
+        const AudioEngine = (() => {
+            let ctx = null;
+            const init = () => { if (!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)(); if (ctx.state === 'suspended') ctx.resume(); };
+            const playTone = (freq, type, duration, vol=0.1) => {
+                if (!ctx) return;
+                const osc = ctx.createOscillator(); const gain = ctx.createGain();
+                osc.type = type; osc.frequency.setValueAtTime(freq, ctx.currentTime);
+                gain.gain.setValueAtTime(vol, ctx.currentTime); gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
+                osc.connect(gain); gain.connect(ctx.destination);
+                osc.start(); osc.stop(ctx.currentTime + duration);
+            };
+            return {
+                init,
+                tick: () => playTone(800, 'sine', 0.1, 0.05),
+                start: () => playTone(440, 'square', 0.2, 0.05),
+                sliderMove: () => playTone(1200, 'sine', 0.05, 0.01),
+                success: () => { playTone(440, 'sine', 0.5, 0.1); playTone(554.37, 'sine', 0.5, 0.1); playTone(659.25, 'sine', 0.5, 0.1); },
+                fail: () => playTone(150, 'sawtooth', 0.4, 0.1),
+                click: () => playTone(600, 'triangle', 0.1, 0.05)
+            };
+        })();
+
+        // Canvas Particles
+        const ParticleEngine = (() => {
+            const canvas = document.getElementById('particle-canvas');
+            const ctx = canvas.getContext('2d');
+            let particles =[]; let animationId;
+
+            const resize = () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; };
+            window.addEventListener('resize', resize); resize();
+
+            class Particle {
+                constructor(x, y, color) {
+                    this.x = x; this.y = y; this.color = color;
+                    const angle = Math.random() * Math.PI * 2; const speed = Math.random() * 8 + 2;
+                    this.vx = Math.cos(angle) * speed; this.vy = Math.sin(angle) * speed;
+                    this.life = 1.0; this.decay = Math.random() * 0.02 + 0.01; this.size = Math.random() * 4 + 2;
+                }
+                update() { this.x += this.vx; this.y += this.vy; this.vy += 0.1; this.life -= this.decay; }
+                draw() { ctx.globalAlpha = Math.max(0, this.life); ctx.fillStyle = this.color; ctx.beginPath(); ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2); ctx.fill(); }
+            }
+
+            const loop = () => {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                particles.forEach((p, index) => { p.update(); p.draw(); if (p.life <= 0) particles.splice(index, 1); });
+                animationId = requestAnimationFrame(loop);
+            };
+
+            return {
+                startLoop: () => { if(!animationId) loop(); },
+                burst: (x, y, color, count=50) => { for(let i=0; i<count; i++) particles.push(new Particle(x, y, color)); }
+            };
+        })();
+        ParticleEngine.startLoop();
+
+        // Core Game Engine
+        const Game = (() => {
+            const dom = {
+                sliderH: document.getElementById('sliderH'),
+                sliderS: document.getElementById('sliderS'),
+                sliderV: document.getElementById('sliderV'),
+                layerTarget: document.getElementById('layer-target'),
+                layerUser: document.getElementById('layer-user'),
+                squareContainer: document.getElementById('squareContainer'),
+                btnStart: document.getElementById('btnStart'),
+                btnConfirm: document.getElementById('btnConfirm'),
+                timerContainer: document.getElementById('timerContainer'),
+                timerRing: document.getElementById('timerRing'),
+                timerText: document.getElementById('timerText'),
+                resultDisplay: document.getElementById('resultDisplay'),
+                scoreValue: document.getElementById('scoreValue'),
+                scoreDetails: document.getElementById('scoreDetails'),
+                ambientGlow: document.getElementById('ambient-glow'),
+                historyList: document.getElementById('historyList'),
+                statRank: document.getElementById('statRank'),
+                statBest: document.getElementById('statBest'),
+                statAvg: document.getElementById('statAvg'),
+                statStreak: document.getElementById('statStreak'),
+                statPlayed: document.getElementById('statPlayed')
+            };
+
+            let targetRGB =[0, 0, 0];
+            let userRGB =[255, 255, 255];
+            let phase = 0; 
+            let stats = { best: 0, totalScore: 0, played: 0, streak: 0 };
+            
+            const hsvToRgb = (h, s, v) => {
+                h /= 360; s /= 100; v /= 100;
+                let r, g, b, i = Math.floor(h * 6), f = h * 6 - i, p = v * (1 - s), q = v * (1 - f * s), t = v * (1 - (1 - f) * s);
+                switch (i % 6) { case 0: r=v; g=t; b=p; break; case 1: r=q; g=v; b=p; break; case 2: r=p; g=v; b=t; break;
+                                 case 3: r=p; g=q; b=v; break; case 4: r=t; g=p; b=v; break; case 5: r=v; g=p; b=q; break; }
+                return[Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)];
+            };
+
+            const rgbToHex = (r, g, b) => '#' + [r, g, b].map(x => x.toString(16).padStart(2, '0')).join('').toUpperCase();
+
+            // Safe interaction functions to prevent JS crashes
+            const disableSliders = () => { dom.sliderH.disabled = true; dom.sliderS.disabled = true; dom.sliderV.disabled = true; };
+            const enableSliders = () => { dom.sliderH.disabled = false; dom.sliderS.disabled = false; dom.sliderV.disabled = false; };
+            const resetSliders = () => { dom.sliderH.value = 0; dom.sliderS.value = 0; dom.sliderV.value = 100; };
+
+            const updateVisuals = (playAudio = false) => {
+                const h = parseFloat(dom.sliderH.value);
+                const s = parseFloat(dom.sliderS.value);
+                const v = parseFloat(dom.sliderV.value);
+                userRGB = hsvToRgb(h, s, v);
+
+                if (phase === 2) {
+                    dom.layerUser.style.backgroundColor = `rgb(${userRGB.join(',')})`;
+                    dom.ambientGlow.style.background = `radial-gradient(circle, rgba(${userRGB.join(',')},0.15) 0%, rgba(0,0,0,0) 70%)`;
+                    dom.squareContainer.style.boxShadow = `0 20px 50px rgba(0,0,0,0.8), 0 0 30px rgba(${userRGB.join(',')}, 0.3)`;
+                }
+
+                dom.sliderH.style.background = `linear-gradient(to right, #f00 0%, #ff0 17%, #0f0 33%, #0ff 50%, #00f 67%, #f0f 83%, #f00 100%)`;
+                dom.sliderS.style.background = `linear-gradient(to right, rgb(${hsvToRgb(h, 0, v).join(',')}), rgb(${hsvToRgb(h, 100, v).join(',')}))`;
+                dom.sliderV.style.background = `linear-gradient(to right, rgb(${hsvToRgb(h, s, 0).join(',')}), rgb(${hsvToRgb(h, s, 100).join(',')}))`;
+
+                if (playAudio && phase === 2) AudioEngine.sliderMove();
+            };
+
+            const calculateRank = (avg) => {
+                if(stats.played === 0) return { title: "Unranked", color: "#888" };
+                if(avg >= 9.8) return { title: "Absolute Legend", color: "#ff00ff" };
+                if(avg >= 9.0) return { title: "Grandmaster", color: "#ffaa00" };
+                if(avg >= 8.0) return { title: "Artisan", color: "#00ffaa" };
+                if(avg >= 6.5) return { title: "Apprentice", color: "#00aaff" };
+                if(avg >= 5.0) return { title: "Novice", color: "#aaaaaa" };
+                return { title: "Color Blind", color: "#ff3366" };
+            };
+
+            const updateStatsUI = () => {
+                const avg = stats.played > 0 ? (stats.totalScore / stats.played).toFixed(2) : "0.00";
+                dom.statBest.innerText = stats.best.toFixed(2);
+                dom.statAvg.innerText = avg;
+                dom.statStreak.innerText = stats.streak;
+                dom.statPlayed.innerText = stats.played;
+                
+                const rank = calculateRank(parseFloat(avg));
+                dom.statRank.innerText = rank.title;
+                dom.statRank.style.color = rank.color;
+                dom.statRank.style.textShadow = `0 0 10px ${rank.color}88`;
+            };
+
+            const addHistoryItem = (score, target, user) => {
+                if (stats.played === 1) dom.historyList.innerHTML = ''; 
+                const el = document.createElement('div');
+                el.className = 'history-item';
+                el.innerHTML = `
+                    <div class="hist-colors">
+                        <div class="hist-target" style="background: rgb(${target.join(',')})"></div>
+                        <div class="hist-user" style="background: rgb(${user.join(',')})"></div>
+                    </div>
+                    <div class="hist-score" style="color: ${score >= 8.0 ? 'var(--accent)' : (score < 5.0 ? 'var(--danger)' : '#fff')}">
+                        ${score.toFixed(2)}
+                    </div>
+                `;
+                dom.historyList.prepend(el);
+            };
+
+            const startPhase1 = () => {
+                AudioEngine.start();
+                phase = 1;
+                dom.btnStart.disabled = true;
+                dom.btnConfirm.disabled = true;
+                dom.resultDisplay.classList.remove('show');
+                dom.squareContainer.classList.remove('split-view');
+
+                targetRGB =[Math.floor(Math.random()*256), Math.floor(Math.random()*256), Math.floor(Math.random()*256)];
+                
+                dom.layerTarget.style.backgroundColor = `rgb(${targetRGB.join(',')})`;
+                dom.layerTarget.style.zIndex = 3; 
+                dom.layerUser.style.backgroundColor = '#ffffff';
+
+                disableSliders();
+                resetSliders();
+                updateVisuals();
+
+                let timeLeft = 3;
+                dom.timerText.innerText = timeLeft;
+                dom.timerContainer.classList.add('active');
+                
+                dom.timerRing.style.transition = 'none';
+                dom.timerRing.style.strokeDashoffset = '0';
+                void dom.timerRing.offsetWidth; 
+                dom.timerRing.style.transition = 'stroke-dashoffset 3s linear';
+                dom.timerRing.style.strokeDashoffset = '226'; 
+                
+                const timerInt = setInterval(() => {
+                    timeLeft--;
+                    if (timeLeft > 0) {
+                        dom.timerText.innerText = timeLeft;
+                        AudioEngine.tick();
+                    } else {
+                        clearInterval(timerInt);
+                        dom.timerContainer.classList.remove('active');
+                        startPhase2();
+                    }
+                }, 1000);
+            };
+
+            const startPhase2 = () => {
+                phase = 2;
+                AudioEngine.tick(); 
+                
+                dom.layerTarget.style.zIndex = 1; 
+                dom.layerUser.style.zIndex = 2;   
+                dom.layerUser.style.backgroundColor = '#ffffff'; 
+                
+                enableSliders();
+                dom.btnConfirm.disabled = false;
+                updateVisuals();
+            };
+
+            const startPhase3 = () => {
+                phase = 3;
+                dom.btnConfirm.disabled = true;
+                dom.btnStart.disabled = false;
+                disableSliders();
+
+                const nR = (targetRGB[0] - userRGB[0]) / 255;
+                const nG = (targetRGB[1] - userRGB[1]) / 255;
+                const nB = (targetRGB[2] - userRGB[2]) / 255;
+                const distance = Math.sqrt(nR*nR + nG*nG + nB*nB);
+                const maxDistance = Math.sqrt(3);
+                
+                let score = 10 * (1 - (distance / maxDistance));
+                score = Math.max(0, score);
+
+                stats.played++;
+                stats.totalScore += score;
+                if (score > stats.best) stats.best = score;
+                if (score >= 8.0) stats.streak++; else stats.streak = 0;
+                
+                updateStatsUI();
+                addHistoryItem(score, targetRGB, userRGB);
+
+                dom.layerTarget.style.zIndex = 2;
+                dom.squareContainer.classList.add('split-view');
+
+                if (score >= 9.0) {
+                    AudioEngine.success();
+                    const rect = dom.squareContainer.getBoundingClientRect();
+                    ParticleEngine.burst(rect.left + rect.width/2, rect.top + rect.height/2, '#00ffaa', 100);
+                    ParticleEngine.burst(rect.left + rect.width/2, rect.top + rect.height/2, '#ffffff', 50);
+                } else if (score < 5.0) {
+                    AudioEngine.fail();
+                } else {
+                    AudioEngine.click();
+                }
+
+                let colorClass = score >= 8.0 ? 'var(--accent)' : (score < 5.0 ? 'var(--danger)' : '#fff');
+                dom.scoreValue.innerHTML = `<span style="color:${colorClass}">${score.toFixed(2)}</span> <span style="font-size:1rem;color:#888;">/ 10.00</span>`;
+                dom.scoreDetails.innerHTML = `TARGET: <span style="color:${rgbToHex(...targetRGB)}">${rgbToHex(...targetRGB)}</span> &nbsp;|&nbsp; YOURS: <span style="color:${rgbToHex(...userRGB)}">${rgbToHex(...userRGB)}</span>`;
+                dom.resultDisplay.classList.add('show');
+                
+                dom.btnStart.innerText = "AGAIN";
+            };
+
+            dom.btnStart.addEventListener('click', () => { AudioEngine.click(); startPhase1(); });
+            dom.btnConfirm.addEventListener('click', () => { startPhase3(); });
+            
+            dom.sliderH.addEventListener('input', () => updateVisuals(true));
+            dom.sliderS.addEventListener('input', () => updateVisuals(true));
+            dom.sliderV.addEventListener('input', () => updateVisuals(true));
+
+            document.getElementById('btnInit').addEventListener('click', () => {
+                AudioEngine.init();
+                AudioEngine.success();
+                document.getElementById('intro-modal').style.opacity = '0';
+                setTimeout(() => document.getElementById('intro-modal').style.display = 'none', 500);
+                updateVisuals();
+            });
+
+            return { init: () => { updateVisuals(); } };
+        })();
+
+        window.addEventListener('DOMContentLoaded', Game.init);
+
+    </script>
+</body>
+</html>

@@ -19,6 +19,7 @@ interface HubScreenProps {
     onLaunchTicTacToe: () => void;
     onLaunchConnect4: () => void;
     onLaunchGunGame: () => void;
+    onLaunchColorMemory: () => void;
     onLogout: () => void;
     username?: string | null;
     onUpdateUsername: (name: string) => void;
@@ -34,11 +35,11 @@ interface GameCard {
     action: () => void;
 }
 
-const HubScreen: React.FC<HubScreenProps> = ({ user, onLaunchGame, onLaunchIQ, onLaunchMinesweeper, onLaunchWordle, onLaunchAngle, onLaunchMoreLess, onLaunchSpellingBee, onLaunchTicTacToe, onLaunchConnect4, onLaunchGunGame, onLogout, username, onUpdateUsername }) => {
+const HubScreen: React.FC<HubScreenProps> = ({ user, onLaunchGame, onLaunchIQ, onLaunchMinesweeper, onLaunchWordle, onLaunchAngle, onLaunchMoreLess, onLaunchSpellingBee, onLaunchTicTacToe, onLaunchConnect4, onLaunchGunGame, onLaunchColorMemory, onLogout, username, onUpdateUsername }) => {
     const [showSettings, setShowSettings] = useState(false);
     const [showFriends, setShowFriends] = useState(false);
     const [isMobile, setIsMobile] = useState(false);
-    const [stats, setStats] = useState<GlobalGameStats>({ taco_typer_plays: 0, iq_test_plays: 0, minesweeper_plays: 0, wordle_plays: 0, angle_plays: 0, more_less_plays: 0, spelling_bee_plays: 0, tic_tac_toe_plays: 0, connect_4_plays: 0, gun_game_plays: 0 });
+    const [stats, setStats] = useState<GlobalGameStats>({ taco_typer_plays: 0, iq_test_plays: 0, minesweeper_plays: 0, wordle_plays: 0, angle_plays: 0, more_less_plays: 0, spelling_bee_plays: 0, tic_tac_toe_plays: 0, connect_4_plays: 0, gun_game_plays: 0, color_memory_plays: 0 });
     const [sortedGames, setSortedGames] = useState<GameCard[]>([]);
     
     const displayableName = username || user.displayName || 'Chef';
@@ -144,13 +145,22 @@ const HubScreen: React.FC<HubScreenProps> = ({ user, onLaunchGame, onLaunchIQ, o
                 color: '#57a863',
                 plays: stats.gun_game_plays || 0,
                 action: onLaunchGunGame
+            },
+            {
+                id: 'colormemory',
+                title: 'Color Memory',
+                description: 'Match the Target Color',
+                icon: '🎨',
+                color: '#d900ff',
+                plays: stats.color_memory_plays || 0,
+                action: onLaunchColorMemory
             }
         ];
 
         games.sort((a, b) => b.plays - a.plays);
         setSortedGames(games);
 
-    }, [stats, onLaunchGame, onLaunchIQ, onLaunchMinesweeper, onLaunchWordle, onLaunchAngle, onLaunchMoreLess, onLaunchSpellingBee, onLaunchTicTacToe, onLaunchConnect4, onLaunchGunGame, isMobile]);
+    }, [stats, onLaunchGame, onLaunchIQ, onLaunchMinesweeper, onLaunchWordle, onLaunchAngle, onLaunchMoreLess, onLaunchSpellingBee, onLaunchTicTacToe, onLaunchConnect4, onLaunchGunGame, onLaunchColorMemory, isMobile]);
 
     return (
         <div className="flex h-full w-full bg-[#000] text-white overflow-hidden relative font-['Press_Start_2P']">

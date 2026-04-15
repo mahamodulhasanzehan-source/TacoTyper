@@ -401,7 +401,7 @@ export const saveSpeedTestStats = async (user: User, wpm: number, accuracy: numb
 
 // --- Global Stats Tracking ---
 
-export const incrementGamePlays = async (gameKey: 'taco_typer' | 'iq_test' | 'minesweeper' | 'wordle' | 'angle' | 'more_less' | 'spelling_bee' | 'tic_tac_toe' | 'connect_4' | 'gun_game') => {
+export const incrementGamePlays = async (gameKey: 'taco_typer' | 'iq_test' | 'minesweeper' | 'wordle' | 'angle' | 'more_less' | 'spelling_bee' | 'tic_tac_toe' | 'connect_4' | 'gun_game' | 'color_memory') => {
     const statsRef = doc(db, "system", "global_stats");
     // Field names match the interface keys: taco_typer_plays, etc.
     const field = `${gameKey}_plays`;
@@ -424,7 +424,8 @@ export const incrementGamePlays = async (gameKey: 'taco_typer' | 'iq_test' | 'mi
                  spelling_bee_plays: gameKey === 'spelling_bee' ? 1 : 0,
                  tic_tac_toe_plays: gameKey === 'tic_tac_toe' ? 1 : 0,
                  connect_4_plays: gameKey === 'connect_4' ? 1 : 0,
-                 gun_game_plays: gameKey === 'gun_game' ? 1 : 0
+                 gun_game_plays: gameKey === 'gun_game' ? 1 : 0,
+                 color_memory_plays: gameKey === 'color_memory' ? 1 : 0
              });
         }
     }
@@ -437,9 +438,9 @@ export const getGlobalGameStats = async (): Promise<GlobalGameStats> => {
         if (snap.exists()) {
             return snap.data() as GlobalGameStats;
         }
-        return { taco_typer_plays: 0, iq_test_plays: 0, minesweeper_plays: 0, wordle_plays: 0, angle_plays: 0, more_less_plays: 0, spelling_bee_plays: 0, tic_tac_toe_plays: 0, connect_4_plays: 0, gun_game_plays: 0 };
+        return { taco_typer_plays: 0, iq_test_plays: 0, minesweeper_plays: 0, wordle_plays: 0, angle_plays: 0, more_less_plays: 0, spelling_bee_plays: 0, tic_tac_toe_plays: 0, connect_4_plays: 0, gun_game_plays: 0, color_memory_plays: 0 };
     } catch (e) {
-        return { taco_typer_plays: 0, iq_test_plays: 0, minesweeper_plays: 0, wordle_plays: 0, angle_plays: 0, more_less_plays: 0, spelling_bee_plays: 0, tic_tac_toe_plays: 0, connect_4_plays: 0, gun_game_plays: 0 };
+        return { taco_typer_plays: 0, iq_test_plays: 0, minesweeper_plays: 0, wordle_plays: 0, angle_plays: 0, more_less_plays: 0, spelling_bee_plays: 0, tic_tac_toe_plays: 0, connect_4_plays: 0, gun_game_plays: 0, color_memory_plays: 0 };
     }
 };
 
@@ -456,7 +457,8 @@ export const resetGlobalGameStats = async () => {
             spelling_bee_plays: 0,
             tic_tac_toe_plays: 0,
             connect_4_plays: 0,
-            gun_game_plays: 0
+            gun_game_plays: 0,
+            color_memory_plays: 0
         });
         return true;
     } catch (e) {

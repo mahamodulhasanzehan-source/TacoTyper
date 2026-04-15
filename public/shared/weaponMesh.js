@@ -176,7 +176,7 @@ function buildWeaponMesh(id, currentWeaponMesh, viewmodel) {
         addBox(0.04, 0.1, 0.08, 0, -0.05, 0.1, MATS.black); 
     }
 
-    mesh.position.set(0.25, -0.25, -0.4);
+    mesh.scale.set(1.5, 1.5, 1.5);
     viewmodel.add(mesh);
     return mesh;
 }
