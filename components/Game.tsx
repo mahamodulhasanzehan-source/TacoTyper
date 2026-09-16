@@ -275,11 +275,12 @@ export default function Game({
 
   useEffect(() => {
       const checkUser = async () => {
+          if (user.isAnonymous || user.uid.startsWith('guest_')) {
+              return;
+          }
           const profile = await getUserProfile(user.uid);
           if (profile && profile.username) {
               setCustomUsername(profile.username);
-          } else {
-              setScreen('username-setup');
           }
       };
       checkUser();

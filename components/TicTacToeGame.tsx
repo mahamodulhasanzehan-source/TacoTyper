@@ -11,7 +11,6 @@ interface TicTacToeGameProps {
 }
 
 type Player = 'X' | 'O' | null;
-type GridMode = '3x3' | '4x4';
 
 const COMBOS_3X3 = [
     [0, 1, 2], [3, 4, 5], [6, 7, 8],
@@ -19,42 +18,54 @@ const COMBOS_3X3 = [
     [0, 4, 8], [2, 4, 6]
 ];
 
-const COMBOS_4X4 = [
+// In 4x4, winning requires matching 3 in a row
+const COMBOS_4X4_MATCH_3 = [
     // Rows
-    [0, 1, 2, 3], [4, 5, 6, 7], [8, 9, 10, 11], [12, 13, 14, 15],
+    [0, 1, 2], [1, 2, 3],
+    [4, 5, 6], [5, 6, 7],
+    [8, 9, 10], [9, 10, 11],
+    [12, 13, 14], [13, 14, 15],
     // Columns
-    [0, 4, 8, 12], [1, 5, 9, 13], [2, 6, 10, 14], [3, 7, 11, 15],
-    // Diagonals
-    [0, 5, 10, 15], [3, 6, 9, 12]
+    [0, 4, 8], [4, 8, 12],
+    [1, 5, 9], [5, 9, 13],
+    [2, 6, 10], [6, 10, 14],
+    [3, 7, 11], [7, 11, 15],
+    // Diagonals (\)
+    [0, 5, 10], [5, 10, 15],
+    [1, 6, 11],
+    [4, 9, 14],
+    // Anti-Diagonals (/)
+    [3, 6, 9], [6, 9, 12],
+    [2, 5, 8],
+    [7, 10, 13]
 ];
 
 export default function TicTacToeGame({ user, onBackToHub, username }: TicTacToeGameProps) {
-    const [gridMode, setGridMode] = useState<GridMode>('3x3');
-    const [board, setBoard] = useState<Player[]>(Array(9).fill(null));
+    const [difficulty, setDifficulty] = useState<0 | 1 | 2>(2); // 0: Easy (3x3), 1: Medium (3x3), 2: Hard (4x4)
+    const is4x4 = difficulty === 2;
+    const [board, setBoard] = useState<Player[]>(Array(16).fill(null));
     const [isPlayerTurn, setIsPlayerTurn] = useState(true);
     const [gameOver, setGameOver] = useState(false);
     const [winner, setWinner] = useState<Player | 'Draw'>(null);
     const [winningLine, setWinningLine] = useState<number[] | null>(null);
     const [streak, setStreak] = useState(0);
-    const [difficulty, setDifficulty] = useState<0 | 1 | 2>(2); // 0: Easy, 1: Medium, 2: Hard/Impossible
     const [aiPlaysFirst, setAiPlaysFirst] = useState(false);
 
-    const combos = gridMode === '3x3' ? COMBOS_3X3 : COMBOS_4X4;
-    const boardSize = gridMode === '3x3' ? 9 : 16;
+    const combos = is4x4 ? COMBOS_4X4_MATCH_3 : COMBOS_3X3;
 
-    const startNewGame = useCallback((mode: GridMode = gridMode, aiFirst: boolean = aiPlaysFirst) => {
-        const size = mode === '3x3' ? 9 : 16;
+    const startNewGame = useCallback((diff: 0 | 1 | 2 = difficulty, aiFirst: boolean = aiPlaysFirst) => {
+        const size = diff === 2 ? 16 : 9;
         setBoard(Array(size).fill(null));
         setGameOver(false);
         setWinner(null);
         setWinningLine(null);
         setIsPlayerTurn(!aiFirst);
         incrementGamePlays('tic_tac_toe' as any);
-    }, [gridMode, aiPlaysFirst]);
+    }, [difficulty, aiPlaysFirst]);
 
     useEffect(() => {
-        startNewGame(gridMode, aiPlaysFirst);
-    }, [gridMode, aiPlaysFirst, startNewGame]);
+        startNewGame(difficulty, aiPlaysFirst);
+    }, [difficulty, aiPlaysFirst, startNewGame]);
 
     const checkWinState = (squares: Player[], currentCombos: number[][]): { winner: Player | 'Draw', line?: number[] } | null => {
         for (const combo of currentCombos) {
@@ -94,58 +105,34 @@ export default function TicTacToeGame({ user, onBackToHub, username }: TicTacToe
             if (win?.winner === 'X') return idx;
         }
 
-        if (gridMode === '3x3' && difficulty === 2) {
-            // Minimax for 3x3
-            const evaluate = (sq: Player[], depth: number, isMax: boolean): number => {
-                const res = checkWinState(sq, combos);
-                if (res?.winner === 'O') return 10 - depth;
-                if (res?.winner === 'X') return depth - 10;
-                if (res?.winner === 'Draw') return 0;
+        // Medium 3x3 or Hard 4x4: Heuristic combo weighting
+        let bestScore = -Infinity;
+        let bestMove = available[0];
 
-                if (isMax) {
-                    let best = -Infinity;
-                    for (let i = 0; i < sq.length; i++) {
-                        if (sq[i] === null) {
-                            sq[i] = 'O';
-                            best = Math.max(best, evaluate(sq, depth + 1, false));
-                            sq[i] = null;
-                        }
-                    }
-                    return best;
-                } else {
-                    let best = Infinity;
-                    for (let i = 0; i < sq.length; i++) {
-                        if (sq[i] === null) {
-                            sq[i] = 'X';
-                            best = Math.min(best, evaluate(sq, depth + 1, true));
-                            sq[i] = null;
-                        }
-                    }
-                    return best;
-                }
-            };
-
-            let bestScore = -Infinity;
-            let move = available[0];
-            for (const idx of available) {
-                squares[idx] = 'O';
-                const score = evaluate(squares, 0, false);
-                squares[idx] = null;
-                if (score > bestScore) {
-                    bestScore = score;
-                    move = idx;
+        for (const idx of available) {
+            let score = 0;
+            for (const combo of combos) {
+                if (combo.includes(idx)) {
+                    const oCount = combo.filter(c => squares[c] === 'O').length;
+                    const xCount = combo.filter(c => squares[c] === 'X').length;
+                    if (xCount === 0 && oCount === 1) score += 3;
+                    if (xCount === 1 && oCount === 0) score += 2;
+                    if (xCount === 0 && oCount === 0) score += 1;
                 }
             }
-            return move;
+            // Center preference
+            if (is4x4 && (idx === 5 || idx === 6 || idx === 9 || idx === 10)) {
+                score += 2;
+            } else if (!is4x4 && idx === 4) {
+                score += 2;
+            }
+            if (score > bestScore) {
+                bestScore = score;
+                bestMove = idx;
+            }
         }
 
-        // 4x4 or Medium 3x3: Heuristic center/corner weighting
-        const centerIndices = gridMode === '3x3' ? [4] : [5, 6, 9, 10];
-        for (const c of centerIndices) {
-            if (squares[c] === null) return c;
-        }
-
-        return available[Math.floor(Math.random() * available.length)];
+        return bestMove;
     };
 
     useEffect(() => {
@@ -184,7 +171,7 @@ export default function TicTacToeGame({ user, onBackToHub, username }: TicTacToe
                     user,
                     username || user.displayName || 'Chef',
                     newStreak,
-                    gridMode === '4x4' ? 'Tic Tac Toe 4x4 Champion' : 'Tic Tac Toe Grandmaster',
+                    is4x4 ? 'Tic Tac Toe 4x4 Champion' : 'Tic Tac Toe Grandmaster',
                     { mistakes: 0, timeTaken: 0, ingredientsMissed: 0, rottenWordsTyped: 0, totalScore: newStreak, levelReached: newStreak },
                     'tic_tac_toe'
                 );
@@ -254,42 +241,28 @@ export default function TicTacToeGame({ user, onBackToHub, username }: TicTacToe
                 </div>
             </div>
 
-            {/* Mode & Difficulty Controls */}
-            <div className="flex flex-wrap items-center justify-center gap-2 mb-4 z-10 max-w-md">
-                {/* 3x3 vs 4x4 Selector */}
+            {/* Difficulty Controls */}
+            <div className="flex flex-wrap items-center justify-center gap-2.5 mb-4 z-10 max-w-md">
+                {/* Difficulty Selector with grid sizes indicated */}
                 <div className="flex bg-neutral-900 p-1 rounded-xl border border-neutral-800">
-                    <button
-                        onClick={() => {
-                            audioService.playSound('button_click');
-                            setGridMode('3x3');
-                        }}
-                        className={`px-3 py-1 text-xs font-bold rounded-lg transition-all ${gridMode === '3x3' ? 'bg-sky-500 text-black shadow' : 'text-neutral-400 hover:text-white'}`}
-                    >
-                        Classic 3x3
-                    </button>
-                    <button
-                        onClick={() => {
-                            audioService.playSound('button_click');
-                            setGridMode('4x4');
-                        }}
-                        className={`px-3 py-1 text-xs font-bold rounded-lg transition-all ${gridMode === '4x4' ? 'bg-sky-500 text-black shadow' : 'text-neutral-400 hover:text-white'}`}
-                    >
-                        Hard 4x4 🔥
-                    </button>
-                </div>
-
-                {/* Difficulty Selector */}
-                <div className="flex bg-neutral-900 p-1 rounded-xl border border-neutral-800">
-                    {(['Easy', 'Medium', 'Hard'] as const).map((label, idx) => (
+                    {[
+                        { label: 'Easy (3x3)', val: 0 },
+                        { label: 'Medium (3x3)', val: 1 },
+                        { label: 'Hard (4x4)', val: 2 }
+                    ].map(d => (
                         <button
-                            key={label}
+                            key={d.val}
                             onClick={() => {
                                 audioService.playSound('button_click');
-                                setDifficulty(idx as 0 | 1 | 2);
+                                setDifficulty(d.val as 0 | 1 | 2);
                             }}
-                            className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-all ${difficulty === idx ? 'bg-amber-500 text-black shadow' : 'text-neutral-400 hover:text-white'}`}
+                            className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${
+                                difficulty === d.val 
+                                    ? d.val === 2 ? 'bg-amber-500 text-black shadow font-black' : 'bg-sky-500 text-black shadow font-black'
+                                    : 'text-neutral-400 hover:text-white'
+                            }`}
                         >
-                            {label}
+                            {d.label}
                         </button>
                     ))}
                 </div>
@@ -300,7 +273,7 @@ export default function TicTacToeGame({ user, onBackToHub, username }: TicTacToe
                         audioService.playSound('button_click');
                         setAiPlaysFirst(prev => !prev);
                     }}
-                    className="px-2.5 py-1 bg-neutral-900 border border-neutral-800 hover:border-neutral-700 text-neutral-300 rounded-xl text-xs font-bold"
+                    className="px-3 py-1.5 bg-neutral-900 border border-neutral-800 hover:border-neutral-700 text-neutral-300 rounded-xl text-xs font-bold transition-colors"
                     title="Toggle first move"
                 >
                     {aiPlaysFirst ? '🤖 AI Starts' : '👤 You Start'}
@@ -309,7 +282,7 @@ export default function TicTacToeGame({ user, onBackToHub, username }: TicTacToe
 
             {/* Game Board */}
             <div className="flex flex-col items-center justify-center z-10">
-                <div className={`grid gap-2 bg-neutral-900/90 p-3 rounded-2xl border-2 border-neutral-800 shadow-2xl ${gridMode === '3x3' ? 'grid-cols-3' : 'grid-cols-4'}`}>
+                <div className={`grid gap-2 bg-neutral-900/90 p-3 rounded-2xl border-2 border-neutral-800 shadow-2xl ${is4x4 ? 'grid-cols-4' : 'grid-cols-3'}`}>
                     {board.map((cell, index) => {
                         const isWinCell = winningLine?.includes(index);
                         return (
@@ -317,7 +290,7 @@ export default function TicTacToeGame({ user, onBackToHub, username }: TicTacToe
                                 key={index}
                                 onClick={() => handleCellClick(index)}
                                 className={`rounded-xl font-black flex items-center justify-center transition-all duration-150 active:scale-95 shadow-inner ${
-                                    gridMode === '3x3'
+                                    !is4x4
                                         ? 'w-20 h-20 sm:w-24 sm:h-24 md:w-28 md:h-28 text-4xl sm:text-5xl md:text-6xl'
                                         : 'w-16 h-16 sm:w-18 sm:h-18 md:w-20 md:h-20 text-3xl sm:text-4xl'
                                 } ${

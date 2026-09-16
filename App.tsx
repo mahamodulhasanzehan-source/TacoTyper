@@ -12,8 +12,10 @@ const getOrCreateGuestUser = (): User => {
     localStorage.setItem('taco_guest_uid', guestUid);
   }
   let guestName = localStorage.getItem('taco_guest_name');
-  if (!guestName) {
-    guestName = 'Guest Chef';
+  if (!guestName || guestName === 'Guest Chef' || guestName === 'Chef') {
+    const randomNum = Math.floor(10000 + Math.random() * 90000);
+    guestName = `guest#${randomNum}`;
+    localStorage.setItem('taco_guest_name', guestName);
   }
   return {
     uid: guestUid,
@@ -42,6 +44,9 @@ export default function App() {
           const profile = await getUserProfile(currentUser.uid);
           if (profile && profile.username) {
             setCustomUsername(profile.username);
+          } else {
+            setNewDisplayName(currentUser.displayName || '');
+            setShowNamePrompt(true);
           }
         } else {
           setUser(getOrCreateGuestUser());
@@ -123,20 +128,20 @@ export default function App() {
         onGoogleSignIn={handleGoogleSignIn}
       />
 
-      {/* Post-Google Authentication Name Prompt Modal */}
+      {/* Post-Google Authentication Username Prompt Modal */}
       {showNamePrompt && (
         <div className="fixed inset-0 z-[200] bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in font-sans">
           <div className="bg-neutral-900 border-2 border-amber-400/60 p-6 md:p-8 rounded-2xl max-w-md w-full shadow-2xl text-white">
-            <h2 className="text-xl md:text-2xl font-bold text-amber-400 mb-2">Welcome, Chef! 🌮</h2>
+            <h2 className="text-xl md:text-2xl font-bold text-amber-400 mb-2">Choose Your Username 🌮</h2>
             <p className="text-neutral-400 text-sm mb-6">
-              Choose your public display name for chat and leaderboards:
+              Pick a username for your account (used for chat, friend requests, and leaderboards):
             </p>
             <form onSubmit={handleSaveDisplayName} className="flex flex-col gap-4">
               <input 
                 type="text"
                 value={newDisplayName}
                 onChange={(e) => setNewDisplayName(e.target.value)}
-                placeholder="Enter chef name..."
+                placeholder="Enter username..."
                 maxLength={20}
                 className="w-full bg-neutral-950 border border-neutral-700 rounded-xl px-4 py-3 text-white placeholder-neutral-500 focus:border-amber-400 focus:outline-none"
                 autoFocus
@@ -147,7 +152,7 @@ export default function App() {
                   disabled={!newDisplayName.trim()}
                   className="flex-1 py-3 px-4 bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-black font-bold rounded-xl transition-all shadow-md active:scale-95"
                 >
-                  Save Name
+                  Save Username
                 </button>
                 <button
                   type="button"
