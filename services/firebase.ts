@@ -231,13 +231,17 @@ export const logout = async () => {
 
 // --- User Profile ---
 
+const getLocalUserProfile = (uid: string): UserProfile | null => {
+    const local = localStorage.getItem(`profile_${uid}`);
+    if (local) {
+        try { return JSON.parse(local); } catch { return null; }
+    }
+    return null;
+};
+
 export const getUserProfile = async (uid: string): Promise<UserProfile | null> => {
-    if (!dbExport) {
-        const local = localStorage.getItem(`profile_${uid}`);
-        if (local) {
-            try { return JSON.parse(local); } catch { return null; }
-        }
-        return null;
+    if (!dbExport || uid.startsWith('guest_')) {
+        return getLocalUserProfile(uid);
     }
     try {
         const userRef = doc(dbExport, "users", uid);
@@ -245,28 +249,44 @@ export const getUserProfile = async (uid: string): Promise<UserProfile | null> =
         if (snap.exists()) {
             return snap.data() as UserProfile;
         }
-        return null;
-    } catch (e) {
-        console.error("Error fetching profile", e);
-        return null;
+        return getLocalUserProfile(uid);
+    } catch (e: any) {
+        // Fall back gracefully to local storage on missing permissions or offline
+        return getLocalUserProfile(uid);
     }
 };
 
 export const saveUsername = async (uid: string, username: string) => {
-    if (!dbExport) {
-        const existing = localStorage.getItem(`profile_${uid}`);
-        let parsed: any = {};
-        if (existing) { try { parsed = JSON.parse(existing); } catch {} }
-        parsed.username = username;
-        parsed.usernameLower = username.toLowerCase();
-        localStorage.setItem(`profile_${uid}`, JSON.stringify(parsed));
+    // Always persist to local storage first for offline & guest resilience
+    const existing = localStorage.getItem(`profile_${uid}`);
+    let parsed: any = {};
+    if (existing) { try { parsed = JSON.parse(existing); } catch {} }
+    parsed.username = username;
+    parsed.usernameLower = username.toLowerCase();
+    localStorage.setItem(`profile_${uid}`, JSON.stringify(parsed));
+
+    if (uid.startsWith('guest_')) {
+        try {
+            const guestStr = localStorage.getItem('taco_guest_user');
+            if (guestStr) {
+                const guestObj = JSON.parse(guestStr);
+                guestObj.displayName = username;
+                localStorage.setItem('taco_guest_user', JSON.stringify(guestObj));
+            }
+        } catch {}
         return;
     }
-    const userRef = doc(dbExport, "users", uid);
-    await setDoc(userRef, {
-        username: username,
-        usernameLower: username.toLowerCase()
-    }, { merge: true });
+
+    if (!dbExport) return;
+    try {
+        const userRef = doc(dbExport, "users", uid);
+        await setDoc(userRef, {
+            username: username,
+            usernameLower: username.toLowerCase()
+        }, { merge: true });
+    } catch (e: any) {
+        console.warn("Could not save username to Firestore (saved locally):", e?.message || e);
+    }
 };
 
 // --- Friend System ---
@@ -437,7 +457,7 @@ export const acceptFriendRequest = async (currentUid: string, fromUid: string) =
 // --- Stats & Leaderboard (Firestore Implementation) ---
 
 export const saveGameStats = async (user: User, score: number, mode: string, level: number) => {
-    if (!dbExport) return;
+    if (!dbExport || !user || !user.uid || user.uid.startsWith('guest_')) return;
     try {
         const userRef = doc(dbExport, "users", user.uid);
         await updateDoc(userRef, {
@@ -449,12 +469,12 @@ export const saveGameStats = async (user: User, score: number, mode: string, lev
             })
         });
     } catch (e) {
-        console.error("Error saving game stats", e);
+        // Silently skip if offline or insufficient permissions
     }
 };
 
 export const saveSpeedTestStats = async (user: User, wpm: number, accuracy: number) => {
-    if (!dbExport) return;
+    if (!dbExport || !user || !user.uid || user.uid.startsWith('guest_')) return;
     try {
         const userRef = doc(dbExport, "users", user.uid);
         await updateDoc(userRef, {
@@ -465,7 +485,7 @@ export const saveSpeedTestStats = async (user: User, wpm: number, accuracy: numb
             })
         });
     } catch (e) {
-        console.error("Error saving speed test stats", e);
+        // Silently skip if offline or insufficient permissions
     }
 };
 

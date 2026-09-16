@@ -568,14 +568,22 @@ export default function Game({
 
   const handleUsernameSubmit = async (name: string) => {
       setCustomUsername(name);
-      await saveUsername(user.uid, name);
+      try {
+          await saveUsername(user.uid, name);
+      } catch (err) {
+          console.warn("Could not save username remotely, proceeding with local name:", err);
+      }
       setScreen('hub'); // After username setup, go to hub
   };
 
   const handleUpdateUsername = async (name: string) => {
       setCustomUsername(name);
       if (onUpdateUsername) onUpdateUsername(name);
-      await saveUsername(user.uid, name);
+      try {
+          await saveUsername(user.uid, name);
+      } catch (err) {
+          console.warn("Could not update username remotely, updated locally:", err);
+      }
   };
 
   const startSpeedTest = async () => {
