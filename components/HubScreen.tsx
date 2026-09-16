@@ -14,15 +14,16 @@ interface HubScreenProps {
     onLaunchMinesweeper: () => void;
     onLaunchWordle: () => void;
     onLaunchAngle: () => void;
-    onLaunchMoreLess: () => void;
     onLaunchSpellingBee: () => void;
     onLaunchTicTacToe: () => void;
     onLaunchConnect4: () => void;
     onLaunchGunGame: () => void;
     onLaunchColorMemory: () => void;
+    onLaunchParticlePhysics: () => void;
     onLogout: () => void;
     username?: string | null;
     onUpdateUsername: (name: string) => void;
+    onGoogleSignIn?: () => Promise<void>;
 }
 
 interface GameCard {
@@ -35,11 +36,28 @@ interface GameCard {
     action: () => void;
 }
 
-const HubScreen: React.FC<HubScreenProps> = ({ user, onLaunchGame, onLaunchIQ, onLaunchMinesweeper, onLaunchWordle, onLaunchAngle, onLaunchMoreLess, onLaunchSpellingBee, onLaunchTicTacToe, onLaunchConnect4, onLaunchGunGame, onLaunchColorMemory, onLogout, username, onUpdateUsername }) => {
+const HubScreen: React.FC<HubScreenProps> = ({ 
+    user, 
+    onLaunchGame, 
+    onLaunchIQ, 
+    onLaunchMinesweeper, 
+    onLaunchWordle, 
+    onLaunchAngle, 
+    onLaunchSpellingBee, 
+    onLaunchTicTacToe, 
+    onLaunchConnect4, 
+    onLaunchGunGame, 
+    onLaunchColorMemory, 
+    onLaunchParticlePhysics, 
+    onLogout, 
+    username, 
+    onUpdateUsername,
+    onGoogleSignIn 
+}) => {
     const [showSettings, setShowSettings] = useState(false);
     const [showFriends, setShowFriends] = useState(false);
     const [isMobile, setIsMobile] = useState(false);
-    const [stats, setStats] = useState<GlobalGameStats>({ taco_typer_plays: 0, iq_test_plays: 0, minesweeper_plays: 0, wordle_plays: 0, angle_plays: 0, more_less_plays: 0, spelling_bee_plays: 0, tic_tac_toe_plays: 0, connect_4_plays: 0, gun_game_plays: 0, color_memory_plays: 0 });
+    const [stats, setStats] = useState<GlobalGameStats>({ taco_typer_plays: 0, iq_test_plays: 0, minesweeper_plays: 0, wordle_plays: 0, angle_plays: 0, spelling_bee_plays: 0, tic_tac_toe_plays: 0, connect_4_plays: 0, gun_game_plays: 0, color_memory_plays: 0, particle_physics_plays: 0 });
     const [sortedGames, setSortedGames] = useState<GameCard[]>([]);
     
     const displayableName = username || user.displayName || 'Chef';
@@ -102,15 +120,6 @@ const HubScreen: React.FC<HubScreenProps> = ({ user, onLaunchGame, onLaunchIQ, o
                 action: onLaunchAngle
             },
             {
-                id: 'moreless',
-                title: 'More / Less',
-                description: 'Compare the Values',
-                icon: '⚖️',
-                color: '#ff2a2a',
-                plays: stats.more_less_plays || 0,
-                action: onLaunchMoreLess
-            },
-            {
                 id: 'spellingbee',
                 title: 'Spelling Bee',
                 description: 'Listen and Spell',
@@ -154,13 +163,22 @@ const HubScreen: React.FC<HubScreenProps> = ({ user, onLaunchGame, onLaunchIQ, o
                 color: '#d900ff',
                 plays: stats.color_memory_plays || 0,
                 action: onLaunchColorMemory
+            },
+            {
+                id: 'particlephysics',
+                title: 'Particle Physics',
+                description: 'Satisfying Flow & Collision Sim',
+                icon: '⚛️',
+                color: '#00f2fe',
+                plays: stats.particle_physics_plays || 0,
+                action: onLaunchParticlePhysics
             }
         ];
 
         games.sort((a, b) => b.plays - a.plays);
         setSortedGames(games);
 
-    }, [stats, onLaunchGame, onLaunchIQ, onLaunchMinesweeper, onLaunchWordle, onLaunchAngle, onLaunchMoreLess, onLaunchSpellingBee, onLaunchTicTacToe, onLaunchConnect4, onLaunchGunGame, onLaunchColorMemory, isMobile]);
+    }, [stats, onLaunchGame, onLaunchIQ, onLaunchMinesweeper, onLaunchWordle, onLaunchAngle, onLaunchSpellingBee, onLaunchTicTacToe, onLaunchConnect4, onLaunchGunGame, onLaunchColorMemory, onLaunchParticlePhysics, isMobile]);
 
     return (
         <div className="flex h-full w-full bg-[#000] text-white overflow-hidden relative font-['Press_Start_2P']">
@@ -176,7 +194,30 @@ const HubScreen: React.FC<HubScreenProps> = ({ user, onLaunchGame, onLaunchIQ, o
                         <span className="text-[10px] md:text-xs text-[#aaa]">Welcome back, {displayableName}</span>
                     </RandomReveal>
                     
-                    <div className="flex gap-4 self-end md:self-auto">
+                    <div className="flex items-center gap-3 self-end md:self-auto">
+                        {onGoogleSignIn && (user.isAnonymous || user.uid.startsWith('guest_')) && (
+                            <RandomReveal delay={0.05} distance={200}>
+                                <button
+                                    onClick={async () => {
+                                        try {
+                                            await onGoogleSignIn();
+                                        } catch (err) {
+                                            console.warn("Sign in error:", err);
+                                        }
+                                    }}
+                                    className="flex items-center gap-1.5 px-3 py-1.5 bg-[#1a1a1a] hover:bg-[#252525] border-2 border-amber-400/70 hover:border-amber-400 rounded text-[10px] text-amber-300 font-bold transition-all hover:scale-105 shadow-sm cursor-pointer"
+                                    title="Sign in with Google to save your high scores"
+                                >
+                                    <svg className="w-3.5 h-3.5" viewBox="0 0 24 24">
+                                        <path fill="#EA4335" d="M12 5c1.6 0 3 .6 4.1 1.6l3.1-3.1C17.3 1.7 14.8 1 12 1 7.5 1 3.7 3.6 1.9 7.3l3.7 2.9C6.5 7.3 9 5 12 5z"/>
+                                        <path fill="#4285F4" d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.5h6.5c-.3 1.5-1.1 2.8-2.4 3.7l3.7 2.9c2.2-2 3.7-5 3.7-8.8z"/>
+                                        <path fill="#FBBC05" d="M5.6 14.8c-.2-.7-.4-1.5-.4-2.3 0-.8.2-1.6.4-2.3L1.9 7.3C.7 9.7 0 12.3 0 15.1c0 2.8.7 5.4 1.9 7.8l3.7-2.9z"/>
+                                        <path fill="#34A853" d="M12 23.5c3.2 0 6-1.1 8-3l-3.7-2.9c-1.1.7-2.5 1.2-4.3 1.2-3 0-5.5-2.3-6.4-5.2L1.9 16.5C3.7 20.2 7.5 23.5 12 23.5z"/>
+                                    </svg>
+                                    <span>Sign In</span>
+                                </button>
+                            </RandomReveal>
+                        )}
                         {!isMobile && (
                             <RandomReveal delay={0.1} distance={200}>
                                 <button 

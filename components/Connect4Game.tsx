@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { User, saveLeaderboardScore, incrementGamePlays } from '../services/firebase';
-import { LeaderboardWidget } from './Overlays';
-import ChatWidget from './ChatWidget';
+import { audioService } from '../services/audioService';
 import { isMobileDevice } from '../utils/device';
 
 interface Connect4GameProps {
@@ -24,9 +23,10 @@ export default function Connect4Game({ user, onBackToHub, username }: Connect4Ga
     const [winner, setWinner] = useState<Player | 'Draw'>(null);
     const [startTime, setStartTime] = useState<number | null>(null);
     const [elapsedTime, setElapsedTime] = useState(0);
-    const elapsedTimeRef = useRef(0);
+    const [hoveredCol, setHoveredCol] = useState<number | null>(null);
     const [isMobile, setIsMobile] = useState(false);
-    const [showMobileLeaderboard, setShowMobileLeaderboard] = useState(false);
+    const [lastDrop, setLastDrop] = useState<{ r: number, c: number } | null>(null);
+    const elapsedTimeRef = useRef(0);
 
     useEffect(() => {
         elapsedTimeRef.current = elapsedTime;
@@ -43,6 +43,8 @@ export default function Connect4Game({ user, onBackToHub, username }: Connect4Ga
         setWinner(null);
         setStartTime(Date.now());
         setElapsedTime(0);
+        setHoveredCol(null);
+        setLastDrop(null);
         incrementGamePlays('connect_4' as any);
     }, []);
 
@@ -254,7 +256,10 @@ export default function Connect4Game({ user, onBackToHub, username }: Connect4Ga
                 const col = getBestMove(board);
                 if (col !== undefined) {
                     const newBoard = dropPiece(board, col, 'Y');
+                    const dropRow = getAvailableRow(board, col);
                     setBoard(newBoard);
+                    setLastDrop({ r: dropRow, c: col });
+                    audioService.playSound('tile_click');
                     
                     const result = checkWinner(newBoard);
                     if (result) {
@@ -273,6 +278,7 @@ export default function Connect4Game({ user, onBackToHub, username }: Connect4Ga
         setWinner(result);
         
         if (result === 'R') {
+            audioService.playSound('correct_answer');
             const finalTime = elapsedTimeRef.current;
             await saveLeaderboardScore(
                 user, 
@@ -282,14 +288,19 @@ export default function Connect4Game({ user, onBackToHub, username }: Connect4Ga
                 { mistakes: 0, timeTaken: finalTime, ingredientsMissed: 0, rottenWordsTyped: 0, totalScore: finalTime, levelReached: 1 }, 
                 'connect_4'
             );
+        } else if (result === 'Y') {
+            audioService.playSound('wrong_answer');
         }
     };
 
     const handleColumnClick = (col: number) => {
         if (!isPlayerTurn || gameOver || board[0][col] !== null) return;
 
+        const dropRow = getAvailableRow(board, col);
         const newBoard = dropPiece(board, col, 'R');
         setBoard(newBoard);
+        setLastDrop({ r: dropRow, c: col });
+        audioService.playSound('button_click');
 
         const result = checkWinner(newBoard);
         if (result) {
@@ -300,69 +311,106 @@ export default function Connect4Game({ user, onBackToHub, username }: Connect4Ga
     };
 
     return (
-        <div className="flex flex-col items-center justify-center w-full h-full bg-[#000] text-white font-['Inter'] relative overflow-hidden">
-            <div className="absolute inset-0 opacity-10 pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at 50% 50%, #ff2a2a 2px, transparent 2px)', backgroundSize: '80px 80px' }}></div>
-            
-            {!isMobile && (
-                <div className="flex flex-col absolute top-0 right-0 h-full w-[300px] z-[50] border-l border-[#333] animate-fade-in" style={{ animationDelay: '0.2s' }}>
-                    <LeaderboardWidget className="h-[66%] border-b-0" allowedModes={['connect_4']} defaultMode="connect_4" />
-                    <ChatWidget user={user} className="h-[34%]" />
-                </div>
-            )}
-            
-             {isMobile && (
-                <>
-                    <div className="absolute top-4 right-4 z-[60]">
-                        <button onClick={() => setShowMobileLeaderboard(true)} className="text-2xl hover:scale-110 transition-transform bg-[#111] p-2 rounded-full border border-[#f4b400]">🏆</button>
-                    </div>
-                    {showMobileLeaderboard && (
-                        <div className="fixed inset-0 z-[100] bg-black/95 flex flex-col p-4 animate-fade-in">
-                            <div className="flex justify-between items-center mb-4">
-                                <h2 className="text-[#f4b400] text-xl font-bold">Fastest Connectors</h2>
-                                <button onClick={() => setShowMobileLeaderboard(false)} className="text-red-500 text-2xl font-bold p-2">✕</button>
-                            </div>
-                            <LeaderboardWidget className="flex-1 border-none shadow-none p-0" allowedModes={['connect_4']} defaultMode="connect_4" />
-                        </div>
-                    )}
-                </>
-            )}
+        <div className="flex flex-col items-center justify-center w-full h-full bg-[#050508] text-white relative overflow-y-auto custom-scrollbar p-4 select-none font-sans">
+            <div className="absolute inset-0 opacity-15 pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at 50% 50%, #2563eb 2px, transparent 2px)', backgroundSize: '60px 60px' }}></div>
 
-            <div className="flex justify-between items-center w-full max-w-md p-4 z-10 absolute top-0">
-                <button onClick={onBackToHub} className="text-2xl hover:scale-110 transition-transform">⬅️</button>
+            {/* Top Navigation */}
+            <div className="flex justify-between items-center w-full max-w-xl mb-4 z-10">
+                <button 
+                    onClick={() => {
+                        audioService.playSound('button_click');
+                        onBackToHub();
+                    }} 
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-neutral-900/80 hover:bg-neutral-800 border border-neutral-700 rounded-full text-sm font-bold transition-transform hover:scale-105"
+                    title="Back to Hub"
+                >
+                    <span>⬅️</span>
+                    <span className="hidden sm:inline">Hub</span>
+                </button>
+
                 <div className="flex flex-col items-center">
-                    <h1 className="text-xl md:text-2xl font-bold font-['Press_Start_2P'] text-[#ff2a2a]">CONNECT 4</h1>
-                    <div className="text-xs text-[#aaa] mt-1">Time: {elapsedTime}s</div>
+                    <h1 className="text-xl md:text-2xl font-black tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-red-500 to-amber-400">
+                        CONNECT 4
+                    </h1>
+                    <div className="text-xs text-neutral-400 mt-0.5 font-bold">
+                        ⏱️ Time: <span className="text-amber-400 font-mono">{elapsedTime}s</span>
+                    </div>
                 </div>
-                <div className="w-8"></div>
+
+                <div className="w-16 flex justify-end">
+                    <span className={`text-xs px-2.5 py-1 rounded-full font-bold border ${isPlayerTurn ? 'bg-red-950/80 text-red-400 border-red-700' : 'bg-amber-950/80 text-amber-400 border-amber-700'}`}>
+                        {isPlayerTurn ? 'Your Turn' : 'AI Thinking...'}
+                    </span>
+                </div>
             </div>
 
-            <div className="flex flex-col items-center justify-center z-10 mt-16">
-                <div className="bg-[#1a4b8c] p-1.5 sm:p-2 md:p-4 rounded-xl flex flex-col gap-1.5 sm:gap-2 shadow-[0_0_20px_rgba(26,75,140,0.5)]">
-                    {board.map((row, rIdx) => (
-                        <div key={rIdx} className="flex gap-1.5 sm:gap-2">
-                            {row.map((cell, cIdx) => (
-                                <div
-                                    key={`${rIdx}-${cIdx}`}
-                                    onClick={() => handleColumnClick(cIdx)}
-                                    className="w-8 h-8 sm:w-10 sm:h-10 md:w-14 md:h-14 rounded-full flex items-center justify-center cursor-pointer bg-[#0a1f3a] shadow-[inset_0_0_10px_rgba(0,0,0,0.8)] overflow-hidden"
-                                >
-                                    {cell && (
-                                        <div className={`w-full h-full rounded-full shadow-[inset_0_0_10px_rgba(0,0,0,0.5)] animate-drop ${cell === 'R' ? 'bg-[#ff2a2a]' : 'bg-[#f4b400]'}`}></div>
-                                    )}
+            {/* Hover Indicator Row */}
+            <div className="flex justify-center w-full max-w-[95vw] z-10 mb-1">
+                <div className="flex gap-1.5 sm:gap-2.5 px-3 md:px-5">
+                    {Array.from({ length: COLS }).map((_, cIdx) => (
+                        <div 
+                            key={`hover-${cIdx}`} 
+                            className="w-9 h-6 sm:w-12 sm:h-8 md:w-16 md:h-8 flex items-center justify-center cursor-pointer transition-opacity"
+                            onClick={() => handleColumnClick(cIdx)}
+                            onMouseEnter={() => setHoveredCol(cIdx)}
+                            onMouseLeave={() => setHoveredCol(null)}
+                        >
+                            {hoveredCol === cIdx && isPlayerTurn && !gameOver && board[0][cIdx] === null && (
+                                <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-red-500/80 shadow-[0_0_12px_rgba(239,68,68,0.8)] animate-bounce flex items-center justify-center text-xs font-bold text-white">
+                                    ▼
                                 </div>
-                            ))}
+                            )}
+                        </div>
+                    ))}
+                </div>
+            </div>
+
+            {/* Arcade Style Connect 4 Board */}
+            <div className="flex flex-col items-center justify-center z-10">
+                <div 
+                    className="bg-gradient-to-b from-blue-600 to-blue-800 p-2.5 sm:p-3.5 md:p-5 rounded-2xl sm:rounded-3xl flex flex-col gap-1.5 sm:gap-2.5 shadow-[0_15px_35px_rgba(30,64,175,0.45)] border-4 border-blue-400/40 relative"
+                    onMouseLeave={() => setHoveredCol(null)}
+                >
+                    {board.map((row, rIdx) => (
+                        <div key={rIdx} className="flex gap-1.5 sm:gap-2.5">
+                            {row.map((cell, cIdx) => {
+                                const isDropTarget = lastDrop?.r === rIdx && lastDrop?.c === cIdx;
+                                return (
+                                    <div
+                                        key={`${rIdx}-${cIdx}`}
+                                        onClick={() => handleColumnClick(cIdx)}
+                                        onMouseEnter={() => setHoveredCol(cIdx)}
+                                        className="w-9 h-9 sm:w-12 sm:h-12 md:w-16 md:h-16 rounded-full flex items-center justify-center cursor-pointer bg-[#050c18] shadow-[inset_0_4px_8px_rgba(0,0,0,0.8)] overflow-hidden transition-transform hover:scale-105 active:scale-95"
+                                    >
+                                        {cell && (
+                                            <div 
+                                                className={`w-full h-full rounded-full shadow-[inset_0_-4px_6px_rgba(0,0,0,0.4),0_2px_8px_rgba(0,0,0,0.5)] transition-all ${
+                                                    isDropTarget ? 'animate-bounce' : ''
+                                                } ${
+                                                    cell === 'R' 
+                                                        ? 'bg-gradient-to-b from-red-500 to-red-600 shadow-[0_0_10px_rgba(239,68,68,0.6)]' 
+                                                        : 'bg-gradient-to-b from-amber-400 to-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.6)]'
+                                                }`}
+                                            />
+                                        )}
+                                    </div>
+                                );
+                            })}
                         </div>
                     ))}
                 </div>
 
                 {gameOver && (
-                    <div className="mt-8 flex flex-col items-center animate-pop-in">
-                        <div className={`text-2xl font-bold mb-4 ${winner === 'R' ? 'text-[#ff2a2a]' : winner === 'Y' ? 'text-[#f4b400]' : 'text-white'}`}>
-                            {winner === 'R' ? 'You Win! 🎉' : winner === 'Y' ? 'You Lose! 😢' : 'Draw! 🤝'}
+                    <div className="mt-6 flex flex-col items-center animate-fade-in bg-neutral-900/90 border border-neutral-700 p-4 sm:p-6 rounded-2xl shadow-xl">
+                        <div className={`text-xl sm:text-2xl font-black mb-3 ${winner === 'R' ? 'text-red-400' : winner === 'Y' ? 'text-amber-400' : 'text-white'}`}>
+                            {winner === 'R' ? '🎉 You Won!' : winner === 'Y' ? '😢 AI Won!' : '🤝 Game Drawn!'}
                         </div>
                         <button
-                            onClick={startNewGame}
-                            className="px-6 py-3 bg-[#ff2a2a] text-white font-bold rounded-full hover:bg-[#cc0000] transition-colors"
+                            onClick={() => {
+                                audioService.playSound('button_click');
+                                startNewGame();
+                            }}
+                            className="px-6 py-2.5 bg-red-600 hover:bg-red-500 text-white font-bold rounded-full shadow-lg transition-transform active:scale-95 text-sm sm:text-base"
                         >
                             Play Again
                         </button>

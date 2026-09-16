@@ -3,6 +3,12 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer base {
+  body, button, input, select, textarea {
+    font-family: "Comic Sans MS", "Comic Sans", "Chalkboard SE", "Comic Neue", cursive, sans-serif;
+  }
+}
+
 :root {
   /* Default (Taco) Theme */
   --color-background: #000000;

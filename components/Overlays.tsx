@@ -43,6 +43,7 @@ export interface GameOverProps {
     message: string;
     stats?: string;
     onRestart: () => void;
+    onHome?: () => void;
     aiTitle?: string;
     aiScore?: number;
     isCalculating?: boolean;
@@ -68,6 +69,7 @@ export interface BossIntroProps {
 export interface PauseScreenProps {
     onResume: () => void;
     onQuit: () => void;
+    onHome?: () => void;
 }
 
 export interface InfoModalProps {
@@ -801,7 +803,7 @@ export const LevelCompleteScreen: React.FC<LevelCompleteProps> = ({ levelName, m
     </Overlay>
 );
 
-export const GameOverScreen: React.FC<GameOverProps> = ({ score, message, stats, onRestart, aiTitle, aiScore, isCalculating, isTimeScore }) => (
+export const GameOverScreen: React.FC<GameOverProps> = ({ score, message, stats, onRestart, onHome, aiTitle, aiScore, isCalculating, isTimeScore }) => (
     <Overlay>
         <div className="flex flex-col md:flex-row gap-4 max-w-4xl w-full items-start justify-center p-4">
              <RandomReveal className="bg-[#111] border-4 border-white p-8 text-center w-full md:w-[400px] flex flex-col gap-4 relative">
@@ -834,7 +836,12 @@ export const GameOverScreen: React.FC<GameOverProps> = ({ score, message, stats,
                     {stats && <div className="text-xs text-[#f4b400] mt-1">{stats}</div>}
                 </div>
 
-                <Button onClick={onRestart} className="w-full mt-4">PLAY AGAIN</Button>
+                <div className="flex gap-3 mt-4">
+                    {onHome && (
+                        <Button onClick={onHome} variant="secondary" className="flex-1 text-xs">HOME</Button>
+                    )}
+                    <Button onClick={onRestart} className="flex-1 text-xs">PLAY AGAIN</Button>
+                </div>
             </RandomReveal>
         </div>
     </Overlay>
@@ -861,12 +868,13 @@ export const BossIntroScreen: React.FC<BossIntroProps> = ({ onStart }) => (
     </Overlay>
 );
 
-export const PauseScreen: React.FC<PauseScreenProps> = ({ onResume, onQuit }) => (
+export const PauseScreen: React.FC<PauseScreenProps> = ({ onResume, onQuit, onHome }) => (
     <Overlay>
         <RandomReveal className="bg-[#111] border-4 border-white p-8 text-center max-w-sm w-full">
             <h2 className="text-2xl text-[#f4b400] mb-8"><RandomText text="PAUSED" /></h2>
             <div className="flex flex-col gap-4">
                 <Button onClick={onResume} className="w-full">RESUME</Button>
+                {onHome && <Button onClick={onHome} className="w-full bg-[#333] border-[#555] text-white hover:bg-[#444]">HOME</Button>}
                 <Button onClick={onQuit} variant="secondary" className="w-full">QUIT</Button>
             </div>
         </RandomReveal>

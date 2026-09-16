@@ -1,0 +1,716 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Satisfying Particle Physics</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: #050505;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            touch-action: none;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            touch-action: none;
+        }
+        .controls {
+            position: absolute;
+            bottom: max(16px, env(safe-area-inset-bottom, 16px));
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(18, 18, 22, 0.75);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            padding: 0.75rem 1.25rem;
+            border-radius: 9999px;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 1rem;
+            align-items: center;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            color: white;
+            user-select: none;
+            -webkit-user-select: none;
+            transition: opacity 0.3s, transform 0.2s;
+            width: max-content;
+            max-width: 94vw;
+            z-index: 40;
+            box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.8), 0 0 1px 1px rgba(255, 255, 255, 0.1);
+        }
+        @media (max-width: 640px) {
+            .controls {
+                border-radius: 20px;
+                padding: 0.6rem 0.8rem;
+                gap: 0.6rem;
+                max-width: 96vw;
+                font-size: 0.75rem;
+            }
+        }
+        .hint {
+            position: absolute;
+            top: max(16px, env(safe-area-inset-top, 16px));
+            width: 100%;
+            text-align: center;
+            color: rgba(255, 255, 255, 0.5);
+            pointer-events: none;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+            z-index: 30;
+            padding: 0 1rem;
+        }
+        .particle-counter {
+            position: absolute;
+            top: max(16px, env(safe-area-inset-top, 16px));
+            right: max(16px, env(safe-area-inset-right, 16px));
+            color: white;
+            font-weight: 700;
+            font-size: 0.85rem;
+            text-shadow: 0 2px 6px rgba(0, 0, 0, 0.9);
+            pointer-events: none;
+            user-select: none;
+            z-index: 30;
+            background: rgba(0,0,0,0.4);
+            padding: 4px 10px;
+            border-radius: 9999px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        button, select, input[type="range"], input[type="checkbox"] {
+            touch-action: manipulation;
+        }
+        .touch-btn {
+            min-height: 32px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="hint">Touch or drag to influence the particle flow</div>
+    <div class="particle-counter" id="particleCounter">Particles: 10000</div>
+
+    <div class="controls shadow-2xl">
+        <div class="flex items-center gap-1.5">
+            <label class="text-[11px] font-bold uppercase tracking-wider text-gray-300">Hue</label>
+            <input type="range" id="hueRange" min="0" max="360" value="200" class="w-16 sm:w-24 accent-blue-500 cursor-pointer h-2 bg-white/20 rounded-lg">
+        </div>
+        <div class="flex items-center gap-1.5">
+            <label class="text-[11px] font-bold uppercase tracking-wider text-gray-300 cursor-pointer" for="gravityToggle">Gravity</label>
+            <input type="checkbox" id="gravityToggle" class="w-4 h-4 accent-blue-500 rounded cursor-pointer">
+        </div>
+        <div class="flex items-center gap-1.5">
+            <label class="text-[11px] font-bold uppercase tracking-wider text-gray-300 cursor-pointer" for="collisionToggle">Collision</label>
+            <input type="checkbox" id="collisionToggle" class="w-4 h-4 accent-blue-500 rounded cursor-pointer">
+        </div>
+        <div class="flex items-center gap-1.5">
+            <label class="text-[11px] font-bold uppercase tracking-wider text-gray-300">Mode</label>
+            <select id="modeSelect" class="bg-white/10 text-white text-[11px] font-bold px-2 py-1 rounded border border-white/20 outline-none cursor-pointer">
+                <option value="repel" class="bg-gray-900 text-white">Repel</option>
+                <option value="suction" class="bg-gray-900 text-white">Suction</option>
+            </select>
+        </div>
+        <div class="flex items-center gap-1.5">
+            <button id="addBtn" class="touch-btn text-[11px] font-bold uppercase tracking-wider bg-green-500/20 hover:bg-green-500/30 active:bg-green-500/50 px-2.5 py-1 rounded transition-colors border border-green-500/30">+100</button>
+            <button id="removeBtn" class="touch-btn text-[11px] font-bold uppercase tracking-wider bg-red-500/20 hover:bg-red-500/30 active:bg-red-500/50 px-2.5 py-1 rounded transition-colors border border-red-500/30">-100</button>
+        </div>
+        <div class="flex items-center gap-1.5">
+            <button id="allBtn" class="touch-btn text-[11px] font-bold uppercase tracking-wider bg-purple-500/20 hover:bg-purple-500/30 px-2.5 py-1 rounded transition-colors opacity-50 cursor-not-allowed border border-purple-500/30" disabled>ALL</button>
+            <button id="pulseBtn" class="touch-btn text-[11px] font-bold uppercase tracking-wider bg-orange-500/20 hover:bg-orange-500/30 active:bg-orange-500/50 px-2.5 py-1 rounded transition-colors border border-orange-500/30">Pulse</button>
+            <button id="musicBtn" class="touch-btn text-[11px] font-bold uppercase tracking-wider bg-pink-500/20 hover:bg-pink-500/30 active:bg-pink-500/50 px-2.5 py-1 rounded transition-colors border border-pink-500/30">Music</button>
+        </div>
+        <button id="resetBtn" class="touch-btn text-[11px] font-bold uppercase tracking-wider hover:text-blue-400 active:text-blue-300 transition-colors px-1">Reset</button>
+    </div>
+
+    <canvas id="canvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const hueRange = document.getElementById('hueRange');
+        const gravityToggle = document.getElementById('gravityToggle');
+        const collisionToggle = document.getElementById('collisionToggle');
+        const modeSelect = document.getElementById('modeSelect');
+        const addBtn = document.getElementById('addBtn');
+        const removeBtn = document.getElementById('removeBtn');
+        const allBtn = document.getElementById('allBtn');
+        const pulseBtn = document.getElementById('pulseBtn');
+        const musicBtn = document.getElementById('musicBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const particleCounter = document.getElementById('particleCounter');
+
+        const isMobile = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || window.innerWidth < 768;
+        const initialCount = isMobile ? 6000 : 10000;
+
+        let width, height;
+        let particles = [];
+        const mouse = { x: -1000, y: -1000, active: false, radius: 150 };
+        let interactionMode = 'repel';
+        let addInterval, removeInterval;
+        let suctionParticles = [];
+        
+        let allMode = false;
+        let pulseMode = false;
+        let pulseInterval;
+        
+        let musicMode = false;
+        let audioContext;
+        let analyser;
+        let audioSourceNode;
+        let dataArray;
+        let musicReqId;
+        let lastBeatTime = 0;
+        let isPulsing = false;
+        let currentAudioStream = null;
+        
+        // Spatial grid for collision optimization
+        let grid = {};
+        const cellSize = 50;
+        
+        function getMouseRadius() {
+            return interactionMode === 'suction' ? (isMobile ? 240 : 300) : (isMobile ? 120 : 150);
+        }
+
+        class Particle {
+            constructor() {
+                this.init();
+            }
+
+            init() {
+                this.x = Math.random() * (width || window.innerWidth);
+                this.y = Math.random() * (height || window.innerHeight);
+                this.vx = (Math.random() - 0.5) * 2;
+                this.vy = (Math.random() - 0.5) * 2;
+                this.radius = Math.random() * 2 + 1;
+                this.baseRadius = this.radius;
+                this.baseHue = parseInt(hueRange.value);
+            }
+
+            update() {
+                // Gravity Mode - simple downward gravity
+                if (gravityToggle.checked) {
+                    this.vy += 0.15;
+                }
+
+                // Mouse / Touch Interaction
+                if (allMode && interactionMode === 'suction' && mouse.active) {
+                    const dx = mouse.x - this.x;
+                    const dy = mouse.y - this.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    const angle = Math.atan2(dy, dx);
+                    const force = 2.0;
+                    
+                    this.vx += Math.cos(angle) * force;
+                    this.vy += Math.sin(angle) * force;
+                } else if (!allMode) {
+                    const dx = mouse.x - this.x;
+                    const dy = mouse.y - this.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    const radius = getMouseRadius();
+
+                    if (dist < radius && mouse.active) {
+                        const force = (radius - dist) / radius;
+                        const angle = Math.atan2(dy, dx);
+                        
+                        if (interactionMode === 'repel') {
+                            this.vx -= Math.cos(angle) * force * 1.2;
+                            this.vy -= Math.sin(angle) * force * 1.2;
+                        } else if (interactionMode === 'suction') {
+                            this.vx += Math.cos(angle) * force * 1.5;
+                            this.vy += Math.sin(angle) * force * 1.5;
+                        }
+                    }
+                }
+
+                // Particle Collision (optimized spatial grid)
+                if (collisionToggle.checked) {
+                    const gridX = Math.floor(this.x / cellSize);
+                    const gridY = Math.floor(this.y / cellSize);
+                    
+                    for (let dx = -1; dx <= 1; dx++) {
+                        for (let dy = -1; dy <= 1; dy++) {
+                            const cellKey = `${gridX + dx},${gridY + dy}`;
+                            const cellParticles = grid[cellKey] || [];
+                            
+                            for (let other of cellParticles) {
+                                if (other !== this) {
+                                    const distX = other.x - this.x;
+                                    const distY = other.y - this.y;
+                                    const dist = Math.sqrt(distX * distX + distY * distY);
+                                    const minDist = this.baseRadius + other.baseRadius;
+                                    
+                                    if (dist < minDist && dist > 0) {
+                                        const overlap = minDist - dist;
+                                        const angle = Math.atan2(distY, distX);
+                                        const pushX = Math.cos(angle) * overlap * 0.5;
+                                        const pushY = Math.sin(angle) * overlap * 0.5;
+                                        
+                                        this.x -= pushX;
+                                        this.y -= pushY;
+                                        other.x += pushX;
+                                        other.y += pushY;
+                                        
+                                        const relativeVx = other.vx - this.vx;
+                                        const relativeVy = other.vy - this.vy;
+                                        const speed = relativeVx * Math.cos(angle) + relativeVy * Math.sin(angle);
+                                        
+                                        if (speed > 0) {
+                                            const impulse = speed * 0.8;
+                                            this.vx += Math.cos(angle) * impulse;
+                                            this.vy += Math.sin(angle) * impulse;
+                                            other.vx -= Math.cos(angle) * impulse;
+                                            other.vy -= Math.sin(angle) * impulse;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Friction
+                this.vx *= 0.99;
+                this.vy *= 0.99;
+
+                this.x += this.vx;
+                this.y += this.vy;
+
+                // Bounds
+                if (this.x < 0) { this.x = 0; this.vx *= -0.5; }
+                if (this.x > width) { this.x = width; this.vx *= -0.5; }
+                if (this.y < 0) { this.y = 0; this.vy *= -0.5; }
+                if (this.y > height) { this.y = height; this.vy *= -0.5; }
+            }
+
+            draw() {
+                const speed = Math.sqrt(this.vx * this.vx + this.vy * this.vy);
+                const hue = (this.baseHue + speed * 6.5) % 360;
+                ctx.fillStyle = `hsla(${hue}, 80%, 45%, ${Math.min(1, 0.22 + speed * 0.075)})`;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius + speed * 0.625, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        function updateParticleCounter() {
+            particleCounter.textContent = `Particles: ${particles.length}`;
+        }
+
+        function addParticles(count) {
+            for (let i = 0; i < count; i++) {
+                particles.push(new Particle());
+            }
+            updateParticleCounter();
+        }
+
+        function removeParticles(count) {
+            if (particles.length > 0) {
+                particles.splice(-Math.min(count, particles.length), count);
+                updateParticleCounter();
+            }
+        }
+
+        function blastParticles() {
+            const blastRadius = isMobile ? 450 : 600;
+            const blastForce = 15;
+            
+            particles.forEach(p => {
+                const dx = p.x - mouse.x;
+                const dy = p.y - mouse.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                
+                if (dist < blastRadius && dist > 0) {
+                    const force = (1 - dist / blastRadius) * blastForce;
+                    const angle = Math.atan2(dy, dx);
+                    p.vx += Math.cos(angle) * force;
+                    p.vy += Math.sin(angle) * force;
+                }
+            });
+        }
+
+        function pulseCenter() {
+            if (isPulsing) return;
+            isPulsing = true;
+            
+            const centerX = width / 2;
+            const centerY = height / 2;
+            
+            mouse.x = centerX;
+            mouse.y = centerY;
+            mouse.active = true;
+            
+            const holdTime = 100;
+            
+            setTimeout(() => {
+                mouse.active = false;
+                if (interactionMode === 'suction') {
+                    blastParticles();
+                }
+                isPulsing = false;
+            }, holdTime);
+        }
+
+        function resize() {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+            if (particles.length === 0) {
+                for (let i = 0; i < initialCount; i++) {
+                    particles.push(new Particle());
+                }
+            } else {
+                // Adjust bounds for existing particles
+                particles.forEach(p => {
+                    if (p.x > width) p.x = Math.random() * width;
+                    if (p.y > height) p.y = Math.random() * height;
+                });
+            }
+            updateParticleCounter();
+        }
+
+        function updateGrid() {
+            grid = {};
+            for (let particle of particles) {
+                const gridX = Math.floor(particle.x / cellSize);
+                const gridY = Math.floor(particle.y / cellSize);
+                const cellKey = `${gridX},${gridY}`;
+                
+                if (!grid[cellKey]) {
+                    grid[cellKey] = [];
+                }
+                grid[cellKey].push(particle);
+            }
+        }
+
+        function animate() {
+            ctx.fillStyle = 'rgba(5, 5, 5, 0.15)';
+            ctx.fillRect(0, 0, width, height);
+
+            const currentHue = parseInt(hueRange.value);
+            
+            if (collisionToggle.checked) {
+                updateGrid();
+            }
+            
+            particles.forEach(p => {
+                p.baseHue = currentHue;
+                p.update();
+                p.draw();
+            });
+
+            requestAnimationFrame(animate);
+        }
+
+        window.addEventListener('resize', resize);
+        window.addEventListener('orientationchange', () => setTimeout(resize, 100));
+        
+        const getTouchPos = (e) => {
+            const rect = canvas.getBoundingClientRect();
+            let clientX = 0;
+            let clientY = 0;
+            
+            if (e.touches && e.touches.length > 0) {
+                clientX = e.touches[0].clientX;
+                clientY = e.touches[0].clientY;
+            } else if (e.changedTouches && e.changedTouches.length > 0) {
+                clientX = e.changedTouches[0].clientX;
+                clientY = e.changedTouches[0].clientY;
+            } else if (e.clientX !== undefined) {
+                clientX = e.clientX;
+                clientY = e.clientY;
+            }
+            return {
+                x: clientX - rect.left,
+                y: clientY - rect.top
+            };
+        };
+
+        const updateMouse = (e) => {
+            if (isPulsing) return;
+            const pos = getTouchPos(e);
+            mouse.x = pos.x;
+            mouse.y = pos.y;
+        };
+
+        // Desktop Mouse Listeners
+        canvas.addEventListener('mousedown', (e) => { 
+            if (interactionMode === 'suction') {
+                suctionParticles = [...particles];
+            }
+            if (!isPulsing) mouse.active = true; 
+            updateMouse(e); 
+        });
+        window.addEventListener('mousemove', (e) => {
+            if (mouse.active) updateMouse(e);
+        });
+        window.addEventListener('mouseup', () => { 
+            if (interactionMode === 'suction' && mouse.active && !isPulsing) {
+                blastParticles();
+            }
+            if (!isPulsing) mouse.active = false; 
+        });
+        
+        // Touch Listeners for Mobile Touchscreen Compatibility
+        canvas.addEventListener('touchstart', (e) => { 
+            if (e.target.closest('.controls')) return;
+            if (interactionMode === 'suction') {
+                suctionParticles = [...particles];
+            }
+            if (!isPulsing) mouse.active = true; 
+            updateMouse(e); 
+        }, { passive: true });
+
+        canvas.addEventListener('touchmove', (e) => { 
+            if (e.target.closest('.controls')) return;
+            if (mouse.active) {
+                updateMouse(e); 
+            }
+        }, { passive: true });
+
+        window.addEventListener('touchend', (e) => { 
+            if (interactionMode === 'suction' && mouse.active && !isPulsing) {
+                blastParticles();
+            }
+            if (!isPulsing) mouse.active = false; 
+        }, { passive: true });
+
+        window.addEventListener('touchcancel', () => {
+            if (!isPulsing) mouse.active = false;
+        });
+
+        modeSelect.addEventListener('change', (e) => {
+            interactionMode = e.target.value;
+            updateAllButton();
+        });
+
+        function updateAllButton() {
+            if (interactionMode === 'suction') {
+                allBtn.disabled = false;
+                allBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                allBtn.classList.add(allMode ? 'bg-purple-500/40' : 'bg-purple-500/20');
+            } else {
+                allBtn.disabled = true;
+                allBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                allBtn.classList.remove('bg-purple-500/40', 'bg-purple-500/20');
+                allMode = false;
+            }
+        }
+
+        allBtn.addEventListener('click', () => {
+            if (interactionMode === 'suction') {
+                allMode = !allMode;
+                allBtn.classList.toggle('bg-purple-500/40');
+                allBtn.classList.toggle('bg-purple-500/20');
+            }
+        });
+
+        pulseBtn.addEventListener('click', () => {
+            pulseMode = !pulseMode;
+            
+            if (pulseMode) {
+                if (musicMode) {
+                    musicBtn.click();
+                }
+                
+                pulseBtn.classList.add('bg-orange-500/40');
+                pulseBtn.classList.remove('bg-orange-500/20');
+                
+                interactionMode = 'suction';
+                allMode = true;
+                modeSelect.value = 'suction';
+                updateAllButton();
+                
+                const startPulse = () => {
+                    pulseCenter();
+                    const nextDelay = Math.random() * 500;
+                    pulseInterval = setTimeout(startPulse, nextDelay);
+                };
+                startPulse();
+            } else {
+                pulseBtn.classList.remove('bg-orange-500/40');
+                pulseBtn.classList.add('bg-orange-500/20');
+                clearTimeout(pulseInterval);
+            }
+        });
+
+        // Music Mode with both Screen Audio and Microphone Fallback for Mobile
+        musicBtn.addEventListener('click', async () => {
+            musicMode = !musicMode;
+            
+            if (musicMode) {
+                if (pulseMode) {
+                    pulseBtn.click();
+                }
+                
+                musicBtn.classList.add('bg-pink-500/40');
+                musicBtn.classList.remove('bg-pink-500/20');
+                
+                interactionMode = 'suction';
+                allMode = true;
+                modeSelect.value = 'suction';
+                updateAllButton();
+                
+                let stream = null;
+                try {
+                    // Try getDisplayMedia first (Desktop / Chrome Tab Audio)
+                    if (navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia) {
+                        try {
+                            stream = await navigator.mediaDevices.getDisplayMedia({ 
+                                video: true,
+                                audio: true 
+                            });
+                        } catch (displayErr) {
+                            // If user cancelled display media or not supported on mobile, try microphone
+                            console.log('Display media failed, attempting microphone audio:', displayErr);
+                        }
+                    }
+
+                    // Mobile fallback: use microphone audio
+                    if (!stream && navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                        stream = await navigator.mediaDevices.getUserMedia({
+                            audio: true,
+                            video: false
+                        });
+                    }
+
+                    if (!stream) {
+                        throw new Error("No audio stream available.");
+                    }
+                    
+                    const audioTracks = stream.getAudioTracks();
+                    if (audioTracks.length === 0) {
+                        stream.getTracks().forEach(track => track.stop());
+                        throw new Error("No audio track selected.");
+                    }
+
+                    currentAudioStream = stream;
+
+                    // If video track exists, handle stop sharing
+                    const videoTracks = stream.getVideoTracks();
+                    if (videoTracks.length > 0) {
+                        videoTracks[0].onended = () => {
+                            if (musicMode) musicBtn.click();
+                        };
+                    }
+
+                    if (!audioContext) {
+                        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    } else if (audioContext.state === 'suspended') {
+                        await audioContext.resume();
+                    }
+
+                    analyser = audioContext.createAnalyser();
+                    analyser.fftSize = 256;
+                    audioSourceNode = audioContext.createMediaStreamSource(stream);
+                    audioSourceNode.connect(analyser);
+                    dataArray = new Uint8Array(analyser.frequencyBinCount);
+
+                } catch (err) {
+                    console.error('Audio access error:', err);
+                    musicMode = false;
+                    musicBtn.classList.remove('bg-pink-500/40');
+                    musicBtn.classList.add('bg-pink-500/20');
+                    return;
+                }
+
+                const processAudio = () => {
+                    if (!musicMode) return;
+                    
+                    analyser.getByteFrequencyData(dataArray);
+                    
+                    let sum = 0;
+                    const bassBins = 5; 
+                    for (let i = 0; i < bassBins; i++) {
+                        sum += dataArray[i];
+                    }
+                    const averageBass = sum / bassBins;
+                    
+                    const now = Date.now();
+                    // Volume threshold for a beat
+                    if (averageBass > 130 && now - lastBeatTime > 250) {
+                        pulseCenter();
+                        lastBeatTime = now;
+                        
+                        musicBtn.classList.add('bg-pink-500/80');
+                        setTimeout(() => {
+                            if (musicMode) {
+                                musicBtn.classList.remove('bg-pink-500/80');
+                            }
+                        }, 100);
+                    }
+                    
+                    musicReqId = requestAnimationFrame(processAudio);
+                };
+                
+                processAudio();
+                
+            } else {
+                // Disable Music Mode
+                musicBtn.classList.remove('bg-pink-500/40', 'bg-pink-500/80');
+                musicBtn.classList.add('bg-pink-500/20');
+                if (musicReqId) cancelAnimationFrame(musicReqId);
+                
+                if (currentAudioStream) {
+                    currentAudioStream.getTracks().forEach(track => track.stop());
+                    currentAudioStream = null;
+                }
+            }
+        });
+
+        // Add button with touch + mouse repeating
+        const startAdd = () => {
+            addParticles(100);
+            clearInterval(addInterval);
+            addInterval = setInterval(() => addParticles(200), 200);
+        };
+        const stopAdd = () => clearInterval(addInterval);
+
+        addBtn.addEventListener('mousedown', startAdd);
+        addBtn.addEventListener('mouseup', stopAdd);
+        addBtn.addEventListener('mouseleave', stopAdd);
+        addBtn.addEventListener('touchstart', (e) => { e.preventDefault(); startAdd(); }, { passive: false });
+        addBtn.addEventListener('touchend', stopAdd);
+        addBtn.addEventListener('touchcancel', stopAdd);
+
+        // Remove button with touch + mouse repeating
+        const startRemove = () => {
+            removeParticles(100);
+            clearInterval(removeInterval);
+            removeInterval = setInterval(() => removeParticles(200), 200);
+        };
+        const stopRemove = () => clearInterval(removeInterval);
+
+        removeBtn.addEventListener('mousedown', startRemove);
+        removeBtn.addEventListener('mouseup', stopRemove);
+        removeBtn.addEventListener('mouseleave', stopRemove);
+        removeBtn.addEventListener('touchstart', (e) => { e.preventDefault(); startRemove(); }, { passive: false });
+        removeBtn.addEventListener('touchend', stopRemove);
+        removeBtn.addEventListener('touchcancel', stopRemove);
+
+        resetBtn.addEventListener('click', () => {
+            particles.forEach(p => p.init());
+        });
+
+        resize();
+        animate();
+    </script>
+</body>
+</html>

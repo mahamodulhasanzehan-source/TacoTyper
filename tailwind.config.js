@@ -9,6 +9,7 @@ export default {
   theme: {
     extend: {
       fontFamily: {
+        'sans': ['"Comic Sans MS"', '"Comic Sans"', '"Chalkboard SE"', '"Comic Neue"', 'cursive', 'sans-serif'],
         'press-start': ['"Press Start 2P"', 'cursive'],
         'creepster': ['"Creepster"', 'cursive'],
       },

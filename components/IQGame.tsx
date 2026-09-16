@@ -1,17 +1,12 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { 
-  COLORS, 
   IQ_QUESTIONS, 
   IQ_POINTS_MAP, 
   IQ_INFO,
   Question
 } from '../constants';
 import { User, saveLeaderboardScore, incrementGamePlays } from '../services/firebase';
-import { RandomReveal, RandomText } from './Visuals';
-import { LeaderboardWidget, SettingsModal, FriendsModal, Button } from './Overlays';
-import ChatWidget from './ChatWidget';
-import { isMobileDevice } from '../utils/device';
+import { audioService } from '../services/audioService';
 
 interface IQGameProps {
     user: User;
@@ -23,12 +18,8 @@ interface IQGameProps {
 
 type IQScreen = 'welcome' | 'playing' | 'end';
 
-const IQGame: React.FC<IQGameProps> = ({ user, onBackToHub, username, onUpdateUsername, onLogout }) => {
+const IQGame: React.FC<IQGameProps> = ({ user, onBackToHub, username }) => {
     const [screen, setScreen] = useState<IQScreen>('welcome');
-    const [showSettings, setShowSettings] = useState(false);
-    const [showFriends, setShowFriends] = useState(false);
-    const [isMobile, setIsMobile] = useState(false);
-    const [showMobileLeaderboard, setShowMobileLeaderboard] = useState(false);
     
     // Game State
     const [questions, setQuestions] = useState<Question[]>([]);
@@ -36,8 +27,6 @@ const IQGame: React.FC<IQGameProps> = ({ user, onBackToHub, username, onUpdateUs
     const [userAnswers, setUserAnswers] = useState<Record<number, string>>({});
     const [timerSeconds, setTimerSeconds] = useState(600);
     const [chosenOption, setChosenOption] = useState<string | null>(null);
-    
-    // Animation States - Using opacity/transform classes for transitions
     const [isTransitioning, setIsTransitioning] = useState(false);
     
     // End Screen State
@@ -49,12 +38,6 @@ const IQGame: React.FC<IQGameProps> = ({ user, onBackToHub, username, onUpdateUs
 
     const timerRef = useRef<number | null>(null);
 
-    const displayableName = username || user.displayName || 'Chef';
-
-    useEffect(() => {
-        setIsMobile(isMobileDevice());
-    }, []);
-
     // Cleanup timer on unmount
     useEffect(() => {
         return () => {
@@ -62,7 +45,6 @@ const IQGame: React.FC<IQGameProps> = ({ user, onBackToHub, username, onUpdateUs
         };
     }, []);
 
-    // --- Logic ---
     const startTimer = () => {
         if (timerRef.current) clearInterval(timerRef.current);
         timerRef.current = window.setInterval(() => {
@@ -77,10 +59,10 @@ const IQGame: React.FC<IQGameProps> = ({ user, onBackToHub, username, onUpdateUs
     };
 
     const setupGame = () => {
-        // Track play
+        audioService.playSound('button_click');
         incrementGamePlays('iq_test');
 
-        // Shuffle and Select (5 Easy, 10 Med, 5 Hard)
+        // 5 Easy, 10 Med, 5 Hard
         const easyQs = IQ_QUESTIONS.filter(q => q.difficulty === 'Easy').sort(() => 0.5 - Math.random()).slice(0, 5);
         const medQs = IQ_QUESTIONS.filter(q => q.difficulty === 'Medium').sort(() => 0.5 - Math.random()).slice(0, 10);
         const hardQs = IQ_QUESTIONS.filter(q => q.difficulty === 'Hard').sort(() => 0.5 - Math.random()).slice(0, 5);
@@ -96,258 +78,200 @@ const IQGame: React.FC<IQGameProps> = ({ user, onBackToHub, username, onUpdateUs
     };
 
     const nextStep = (updatedAnswers: Record<number, string>) => {
-        // Transition Animation Trigger
         setIsTransitioning(true);
-        
         setTimeout(() => {
-            if (currentQuestionIndex >= questions.length - 1) {
-                endGame(updatedAnswers); 
-            } else {
+            if (currentQuestionIndex < questions.length - 1) {
                 setCurrentQuestionIndex(prev => prev + 1);
-                setChosenOption(null);
-                // Allow the DOM to update with new content while hidden, then fade back in
-                setTimeout(() => setIsTransitioning(false), 50);
+                setChosenOption(updatedAnswers[currentQuestionIndex + 1] || null);
+            } else {
+                endGame(updatedAnswers);
             }
-        }, 300); // Wait for fade out
+            setIsTransitioning(false);
+        }, 200);
     };
 
     const processAnswer = () => {
-        if (!chosenOption) {
-            alert("Please select an option!");
-            return;
-        }
-        const newAnswers = { ...userAnswers, [currentQuestionIndex]: chosenOption };
-        setUserAnswers(newAnswers);
-        nextStep(newAnswers);
+        if (!chosenOption) return;
+        audioService.playSound('button_click');
+        const updatedAnswers = { ...userAnswers, [currentQuestionIndex]: chosenOption };
+        setUserAnswers(updatedAnswers);
+        nextStep(updatedAnswers);
     };
 
     const skipQuestion = () => {
-        const newAnswers = { ...userAnswers, [currentQuestionIndex]: 'Skipped' };
-        setUserAnswers(newAnswers);
-        nextStep(newAnswers);
+        audioService.playSound('button_click');
+        nextStep(userAnswers);
     };
 
-    const endGame = async (finalAnswers?: Record<number, string>) => {
+    const endGame = async (finalAnswers = userAnswers) => {
         if (timerRef.current) clearInterval(timerRef.current);
-        const answersToCheck = finalAnswers || userAnswers;
 
-        let calculatedScore = 60; // Base Score
-        let correct = 0;
+        let calculatedIQ = 60;
+        let cCount = 0;
 
         questions.forEach((q, idx) => {
-            const ans = answersToCheck[idx];
-            if (ans === q.correctAnswer) {
-                correct++;
-                calculatedScore += IQ_POINTS_MAP[q.difficulty];
+            const userChoice = finalAnswers[idx];
+            if (userChoice && userChoice === q.correctAnswer) {
+                cCount++;
+                calculatedIQ += IQ_POINTS_MAP[q.difficulty] || 0;
             }
         });
 
-        calculatedScore = Math.floor(calculatedScore);
-        
-        // Get Info
-        let comment = "Result unknown.";
-        let percentage = "N/A";
-        
-        const sortedKeys = Object.keys(IQ_INFO).map(Number).sort((a, b) => a - b);
-        for (const scoreKey of sortedKeys) {
-            if (calculatedScore <= scoreKey) {
-                comment = IQ_INFO[scoreKey.toString()].comment;
-                percentage = IQ_INFO[scoreKey.toString()].percentage;
-                break;
+        calculatedIQ = Math.min(160, Math.round(calculatedIQ));
+        setFinalScore(calculatedIQ);
+        setCorrectCount(cCount);
+
+        const thresholds = Object.keys(IQ_INFO).map(Number).sort((a,b) => a - b);
+        let chosenKey = thresholds[0];
+        for (let t of thresholds) {
+            if (calculatedIQ >= t) {
+                chosenKey = t;
             }
         }
+        setFinalComment(IQ_INFO[chosenKey.toString()].comment);
+        setFinalPercent(IQ_INFO[chosenKey.toString()].percentage);
 
-        setFinalScore(calculatedScore);
-        setCorrectCount(correct);
-        setFinalComment(comment);
-        setFinalPercent(percentage);
         setScreen('end');
+        audioService.playSound('correct_answer');
 
-        // Visual Ring Calc
-        // Max score roughly 150. Base 60. Range 90.
-        let percentFill = (calculatedScore - 60) / 90;
-        if (percentFill < 0) percentFill = 0;
-        if (percentFill > 1) percentFill = 1;
-        const circumference = 339.29;
-        const offset = circumference - (percentFill * circumference);
-        
-        // Save to Firebase
-        const mistakes = questions.length - correct;
-        const timeTaken = 600 - timerSeconds;
-        
-        if (user && displayableName) {
-            await saveLeaderboardScore(
-                user,
-                displayableName,
-                calculatedScore,
-                "IQ Test Subject",
-                {
-                    mistakes,
-                    timeTaken,
-                    ingredientsMissed: 0,
-                    rottenWordsTyped: 0,
-                    totalScore: calculatedScore,
-                    levelReached: 1
-                },
-                'iq-test'
-            );
-        }
-
-        // Delay ring animation slightly for effect
+        // Animate circular meter
+        const percentage = (calculatedIQ - 60) / 100;
         setTimeout(() => {
-            setRingOffset(offset);
-        }, 500);
+            setRingOffset(339.29 - (percentage * 339.29));
+        }, 300);
+
+        await saveLeaderboardScore(
+            user,
+            username || user.displayName || 'Chef',
+            calculatedIQ,
+            calculatedIQ >= 130 ? 'Genius Mind' : calculatedIQ >= 115 ? 'Superior Intellect' : 'Logical Thinker',
+            { mistakes: questions.length - cCount, timeTaken: 600 - timerSeconds, ingredientsMissed: 0, rottenWordsTyped: 0, totalScore: calculatedIQ, levelReached: cCount },
+            'iq_test'
+        );
     };
 
-    // --- Render ---
     return (
-        <div className="flex h-full w-full bg-[#000] text-white overflow-hidden relative font-['Inter',_sans-serif]">
-            {/* Random Doodles */}
-            <div className="absolute inset-0 opacity-10 pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at 20% 80%, #4facfe 2px, transparent 2px), radial-gradient(circle at 80% 20%, #4facfe 2px, transparent 2px)', backgroundSize: '100px 100px' }}></div>
+        <div className="flex flex-col items-center justify-center w-full h-full bg-[#050508] text-white relative overflow-y-auto custom-scrollbar p-4 select-none font-sans">
+            <div className="absolute inset-0 opacity-15 pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at 20% 80%, #3b82f6 2px, transparent 2px), radial-gradient(circle at 80% 20%, #3b82f6 2px, transparent 2px)', backgroundSize: '80px 80px' }}></div>
             
-            {/* --- Right Sidebar (Desktop Only) --- */}
-            {!isMobile && (
-                <div className="flex flex-col absolute top-0 right-0 h-full w-[300px] z-[50] border-l border-[#333] animate-fade-in" style={{ animationDelay: '0.2s' }}>
-                    <LeaderboardWidget className="h-[66%] border-b-0" allowedModes={['iq-test']} defaultMode="iq-test" />
-                    <ChatWidget user={user} className="h-[34%]" />
+            {/* Top Bar */}
+            <div className="flex justify-between items-center w-full max-w-xl mb-4 z-10">
+                <button 
+                    onClick={() => {
+                        audioService.playSound('button_click');
+                        onBackToHub();
+                    }} 
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-neutral-900/80 hover:bg-neutral-800 border border-neutral-700 rounded-full text-sm font-bold transition-transform hover:scale-105"
+                    title="Back to Hub"
+                >
+                    <span>⬅️</span>
+                    <span className="hidden sm:inline">Hub</span>
+                </button>
+
+                <div className="flex flex-col items-center">
+                    <h1 className="text-xl md:text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-400 tracking-wide">
+                        IQ TEST
+                    </h1>
                 </div>
-            )}
 
-            {/* --- Mobile Leaderboard Toggle & Modal --- */}
-            {isMobile && (
-                <>
-                    <div className="absolute top-4 right-4 z-[60]">
-                        <button 
-                            onClick={() => setShowMobileLeaderboard(true)} 
-                            className="text-2xl hover:scale-110 transition-transform bg-[#111] p-2 rounded-full border border-[#f4b400]"
-                            title="Leaderboard"
-                        >
-                            🏆
-                        </button>
-                    </div>
-
-                    {showMobileLeaderboard && (
-                        <div className="fixed inset-0 z-[100] bg-black/95 flex flex-col p-4 animate-fade-in">
-                            <div className="flex justify-between items-center mb-4">
-                                <h2 className="text-[#f4b400] text-xl font-bold">Top Minds</h2>
-                                <button onClick={() => setShowMobileLeaderboard(false)} className="text-red-500 text-2xl font-bold p-2">✕</button>
-                            </div>
-                            <LeaderboardWidget className="flex-1 border-none shadow-none p-0" allowedModes={['iq-test']} defaultMode="iq-test" />
-                        </div>
+                <div className="w-16 flex justify-end">
+                    {screen === 'playing' && (
+                        <span className={`text-xs px-2.5 py-1 rounded-full font-mono font-bold border ${timerSeconds < 60 ? 'bg-red-950 text-red-400 border-red-700 animate-pulse' : 'bg-neutral-900 text-blue-400 border-neutral-700'}`}>
+                            {Math.floor(timerSeconds/60)}:{String(timerSeconds%60).padStart(2, '0')}
+                        </span>
                     )}
-                </>
-            )}
-
-            {/* --- Top Left Nav --- */}
-            <div className="absolute top-4 left-4 flex gap-4 z-[60]">
-                <button onClick={onBackToHub} className="text-2xl hover:scale-110 transition-transform duration-300 ease-[var(--ease-spring)]" title="Back to Hub">🏠</button>
-                <button onClick={() => setShowSettings(true)} className="text-2xl hover:rotate-90 transition-transform duration-500 ease-[var(--ease-smooth)]" title="Settings">⚙️</button>
-                <div className="flex items-center gap-2">
-                     {!isMobile && <span className="text-[#aaa] text-xs font-['Press_Start_2P']">{displayableName}</span>}
                 </div>
             </div>
 
-             {/* Friends Button (Desktop Only) */}
-             {!isMobile && (
-                 <div className="absolute top-4 right-[320px] z-[60] hidden md:block">
-                     <button onClick={() => setShowFriends(true)} className="text-2xl hover:scale-110 transition-transform duration-300 ease-[var(--ease-spring)]" title="Social Kitchen">👥</button>
-                 </div>
-             )}
-
-            {/* --- Modals --- */}
-            {showSettings && (
-                <SettingsModal 
-                    onClose={() => setShowSettings(false)} 
-                    username={displayableName} 
-                    onUpdateUsername={onUpdateUsername}
-                    onLogout={onLogout} 
-                />
-            )}
-            {showFriends && !isMobile && (
-                <FriendsModal 
-                    onClose={() => setShowFriends(false)} 
-                    currentUser={user} 
-                />
-            )}
-
-
-            {/* --- Main Game Area --- */}
-            <div className={`flex-1 flex flex-col items-center justify-center p-4 relative z-10 ${isMobile ? '' : 'md:mr-[300px]'}`}>
-                
+            {/* Main Area */}
+            <div className="flex-1 flex flex-col items-center justify-center w-full max-w-xl z-10">
                 {/* WELCOME SCREEN */}
                 {screen === 'welcome' && (
-                    <RandomReveal className="bg-[#111] border border-[#333] p-8 rounded-xl max-w-md w-full text-center shadow-2xl mt-12 md:mt-0 animate-fade-in">
-                        <div className="text-6xl mb-4 animate-spicy-pulse">🧠</div>
-                        <h1 className="text-4xl font-bold mb-2 text-[var(--color-warn)]">IQ Test</h1>
-                        <p className="text-gray-400 mb-8">Logic, Verbal, Spatial & Patterns.</p>
-                        <Button onClick={setupGame} className="w-full text-lg hover-scale">Start Test</Button>
-                    </RandomReveal>
+                    <div className="bg-neutral-900/90 border border-neutral-800 p-6 sm:p-8 rounded-2xl max-w-md w-full text-center shadow-2xl animate-fade-in flex flex-col items-center">
+                        <div className="text-6xl mb-4 animate-bounce">🧠</div>
+                        <h2 className="text-2xl sm:text-3xl font-black mb-2 text-blue-400">IQ Assessment</h2>
+                        <p className="text-neutral-400 text-sm mb-6 leading-relaxed">
+                            20 questions covering Logic, Verbal Reasoning, Spatial Visualization, and Number Sequences.
+                        </p>
+                        <div className="w-full space-y-2 mb-6 text-xs text-neutral-400 bg-neutral-950 p-3 rounded-xl border border-neutral-800 text-left">
+                            <div>⏱️ <strong>Time Limit:</strong> 10 Minutes</div>
+                            <div>🎯 <strong>Difficulty:</strong> Adaptive (Easy to Hard)</div>
+                            <div>🏆 <strong>Scoring:</strong> Certified Distribution (60-160)</div>
+                        </div>
+                        <button 
+                            onClick={setupGame} 
+                            className="w-full py-3.5 bg-blue-600 hover:bg-blue-500 text-white font-black rounded-xl transition-transform active:scale-95 shadow-lg"
+                        >
+                            START TEST
+                        </button>
+                    </div>
                 )}
 
                 {/* PLAYING SCREEN */}
-                {screen === 'playing' && (
-                    <div className="w-full max-w-lg flex flex-col h-[85vh] mt-12 md:mt-0 animate-fade-in">
-                        {/* Header */}
-                        <div className="flex justify-between items-center mb-2">
-                             <span className="text-xs md:text-sm text-gray-500 font-bold tracking-widest">TEST PROGRESS</span>
-                             <span className={`text-base md:text-lg font-bold font-mono transition-colors duration-300 ${timerSeconds < 60 ? 'text-red-500 animate-pulse' : 'text-[var(--color-accent)]'}`}>
-                                 {Math.floor(timerSeconds/60)}:{String(timerSeconds%60).padStart(2, '0')}s
-                             </span>
-                        </div>
-
-                        {/* Progress Bar */}
-                        <div className="w-full bg-[#222] h-2 rounded-full mb-4 md:mb-6 overflow-hidden shrink-0">
+                {screen === 'playing' && questions.length > 0 && (
+                    <div className="w-full flex flex-col animate-fade-in">
+                        {/* Progress */}
+                        <div className="w-full bg-neutral-800 h-2 rounded-full mb-4 overflow-hidden">
                             <div 
-                                className="h-full bg-[var(--color-universal)] transition-all duration-500 ease-[var(--ease-smooth)]"
-                                style={{ width: `${(currentQuestionIndex / questions.length) * 100}%` }}
+                                className="h-full bg-blue-500 transition-all duration-300"
+                                style={{ width: `${((currentQuestionIndex + 1) / questions.length) * 100}%` }}
                             />
                         </div>
 
-                        {/* Question Card */}
-                        <div 
-                            className={`flex-1 bg-[#111] border border-[#222] rounded-xl p-4 md:p-6 flex flex-col overflow-y-auto 
-                            transform transition-all duration-300 ease-[var(--ease-out-expo)]
-                            ${isTransitioning ? 'opacity-0 translate-y-4 scale-95' : 'opacity-100 translate-y-0 scale-100'}`}
-                        >
-                            <div className="flex gap-3 mb-4 md:mb-6">
-                                <span className="text-[var(--color-universal)] font-bold text-lg md:text-xl">{currentQuestionIndex + 1}.</span>
-                                <span className="text-white font-semibold text-base md:text-lg leading-relaxed">
-                                    {questions[currentQuestionIndex]?.question}
+                        {/* Card */}
+                        <div className={`bg-neutral-900/90 border border-neutral-800 rounded-2xl p-5 sm:p-7 shadow-2xl transition-all duration-200 ${isTransitioning ? 'opacity-0 scale-95' : 'opacity-100 scale-100'}`}>
+                            <div className="flex justify-between items-center mb-3">
+                                <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-blue-950/80 text-blue-400 border border-blue-800">
+                                    Question {currentQuestionIndex + 1} of {questions.length}
+                                </span>
+                                <span className="text-xs text-neutral-400 font-bold">
+                                    {questions[currentQuestionIndex]?.difficulty}
                                 </span>
                             </div>
 
-                            <div className="grid grid-cols-1 gap-2 md:gap-3 mb-4">
+                            <p className="text-white font-bold text-base sm:text-lg leading-relaxed mb-6">
+                                {questions[currentQuestionIndex]?.question}
+                            </p>
+
+                            <div className="grid grid-cols-1 gap-2.5 mb-6">
                                 {questions[currentQuestionIndex]?.options.map((opt) => {
-                                    const optKey = opt.trim().charAt(0); // 'A', 'B'...
+                                    const optKey = opt.trim().charAt(0);
                                     const isSelected = chosenOption === optKey;
                                     return (
                                         <button
                                             key={opt}
-                                            onClick={() => setChosenOption(optKey)}
-                                            className={`text-left p-4 md:p-4 rounded-lg border transition-all duration-200 text-sm md:text-base min-h-[50px]
-                                                ${isSelected 
-                                                    ? 'bg-[var(--color-universal)] border-[var(--color-universal)] text-white font-bold transform scale-[1.02] shadow-[0_0_15px_rgba(79,172,254,0.3)]' 
-                                                    : 'bg-[#1a1a1a] border-[#333] text-gray-300 hover:border-[var(--color-universal)] hover:bg-[#252525]'
-                                                }`}
+                                            onClick={() => {
+                                                audioService.playSound('button_click');
+                                                setChosenOption(optKey);
+                                            }}
+                                            className={`text-left p-3.5 sm:p-4 rounded-xl border transition-all duration-150 text-sm sm:text-base font-bold flex items-center gap-3 ${
+                                                isSelected 
+                                                    ? 'bg-blue-600/30 border-blue-500 text-white shadow-[0_0_15px_rgba(59,130,246,0.3)]' 
+                                                    : 'bg-neutral-950 border-neutral-800 text-neutral-300 hover:border-neutral-700 hover:bg-neutral-900'
+                                            }`}
                                         >
-                                            {opt}
+                                            <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-black shrink-0 ${isSelected ? 'bg-blue-500 text-white' : 'bg-neutral-800 text-neutral-400'}`}>
+                                                {optKey}
+                                            </span>
+                                            <span>{opt.replace(/^[A-D]\)\s*/, '')}</span>
                                         </button>
                                     );
                                 })}
                             </div>
 
-                            <div className="mt-auto pt-4 md:pt-6 flex gap-3 md:gap-4">
+                            <div className="flex gap-3">
                                 <button 
                                     onClick={skipQuestion} 
-                                    className="flex-1 py-4 md:py-3 rounded-lg bg-[#222] text-gray-400 hover:bg-[#333] font-bold border border-[#333] text-sm md:text-base transition-colors"
+                                    className="flex-1 py-3 rounded-xl bg-neutral-800 text-neutral-400 hover:bg-neutral-700 font-bold text-sm transition-colors"
                                 >
                                     Skip
                                 </button>
                                 <button 
                                     onClick={processAnswer}
-                                    className="flex-[2] py-4 md:py-3 rounded-lg bg-[var(--color-universal)] text-white font-bold hover:brightness-110 shadow-lg text-sm md:text-base transition-transform active:scale-95"
+                                    disabled={!chosenOption}
+                                    className="flex-[2] py-3 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-black shadow-lg text-sm transition-transform active:scale-95"
                                 >
-                                    {currentQuestionIndex === questions.length - 1 ? 'Finish Test' : 'Next'}
+                                    {currentQuestionIndex === questions.length - 1 ? 'Finish Test' : 'Next Question'}
                                 </button>
                             </div>
                         </div>
@@ -356,36 +280,54 @@ const IQGame: React.FC<IQGameProps> = ({ user, onBackToHub, username, onUpdateUs
 
                 {/* END SCREEN */}
                 {screen === 'end' && (
-                    <RandomReveal className="bg-[#111] border border-[#333] p-8 rounded-xl max-w-md w-full text-center shadow-2xl flex flex-col items-center mt-12 md:mt-0 animate-fade-in">
-                        <h1 className="text-xl md:text-2xl font-bold mb-6 text-white">Result Analysis</h1>
+                    <div className="bg-neutral-900/90 border border-neutral-800 p-6 sm:p-8 rounded-2xl max-w-md w-full text-center shadow-2xl flex flex-col items-center animate-fade-in">
+                        <h2 className="text-xl sm:text-2xl font-black mb-6 text-white">Assessment Results</h2>
                         
-                        {/* Circle SVG */}
-                        <div className="relative w-[120px] h-[120px] mb-6">
+                        {/* Circular Score Display */}
+                        <div className="relative w-[130px] h-[130px] mb-6">
                             <svg className="w-full h-full transform -rotate-90">
-                                <circle cx="60" cy="60" r="54" fill="none" stroke="#333" strokeWidth="8" />
+                                <circle cx="65" cy="65" r="54" fill="none" stroke="#222" strokeWidth="8" />
                                 <circle 
-                                    cx="60" cy="60" r="54" fill="none" stroke="var(--color-universal)" strokeWidth="8"
+                                    cx="65" cy="65" r="54" fill="none" stroke="#3b82f6" strokeWidth="8"
                                     strokeDasharray="339.29"
                                     strokeDashoffset={ringOffset}
-                                    style={{ transition: 'stroke-dashoffset 2s cubic-bezier(0.2, 0.8, 0.2, 1)' }}
+                                    style={{ transition: 'stroke-dashoffset 1.8s cubic-bezier(0.2, 0.8, 0.2, 1)' }}
                                 />
                             </svg>
-                            <div className="absolute inset-0 flex items-center justify-center text-3xl font-bold text-white animate-pop-in" style={{ animationDelay: '1s' }}>
-                                {finalScore}
+                            <div className="absolute inset-0 flex flex-col items-center justify-center">
+                                <span className="text-3xl sm:text-4xl font-black text-white">{finalScore}</span>
+                                <span className="text-[10px] text-blue-400 font-bold uppercase tracking-wider">IQ Score</span>
                             </div>
                         </div>
 
-                        <RandomReveal delay={0.5}>
-                            <p className="text-[var(--color-universal)] font-bold text-lg mb-1">{finalPercent}</p>
-                            <p className="text-gray-500 text-sm mb-4">Correct: {correctCount} / {questions.length}</p>
-                        </RandomReveal>
+                        <div className="mb-4">
+                            <p className="text-blue-400 font-black text-lg mb-1">{finalPercent}</p>
+                            <p className="text-neutral-400 text-xs font-bold">Solved: {correctCount} / {questions.length} Questions</p>
+                        </div>
                         
-                        <p className="text-gray-300 italic text-base mb-8 px-4 animate-fade-in" style={{ animationDelay: '1.5s' }}>"{finalComment}"</p>
+                        <p className="text-neutral-300 italic text-sm mb-6 px-4 bg-neutral-950 p-3 rounded-xl border border-neutral-800 w-full">
+                            "{finalComment}"
+                        </p>
 
-                        <Button onClick={() => setScreen('welcome')} variant="accent" className="w-full hover-scale">Restart</Button>
-                    </RandomReveal>
+                        <div className="flex gap-3 w-full">
+                            <button 
+                                onClick={() => {
+                                    audioService.playSound('button_click');
+                                    onBackToHub();
+                                }}
+                                className="flex-1 py-3 bg-neutral-800 hover:bg-neutral-700 text-white font-bold rounded-xl transition-colors text-sm"
+                            >
+                                Hub
+                            </button>
+                            <button 
+                                onClick={setupGame} 
+                                className="flex-1 py-3 bg-blue-600 hover:bg-blue-500 text-white font-black rounded-xl transition-transform active:scale-95 shadow-lg text-sm"
+                            >
+                                Retake
+                            </button>
+                        </div>
+                    </div>
                 )}
-
             </div>
         </div>
     );

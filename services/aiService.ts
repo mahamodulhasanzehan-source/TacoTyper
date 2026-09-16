@@ -1,300 +1,281 @@
-
 import { GoogleGenAI, Type } from "@google/genai";
 import { SPEED_TEST_TEXTS } from '../constants';
 import { SessionStats } from '../types';
 
-// Mock AI Service replaced with Gemini API integration
 class AIService {
-  private ai: GoogleGenAI | null = null;
-  
-  constructor() {
-    // Initialize Gemini client if API key is present
-    if (process.env.API_KEY) {
-        try {
-            this.ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-        } catch (error) {
-            console.error("Failed to initialize Gemini:", error);
-        }
-    } else {
-        console.warn("API_KEY missing. AI features will use fallback.");
+  private aiInstance: GoogleGenAI | null = null;
+
+  private getClient(): GoogleGenAI | null {
+    if (this.aiInstance) return this.aiInstance;
+
+    const apiKey = 
+      (typeof process !== 'undefined' && (process.env?.GEMINI_API_KEY || process.env?.API_KEY)) ||
+      (import.meta as any).env?.VITE_GEMINI_API_KEY ||
+      (import.meta as any).env?.GEMINI_API_KEY ||
+      (import.meta as any).env?.API_KEY ||
+      '';
+
+    if (apiKey && typeof apiKey === 'string' && apiKey.trim().length > 0) {
+      try {
+        this.aiInstance = new GoogleGenAI({ apiKey: apiKey.trim() });
+      } catch (err) {
+        console.warn("Could not instantiate GoogleGenAI client:", err);
+      }
     }
+    return this.aiInstance;
   }
 
   async generateSpeedText(): Promise<string> {
-    if (!this.ai) return this.getFallbackText();
+    const ai = this.getClient();
+    if (!ai) return this.getFallbackText();
 
     try {
-        const response = await this.ai.models.generateContent({
-            model: 'gemini-3.1-flash-lite-preview',
-            contents: "Generate 2 short, interesting paragraphs about culinary history, exotic ingredients, or food science. The text should be educational and engaging, suitable for a typing test. Total length around 60-80 words. Plain text only, no markdown formatting.",
-        });
-        return response.text?.trim() || this.getFallbackText();
+      const response = await ai.models.generateContent({
+        model: 'gemini-3.8-flash',
+        contents: "Generate 2 short, interesting paragraphs about culinary history, exotic ingredients, or food science. The text should be educational and engaging, suitable for a typing test. Total length around 60-80 words. Plain text only, no markdown formatting.",
+      });
+      return response.text?.trim() || this.getFallbackText();
     } catch (e) {
-        console.error("AI Text Gen Error:", e);
-        return this.getFallbackText();
+      console.warn("AI Text Gen fallback activated:", e);
+      return this.getFallbackText();
     }
   }
 
   async generateSpeedComment(wpm: number, cpm: number, accuracy: number): Promise<string> {
-    if (!this.ai) {
-        if (accuracy < 90) return "You're making a mess of my kitchen!";
-        if (wpm > 60) return "Fast hands, Chef!";
-        return "Practice your knife skills.";
+    const ai = this.getClient();
+    if (!ai) {
+      if (accuracy < 90) return "You're making a mess of my kitchen!";
+      if (wpm > 60) return "Fast hands, Chef!";
+      return "Practice your knife skills.";
     }
 
     try {
-        const response = await this.ai.models.generateContent({
-            model: 'gemini-3.1-flash-lite-preview',
-            contents: `Act as a strict but fair head chef. A line cook just completed a prep task (typing test). Stats: ${wpm} WPM, ${accuracy}% Accuracy. Give a one-sentence feedback comment. If accuracy is low, be critical about sloppy work. If fast and accurate, praise them.`,
-        });
-        return response.text?.trim() || "Back to the station, Chef.";
-    } catch (e) {
-        return "Keep cooking, Chef.";
+      const response = await ai.models.generateContent({
+        model: 'gemini-3.8-flash',
+        contents: `Act as a strict but fair head chef. A line cook just completed a prep task (typing test). Stats: ${wpm} WPM, ${accuracy}% Accuracy. Give a one-sentence feedback comment. If accuracy is low, be critical about sloppy work. If fast and accurate, praise them.`,
+      });
+      return response.text?.trim() || "Back to the station, Chef.";
+    } catch {
+      return "Keep cooking, Chef.";
     }
   }
 
   async generateCompetitiveScore(stats: SessionStats, speedTest?: { wpm: number, accuracy: number }): Promise<{ score: number, title: string }> {
-     // Use AI to calculate a "Vibe Score" and Title
-     if (!this.ai) {
-        return this.calculateFallbackScore(stats, speedTest);
-     }
+    const ai = this.getClient();
+    if (!ai) {
+      return this.calculateFallbackScore(stats, speedTest);
+    }
 
-     try {
-         const prompt = speedTest 
-            ? `Evaluate this speed typing performance: ${speedTest.wpm} WPM, ${speedTest.accuracy}% Accuracy. Assign a score (0-100) and a creative kitchen rank title (e.g. "Sous Chef", "Dishwasher", "Line Cook", "Executive Chef").`
-            : `Evaluate this cooking game session: 
-               Mistakes: ${stats.mistakes}, 
-               Time: ${stats.timeTaken.toFixed(1)}s, 
-               Ingredients Missed: ${stats.ingredientsMissed}, 
-               Rotten Food Typed: ${stats.rottenWordsTyped}, 
-               Total Score: ${stats.totalScore}, 
-               Level Reached: ${stats.levelReached}.
-               Assign a performance score (0-100) and a creative kitchen rank title.`;
+    try {
+      const prompt = speedTest 
+        ? `Evaluate this speed typing performance: ${speedTest.wpm} WPM, ${speedTest.accuracy}% Accuracy. Assign a score (0-100) and a creative kitchen rank title (e.g. "Sous Chef", "Dishwasher", "Line Cook", "Executive Chef").`
+        : `Evaluate this cooking game session: 
+           Mistakes: ${stats.mistakes}, 
+           Time: ${stats.timeTaken.toFixed(1)}s, 
+           Ingredients Missed: ${stats.ingredientsMissed}, 
+           Rotten Food Typed: ${stats.rottenWordsTyped}, 
+           Total Score: ${stats.totalScore}, 
+           Level Reached: ${stats.levelReached}.
+           Assign a performance score (0-100) and a creative kitchen rank title.`;
 
-         const response = await this.ai.models.generateContent({
-            model: 'gemini-3.1-flash-lite-preview',
-            contents: prompt,
-            config: {
-                responseMimeType: "application/json",
-                responseSchema: {
-                    type: Type.OBJECT,
-                    properties: {
-                        score: { type: Type.INTEGER },
-                        title: { type: Type.STRING }
-                    },
-                    required: ['score', 'title']
-                }
-            }
-         });
-         
-         const jsonStr = response.text;
-         if (jsonStr) {
-             const data = JSON.parse(jsonStr);
-             return { score: data.score, title: data.title };
-         }
-         throw new Error("Empty AI response");
-     } catch (e) {
-         console.error("AI Scoring Error:", e);
-         return this.calculateFallbackScore(stats, speedTest);
-     }
+      const response = await ai.models.generateContent({
+        model: 'gemini-3.8-flash',
+        contents: prompt,
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              score: { type: Type.INTEGER },
+              title: { type: Type.STRING }
+            },
+            required: ['score', 'title']
+          }
+        }
+      });
+      
+      const jsonStr = response.text;
+      if (jsonStr) {
+        const data = JSON.parse(jsonStr);
+        return { score: Number(data.score) || 75, title: String(data.title) || "Taco Virtuoso" };
+      }
+      return this.calculateFallbackScore(stats, speedTest);
+    } catch (e) {
+      console.warn("AI Scoring fallback activated:", e);
+      return this.calculateFallbackScore(stats, speedTest);
+    }
   }
 
   async generateSpellingBeeWordsBatch(count: number, difficulty: number): Promise<{ word: string, meaning: string, sentence: string }[]> {
-    if (!this.ai) {
-        const fallbacks = [
-            { word: "restaurant", meaning: "A place where people pay to sit and eat meals that are cooked and served on the premises.", sentence: "We had dinner at a nice Italian restaurant." },
-            { word: "ingredient", meaning: "Any of the foods or substances that are combined to make a particular dish.", sentence: "Pork is an important ingredient in many Chinese dishes." },
-            { word: "delicious", meaning: "Highly pleasant to the taste.", sentence: "The cake was absolutely delicious." },
-            { word: "kitchen", meaning: "A room or area where food is prepared and cooked.", sentence: "The chef is in the kitchen." },
-            { word: "recipe", meaning: "A set of instructions for preparing a particular dish.", sentence: "I followed the recipe exactly." }
-        ];
-        return fallbacks.slice(0, count);
+    const fallbacks = [
+      { word: "restaurant", meaning: "A place where people pay to sit and eat meals that are cooked and served on the premises.", sentence: "We had dinner at a nice Italian restaurant." },
+      { word: "ingredient", meaning: "Any of the foods or substances that are combined to make a particular dish.", sentence: "Pork is an important ingredient in many Chinese dishes." },
+      { word: "delicious", meaning: "Highly pleasant to the taste.", sentence: "The cake was absolutely delicious." },
+      { word: "kitchen", meaning: "A room or area where food is prepared and cooked.", sentence: "The chef is in the kitchen." },
+      { word: "recipe", meaning: "A set of instructions for preparing a particular dish.", sentence: "I followed the recipe exactly." },
+      { word: "avocado", meaning: "A pear-shaped fruit with a rough green skin and oily edible flesh.", sentence: "Fresh avocado makes the best guacamole." },
+      { word: "seasoning", meaning: "Salt, herbs, or spices added to food to enhance the flavor.", sentence: "Taste the soup and adjust the seasoning." }
+    ];
+
+    const ai = this.getClient();
+    if (!ai) {
+      return fallbacks.slice(0, count);
     }
 
     try {
-        const randomTopics = ["science", "nature", "history", "technology", "art", "literature", "geography", "music", "food", "space", "animals", "emotions", "architecture", "sports", "philosophy", "medicine", "botany", "astronomy", "mythology", "oceanography"];
-        const randomTopic = randomTopics[Math.floor(Math.random() * randomTopics.length)];
-        const randomSeed = Math.floor(Math.random() * 10000);
+      const randomTopics = ["science", "nature", "history", "technology", "art", "literature", "geography", "music", "food", "space", "animals", "emotions", "architecture", "sports", "philosophy", "medicine", "botany", "astronomy", "mythology", "oceanography"];
+      const randomTopic = randomTopics[Math.floor(Math.random() * randomTopics.length)];
+      const randomSeed = Math.floor(Math.random() * 10000);
 
-        const response = await this.ai.models.generateContent({
-            model: 'gemini-3.1-flash-lite-preview',
-            contents: `Generate a list of exactly ${count} unique spelling bee words for difficulty level ${difficulty} (1 is easy, 10 is very hard). To ensure variety, focus on words related to the topic of "${randomTopic}" or use random seed ${randomSeed}. The words MUST NOT be the same common words you always pick. For each word, return the word, its meaning, and an example sentence. Return ONLY a JSON array of objects.`,
-            config: {
-                responseMimeType: "application/json",
-                responseSchema: {
-                    type: Type.ARRAY,
-                    items: {
-                        type: Type.OBJECT,
-                        properties: {
-                            word: { type: Type.STRING },
-                            meaning: { type: Type.STRING },
-                            sentence: { type: Type.STRING }
-                        },
-                        required: ['word', 'meaning', 'sentence']
-                    }
-                }
+      const response = await ai.models.generateContent({
+        model: 'gemini-3.8-flash',
+        contents: `Generate a list of exactly ${count} unique spelling bee words for difficulty level ${difficulty} (1 is easy, 10 is very hard). To ensure variety, focus on words related to the topic of "${randomTopic}" or use random seed ${randomSeed}. The words MUST NOT be the same common words you always pick. For each word, return the word, its meaning, and an example sentence. Return ONLY a JSON array of objects.`,
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.ARRAY,
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                word: { type: Type.STRING },
+                meaning: { type: Type.STRING },
+                sentence: { type: Type.STRING }
+              },
+              required: ['word', 'meaning', 'sentence']
             }
-        });
-        
-        const jsonStr = response.text;
-        if (jsonStr) {
-            const data = JSON.parse(jsonStr);
-            if (Array.isArray(data) && data.length > 0) {
-                return data.map((d: any) => ({ word: String(d.word).toLowerCase(), meaning: String(d.meaning), sentence: String(d.sentence) }));
-            }
+          }
         }
-        throw new Error("Empty AI response");
+      });
+      
+      const jsonStr = response.text;
+      if (jsonStr) {
+        const data = JSON.parse(jsonStr);
+        if (Array.isArray(data) && data.length > 0) {
+          return data.map((d: any) => ({ 
+            word: String(d.word).toLowerCase().trim(), 
+            meaning: String(d.meaning), 
+            sentence: String(d.sentence) 
+          }));
+        }
+      }
+      return fallbacks.slice(0, count);
     } catch (e) {
-        console.error("AI Spelling Bee Error:", e);
-        return [{ word: "error", meaning: "An error occurred.", sentence: "There was an error." }];
+      console.warn("AI Spelling Bee fallback activated:", e);
+      return fallbacks.slice(0, count);
     }
   }
 
-  async getSemanticSimilarity(word1: string, word2: string): Promise<number> {
-    if (!this.ai) return Math.floor(Math.random() * 100);
+  async evaluateIQPerformance(score: number, correct: number, total: number, timeTakenSeconds: number): Promise<{ comment: string, analysis: string }> {
+    const fallbackComment = score >= 130 ? "Exceptional pattern recognition and rapid cognitive processing!" :
+      score >= 115 ? "Superior analytical reasoning and spatial deduction." :
+      score >= 100 ? "Solid cognitive acuity and balanced problem-solving speed." :
+      "Good effort! Cognitive agility sharpens with consistent practice.";
+    
+    const fallbackAnalysis = `Completed ${correct} out of ${total} problems in ${Math.round(timeTakenSeconds)}s. Your percentile places you firmly in the competitive tier.`;
+
+    const ai = this.getClient();
+    if (!ai) {
+      return { comment: fallbackComment, analysis: fallbackAnalysis };
+    }
 
     try {
-        const response = await this.ai.models.generateContent({
-            model: 'gemini-3.1-flash-lite-preview',
-            contents: `Rate the semantic similarity between the word "${word1}" and the word "${word2}" on a scale of 0 to 100. Return ONLY the integer number.`,
-        });
-        
-        const text = response.text?.trim();
-        const score = parseInt(text || '0', 10);
-        return isNaN(score) ? 0 : Math.min(100, Math.max(0, score));
+      const response = await ai.models.generateContent({
+        model: 'gemini-3.8-flash',
+        contents: `Evaluate an IQ Challenge performance: Estimated IQ score: ${score}, Correct answers: ${correct}/${total}, Time taken: ${timeTakenSeconds.toFixed(1)} seconds. Provide an insightful 1-sentence assessment comment and a 2-sentence cognitive analysis highlight.`,
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              comment: { type: Type.STRING },
+              analysis: { type: Type.STRING }
+            },
+            required: ['comment', 'analysis']
+          }
+        }
+      });
+
+      const jsonStr = response.text;
+      if (jsonStr) {
+        const data = JSON.parse(jsonStr);
+        return {
+          comment: String(data.comment) || fallbackComment,
+          analysis: String(data.analysis) || fallbackAnalysis
+        };
+      }
+      return { comment: fallbackComment, analysis: fallbackAnalysis };
     } catch (e) {
-        console.error("AI Similarity Error:", e);
-        return 0;
+      console.warn("AI IQ Evaluation fallback activated:", e);
+      return { comment: fallbackComment, analysis: fallbackAnalysis };
     }
   }
 
-  async generateWordleWords(count: number): Promise<string[]> {
-    if (!this.ai) {
-        const fallbacks = ["HELLO", "WORLD", "REACT", "GAMES", "TACOS", "BIRDS", "BEARS", "APPLE", "HOUSE", "WATER", "TRAIN", "PLANT", "GHOST", "SMILE", "BRAIN", "CLOCK"];
-        const shuffled = [...fallbacks].sort(() => 0.5 - Math.random());
-        return shuffled.slice(0, count);
+  async generateWordleWords(count: number, length: number = 5): Promise<string[]> {
+    const ai = this.getClient();
+    if (!ai) {
+      return this.getWordleFallbacks(count, length);
     }
 
     try {
-        const randomSeed = Math.floor(Math.random() * 1000000);
-        const response = await this.ai.models.generateContent({
-            model: 'gemini-3.1-flash-lite-preview',
-            contents: `Generate a list of exactly ${count} completely random, unique, common 5-letter English words. Pick words from the entire English dictionary. Do not use any specific category. Use random seed ${randomSeed} to ensure maximum variety. Return ONLY a JSON array of strings in uppercase.`,
-            config: {
-                temperature: 1,
-                responseMimeType: "application/json",
-                responseSchema: {
-                    type: Type.ARRAY,
-                    items: { type: Type.STRING }
-                }
-            }
-        });
-        
-        const jsonStr = response.text;
-        if (jsonStr) {
-            const data = JSON.parse(jsonStr);
-            if (Array.isArray(data) && data.length > 0) {
-                const words = data.map(w => String(w).toUpperCase().trim()).filter(w => w.length === 5);
-                for (let i = words.length - 1; i > 0; i--) {
-                    const j = Math.floor(Math.random() * (i + 1));
-                    [words[i], words[j]] = [words[j], words[i]];
-                }
-                return words;
-            }
+      const randomSeed = Math.floor(Math.random() * 1000000);
+      const response = await ai.models.generateContent({
+        model: 'gemini-3.8-flash',
+        contents: `Generate a list of exactly ${count} completely random, unique, standard ${length}-letter English dictionary words in uppercase. Use seed ${randomSeed}. Return ONLY a JSON array of strings.`,
+        config: {
+          temperature: 1,
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.ARRAY,
+            items: { type: Type.STRING }
+          }
         }
-        throw new Error("Invalid AI response");
+      });
+      
+      const jsonStr = response.text;
+      if (jsonStr) {
+        const data = JSON.parse(jsonStr);
+        if (Array.isArray(data) && data.length > 0) {
+          const words = data
+            .map(w => String(w).toUpperCase().trim())
+            .filter(w => w.length === length);
+          if (words.length > 0) return words;
+        }
+      }
+      return this.getWordleFallbacks(count, length);
     } catch (e) {
-        console.error("AI Wordle Gen Error:", e);
-        const fallbacks = ["HELLO", "WORLD", "REACT", "GAMES", "TACOS", "BIRDS", "BEARS", "APPLE", "HOUSE", "WATER", "TRAIN", "PLANT", "GHOST", "SMILE", "BRAIN", "CLOCK", "CHAIR", "TABLE", "PHONE", "MOUSE"];
-        for (let i = fallbacks.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [fallbacks[i], fallbacks[j]] = [fallbacks[j], fallbacks[i]];
-        }
-        return fallbacks.slice(0, count);
+      console.warn("AI Wordle Gen fallback activated:", e);
+      return this.getWordleFallbacks(count, length);
     }
   }
 
-  async generateMoreLessItems(count: number): Promise<{name: string, value: number, image: string}[]> {
-    if (!this.ai) {
-        const fallbacks = [
-            { name: "Ants on Earth", value: 20000000000000000, image: "🐜" },
-            { name: "Stars in Milky Way", value: 100000000000, image: "⭐" },
-            { name: "Human Population", value: 8000000000, image: "👥" },
-            { name: "Cars in the World", value: 1400000000, image: "🚗" },
-            { name: "Grains of Sand", value: 7500000000000000000, image: "🏖️" },
-            { name: "Drops of Water in Ocean", value: 1386000000000000000000, image: "💧" },
-            { name: "Trees on Earth", value: 3040000000000, image: "🌳" },
-            { name: "Cells in Human Body", value: 30000000000000, image: "🦠" },
-            { name: "Seconds in a Year", value: 31536000, image: "⏱️" },
-            { name: "Miles to the Moon", value: 238855, image: "🌕" }
-        ];
-        // Shuffle and return count items
-        const shuffled = fallbacks.sort(() => 0.5 - Math.random());
-        return shuffled.slice(0, Math.min(count, shuffled.length));
-    }
+  private getWordleFallbacks(count: number, length: number = 5): string[] {
+    const wordsByLen: Record<number, string[]> = {
+      5: ["HELLO", "WORLD", "REACT", "GAMES", "TACOS", "BIRDS", "BEARS", "APPLE", "HOUSE", "WATER", "TRAIN", "PLANT", "GHOST", "SMILE", "BRAIN", "CLOCK", "CHAIR", "TABLE", "PHONE", "MOUSE", "LIGHT", "STORM", "BEACH", "RIVER", "BREAD"],
+      6: ["ORANGE", "MONKEY", "PLANET", "ROCKET", "CASTLE", "GUITAR", "DRAGON", "FOREST", "PURPLE", "SILVER", "SPRING", "WINTER", "GARDEN", "YELLOW", "BRIDGE"],
+      7: ["FREEDOM", "CRYSTAL", "PYRAMID", "DOLPHIN", "RAINBOW", "MONSTER", "JOURNEY", "FANTASY", "DIAMOND", "LANTERN", "THUNDER", "MORNING", "KITCHEN"],
+      8: ["MOUNTAIN", "SANDWICH", "NOTEBOOK", "UNIVERSE", "ELEPHANT", "TREASURE", "FIREWORK", "HOSPITAL", "STARSHIP", "WARRIORS", "PLATFORM"],
+      9: ["ASTRONAUT", "CHOCOLATE", "ADVENTURE", "CHAMPIONS", "BEAUTIFUL", "FIREPLACE", "DISCOVERY", "WONDERFUL", "LIGHTNING", "CROCODILE"]
+    };
 
-    try {
-        const response = await this.ai.models.generateContent({
-            model: 'gemini-3.1-flash-lite-preview',
-            contents: `Generate a list of exactly ${count} unique, interesting items or concepts that have a specific numerical value associated with them (e.g., population, distance, quantity, weight, speed). For each item, provide its name, its estimated numerical value, and a single relevant emoji as an image. Return ONLY a JSON array of objects.`,
-            config: {
-                responseMimeType: "application/json",
-                responseSchema: {
-                    type: Type.ARRAY,
-                    items: {
-                        type: Type.OBJECT,
-                        properties: {
-                            name: { type: Type.STRING },
-                            value: { type: Type.NUMBER },
-                            image: { type: Type.STRING }
-                        },
-                        required: ['name', 'value', 'image']
-                    }
-                }
-            }
-        });
-        
-        const jsonStr = response.text;
-        if (jsonStr) {
-            const data = JSON.parse(jsonStr);
-            if (Array.isArray(data) && data.length > 0) {
-                return data;
-            }
-        }
-        throw new Error("Invalid AI response");
-    } catch (e) {
-        console.error("AI More/Less Gen Error:", e);
-        const fallbacks = [
-            { name: "Ants on Earth", value: 20000000000000000, image: "🐜" },
-            { name: "Stars in Milky Way", value: 100000000000, image: "⭐" },
-            { name: "Human Population", value: 8000000000, image: "👥" },
-            { name: "Cars in the World", value: 1400000000, image: "🚗" },
-            { name: "Grains of Sand", value: 7500000000000000000, image: "🏖️" },
-            { name: "Drops of Water in Ocean", value: 1386000000000000000000, image: "💧" },
-            { name: "Trees on Earth", value: 3040000000000, image: "🌳" },
-            { name: "Cells in Human Body", value: 30000000000000, image: "🦠" },
-            { name: "Seconds in a Year", value: 31536000, image: "⏱️" },
-            { name: "Miles to the Moon", value: 238855, image: "🌕" }
-        ];
-        const shuffled = fallbacks.sort(() => 0.5 - Math.random());
-        return shuffled.slice(0, Math.min(count, shuffled.length));
-    }
+    const pool = wordsByLen[length] || wordsByLen[5];
+    const shuffled = [...pool].sort(() => 0.5 - Math.random());
+    return shuffled.slice(0, count);
   }
 
   private calculateFallbackScore(stats: SessionStats, speedTest?: { wpm: number, accuracy: number }) {
-        if (speedTest) {
-            let rawScore = speedTest.wpm * Math.pow(speedTest.accuracy / 100, 3);
-            if (speedTest.accuracy < 80) rawScore = Math.min(rawScore, 40);
-            if (speedTest.accuracy < 50) rawScore = 0;
-            let score = Math.round((rawScore / 120) * 100);
-            return { score: Math.min(100, score), title: "Line Cook (Unranked)" };
-        } else {
-            let score = 50 + (stats.totalScore / 500) - (stats.mistakes * 2) - (stats.ingredientsMissed * 5);
-            if (stats.levelReached > 3) score += 10;
-            if (stats.levelReached > 5) score += 20;
-            score = Math.min(100, Math.max(0, Math.round(score)));
-            return { score, title: "Line Cook (Unranked)" };
-        }
+    if (speedTest) {
+      let rawScore = speedTest.wpm * Math.pow(speedTest.accuracy / 100, 3);
+      if (speedTest.accuracy < 80) rawScore = Math.min(rawScore, 40);
+      if (speedTest.accuracy < 50) rawScore = 0;
+      let score = Math.round((rawScore / 120) * 100);
+      return { score: Math.min(100, score), title: "Line Cook (Unranked)" };
+    } else {
+      let score = 50 + (stats.totalScore / 500) - (stats.mistakes * 2) - (stats.ingredientsMissed * 5);
+      if (stats.levelReached > 3) score += 10;
+      if (stats.levelReached > 5) score += 20;
+      score = Math.min(100, Math.max(0, Math.round(score)));
+      return { score, title: "Line Cook (Unranked)" };
+    }
   }
 
   private getFallbackText() {
@@ -302,8 +283,8 @@ class AIService {
     let p2 = SPEED_TEST_TEXTS[Math.floor(Math.random() * SPEED_TEST_TEXTS.length)];
     let retries = 0;
     while (p1 === p2 && retries < 5) {
-        p2 = SPEED_TEST_TEXTS[Math.floor(Math.random() * SPEED_TEST_TEXTS.length)];
-        retries++;
+      p2 = SPEED_TEST_TEXTS[Math.floor(Math.random() * SPEED_TEST_TEXTS.length)];
+      retries++;
     }
     return `${p1}\n\n${p2}`;
   }

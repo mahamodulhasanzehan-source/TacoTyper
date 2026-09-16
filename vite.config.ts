@@ -20,7 +20,8 @@ export default defineConfig(({ mode }) => {
       key.startsWith('VITE_') || 
       key.startsWith('FIREBASE_') || 
       key.startsWith('REACT_APP_') || 
-      key === 'API_KEY'
+      key === 'API_KEY' ||
+      key === 'GEMINI_API_KEY'
     ) {
       // Define specific process.env.KEY replacements
       // JSON.stringify ensures the value is treated as a string literal in the code

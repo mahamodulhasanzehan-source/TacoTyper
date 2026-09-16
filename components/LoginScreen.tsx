@@ -7,10 +7,11 @@ import { LoadingScreen } from './LoadingScreen';
 
 interface LoginScreenProps {
   onLogin: () => void;
+  onGuestLogin?: () => void;
   isLoading?: boolean;
 }
 
-const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, isLoading }) => {
+const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onGuestLogin, isLoading }) => {
   return (
     <div className="flex flex-col items-center justify-center w-full h-screen bg-black text-white z-50 p-4 overflow-hidden">
         <div className="mb-6 md:mb-8 text-center">
@@ -25,7 +26,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, isLoading }) => {
             <p className="mb-6 md:mb-8 text-center leading-loose text-xs md:text-sm text-[#aaa]">
                 <RandomText text="Welcome Chef!" />
                 <br/>
-                <RandomText text="Please sign in to access the kitchen." />
+                <RandomText text="Sign in to access the kitchen & multiplayer." />
             </p>
             
             {isLoading ? (
@@ -33,11 +34,23 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, isLoading }) => {
                     <LoadingScreen text="Signing in..." color="#f4b400" />
                 </div>
             ) : (
-                <RandomReveal delay={0.5} className="w-full">
-                    <Button onClick={onLogin} className="w-full text-xs md:text-base">
-                        Sign In with Google
-                    </Button>
-                </RandomReveal>
+                <div className="w-full flex flex-col gap-3">
+                    <RandomReveal delay={0.2} className="w-full">
+                        <Button onClick={onLogin} className="w-full text-xs md:text-base bg-[#ea4335] hover:bg-[#d93025]">
+                            Sign In with Google
+                        </Button>
+                    </RandomReveal>
+                    {onGuestLogin && (
+                        <RandomReveal delay={0.4} className="w-full">
+                            <button 
+                                onClick={onGuestLogin}
+                                className="w-full py-3 px-4 bg-white/10 hover:bg-white/20 active:scale-95 text-white font-['Press_Start_2P'] text-[10px] md:text-xs border-2 border-white/30 rounded transition-all"
+                            >
+                                🌮 Play as Guest
+                            </button>
+                        </RandomReveal>
+                    )}
+                </div>
             )}
         </RandomReveal>
         
@@ -49,3 +62,4 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, isLoading }) => {
 };
 
 export default LoginScreen;
+

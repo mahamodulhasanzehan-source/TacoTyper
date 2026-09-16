@@ -1,8 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { User, saveLeaderboardScore, incrementGamePlays } from '../services/firebase';
-import { LeaderboardWidget } from './Overlays';
-import ChatWidget from './ChatWidget';
-import { isMobileDevice } from '../utils/device';
+import { audioService } from '../services/audioService';
 
 interface TicTacToeGameProps {
     user: User;
@@ -13,339 +11,343 @@ interface TicTacToeGameProps {
 }
 
 type Player = 'X' | 'O' | null;
+type GridMode = '3x3' | '4x4';
 
-const WINNING_COMBINATIONS = [
-    [0, 1, 2], [3, 4, 5], [6, 7, 8], // Rows
-    [0, 3, 6], [1, 4, 7], [2, 5, 8], // Cols
-    [0, 4, 8], [2, 4, 6]             // Diagonals
+const COMBOS_3X3 = [
+    [0, 1, 2], [3, 4, 5], [6, 7, 8],
+    [0, 3, 6], [1, 4, 7], [2, 5, 8],
+    [0, 4, 8], [2, 4, 6]
+];
+
+const COMBOS_4X4 = [
+    // Rows
+    [0, 1, 2, 3], [4, 5, 6, 7], [8, 9, 10, 11], [12, 13, 14, 15],
+    // Columns
+    [0, 4, 8, 12], [1, 5, 9, 13], [2, 6, 10, 14], [3, 7, 11, 15],
+    // Diagonals
+    [0, 5, 10, 15], [3, 6, 9, 12]
 ];
 
 export default function TicTacToeGame({ user, onBackToHub, username }: TicTacToeGameProps) {
+    const [gridMode, setGridMode] = useState<GridMode>('3x3');
     const [board, setBoard] = useState<Player[]>(Array(9).fill(null));
     const [isPlayerTurn, setIsPlayerTurn] = useState(true);
     const [gameOver, setGameOver] = useState(false);
     const [winner, setWinner] = useState<Player | 'Draw'>(null);
+    const [winningLine, setWinningLine] = useState<number[] | null>(null);
     const [streak, setStreak] = useState(0);
-    const [message, setMessage] = useState('');
-    const [isMobile, setIsMobile] = useState(false);
-    const [showMobileLeaderboard, setShowMobileLeaderboard] = useState(false);
+    const [difficulty, setDifficulty] = useState<0 | 1 | 2>(2); // 0: Easy, 1: Medium, 2: Hard/Impossible
     const [aiPlaysFirst, setAiPlaysFirst] = useState(false);
-    const [difficulty, setDifficulty] = useState(2); // 0: Easy, 1: Medium, 2: Hard
-    const [showMobileDifficulty, setShowMobileDifficulty] = useState(false);
 
-    const difficultyColors = ['#34A853', '#FBBC05', '#EA4335']; // Green, Yellow, Red
-    const difficultyLabels = ['Easy', 'Medium', 'Hard'];
+    const combos = gridMode === '3x3' ? COMBOS_3X3 : COMBOS_4X4;
+    const boardSize = gridMode === '3x3' ? 9 : 16;
 
-    useEffect(() => {
-        setIsMobile(isMobileDevice());
-    }, []);
-
-    const startNewGame = () => {
-        setBoard(Array(9).fill(null));
-        setIsPlayerTurn(!aiPlaysFirst);
+    const startNewGame = useCallback((mode: GridMode = gridMode, aiFirst: boolean = aiPlaysFirst) => {
+        const size = mode === '3x3' ? 9 : 16;
+        setBoard(Array(size).fill(null));
         setGameOver(false);
         setWinner(null);
-        setMessage('');
+        setWinningLine(null);
+        setIsPlayerTurn(!aiFirst);
         incrementGamePlays('tic_tac_toe' as any);
-    };
+    }, [gridMode, aiPlaysFirst]);
 
     useEffect(() => {
-        incrementGamePlays('tic_tac_toe' as any);
-    }, []);
+        startNewGame(gridMode, aiPlaysFirst);
+    }, [gridMode, aiPlaysFirst, startNewGame]);
 
-    const checkWinner = (squares: Player[]): Player | 'Draw' => {
-        for (let i = 0; i < WINNING_COMBINATIONS.length; i++) {
-            const [a, b, c] = WINNING_COMBINATIONS[i];
-            if (squares[a] && squares[a] === squares[b] && squares[a] === squares[c]) {
-                return squares[a];
+    const checkWinState = (squares: Player[], currentCombos: number[][]): { winner: Player | 'Draw', line?: number[] } | null => {
+        for (const combo of currentCombos) {
+            const first = squares[combo[0]];
+            if (!first) continue;
+            const allMatch = combo.every(idx => squares[idx] === first);
+            if (allMatch) {
+                return { winner: first, line: combo };
             }
         }
-        if (!squares.includes(null)) return 'Draw';
+        if (!squares.includes(null)) return { winner: 'Draw' };
         return null;
     };
 
-    const minimax = (squares: Player[], depth: number, isMaximizing: boolean): number => {
-        const result = checkWinner(squares);
-        if (result === 'O') return 10 - depth;
-        if (result === 'X') return depth - 10;
-        if (result === 'Draw') return 0;
-
-        if (isMaximizing) {
-            let bestScore = -Infinity;
-            for (let i = 0; i < squares.length; i++) {
-                if (squares[i] === null) {
-                    squares[i] = 'O';
-                    let score = minimax(squares, depth + 1, false);
-                    squares[i] = null;
-                    bestScore = Math.max(score, bestScore);
-                }
-            }
-            return bestScore;
-        } else {
-            let bestScore = Infinity;
-            for (let i = 0; i < squares.length; i++) {
-                if (squares[i] === null) {
-                    squares[i] = 'X';
-                    let score = minimax(squares, depth + 1, true);
-                    squares[i] = null;
-                    bestScore = Math.min(score, bestScore);
-                }
-            }
-            return bestScore;
-        }
-    };
-
+    // Minimax for 3x3, Heuristic for 4x4
     const getBestMove = (squares: Player[]): number => {
-        const available = squares.map((val, idx) => val === null ? idx : null).filter(val => val !== null) as number[];
+        const available = squares.map((v, i) => v === null ? i : null).filter((v): v is number => v !== null);
         if (available.length === 0) return -1;
 
         if (difficulty === 0) {
-            // Easy: completely random
             return available[Math.floor(Math.random() * available.length)];
         }
 
-        if (difficulty === 1) {
-            // Medium: block immediate threats, take immediate wins, 50% center, random
-            for (let i of available) {
-                squares[i] = 'O';
-                if (checkWinner(squares) === 'O') {
-                    squares[i] = null;
-                    return i;
-                }
-                squares[i] = null;
-            }
-
-            for (let i of available) {
-                squares[i] = 'X';
-                if (checkWinner(squares) === 'X') {
-                    squares[i] = null;
-                    return i;
-                }
-                squares[i] = null;
-            }
-
-            if (squares[4] === null && Math.random() > 0.5) {
-                return 4;
-            }
-
-            return available[Math.floor(Math.random() * available.length)];
+        // Check immediate AI win
+        for (const idx of available) {
+            squares[idx] = 'O';
+            const win = checkWinState(squares, combos);
+            squares[idx] = null;
+            if (win?.winner === 'O') return idx;
         }
 
-        // Hard: Minimax (with 25% chance of making a sub-optimal move to make it slightly easier)
-        if (Math.random() < 0.25) {
-            // Try to take immediate wins or block immediate threats first
-            for (let i of available) {
-                squares[i] = 'O';
-                if (checkWinner(squares) === 'O') {
-                    squares[i] = null;
-                    return i;
-                }
-                squares[i] = null;
-            }
-            for (let i of available) {
-                squares[i] = 'X';
-                if (checkWinner(squares) === 'X') {
-                    squares[i] = null;
-                    return i;
-                }
-                squares[i] = null;
-            }
-            return available[Math.floor(Math.random() * available.length)];
+        // Check immediate Player block
+        for (const idx of available) {
+            squares[idx] = 'X';
+            const win = checkWinState(squares, combos);
+            squares[idx] = null;
+            if (win?.winner === 'X') return idx;
         }
 
-        let bestScore = -Infinity;
-        let move = -1;
-        for (let i = 0; i < squares.length; i++) {
-            if (squares[i] === null) {
-                squares[i] = 'O';
-                let score = minimax(squares, 0, false);
-                squares[i] = null;
+        if (gridMode === '3x3' && difficulty === 2) {
+            // Minimax for 3x3
+            const evaluate = (sq: Player[], depth: number, isMax: boolean): number => {
+                const res = checkWinState(sq, combos);
+                if (res?.winner === 'O') return 10 - depth;
+                if (res?.winner === 'X') return depth - 10;
+                if (res?.winner === 'Draw') return 0;
+
+                if (isMax) {
+                    let best = -Infinity;
+                    for (let i = 0; i < sq.length; i++) {
+                        if (sq[i] === null) {
+                            sq[i] = 'O';
+                            best = Math.max(best, evaluate(sq, depth + 1, false));
+                            sq[i] = null;
+                        }
+                    }
+                    return best;
+                } else {
+                    let best = Infinity;
+                    for (let i = 0; i < sq.length; i++) {
+                        if (sq[i] === null) {
+                            sq[i] = 'X';
+                            best = Math.min(best, evaluate(sq, depth + 1, true));
+                            sq[i] = null;
+                        }
+                    }
+                    return best;
+                }
+            };
+
+            let bestScore = -Infinity;
+            let move = available[0];
+            for (const idx of available) {
+                squares[idx] = 'O';
+                const score = evaluate(squares, 0, false);
+                squares[idx] = null;
                 if (score > bestScore) {
                     bestScore = score;
-                    move = i;
+                    move = idx;
                 }
             }
+            return move;
         }
-        return move;
+
+        // 4x4 or Medium 3x3: Heuristic center/corner weighting
+        const centerIndices = gridMode === '3x3' ? [4] : [5, 6, 9, 10];
+        for (const c of centerIndices) {
+            if (squares[c] === null) return c;
+        }
+
+        return available[Math.floor(Math.random() * available.length)];
     };
 
     useEffect(() => {
         if (!isPlayerTurn && !gameOver) {
             const timer = setTimeout(() => {
-                const move = getBestMove(board);
-                if (move !== undefined) {
+                const move = getBestMove([...board]);
+                if (move !== -1) {
                     const newBoard = [...board];
                     newBoard[move] = 'O';
                     setBoard(newBoard);
-                    
-                    const result = checkWinner(newBoard);
-                    if (result) {
-                        handleGameOver(result);
+                    audioService.playSound('tile_click');
+
+                    const state = checkWinState(newBoard, combos);
+                    if (state) {
+                        handleGameOver(state.winner, state.line);
                     } else {
                         setIsPlayerTurn(true);
                     }
                 }
-            }, 500);
+            }, 400);
             return () => clearTimeout(timer);
         }
     }, [isPlayerTurn, board, gameOver]);
 
-    const handleGameOver = async (result: Player | 'Draw') => {
+    const handleGameOver = async (res: Player | 'Draw', line?: number[]) => {
         setGameOver(true);
-        setWinner(result);
-        
-        if (result === 'X') {
+        setWinner(res);
+        if (line) setWinningLine(line);
+
+        if (res === 'X') {
+            audioService.playSound('correct_answer');
+            const newStreak = streak + 1;
+            setStreak(newStreak);
             if (difficulty === 2) {
-                const newStreak = streak + 1;
-                setStreak(newStreak);
-                setMessage('You Win! 🎉');
-                setAiPlaysFirst(true);
                 await saveLeaderboardScore(
-                    user, 
-                    username || user.displayName || 'Chef', 
-                    newStreak, 
-                    'Tic Tac Toe Master', 
-                    { mistakes: 0, timeTaken: 0, ingredientsMissed: 0, rottenWordsTyped: 0, totalScore: newStreak, levelReached: newStreak }, 
+                    user,
+                    username || user.displayName || 'Chef',
+                    newStreak,
+                    gridMode === '4x4' ? 'Tic Tac Toe 4x4 Champion' : 'Tic Tac Toe Grandmaster',
+                    { mistakes: 0, timeTaken: 0, ingredientsMissed: 0, rottenWordsTyped: 0, totalScore: newStreak, levelReached: newStreak },
                     'tic_tac_toe'
                 );
-            } else {
-                setMessage('You Win! 🎉');
-                setAiPlaysFirst(true);
             }
-        } else if (result === 'O') {
-            if (difficulty === 2) {
-                setStreak(0);
-            }
-            setMessage('You Lose! 😢');
-            setAiPlaysFirst(false);
+        } else if (res === 'O') {
+            audioService.playSound('wrong_answer');
+            setStreak(0);
         } else {
-            setMessage('Draw! 🤝');
-            setAiPlaysFirst(prev => !prev);
+            audioService.playSound('button_click');
         }
     };
 
     const handleCellClick = (index: number) => {
-        if (board[index] || !isPlayerTurn || gameOver) return;
+        if (!isPlayerTurn || gameOver || board[index] !== null) return;
 
         const newBoard = [...board];
         newBoard[index] = 'X';
         setBoard(newBoard);
+        audioService.playSound('tile_click');
 
-        const result = checkWinner(newBoard);
-        if (result) {
-            handleGameOver(result);
+        const state = checkWinState(newBoard, combos);
+        if (state) {
+            handleGameOver(state.winner, state.line);
         } else {
             setIsPlayerTurn(false);
         }
     };
 
-    const DifficultySlider = () => (
-        <div className="flex flex-col items-center justify-center p-4 bg-[#111] rounded-xl border border-[#333]">
-            <h3 className="text-white font-bold mb-8 text-sm uppercase tracking-widest">Difficulty</h3>
-            <div className="relative h-48 w-8 flex items-center justify-center">
-                <input
-                    type="range"
-                    min="0"
-                    max="2"
-                    step="1"
-                    value={difficulty}
-                    onChange={(e) => {
-                        setDifficulty(parseInt(e.target.value));
-                        setStreak(0);
-                    }}
-                    className="w-48 h-2 rounded-lg appearance-none cursor-pointer absolute origin-center -rotate-90"
-                    style={{
-                        background: `linear-gradient(to right, ${difficultyColors[0]} 0%, ${difficultyColors[1]} 50%, ${difficultyColors[2]} 100%)`,
-                        accentColor: difficultyColors[difficulty]
-                    }}
-                />
-            </div>
-            <div className="mt-8 text-sm font-bold uppercase tracking-widest transition-colors duration-300" style={{ color: difficultyColors[difficulty] }}>
-                {difficultyLabels[difficulty]}
-            </div>
-        </div>
-    );
-
     return (
-        <div className="flex flex-col items-center justify-center w-full h-full bg-[#000] text-white font-['Inter'] relative overflow-hidden">
-            <div className="absolute inset-0 opacity-10 pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at 50% 50%, #4facfe 2px, transparent 2px)', backgroundSize: '80px 80px' }}></div>
-            
-            {!isMobile && (
-                <>
-                    <div className="absolute top-0 left-0 h-full w-[200px] z-[50] border-r border-[#333] flex items-center justify-center bg-black/50 backdrop-blur-sm animate-fade-in" style={{ animationDelay: '0.2s' }}>
-                        <DifficultySlider />
-                    </div>
-                    <div className="flex flex-col absolute top-0 right-0 h-full w-[300px] z-[50] border-l border-[#333] animate-fade-in" style={{ animationDelay: '0.2s' }}>
-                        <LeaderboardWidget className="h-[66%] border-b-0" allowedModes={['tic_tac_toe']} defaultMode="tic_tac_toe" />
-                        <ChatWidget user={user} className="h-[34%]" />
-                    </div>
-                </>
-            )}
-            
-             {isMobile && (
-                <>
-                    <div className="absolute top-4 left-4 z-[60]">
-                        <button onClick={() => setShowMobileDifficulty(true)} className="text-2xl hover:scale-110 transition-transform bg-[#111] p-2 rounded-full border border-[#333]" style={{ borderColor: difficultyColors[difficulty] }}>⚙️</button>
-                    </div>
-                    {showMobileDifficulty && (
-                        <div className="fixed inset-0 z-[100] bg-black/95 flex flex-col items-center justify-center p-4 animate-fade-in">
-                            <div className="absolute top-4 right-4">
-                                <button onClick={() => setShowMobileDifficulty(false)} className="text-red-500 text-2xl font-bold p-2">✕</button>
-                            </div>
-                            <DifficultySlider />
-                        </div>
-                    )}
-                    <div className="absolute top-4 right-4 z-[60]">
-                        <button onClick={() => setShowMobileLeaderboard(true)} className="text-2xl hover:scale-110 transition-transform bg-[#111] p-2 rounded-full border border-[#f4b400]">🏆</button>
-                    </div>
-                    {showMobileLeaderboard && (
-                        <div className="fixed inset-0 z-[100] bg-black/95 flex flex-col p-4 animate-fade-in">
-                            <div className="flex justify-between items-center mb-4">
-                                <h2 className="text-[#f4b400] text-xl font-bold">Top Strategists</h2>
-                                <button onClick={() => setShowMobileLeaderboard(false)} className="text-red-500 text-2xl font-bold p-2">✕</button>
-                            </div>
-                            <LeaderboardWidget className="flex-1 border-none shadow-none p-0" allowedModes={['tic_tac_toe']} defaultMode="tic_tac_toe" />
-                        </div>
-                    )}
-                </>
-            )}
+        <div className="flex flex-col items-center justify-center w-full h-full bg-[#050508] text-white relative overflow-y-auto custom-scrollbar p-4 select-none font-sans">
+            <div className="absolute inset-0 opacity-15 pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at 50% 50%, #38bdf8 2px, transparent 2px)', backgroundSize: '60px 60px' }}></div>
 
-            <div className="flex justify-between items-center w-full max-w-md p-4 z-10 absolute top-0">
-                <button onClick={onBackToHub} className="text-2xl hover:scale-110 transition-transform">⬅️</button>
+            {/* Top Bar */}
+            <div className="flex justify-between items-center w-full max-w-lg mb-4 z-10">
+                <button
+                    onClick={() => {
+                        audioService.playSound('button_click');
+                        onBackToHub();
+                    }}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-neutral-900/80 hover:bg-neutral-800 border border-neutral-700 rounded-full text-sm font-bold transition-transform hover:scale-105"
+                    title="Back to Hub"
+                >
+                    <span>⬅️</span>
+                    <span className="hidden sm:inline">Hub</span>
+                </button>
+
                 <div className="flex flex-col items-center">
-                    <h1 className="text-xl md:text-2xl font-bold font-['Press_Start_2P'] text-[#4facfe]">TIC TAC TOE</h1>
-                    {difficulty === 2 ? (
-                        <div className="text-xs text-[#aaa] mt-1">Win Streak: {streak}</div>
-                    ) : (
-                        <div className="text-[10px] md:text-xs text-[#ff2a2a] mt-1 font-bold">⚠️ Streaks only count in Hard mode</div>
-                    )}
+                    <h1 className="text-xl md:text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-sky-400 to-blue-500 tracking-wide">
+                        TIC TAC TOE
+                    </h1>
+                    <div className="text-xs text-neutral-400 font-bold mt-0.5">
+                        🔥 Win Streak: <span className="text-amber-400 font-mono text-sm">{streak}</span>
+                    </div>
                 </div>
-                <div className="w-8"></div>
+
+                <div className="w-16 flex justify-end">
+                    <button
+                        onClick={() => {
+                            audioService.playSound('button_click');
+                            startNewGame();
+                        }}
+                        className="px-2.5 py-1 bg-neutral-800 hover:bg-neutral-700 border border-neutral-600 rounded-full text-xs font-bold text-neutral-300"
+                        title="Reset Game"
+                    >
+                        🔄 Reset
+                    </button>
+                </div>
             </div>
 
-            <div className="flex flex-col items-center justify-center z-10 mt-16">
-                <div className="grid grid-cols-3 gap-1.5 sm:gap-2 bg-[#333] p-1.5 sm:p-2 rounded-xl">
-                    {board.map((cell, index) => (
+            {/* Mode & Difficulty Controls */}
+            <div className="flex flex-wrap items-center justify-center gap-2 mb-4 z-10 max-w-md">
+                {/* 3x3 vs 4x4 Selector */}
+                <div className="flex bg-neutral-900 p-1 rounded-xl border border-neutral-800">
+                    <button
+                        onClick={() => {
+                            audioService.playSound('button_click');
+                            setGridMode('3x3');
+                        }}
+                        className={`px-3 py-1 text-xs font-bold rounded-lg transition-all ${gridMode === '3x3' ? 'bg-sky-500 text-black shadow' : 'text-neutral-400 hover:text-white'}`}
+                    >
+                        Classic 3x3
+                    </button>
+                    <button
+                        onClick={() => {
+                            audioService.playSound('button_click');
+                            setGridMode('4x4');
+                        }}
+                        className={`px-3 py-1 text-xs font-bold rounded-lg transition-all ${gridMode === '4x4' ? 'bg-sky-500 text-black shadow' : 'text-neutral-400 hover:text-white'}`}
+                    >
+                        Hard 4x4 🔥
+                    </button>
+                </div>
+
+                {/* Difficulty Selector */}
+                <div className="flex bg-neutral-900 p-1 rounded-xl border border-neutral-800">
+                    {(['Easy', 'Medium', 'Hard'] as const).map((label, idx) => (
                         <button
-                            key={index}
-                            onClick={() => handleCellClick(index)}
-                            className={`w-20 h-20 sm:w-24 sm:h-24 md:w-32 md:h-32 bg-[#111] rounded-lg text-4xl sm:text-5xl md:text-6xl font-bold flex items-center justify-center transition-colors
-                                ${!cell && isPlayerTurn && !gameOver ? 'hover:bg-[#222] cursor-pointer' : 'cursor-default'}
-                                ${cell === 'X' ? 'text-[#4facfe]' : 'text-[#ff2a2a]'}`}
+                            key={label}
+                            onClick={() => {
+                                audioService.playSound('button_click');
+                                setDifficulty(idx as 0 | 1 | 2);
+                            }}
+                            className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-all ${difficulty === idx ? 'bg-amber-500 text-black shadow' : 'text-neutral-400 hover:text-white'}`}
                         >
-                            {cell}
+                            {label}
                         </button>
                     ))}
                 </div>
 
+                {/* First turn toggle */}
+                <button
+                    onClick={() => {
+                        audioService.playSound('button_click');
+                        setAiPlaysFirst(prev => !prev);
+                    }}
+                    className="px-2.5 py-1 bg-neutral-900 border border-neutral-800 hover:border-neutral-700 text-neutral-300 rounded-xl text-xs font-bold"
+                    title="Toggle first move"
+                >
+                    {aiPlaysFirst ? '🤖 AI Starts' : '👤 You Start'}
+                </button>
+            </div>
+
+            {/* Game Board */}
+            <div className="flex flex-col items-center justify-center z-10">
+                <div className={`grid gap-2 bg-neutral-900/90 p-3 rounded-2xl border-2 border-neutral-800 shadow-2xl ${gridMode === '3x3' ? 'grid-cols-3' : 'grid-cols-4'}`}>
+                    {board.map((cell, index) => {
+                        const isWinCell = winningLine?.includes(index);
+                        return (
+                            <button
+                                key={index}
+                                onClick={() => handleCellClick(index)}
+                                className={`rounded-xl font-black flex items-center justify-center transition-all duration-150 active:scale-95 shadow-inner ${
+                                    gridMode === '3x3'
+                                        ? 'w-20 h-20 sm:w-24 sm:h-24 md:w-28 md:h-28 text-4xl sm:text-5xl md:text-6xl'
+                                        : 'w-16 h-16 sm:w-18 sm:h-18 md:w-20 md:h-20 text-3xl sm:text-4xl'
+                                } ${
+                                    isWinCell 
+                                        ? 'bg-amber-500/20 border-2 border-amber-400 animate-pulse' 
+                                        : 'bg-neutral-950 border border-neutral-800 hover:border-neutral-700'
+                                } ${
+                                    !cell && isPlayerTurn && !gameOver ? 'cursor-pointer hover:bg-neutral-800/60' : 'cursor-default'
+                                } ${
+                                    cell === 'X' ? 'text-sky-400' : 'text-red-400'
+                                }`}
+                            >
+                                {cell}
+                            </button>
+                        );
+                    })}
+                </div>
+
+                {/* Result Overlay */}
                 {gameOver && (
-                    <div className="mt-8 flex flex-col items-center animate-pop-in">
-                        <div className={`text-2xl font-bold mb-4 ${winner === 'X' ? 'text-[#4facfe]' : winner === 'O' ? 'text-[#ff2a2a]' : 'text-white'}`}>
-                            {message}
+                    <div className="mt-6 flex flex-col items-center animate-fade-in bg-neutral-900/90 border border-neutral-700 p-4 sm:p-6 rounded-2xl shadow-xl">
+                        <div className={`text-xl sm:text-2xl font-black mb-3 ${winner === 'X' ? 'text-sky-400' : winner === 'O' ? 'text-red-400' : 'text-neutral-300'}`}>
+                            {winner === 'X' ? '🎉 You Won!' : winner === 'O' ? '😢 AI Won!' : '🤝 Cat\'s Game (Draw)!'}
                         </div>
                         <button
-                            onClick={startNewGame}
-                            className="px-6 py-3 bg-[#4facfe] text-black font-bold rounded-full hover:bg-[#3d8bcf] transition-colors"
+                            onClick={() => {
+                                audioService.playSound('button_click');
+                                startNewGame();
+                            }}
+                            className="px-6 py-2.5 bg-sky-500 hover:bg-sky-400 text-black font-bold rounded-full shadow-lg transition-transform active:scale-95 text-sm sm:text-base"
                         >
                             Play Again
                         </button>

@@ -72,16 +72,30 @@ export interface LeaderboardEntry {
   accuracy?: number; // Specific for Speed Test
 }
 
+export type ActiveApp = 
+  | 'hub'
+  | 'taco'
+  | 'iq-test'
+  | 'minesweeper'
+  | 'wordle'
+  | 'angle'
+  | 'spelling-bee'
+  | 'tic-tac-toe'
+  | 'connect-4'
+  | 'gun-game'
+  | 'color-memory'
+  | 'particle-physics';
+
 export interface GlobalGameStats {
   taco_typer_plays: number;
   iq_test_plays: number;
   minesweeper_plays: number;
   wordle_plays: number;
   angle_plays: number;
-  more_less_plays: number;
   spelling_bee_plays: number;
   tic_tac_toe_plays: number;
   connect_4_plays: number;
   gun_game_plays: number;
   color_memory_plays: number;
+  particle_physics_plays: number;
 }

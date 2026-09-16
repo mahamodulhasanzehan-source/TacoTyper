@@ -26,8 +26,7 @@ import {
   orderBy,
   limit,
   onSnapshot,
-  increment,
-  writeBatch
+  increment
 } from 'firebase/firestore';
 import { 
   getStorage, 
@@ -40,56 +39,61 @@ import { LeaderboardEntry, SessionStats, GlobalGameStats } from '../types';
 
 // --- Configuration ---
 
-// Helper to clean environment variables (strip quotes if they were added by the build tool)
-const cleanEnv = (val: string | undefined) => {
+const cleanEnv = (val: string | undefined | null) => {
     if (!val) return '';
-    // Remove surrounding quotes (single or double) and trim whitespace
     return val.replace(/^['"]|['"]$/g, '').trim();
 };
 
-// Direct access ensures the bundler can replace 'process.env' correctly with the defined object
-// We check for the specific keys provided in the Vercel screenshot first
-const apiKey = cleanEnv(process.env.FIREBASE_API_KEY || process.env.VITE_FIREBASE_API_KEY);
-const authDomain = cleanEnv(process.env.FIREBASE_AUTH_DOMAIN || process.env.VITE_FIREBASE_AUTH_DOMAIN);
-const projectId = cleanEnv(process.env.FIREBASE_PROJECT_ID || process.env.VITE_FIREBASE_PROJECT_ID);
-const storageBucket = cleanEnv(process.env.FIREBASE_STORAGE_BUCKET || process.env.VITE_FIREBASE_STORAGE_BUCKET);
-const messagingSenderId = cleanEnv(process.env.FIREBASE_MESSAGING_SENDER_ID || process.env.VITE_FIREBASE_MESSAGING_SENDER_ID);
-const appId = cleanEnv(process.env.FIREBASE_APP_ID || process.env.VITE_FIREBASE_APP_ID);
-
-if (!apiKey) {
-    console.error("CRITICAL: Firebase API Key is missing. Please check Vercel Environment Variables.");
-}
-
-const firebaseConfig = {
-  apiKey,
-  authDomain,
-  projectId,
-  storageBucket,
-  messagingSenderId,
-  appId
+const getEnv = (key: string): string => {
+    let val = '';
+    if (typeof import.meta !== 'undefined' && (import.meta as any).env) {
+        const env = (import.meta as any).env;
+        val = env[`VITE_${key}`] || env[`FIREBASE_${key}`] || env[key] || '';
+    }
+    if (!val && typeof process !== 'undefined' && process.env) {
+        val = process.env[`VITE_${key}`] || process.env[`FIREBASE_${key}`] || process.env[key] || '';
+    }
+    return cleanEnv(val);
 };
 
-// Initialize Firebase only if we have a config, otherwise we risk crashing hard immediately.
-// However, getting Auth will fail if app is not initialized.
-let app;
-let authExport;
-let dbExport;
-let storageExport;
+const apiKey = getEnv('FIREBASE_API_KEY') || 'AIzaSyBllwH83gpDoLAeo_XnnMDu4mmWVzBJOkA';
+const authDomain = getEnv('FIREBASE_AUTH_DOMAIN') || 'tacotyper.firebaseapp.com';
+const projectId = getEnv('FIREBASE_PROJECT_ID') || 'tacotyper';
+const storageBucket = getEnv('FIREBASE_STORAGE_BUCKET') || 'tacotyper.firebasestorage.app';
+const messagingSenderId = getEnv('FIREBASE_MESSAGING_SENDER_ID') || '781290974991';
+const appId = getEnv('FIREBASE_APP_ID') || '1:781290974991:web:eb9fd32f2a8e1a14a5187a';
 
-try {
-    app = initializeApp(firebaseConfig);
-    authExport = getAuth(app);
-    dbExport = getFirestore(app);
-    storageExport = getStorage(app);
-} catch (e) {
-    console.error("Firebase Initialization Failed:", e);
-    // Provide a dummy fallback so imports don't crash the entire bundle execution immediately
-    // The app will likely still fail when trying to use auth, but it allows the error UI to potentially render
-    authExport = {} as any;
-    dbExport = {} as any;
-    storageExport = {} as any;
+export const isFirebaseConfigured = Boolean(apiKey && apiKey.length > 5 && projectId);
+
+let app: any = null;
+let authExport: any = null;
+let dbExport: any = null;
+let storageExport: any = null;
+
+if (isFirebaseConfigured) {
+    try {
+        const firebaseConfig = {
+            apiKey,
+            authDomain,
+            projectId,
+            storageBucket,
+            messagingSenderId,
+            appId
+        };
+        app = initializeApp(firebaseConfig);
+        authExport = getAuth(app);
+        dbExport = getFirestore(app);
+        storageExport = getStorage(app);
+    } catch (e) {
+        console.warn("Firebase initialization failed:", e);
+        app = null;
+        authExport = null;
+        dbExport = null;
+        storageExport = null;
+    }
 }
 
+export const isFirebaseReady = () => Boolean(authExport && dbExport);
 export const auth = authExport;
 export const db = dbExport;
 export const storage = storageExport;
@@ -139,46 +143,74 @@ export const onAuthStateChanged = (
     nextOrObserver: (user: User | null) => void, 
     _error?: (error: any) => void
 ) => {
-    if (!auth) return () => {};
-    return firebaseOnAuthStateChanged(auth, nextOrObserver, _error);
+    if (!authExport) {
+        const savedGuest = localStorage.getItem('taco_guest_user');
+        if (savedGuest) {
+            try {
+                const parsed = JSON.parse(savedGuest);
+                nextOrObserver(parsed);
+                return () => {};
+            } catch {
+                localStorage.removeItem('taco_guest_user');
+            }
+        }
+        nextOrObserver(null);
+        return () => {};
+    }
+    return firebaseOnAuthStateChanged(authExport, nextOrObserver, _error);
+};
+
+export const signInAsGuest = async (guestName: string = 'Chef Guest'): Promise<User> => {
+    const guestUser: any = {
+        uid: 'guest_' + Math.random().toString(36).substring(2, 9),
+        displayName: guestName,
+        email: null,
+        photoURL: null,
+        isAnonymous: true
+    };
+    localStorage.setItem('taco_guest_user', JSON.stringify(guestUser));
+    return guestUser as User;
 };
 
 export const signInWithGoogle = async () => {
-    if (!auth) throw new Error("Firebase Auth not initialized");
+    if (!authExport || !isFirebaseConfigured) {
+        throw new Error("Firebase Auth is not configured. Please set your Firebase API keys in environment settings, or play as Guest.");
+    }
     const provider = new GoogleAuthProvider();
     try {
-        const result = await signInWithPopup(auth, provider);
+        const result = await signInWithPopup(authExport, provider);
         const user = result.user;
 
-        // Sync Auth to Firestore
-        const userRef = doc(db, "users", user.uid);
-        const userSnap = await getDoc(userRef);
+        if (dbExport) {
+            // Sync Auth to Firestore
+            const userRef = doc(dbExport, "users", user.uid);
+            const userSnap = await getDoc(userRef);
 
-        const timestamp = serverTimestamp();
+            const timestamp = serverTimestamp();
 
-        if (!userSnap.exists()) {
-            // Create new profile with requested fields
-            await setDoc(userRef, {
-                uid: user.uid,               // Saved as requested
-                displayName: user.displayName || '', // Saved as requested
-                username: '', 
-                usernameLower: '',
-                email: user.email,
-                photoURL: user.photoURL,     // Saved as requested
-                friends: [],
-                createdAt: timestamp,
-                lastLogin: timestamp
-            });
-        } else {
-            // Update existing login info and ensure basic info is fresh
-            await updateDoc(userRef, {
-                uid: user.uid,
-                displayName: user.displayName || '',
-                email: user.email,
-                photoURL: user.photoURL,
-                lastLogin: timestamp
-            });
+            if (!userSnap.exists()) {
+                await setDoc(userRef, {
+                    uid: user.uid,
+                    displayName: user.displayName || '',
+                    username: '', 
+                    usernameLower: '',
+                    email: user.email,
+                    photoURL: user.photoURL,
+                    friends: [],
+                    createdAt: timestamp,
+                    lastLogin: timestamp
+                });
+            } else {
+                await updateDoc(userRef, {
+                    uid: user.uid,
+                    displayName: user.displayName || '',
+                    email: user.email,
+                    photoURL: user.photoURL,
+                    lastLogin: timestamp
+                });
+            }
         }
+        return user;
     } catch (error) {
         console.error("Error signing in with Google", error);
         throw error;
@@ -186,16 +218,29 @@ export const signInWithGoogle = async () => {
 };
 
 export const logout = async () => {
-    if (!auth) return;
-    await signOut(auth);
+    localStorage.removeItem('taco_guest_user');
+    if (authExport) {
+        try {
+            await signOut(authExport);
+        } catch (e) {
+            console.error("Error signing out:", e);
+        }
+    }
     window.location.reload();
 };
 
 // --- User Profile ---
 
 export const getUserProfile = async (uid: string): Promise<UserProfile | null> => {
+    if (!dbExport) {
+        const local = localStorage.getItem(`profile_${uid}`);
+        if (local) {
+            try { return JSON.parse(local); } catch { return null; }
+        }
+        return null;
+    }
     try {
-        const userRef = doc(db, "users", uid);
+        const userRef = doc(dbExport, "users", uid);
         const snap = await getDoc(userRef);
         if (snap.exists()) {
             return snap.data() as UserProfile;
@@ -208,37 +253,43 @@ export const getUserProfile = async (uid: string): Promise<UserProfile | null> =
 };
 
 export const saveUsername = async (uid: string, username: string) => {
-    const userRef = doc(db, "users", uid);
+    if (!dbExport) {
+        const existing = localStorage.getItem(`profile_${uid}`);
+        let parsed: any = {};
+        if (existing) { try { parsed = JSON.parse(existing); } catch {} }
+        parsed.username = username;
+        parsed.usernameLower = username.toLowerCase();
+        localStorage.setItem(`profile_${uid}`, JSON.stringify(parsed));
+        return;
+    }
+    const userRef = doc(dbExport, "users", uid);
     await setDoc(userRef, {
         username: username,
-        usernameLower: username.toLowerCase() // Save lower case for searching
+        usernameLower: username.toLowerCase()
     }, { merge: true });
 };
 
 // --- Friend System ---
 
 export const fetchActiveUsers = async (currentUid: string): Promise<{uid: string, username: string, isFriend: boolean, hasPending: boolean, photoURL?: string}[]> => {
+    if (!dbExport) return [];
     try {
-        // 1. Get current user's friends to check status
-        const currentUserRef = doc(db, "users", currentUid);
+        const currentUserRef = doc(dbExport, "users", currentUid);
         const currentUserSnap = await getDoc(currentUserRef);
-        const currentUserData = currentUserSnap.data() as UserProfile;
+        const currentUserData = currentUserSnap.exists() ? (currentUserSnap.data() as UserProfile) : null;
         const myFriends = currentUserData?.friends || [];
 
-        // 2. Get last 100 active users (so the list is populated initially)
-        const usersRef = collection(db, "users");
-        // We order by lastLogin to show active people first
+        const usersRef = collection(dbExport, "users");
         const q = query(usersRef, orderBy("lastLogin", "desc"), limit(100));
         
         const querySnapshot = await getDocs(q);
         const results: any[] = [];
 
-        querySnapshot.forEach((doc) => {
-            const uid = doc.id;
-            if (uid === currentUid) return; // Skip self
+        querySnapshot.forEach((d) => {
+            const uid = d.id;
+            if (uid === currentUid) return;
 
-            const data = doc.data();
-            // Use username if set, otherwise fallback to displayName, otherwise "Unknown Chef"
+            const data = d.data();
             const display = data.username || data.displayName || "Unknown Chef";
 
             if (display) {
@@ -253,61 +304,64 @@ export const fetchActiveUsers = async (currentUid: string): Promise<{uid: string
         });
 
         return results;
-    } catch (e) {
-        console.error("Error fetching active users", e);
+    } catch {
+        // Silently fall back for guest users or missing permissions
         return [];
     }
 };
 
 export const searchUsers = async (searchTerm: string, currentUid: string): Promise<{uid: string, username: string, isFriend: boolean, hasPending: boolean}[]> => {
-    // Deprecated for UI use in favor of client-side filtering of fetchActiveUsers, 
-    // but kept for specific queries if needed later.
-    if (!searchTerm || searchTerm.trim().length === 0) return [];
+    if (!searchTerm || searchTerm.trim().length === 0 || !dbExport) return [];
     
     const lowerTerm = searchTerm.toLowerCase().trim();
     const results: any[] = [];
     
-    const currentUserRef = doc(db, "users", currentUid);
-    const currentUserSnap = await getDoc(currentUserRef);
-    const currentUserData = currentUserSnap.data() as UserProfile;
-    const myFriends = currentUserData?.friends || [];
+    try {
+        const currentUserRef = doc(dbExport, "users", currentUid);
+        const currentUserSnap = await getDoc(currentUserRef);
+        const currentUserData = currentUserSnap.data() as UserProfile;
+        const myFriends = currentUserData?.friends || [];
 
-    const usersRef = collection(db, "users");
-    const q = query(
-        usersRef, 
-        where("usernameLower", ">=", lowerTerm),
-        where("usernameLower", "<=", lowerTerm + '\uf8ff'),
-        limit(10)
-    );
+        const usersRef = collection(dbExport, "users");
+        const q = query(
+            usersRef, 
+            where("usernameLower", ">=", lowerTerm),
+            where("usernameLower", "<=", lowerTerm + '\uf8ff'),
+            limit(10)
+        );
 
-    const querySnapshot = await getDocs(q);
+        const querySnapshot = await getDocs(q);
 
-    for (const doc of querySnapshot.docs) {
-        const uid = doc.id;
-        if (uid === currentUid) continue; 
+        for (const d of querySnapshot.docs) {
+            const uid = d.id;
+            if (uid === currentUid) continue; 
 
-        const data = doc.data();
-        if (!data.username) continue; 
+            const data = d.data();
+            if (!data.username) continue; 
 
-        const isFriend = myFriends.includes(uid);
-        
-        results.push({
-            uid,
-            username: data.username,
-            isFriend,
-            hasPending: false
-        });
+            const isFriend = myFriends.includes(uid);
+            
+            results.push({
+                uid,
+                username: data.username,
+                isFriend,
+                hasPending: false
+            });
+        }
+    } catch (e) {
+        console.error("Error searching users", e);
     }
 
     return results;
 };
 
 export const sendFriendRequest = async (fromUid: string, toUid: string) => {
+    if (!dbExport) return false;
     try {
         const senderProfile = await getUserProfile(fromUid);
         if (!senderProfile) return false;
 
-        const requestsRef = collection(db, "requests");
+        const requestsRef = collection(dbExport, "requests");
         const q = query(
             requestsRef, 
             where("from", "==", fromUid), 
@@ -332,29 +386,35 @@ export const sendFriendRequest = async (fromUid: string, toUid: string) => {
 };
 
 export const getFriendRequests = async (uid: string): Promise<FriendRequest[]> => {
-    const requestsRef = collection(db, "requests");
-    const q = query(
-        requestsRef,
-        where("to", "==", uid),
-        where("status", "==", "pending")
-    );
-    
-    const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-    })) as FriendRequest[];
+    if (!dbExport) return [];
+    try {
+        const requestsRef = collection(dbExport, "requests");
+        const q = query(
+            requestsRef,
+            where("to", "==", uid),
+            where("status", "==", "pending")
+        );
+        
+        const snapshot = await getDocs(q);
+        return snapshot.docs.map(d => ({
+            id: d.id,
+            ...d.data()
+        })) as FriendRequest[];
+    } catch {
+        return [];
+    }
 };
 
 export const acceptFriendRequest = async (currentUid: string, fromUid: string) => {
+    if (!dbExport) return false;
     try {
-        const meRef = doc(db, "users", currentUid);
-        const themRef = doc(db, "users", fromUid);
+        const meRef = doc(dbExport, "users", currentUid);
+        const themRef = doc(dbExport, "users", fromUid);
 
         await updateDoc(meRef, { friends: arrayUnion(fromUid) });
         await updateDoc(themRef, { friends: arrayUnion(currentUid) });
 
-        const requestsRef = collection(db, "requests");
+        const requestsRef = collection(dbExport, "requests");
         const q = query(
             requestsRef, 
             where("from", "==", fromUid), 
@@ -363,9 +423,9 @@ export const acceptFriendRequest = async (currentUid: string, fromUid: string) =
         );
         const snapshot = await getDocs(q);
         
-        snapshot.forEach(async (docSnap) => {
-            await deleteDoc(doc(db, "requests", docSnap.id));
-        });
+        for (const docSnap of snapshot.docs) {
+            await deleteDoc(doc(dbExport, "requests", docSnap.id));
+        }
 
         return true;
     } catch (e) {
@@ -377,42 +437,54 @@ export const acceptFriendRequest = async (currentUid: string, fromUid: string) =
 // --- Stats & Leaderboard (Firestore Implementation) ---
 
 export const saveGameStats = async (user: User, score: number, mode: string, level: number) => {
-    const userRef = doc(db, "users", user.uid);
-    await updateDoc(userRef, {
-        gamesHistory: arrayUnion({
-            date: new Date().toISOString(),
-            score,
-            mode,
-            levelReached: level
-        })
-    });
+    if (!dbExport) return;
+    try {
+        const userRef = doc(dbExport, "users", user.uid);
+        await updateDoc(userRef, {
+            gamesHistory: arrayUnion({
+                date: new Date().toISOString(),
+                score,
+                mode,
+                levelReached: level
+            })
+        });
+    } catch (e) {
+        console.error("Error saving game stats", e);
+    }
 };
 
 export const saveSpeedTestStats = async (user: User, wpm: number, accuracy: number) => {
-    const userRef = doc(db, "users", user.uid);
-    await updateDoc(userRef, {
-        speedTestHistory: arrayUnion({
-            date: new Date().toISOString(),
-            wpm,
-            accuracy
-        })
-    });
+    if (!dbExport) return;
+    try {
+        const userRef = doc(dbExport, "users", user.uid);
+        await updateDoc(userRef, {
+            speedTestHistory: arrayUnion({
+                date: new Date().toISOString(),
+                wpm,
+                accuracy
+            })
+        });
+    } catch (e) {
+        console.error("Error saving speed test stats", e);
+    }
 };
 
 // --- Global Stats Tracking ---
 
-export const incrementGamePlays = async (gameKey: 'taco_typer' | 'iq_test' | 'minesweeper' | 'wordle' | 'angle' | 'more_less' | 'spelling_bee' | 'tic_tac_toe' | 'connect_4' | 'gun_game' | 'color_memory') => {
-    const statsRef = doc(db, "system", "global_stats");
-    // Field names match the interface keys: taco_typer_plays, etc.
+export const incrementGamePlays = async (gameKey: 'taco_typer' | 'iq_test' | 'minesweeper' | 'wordle' | 'angle' | 'spelling_bee' | 'tic_tac_toe' | 'connect_4' | 'gun_game' | 'color_memory' | 'particle_physics') => {
+    const key = `play_count_${gameKey}`;
+    const curr = parseInt(localStorage.getItem(key) || '0', 10);
+    localStorage.setItem(key, String(curr + 1));
+
+    if (!dbExport) return;
+    const statsRef = doc(dbExport, "system", "global_stats");
     const field = `${gameKey}_plays`;
     
     try {
-        // Try to update, if doc doesn't exist, set it
         await updateDoc(statsRef, {
             [field]: increment(1)
         });
     } catch (e: any) {
-        // If document doesn't exist error code
         if (e.code === 'not-found') {
              await setDoc(statsRef, {
                  taco_typer_plays: gameKey === 'taco_typer' ? 1 : 0,
@@ -420,32 +492,50 @@ export const incrementGamePlays = async (gameKey: 'taco_typer' | 'iq_test' | 'mi
                  minesweeper_plays: gameKey === 'minesweeper' ? 1 : 0,
                  wordle_plays: gameKey === 'wordle' ? 1 : 0,
                  angle_plays: gameKey === 'angle' ? 1 : 0,
-                 more_less_plays: gameKey === 'more_less' ? 1 : 0,
                  spelling_bee_plays: gameKey === 'spelling_bee' ? 1 : 0,
                  tic_tac_toe_plays: gameKey === 'tic_tac_toe' ? 1 : 0,
                  connect_4_plays: gameKey === 'connect_4' ? 1 : 0,
                  gun_game_plays: gameKey === 'gun_game' ? 1 : 0,
-                 color_memory_plays: gameKey === 'color_memory' ? 1 : 0
+                 color_memory_plays: gameKey === 'color_memory' ? 1 : 0,
+                 particle_physics_plays: gameKey === 'particle_physics' ? 1 : 0
              });
         }
     }
 };
 
 export const getGlobalGameStats = async (): Promise<GlobalGameStats> => {
+    const fallback: GlobalGameStats = {
+        taco_typer_plays: parseInt(localStorage.getItem('play_count_taco_typer') || '0', 10),
+        iq_test_plays: parseInt(localStorage.getItem('play_count_iq_test') || '0', 10),
+        minesweeper_plays: parseInt(localStorage.getItem('play_count_minesweeper') || '0', 10),
+        wordle_plays: parseInt(localStorage.getItem('play_count_wordle') || '0', 10),
+        angle_plays: parseInt(localStorage.getItem('play_count_angle') || '0', 10),
+        spelling_bee_plays: parseInt(localStorage.getItem('play_count_spelling_bee') || '0', 10),
+        tic_tac_toe_plays: parseInt(localStorage.getItem('play_count_tic_tac_toe') || '0', 10),
+        connect_4_plays: parseInt(localStorage.getItem('play_count_connect_4') || '0', 10),
+        gun_game_plays: parseInt(localStorage.getItem('play_count_gun_game') || '0', 10),
+        color_memory_plays: parseInt(localStorage.getItem('play_count_color_memory') || '0', 10),
+        particle_physics_plays: parseInt(localStorage.getItem('play_count_particle_physics') || '0', 10)
+    };
+    if (!dbExport) return fallback;
     try {
-        const statsRef = doc(db, "system", "global_stats");
+        const statsRef = doc(dbExport, "system", "global_stats");
         const snap = await getDoc(statsRef);
         if (snap.exists()) {
             return snap.data() as GlobalGameStats;
         }
-        return { taco_typer_plays: 0, iq_test_plays: 0, minesweeper_plays: 0, wordle_plays: 0, angle_plays: 0, more_less_plays: 0, spelling_bee_plays: 0, tic_tac_toe_plays: 0, connect_4_plays: 0, gun_game_plays: 0, color_memory_plays: 0 };
-    } catch (e) {
-        return { taco_typer_plays: 0, iq_test_plays: 0, minesweeper_plays: 0, wordle_plays: 0, angle_plays: 0, more_less_plays: 0, spelling_bee_plays: 0, tic_tac_toe_plays: 0, connect_4_plays: 0, gun_game_plays: 0, color_memory_plays: 0 };
+        return fallback;
+    } catch {
+        return fallback;
     }
 };
 
 export const resetGlobalGameStats = async () => {
-    const statsRef = doc(db, "system", "global_stats");
+    const keys = ['taco_typer', 'iq_test', 'minesweeper', 'wordle', 'angle', 'spelling_bee', 'tic_tac_toe', 'connect_4', 'gun_game', 'color_memory', 'particle_physics'];
+    keys.forEach(k => localStorage.setItem(`play_count_${k}`, '0'));
+
+    if (!dbExport) return true;
+    const statsRef = doc(dbExport, "system", "global_stats");
     try {
         await setDoc(statsRef, {
             taco_typer_plays: 0,
@@ -453,16 +543,15 @@ export const resetGlobalGameStats = async () => {
             minesweeper_plays: 0,
             wordle_plays: 0,
             angle_plays: 0,
-            more_less_plays: 0,
             spelling_bee_plays: 0,
             tic_tac_toe_plays: 0,
             connect_4_plays: 0,
             gun_game_plays: 0,
-            color_memory_plays: 0
+            color_memory_plays: 0,
+            particle_physics_plays: 0
         });
         return true;
-    } catch (e) {
-        console.error("Error resetting global stats", e);
+    } catch {
         return false;
     }
 };
@@ -482,31 +571,48 @@ export const saveLeaderboardScore = async (
     const isTimeBased = mode === 'competitive' || mode.includes('minesweeper') || mode === 'connect_4';
     
     if (isTimeBased) {
-         // Lower is better for time based (golf score)
          sortValue = score; 
     } else if (mode === 'iq-test' || mode === 'tic_tac_toe') {
-         sortValue = score; // High Score = Better, falls into standard desc sort
+         sortValue = score;
     } else if (mode !== 'speed-test') {
          sortValue = (stats.levelReached * 1000) + score; 
     }
 
-    // Add new score
-    await addDoc(collection(db, "leaderboard"), {
-        uid: user.uid,
-        username: username,
-        score: score,
-        title: title,
-        stats: stats,
-        timestamp: serverTimestamp(),
-        mode: mode,
-        levelReached: stats.levelReached,
-        sortValue: sortValue,
-        accuracy: extra?.accuracy || null
-    });
-
-    // Enforce max 3 entries per user per mode
     try {
-        const lbRef = collection(db, "leaderboard");
+        const localLB = JSON.parse(localStorage.getItem(`lb_${mode}`) || '[]');
+        localLB.push({
+            id: 'local_' + Date.now(),
+            uid: user.uid,
+            username: username,
+            score: score,
+            title: title,
+            stats: stats,
+            mode: mode,
+            levelReached: stats.levelReached,
+            sortValue: sortValue,
+            accuracy: extra?.accuracy || null
+        });
+        localLB.sort((a: any, b: any) => isTimeBased ? a.sortValue - b.sortValue : b.sortValue - a.sortValue);
+        localStorage.setItem(`lb_${mode}`, JSON.stringify(localLB.slice(0, 10)));
+    } catch {}
+
+    if (!dbExport) return;
+
+    try {
+        await addDoc(collection(dbExport, "leaderboard"), {
+            uid: user.uid,
+            username: username,
+            score: score,
+            title: title,
+            stats: stats,
+            timestamp: serverTimestamp(),
+            mode: mode,
+            levelReached: stats.levelReached,
+            sortValue: sortValue,
+            accuracy: extra?.accuracy || null
+        });
+
+        const lbRef = collection(dbExport, "leaderboard");
         const q = query(
             lbRef,
             where("uid", "==", user.uid),
@@ -516,10 +622,9 @@ export const saveLeaderboardScore = async (
         const snapshot = await getDocs(q);
         
         if (snapshot.docs.length > 3) {
-            // Delete all entries after the top 3
             const docsToDelete = snapshot.docs.slice(3);
             for (const docSnap of docsToDelete) {
-                await deleteDoc(doc(db, "leaderboard", docSnap.id));
+                await deleteDoc(doc(dbExport, "leaderboard", docSnap.id));
             }
         }
     } catch (e) {
@@ -528,47 +633,61 @@ export const saveLeaderboardScore = async (
 };
 
 export const deleteLeaderboardEntry = async (id: string) => {
+    if (!dbExport) return false;
     try {
-        await deleteDoc(doc(db, "leaderboard", id));
+        await deleteDoc(doc(dbExport, "leaderboard", id));
         return true;
     } catch { return false; }
 };
 
 export const getLeaderboard = async (mode: string = 'competitive'): Promise<LeaderboardEntry[]> => {
-    const lbRef = collection(db, "leaderboard");
-    
-    let q;
-    
-    if (mode === 'competitive' || mode.includes('minesweeper') || mode === 'connect_4') {
-        q = query(
-            lbRef, 
-            where("mode", "==", mode),
-            orderBy("sortValue", "asc"),
-            limit(20)
-        );
-    } else {
-        q = query(
-            lbRef, 
-            where("mode", "==", mode),
-            orderBy("sortValue", "desc"),
-            limit(20)
-        );
-    }
-
-    const snapshot = await getDocs(q);
-    
-    const entries: LeaderboardEntry[] = [];
-    const seenUsers = new Set();
-    
-    snapshot.forEach(doc => {
-        const data = doc.data() as any;
-        if (!seenUsers.has(data.uid)) {
-            entries.push({ id: doc.id, ...data } as any);
-            seenUsers.add(data.uid);
+    const getLocal = (): LeaderboardEntry[] => {
+        try {
+            return JSON.parse(localStorage.getItem(`lb_${mode}`) || '[]');
+        } catch {
+            return [];
         }
-    });
+    };
 
-    return entries.slice(0, 10);
+    if (!dbExport) return getLocal();
+
+    try {
+        const lbRef = collection(dbExport, "leaderboard");
+        let q;
+        
+        if (mode === 'competitive' || mode.includes('minesweeper') || mode === 'connect_4') {
+            q = query(
+                lbRef, 
+                where("mode", "==", mode),
+                orderBy("sortValue", "asc"),
+                limit(20)
+            );
+        } else {
+            q = query(
+                lbRef, 
+                where("mode", "==", mode),
+                orderBy("sortValue", "desc"),
+                limit(20)
+            );
+        }
+
+        const snapshot = await getDocs(q);
+        const entries: LeaderboardEntry[] = [];
+        const seenUsers = new Set();
+        
+        snapshot.forEach(d => {
+            const data = d.data() as any;
+            if (!seenUsers.has(data.uid)) {
+                entries.push({ id: d.id, ...data } as any);
+                seenUsers.add(data.uid);
+            }
+        });
+
+        return entries.slice(0, 10);
+    } catch (e) {
+        console.error("Error fetching leaderboard", e);
+        return getLocal();
+    }
 };
 
 // --- Chat System ---
@@ -578,15 +697,20 @@ const getChatId = (uid1: string, uid2: string) => {
 };
 
 export const saveLastChatPartner = async (currentUid: string, partnerUid: string) => {
-    const userRef = doc(db, "users", currentUid);
-    await updateDoc(userRef, { lastChatPartner: partnerUid });
+    if (!dbExport) return;
+    try {
+        const userRef = doc(dbExport, "users", currentUid);
+        await updateDoc(userRef, { lastChatPartner: partnerUid });
+    } catch (e) {
+        console.error("Error saving last chat partner", e);
+    }
 };
 
 export const uploadVoiceMessage = async (blob: Blob, chatId: string): Promise<string | null> => {
     try {
-        if (!storage) return null;
+        if (!storageExport) return null;
         const filename = `voice/${chatId}/${Date.now()}.webm`;
-        const storageRef = ref(storage, filename);
+        const storageRef = ref(storageExport, filename);
         const snapshot = await uploadBytes(storageRef, blob);
         return await getDownloadURL(snapshot.ref);
     } catch (e) {
@@ -597,10 +721,11 @@ export const uploadVoiceMessage = async (blob: Blob, chatId: string): Promise<st
 
 export const sendMessage = async (senderId: string, receiverId: string, content: string, type: 'text' | 'audio' = 'text', audioURL?: string) => {
     if (!content.trim() && type === 'text') return;
+    if (!dbExport) return;
     const chatId = getChatId(senderId, receiverId);
     
     try {
-        await addDoc(collection(db, "messages"), {
+        await addDoc(collection(dbExport, "messages"), {
             chatId,
             senderId,
             receiverId,
@@ -615,16 +740,16 @@ export const sendMessage = async (senderId: string, receiverId: string, content:
 };
 
 export const sendChannelMessage = async (senderId: string, channelId: string, content: string, senderName: string) => {
-    if (!content.trim()) return;
+    if (!content.trim() || !dbExport) return;
     
     try {
-        await addDoc(collection(db, "messages"), {
-            chatId: channelId, // Reuse chatId field for channel ID
+        await addDoc(collection(dbExport, "messages"), {
+            chatId: channelId,
             senderId,
             senderName,
             text: content.trim(),
             timestamp: serverTimestamp(),
-            read: true // Always read for global
+            read: true
         });
     } catch (e) {
         console.error("Error sending channel message:", e);
@@ -632,14 +757,15 @@ export const sendChannelMessage = async (senderId: string, channelId: string, co
 };
 
 export const deleteMessage = async (messageId: string, audioURL?: string) => {
+    if (!dbExport) return;
     try {
-        if (audioURL && storage) {
-             const fileRef = ref(storage, audioURL);
+        if (audioURL && storageExport) {
+             const fileRef = ref(storageExport, audioURL);
              await deleteObject(fileRef).catch(err => {
                  if (err.code !== 'storage/object-not-found') console.error("Error deleting audio file:", err);
              });
         }
-        await deleteDoc(doc(db, "messages", messageId));
+        await deleteDoc(doc(dbExport, "messages", messageId));
     } catch (e) {
         console.error("Error deleting message:", e);
     }
@@ -651,11 +777,9 @@ export const subscribeToChat = (currentUid: string, partnerUid: string, callback
 };
 
 export const subscribeToChannel = (channelId: string, callback: (messages: ChatMessage[]) => void, currentUid?: string) => {
-    const messagesRef = collection(db, "messages");
+    if (!dbExport) return () => {};
+    const messagesRef = collection(dbExport, "messages");
     
-    // We remove orderBy and limit from the server query to avoid requiring composite indices.
-    // This fetches all messages for the chat and we sort/slice them client side.
-    // NOTE: For a massive scale app, this would need pagination/indices, but for this use case it ensures robustness.
     const q = query(
         messagesRef, 
         where("chatId", "==", channelId)
@@ -664,31 +788,28 @@ export const subscribeToChannel = (channelId: string, callback: (messages: ChatM
     return onSnapshot(q, (snapshot) => {
         const msgs: ChatMessage[] = [];
 
-        snapshot.docs.forEach(doc => {
-            const data = doc.data();
+        snapshot.docs.forEach(d => {
+            const data = d.data();
             msgs.push({
-                id: doc.id,
+                id: d.id,
                 ...data
             } as ChatMessage);
         });
         
-        // Sort ascending for display (oldest first)
         msgs.sort((a, b) => {
             const getT = (t: any) => t ? (t.toMillis ? t.toMillis() : (t.seconds ? t.seconds * 1000 : Date.now())) : Date.now();
             return getT(a.timestamp) - getT(b.timestamp);
         });
 
-        // Mark read if it's a private chat
         if (currentUid) {
-            snapshot.docs.forEach(doc => {
-                const data = doc.data();
+            snapshot.docs.forEach(d => {
+                const data = d.data();
                 if (data.receiverId === currentUid && !data.read) {
-                    updateDoc(doc.ref, { read: true });
+                    updateDoc(d.ref, { read: true });
                 }
             });
         }
 
-        // Limit to last 50 for display performance
         const recentMsgs = msgs.length > 50 ? msgs.slice(msgs.length - 50) : msgs;
         callback(recentMsgs);
     }, (error) => {
@@ -697,9 +818,9 @@ export const subscribeToChannel = (channelId: string, callback: (messages: ChatM
 };
 
 export const subscribeToGlobalUnread = (currentUid: string, currentPartnerId: string | null, callback: (hasUnread: boolean) => void) => {
-    const messagesRef = collection(db, "messages");
+    if (!dbExport) return () => {};
+    const messagesRef = collection(dbExport, "messages");
     
-    // Simplification for reliability - check recent messages for user
     const q = query(
         messagesRef,
         where("receiverId", "==", currentUid),
@@ -709,13 +830,16 @@ export const subscribeToGlobalUnread = (currentUid: string, currentPartnerId: st
     return onSnapshot(q, (snapshot) => {
         let hasUnreadFromOthers = false;
 
-        snapshot.docs.forEach(doc => {
-            const data = doc.data();
+        snapshot.docs.forEach(d => {
+            const data = d.data();
             if (data.read === false && data.senderId !== currentPartnerId) {
                 hasUnreadFromOthers = true;
             }
         });
         
         callback(hasUnreadFromOthers);
+    }, () => {
+        callback(false);
     });
 };
+

@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { User, saveLeaderboardScore, incrementGamePlays } from '../services/firebase';
 import { LoadingScreen } from './LoadingScreen';
-import { isMobileDevice } from '../utils/device';
-import { UNIVERSAL_DICTIONARY } from '../constants';
+import { audioService } from '../services/audioService';
+import { WORDLE_WORDS_BY_LENGTH, validateWord } from '../services/wordleService';
 
 interface WordleGameProps {
     user: User;
@@ -13,9 +13,9 @@ interface WordleGameProps {
 }
 
 const ROWS = 6;
-const COLS = 5;
 
-const WordleGame: React.FC<WordleGameProps> = ({ onBackToHub }) => {
+export default function WordleGame({ user, username, onBackToHub }: WordleGameProps) {
+    const [wordLength, setWordLength] = useState<number>(5);
     const [targetWord, setTargetWord] = useState('');
     const [guesses, setGuesses] = useState<string[]>([]);
     const [currentGuess, setCurrentGuess] = useState('');
@@ -23,27 +23,20 @@ const WordleGame: React.FC<WordleGameProps> = ({ onBackToHub }) => {
     const [message, setMessage] = useState('');
     const [shakeRow, setShakeRow] = useState(-1);
     const [streak, setStreak] = useState(0);
-    const [hardMode, setHardMode] = useState(false);
+    const [strictRules, setStrictRules] = useState(false);
     const [pressedKey, setPressedKey] = useState<string | null>(null);
-    const [wordQueue, setWordQueue] = useState<string[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isCheckingWord, setIsCheckingWord] = useState(false);
     const [isWon, setIsWon] = useState(false);
     const [isLost, setIsLost] = useState(false);
     const [showGameOverPopup, setShowGameOverPopup] = useState(false);
 
-    const startNewGame = useCallback(async () => {
+    const startNewGame = useCallback((length: number = wordLength) => {
         setIsLoading(true);
-        let currentQueue = [...wordQueue];
-        if (currentQueue.length === 0) {
-            const fiveLetterWords = UNIVERSAL_DICTIONARY.filter(w => w.length === 5);
-            const shuffled = [...fiveLetterWords].sort(() => 0.5 - Math.random());
-            currentQueue = shuffled.slice(0, 5).map(w => w.toUpperCase());
-        }
-        
-        const word = currentQueue.shift() || 'TACOS';
-        setWordQueue(currentQueue);
-        setTargetWord(word);
+        const pool = WORDLE_WORDS_BY_LENGTH[length] || WORDLE_WORDS_BY_LENGTH[5];
+        const randomWord = pool[Math.floor(Math.random() * pool.length)];
+
+        setTargetWord(randomWord);
         setGuesses([]);
         setCurrentGuess('');
         setGameOver(false);
@@ -53,13 +46,11 @@ const WordleGame: React.FC<WordleGameProps> = ({ onBackToHub }) => {
         setMessage('');
         setIsLoading(false);
         incrementGamePlays('wordle');
-    }, [wordQueue]);
+    }, [wordLength]);
 
-    // Initial load
     useEffect(() => {
-        startNewGame();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+        startNewGame(wordLength);
+    }, [wordLength, startNewGame]);
 
     const getLetterStatus = (letter: string, index: number, guess: string) => {
         if (targetWord[index] === letter) return 'correct';
@@ -82,8 +73,9 @@ const WordleGame: React.FC<WordleGameProps> = ({ onBackToHub }) => {
         setTimeout(() => setPressedKey(null), 100);
 
         if (key === 'ENTER') {
-            if (currentGuess.length !== COLS) {
-                setMessage('Not enough letters');
+            if (currentGuess.length !== wordLength) {
+                audioService.playSound('wrong_answer');
+                setMessage(`Word must be ${wordLength} letters`);
                 setShakeRow(guesses.length);
                 setTimeout(() => setShakeRow(-1), 500);
                 setTimeout(() => setMessage(''), 1500);
@@ -91,44 +83,33 @@ const WordleGame: React.FC<WordleGameProps> = ({ onBackToHub }) => {
             }
 
             setIsCheckingWord(true);
-            let isValidWord = false;
-            
-            if (UNIVERSAL_DICTIONARY.map(w => w.toUpperCase()).includes(currentGuess)) {
-                isValidWord = true;
-            } else {
-                try {
-                    const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${currentGuess}`);
-                    if (res.ok) {
-                        isValidWord = true;
-                    }
-                } catch (e) {
-                    console.error('Dictionary API error', e);
-                    // Fail closed to prevent fake words
-                }
-            }
+            const isValid = await validateWord(currentGuess, wordLength);
+            setIsCheckingWord(false);
 
-            if (!isValidWord) {
-                setIsCheckingWord(false);
+            if (!isValid) {
+                audioService.playSound('wrong_answer');
                 setMessage('Not in word list');
                 setShakeRow(guesses.length);
                 setTimeout(() => setShakeRow(-1), 500);
                 setTimeout(() => setMessage(''), 1500);
                 return;
             }
-            setIsCheckingWord(false);
 
-            if (hardMode && guesses.length > 0) {
+            // Strict rules check
+            if (strictRules && guesses.length > 0) {
                 const lastGuess = guesses[guesses.length - 1];
-                for (let i = 0; i < COLS; i++) {
+                for (let i = 0; i < wordLength; i++) {
                     const status = getLetterStatus(lastGuess[i], i, lastGuess);
                     if (status === 'correct' && currentGuess[i] !== lastGuess[i]) {
-                        setMessage(`Must use ${lastGuess[i]} in position ${i + 1}`);
+                        audioService.playSound('wrong_answer');
+                        setMessage(`Must use ${lastGuess[i]} at position ${i + 1}`);
                         setShakeRow(guesses.length);
                         setTimeout(() => setShakeRow(-1), 500);
                         setTimeout(() => setMessage(''), 1500);
                         return;
                     }
                     if (status === 'present' && !currentGuess.includes(lastGuess[i])) {
+                        audioService.playSound('wrong_answer');
                         setMessage(`Must contain ${lastGuess[i]}`);
                         setShakeRow(guesses.length);
                         setTimeout(() => setShakeRow(-1), 500);
@@ -137,34 +118,49 @@ const WordleGame: React.FC<WordleGameProps> = ({ onBackToHub }) => {
                     }
                 }
             }
-            
+
+            audioService.playSound('tile_click');
             const newGuesses = [...guesses, currentGuess];
             setGuesses(newGuesses);
             setCurrentGuess('');
 
             if (currentGuess === targetWord) {
+                audioService.playSound('correct_answer');
                 setGameOver(true);
-                setStreak(s => s + 1);
+                const newStreak = streak + 1;
+                setStreak(newStreak);
                 setTimeout(() => {
                     setIsWon(true);
-                    setMessage('You won!');
+                    setMessage('Brilliant! 🎉');
                     setShowGameOverPopup(true);
-                }, 1500);
+                }, 1000);
+
+                await saveLeaderboardScore(
+                    user,
+                    username || user.displayName || 'Wordler',
+                    newStreak,
+                    wordLength >= 7 ? 'Wordle Grandmaster' : 'Wordle Virtuoso',
+                    { mistakes: 0, timeTaken: 0, ingredientsMissed: 0, rottenWordsTyped: 0, totalScore: newStreak, levelReached: wordLength },
+                    'wordle'
+                );
             } else if (newGuesses.length >= ROWS) {
+                audioService.playSound('wrong_answer');
                 setGameOver(true);
                 setStreak(0);
                 setTimeout(() => {
                     setIsLost(true);
                     setMessage(`Game Over! The word was ${targetWord}`);
                     setShowGameOverPopup(true);
-                }, 1500);
+                }, 1000);
             }
         } else if (key === 'BACKSPACE') {
+            audioService.playSound('button_click');
             setCurrentGuess(prev => prev.slice(0, -1));
-        } else if (/^[A-Z]$/.test(key) && currentGuess.length < COLS) {
+        } else if (/^[A-Z]$/.test(key) && currentGuess.length < wordLength) {
+            audioService.playSound('button_click');
             setCurrentGuess(prev => prev + key);
         }
-    }, [currentGuess, gameOver, guesses, targetWord, hardMode, isCheckingWord]);
+    }, [currentGuess, gameOver, guesses, targetWord, wordLength, strictRules, isCheckingWord, streak, user, username]);
 
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
@@ -201,136 +197,210 @@ const WordleGame: React.FC<WordleGameProps> = ({ onBackToHub }) => {
     };
 
     return (
-        <div className="flex flex-col items-center justify-center w-full h-full bg-[#000] text-white font-['Inter'] relative overflow-hidden">
-            <div className="absolute inset-0 opacity-10 pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at 20% 30%, #fff 2px, transparent 2px), radial-gradient(circle at 80% 70%, #fff 2px, transparent 2px)', backgroundSize: '100px 100px' }}></div>
-            
-            <div className="flex justify-between items-center w-full max-w-md p-4 z-10">
-                <button onClick={onBackToHub} className="text-2xl hover:scale-110 transition-transform">⬅️</button>
+        <div className="flex flex-col items-center justify-center w-full h-full bg-[#050508] text-white relative overflow-y-auto custom-scrollbar p-3 select-none font-sans">
+            <div className="absolute inset-0 opacity-15 pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at 20% 30%, #22c55e 2px, transparent 2px)', backgroundSize: '70px 70px' }}></div>
+
+            {/* Top Bar */}
+            <div className="flex justify-between items-center w-full max-w-xl mb-3 z-10">
+                <button 
+                    onClick={() => {
+                        audioService.playSound('button_click');
+                        onBackToHub();
+                    }} 
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-neutral-900/80 hover:bg-neutral-800 border border-neutral-700 rounded-full text-sm font-bold transition-transform hover:scale-105"
+                    title="Back to Hub"
+                >
+                    <span>⬅️</span>
+                    <span className="hidden sm:inline">Hub</span>
+                </button>
+
                 <div className="flex flex-col items-center">
-                    <h1 className="text-2xl font-bold font-['Press_Start_2P'] text-[#57a863]">WORDLE</h1>
-                    <div className="text-xs text-[#aaa] mt-1 flex gap-4">
-                        <span>Streak: {streak}</span>
-                        <button 
-                            onClick={() => setHardMode(!hardMode)}
-                            className={`px-2 py-1 rounded transition-colors ${hardMode ? 'bg-red-900 text-white' : 'bg-[#333] text-[#aaa]'}`}
-                            disabled={guesses.length > 0 && !gameOver}
-                        >
-                            Hard Mode: {hardMode ? 'ON' : 'OFF'}
-                        </button>
+                    <h1 className="text-xl md:text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-emerald-500 tracking-wide">
+                        WORDLE
+                    </h1>
+                    <div className="text-xs text-neutral-400 font-bold mt-0.5">
+                        🔥 Streak: <span className="text-amber-400 font-mono text-sm">{streak}</span>
                     </div>
                 </div>
-                <div className="w-8"></div>
+
+                <div className="w-16 flex justify-end">
+                    <button
+                        onClick={() => {
+                            audioService.playSound('button_click');
+                            startNewGame(wordLength);
+                        }}
+                        className="px-2.5 py-1 bg-neutral-800 hover:bg-neutral-700 border border-neutral-600 rounded-full text-xs font-bold text-neutral-300"
+                        title="New Word"
+                    >
+                        🔄
+                    </button>
+                </div>
+            </div>
+
+            {/* Word Length / Hard Mode Pills */}
+            <div className="flex flex-wrap items-center justify-center gap-2 mb-3 z-10">
+                <div className="flex bg-neutral-900/90 border border-neutral-800 p-1 rounded-xl">
+                    {[5, 6, 7, 8, 9].map(len => (
+                        <button
+                            key={len}
+                            onClick={() => {
+                                audioService.playSound('button_click');
+                                setWordLength(len);
+                            }}
+                            className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-all ${
+                                wordLength === len ? 'bg-green-600 text-white shadow' : 'text-neutral-400 hover:text-white'
+                            }`}
+                        >
+                            {len} Letters {len >= 6 ? '🔥' : ''}
+                        </button>
+                    ))}
+                </div>
+
+                <button
+                    onClick={() => {
+                        audioService.playSound('button_click');
+                        setStrictRules(prev => !prev);
+                    }}
+                    className={`px-2.5 py-1 text-xs font-bold rounded-xl border transition-all ${
+                        strictRules ? 'bg-red-950/80 border-red-500 text-red-300' : 'bg-neutral-900 border-neutral-800 text-neutral-400'
+                    }`}
+                    title="Strict rule enforcement"
+                >
+                    Strict Clues: {strictRules ? 'ON' : 'OFF'}
+                </button>
             </div>
 
             {message && !gameOver && (
-                <div className="absolute top-24 bg-white text-black px-4 py-2 rounded font-bold z-20 animate-pop-in">
+                <div className="absolute top-28 bg-neutral-900 text-white border border-amber-500/80 px-4 py-2 rounded-xl font-bold z-30 shadow-xl animate-fade-in text-sm">
                     {message}
                 </div>
             )}
 
             {isLoading ? (
                 <div className="flex-1 flex items-center justify-center z-10 w-full">
-                    <LoadingScreen text="Loading words..." color="#57a863" />
+                    <LoadingScreen text="Generating puzzle..." color="#22c55e" />
                 </div>
             ) : (
                 <>
-                    <div className={`flex flex-col gap-2 mb-8 z-10 mt-4 ${isWon ? 'animate-bounce' : ''} ${isLost ? 'animate-shake' : ''}`}>
-                {Array.from({ length: ROWS }).map((_, rowIndex) => {
-                    const guess = guesses[rowIndex] || (rowIndex === guesses.length ? currentGuess : '');
-                    const isSubmitted = rowIndex < guesses.length;
-
-                    return (
-                        <div key={rowIndex} className={`flex gap-2 ${shakeRow === rowIndex ? 'animate-shake' : ''}`}>
-                            {Array.from({ length: COLS }).map((_, colIndex) => {
-                                const letter = guess[colIndex] || '';
-                                let bgColor = 'bg-transparent';
-                                let borderColor = 'border-[#3a3a3c]';
-                                
-                                if (isSubmitted) {
-                                    const status = getLetterStatus(letter, colIndex, guess);
-                                    if (status === 'correct') { bgColor = 'bg-[#538d4e]'; borderColor = 'border-[#538d4e]'; }
-                                    else if (status === 'present') { bgColor = 'bg-[#b59f3b]'; borderColor = 'border-[#b59f3b]'; }
-                                    else { bgColor = 'bg-[#3a3a3c]'; borderColor = 'border-[#3a3a3c]'; }
-                                } else if (letter) {
-                                    borderColor = 'border-[#565758]';
-                                }
-
-                                return (
-                                    <div 
-                                        key={colIndex} 
-                                        className={`w-14 h-14 md:w-16 md:h-16 border-2 flex items-center justify-center text-2xl md:text-3xl font-bold uppercase ${bgColor} ${borderColor} transition-colors duration-500 ${isSubmitted ? 'animate-flip-in-x' : letter ? 'animate-pop-in' : ''}`}
-                                        style={{ animationDelay: isSubmitted ? `${colIndex * 0.1}s` : '0s' }}
-                                    >
-                                        {letter}
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    );
-                })}
-            </div>
-
-            <div className="flex flex-col gap-2 w-full max-w-lg px-2 z-10">
-                {keyboardRows.map((row, i) => (
-                    <div key={i} className="flex justify-center gap-1 md:gap-2">
-                        {row.map(key => {
-                            const status = getKeyStatus(key);
-                            let bgColor = 'bg-[#818384]';
-                            if (status === 'correct') bgColor = 'bg-[#538d4e]';
-                            else if (status === 'present') bgColor = 'bg-[#b59f3b]';
-                            else if (status === 'absent') bgColor = 'bg-[#3a3a3c]';
-
-                            const isPressed = pressedKey === key;
+                    {/* Letter Grid */}
+                    <div className={`flex flex-col gap-1.5 sm:gap-2 mb-4 z-10 ${isWon ? 'animate-bounce' : ''} ${isLost ? 'animate-shake' : ''}`}>
+                        {Array.from({ length: ROWS }).map((_, rowIndex) => {
+                            const guess = guesses[rowIndex] || (rowIndex === guesses.length ? currentGuess : '');
+                            const isSubmitted = rowIndex < guesses.length;
 
                             return (
-                                <button
-                                    key={key}
-                                    onClick={() => handleKeyPress(key)}
-                                    className={`${bgColor} hover:opacity-80 text-white font-bold rounded ${key.length > 1 ? 'px-2 md:px-4 text-xs md:text-sm' : 'w-8 md:w-10 text-sm md:text-base'} h-12 md:h-14 flex items-center justify-center transition-all ${isPressed ? 'scale-90 brightness-150' : ''}`}
-                                >
-                                    {key === 'BACKSPACE' ? '⌫' : key}
-                                </button>
+                                <div key={rowIndex} className={`flex gap-1.5 sm:gap-2 ${shakeRow === rowIndex ? 'animate-shake' : ''}`}>
+                                    {Array.from({ length: wordLength }).map((_, colIndex) => {
+                                        const letter = guess[colIndex] || '';
+                                        let bgColor = 'bg-neutral-950';
+                                        let borderColor = 'border-neutral-800';
+                                        
+                                        if (isSubmitted) {
+                                            const status = getLetterStatus(letter, colIndex, guess);
+                                            if (status === 'correct') { 
+                                                bgColor = 'bg-green-600 text-white'; 
+                                                borderColor = 'border-green-500 shadow-[0_0_10px_rgba(34,197,94,0.5)]'; 
+                                            } else if (status === 'present') { 
+                                                bgColor = 'bg-amber-500 text-black'; 
+                                                borderColor = 'border-amber-400'; 
+                                            } else { 
+                                                bgColor = 'bg-neutral-800 text-neutral-400'; 
+                                                borderColor = 'border-neutral-700'; 
+                                            }
+                                        } else if (letter) {
+                                            borderColor = 'border-neutral-500 bg-neutral-900';
+                                        }
+
+                                        const boxSize = wordLength >= 8 
+                                            ? 'w-9 h-10 sm:w-11 sm:h-12 text-lg sm:text-xl' 
+                                            : wordLength === 7
+                                            ? 'w-10 h-11 sm:w-12 sm:h-13 text-xl sm:text-2xl'
+                                            : 'w-11 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 text-2xl sm:text-3xl';
+
+                                        return (
+                                            <div 
+                                                key={colIndex} 
+                                                className={`${boxSize} border-2 rounded-xl flex items-center justify-center font-black uppercase ${bgColor} ${borderColor} transition-all duration-300 ${isSubmitted ? 'animate-flip-in-x' : letter ? 'scale-105' : ''}`}
+                                                style={{ animationDelay: isSubmitted ? `${colIndex * 0.08}s` : '0s' }}
+                                            >
+                                                {letter}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
                             );
                         })}
                     </div>
-                ))}
-            </div>
 
-            {showGameOverPopup && (
-                <div className="absolute inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-                    <div className={`bg-[#1a1a1b] border ${isWon ? 'border-[#538d4e]' : 'border-[#ff2a2a]'} rounded-lg p-8 max-w-sm w-full flex flex-col items-center gap-6 animate-pop-in shadow-[0_0_30px_rgba(0,0,0,0.5)] ${isWon ? 'shadow-[#538d4e]/30' : 'shadow-[#ff2a2a]/30'}`}>
-                        <h2 className={`text-2xl font-bold font-['Press_Start_2P'] text-center ${isWon ? 'text-[#538d4e]' : 'text-[#ff2a2a]'}`}>
-                            {isWon ? 'YOU WON!' : 'GAME OVER'}
-                        </h2>
-                        
-                        <div className="text-center">
-                            <p className="text-[#aaa] mb-2">The word was</p>
-                            <div className="text-3xl font-bold text-white tracking-widest uppercase">
-                                {targetWord}
+                    {/* Virtual Keyboard */}
+                    <div className="flex flex-col gap-1.5 w-full max-w-lg px-2 z-10">
+                        {keyboardRows.map((row, i) => (
+                            <div key={i} className="flex justify-center gap-1 sm:gap-1.5">
+                                {row.map(key => {
+                                    const status = getKeyStatus(key);
+                                    let bgColor = 'bg-neutral-800 text-neutral-200 border-neutral-700';
+                                    if (status === 'correct') bgColor = 'bg-green-600 text-white border-green-500';
+                                    else if (status === 'present') bgColor = 'bg-amber-500 text-black border-amber-400';
+                                    else if (status === 'absent') bgColor = 'bg-neutral-900 text-neutral-600 border-neutral-900';
+
+                                    const isPressed = pressedKey === key;
+
+                                    return (
+                                        <button
+                                            key={key}
+                                            onClick={() => handleKeyPress(key)}
+                                            className={`${bgColor} border active:scale-95 font-black rounded-lg ${
+                                                key.length > 1 ? 'px-2 sm:px-3 text-xs' : 'w-7 sm:w-9 md:w-10 text-sm sm:text-base'
+                                            } h-11 sm:h-12 flex items-center justify-center transition-all ${isPressed ? 'scale-90 brightness-150' : ''}`}
+                                        >
+                                            {key === 'BACKSPACE' ? '⌫' : key}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        ))}
+                    </div>
+
+                    {/* Result Popup */}
+                    {showGameOverPopup && (
+                        <div className="fixed inset-0 bg-black/85 flex items-center justify-center z-50 p-4">
+                            <div className={`bg-neutral-900 border-2 ${isWon ? 'border-green-500' : 'border-red-500'} rounded-2xl p-6 sm:p-8 max-w-sm w-full flex flex-col items-center gap-5 shadow-2xl animate-fade-in`}>
+                                <h2 className={`text-2xl font-black text-center ${isWon ? 'text-green-400' : 'text-red-400'}`}>
+                                    {isWon ? '🎉 YOU WON!' : '😢 GAME OVER'}
+                                </h2>
+                                
+                                <div className="text-center bg-neutral-950 p-4 rounded-xl w-full border border-neutral-800">
+                                    <p className="text-neutral-400 text-xs uppercase font-bold mb-1">The secret word was:</p>
+                                    <div className="text-2xl sm:text-3xl font-black text-white tracking-widest uppercase text-green-400">
+                                        {targetWord}
+                                    </div>
+                                </div>
+
+                                <div className="flex gap-3 w-full">
+                                    <button 
+                                        onClick={() => {
+                                            audioService.playSound('button_click');
+                                            onBackToHub();
+                                        }}
+                                        className="flex-1 py-3 bg-neutral-800 hover:bg-neutral-700 text-white font-bold rounded-xl transition-colors text-sm"
+                                    >
+                                        Hub
+                                    </button>
+                                    <button 
+                                        onClick={() => {
+                                            audioService.playSound('button_click');
+                                            startNewGame(wordLength);
+                                        }}
+                                        className="flex-1 py-3 bg-green-600 hover:bg-green-500 text-white font-bold rounded-xl transition-colors shadow-lg text-sm"
+                                    >
+                                        Next Word
+                                    </button>
+                                </div>
                             </div>
                         </div>
-
-                        <div className="flex gap-4 w-full mt-4">
-                            <button 
-                                onClick={onBackToHub}
-                                className="flex-1 py-3 bg-[#3a3a3c] text-white font-bold rounded hover:bg-[#565758] transition-colors font-['Press_Start_2P'] text-xs"
-                            >
-                                HOME
-                            </button>
-                            <button 
-                                onClick={startNewGame}
-                                className="flex-1 py-3 bg-[#538d4e] text-white font-bold rounded hover:bg-[#468a4f] transition-colors font-['Press_Start_2P'] text-xs"
-                            >
-                                REPLAY
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
+                    )}
                 </>
             )}
         </div>
     );
-};
-
-export default WordleGame;
+}

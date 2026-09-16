@@ -35,12 +35,12 @@ import IQGame from './IQGame';
 import MinesweeperGame from './MinesweeperGame';
 import WordleGame from './WordleGame';
 import AngleGame from './AngleGame';
-import MoreLessGame from './MoreLessGame';
 import SpellingBeeGame from './SpellingBeeGame';
 import TicTacToeGame from './TicTacToeGame';
 import Connect4Game from './Connect4Game';
 import GunGameComponent from './GunGameComponent';
 import ColorMemoryComponent from './ColorMemoryComponent';
+import ParticlePhysicsComponent from './ParticlePhysicsComponent';
 import { LeaderboardWidget } from './Overlays'; // Import LeaderboardWidget
 import { 
   StartScreen, 
@@ -61,11 +61,22 @@ import { useSettings } from '../contexts/SettingsContext';
 interface GameProps {
   user: User;
   onLogout: () => void;
+  customUsername?: string | null;
+  onUpdateUsername?: (name: string) => void;
+  onGoogleSignIn?: () => Promise<void>;
 }
 
-export default function Game({ user, onLogout }: GameProps) {
+type AppId = 'taco' | 'iq' | 'mine' | 'wordle' | 'angle' | 'more-less' | 'spelling-bee' | 'tic-tac-toe' | 'connect-4' | 'gun-game' | 'color-memory' | 'particle-physics';
+
+export default function Game({ 
+  user, 
+  onLogout, 
+  customUsername: propUsername, 
+  onUpdateUsername, 
+  onGoogleSignIn 
+}: GameProps) {
   // --- Global App State ---
-  const [activeApp, setActiveApp] = useState<'taco' | 'iq' | 'mine' | 'wordle' | 'angle' | 'more-less' | 'spelling-bee' | 'tic-tac-toe' | 'connect-4' | 'gun-game' | 'color-memory'>('taco');
+  const [activeApp, setActiveApp] = useState<AppId>('taco');
 
   // --- Taco Game State ---
   const [screen, setScreen] = useState<GameScreen>('hub');
@@ -88,8 +99,88 @@ export default function Game({ user, onLogout }: GameProps) {
   const [shake, setShake] = useState(false);
   const [showInfoModal, setShowInfoModal] = useState(false);
   const [infoModalText, setInfoModalText] = useState('');
-  const [customUsername, setCustomUsername] = useState<string | null>(null);
+  const [customUsername, setCustomUsername] = useState<string | null>(propUsername || null);
   const [showExitConfirm, setShowExitConfirm] = useState(false);
+
+  useEffect(() => {
+    if (propUsername !== undefined) {
+      setCustomUsername(propUsername);
+    }
+  }, [propUsername]);
+
+  // Browser Navigation & URL Routing handling
+  const parseRoute = useCallback((hashStr: string): { app: AppId, screen: GameScreen } => {
+    const clean = hashStr.replace(/^#\/?/, '').toLowerCase().trim();
+    if (!clean || clean === 'hub') {
+      return { app: 'taco', screen: 'hub' };
+    }
+    if (clean.startsWith('taco/')) {
+      const sub = clean.replace('taco/', '');
+      const validScreens: GameScreen[] = ['hub', 'start', 'mode-select', 'level-select', 'playing', 'speed-test-playing', 'speed-test-result', 'paused', 'game-over', 'level-complete', 'boss-intro'];
+      if (validScreens.includes(sub as GameScreen)) {
+        return { app: 'taco', screen: sub as GameScreen };
+      }
+      return { app: 'taco', screen: 'start' };
+    }
+    if (clean === 'taco') return { app: 'taco', screen: 'start' };
+
+    const validApps: AppId[] = ['iq', 'mine', 'wordle', 'angle', 'spelling-bee', 'tic-tac-toe', 'connect-4', 'gun-game', 'color-memory', 'particle-physics'];
+    if (validApps.includes(clean as AppId)) {
+      return { app: clean as AppId, screen: 'hub' };
+    }
+    return { app: 'taco', screen: 'hub' };
+  }, []);
+
+  const navigateTo = useCallback((app: AppId, scr?: GameScreen, replace = false) => {
+    const targetScreen = scr || (app === 'taco' ? 'hub' : 'hub');
+    const hash = app === 'taco' ? (targetScreen === 'hub' ? '#/hub' : `#/taco/${targetScreen}`) : `#/${app}`;
+
+    if (window.location.hash !== hash) {
+      if (replace) {
+        window.history.replaceState({ app, screen: targetScreen }, '', hash);
+      } else {
+        window.history.pushState({ app, screen: targetScreen }, '', hash);
+      }
+    }
+    setActiveApp(app);
+    if (scr) setScreen(scr);
+  }, []);
+
+  const handleBackToHub = useCallback(() => {
+    if (window.history.length > 1 && window.location.hash && window.location.hash !== '#/hub' && window.location.hash !== '#') {
+      window.history.back();
+    } else {
+      navigateTo('taco', 'hub');
+    }
+  }, [navigateTo]);
+
+  useEffect(() => {
+    const handlePopState = (e: PopStateEvent) => {
+      if (e.state && e.state.app) {
+        setActiveApp(e.state.app);
+        if (e.state.screen) setScreen(e.state.screen);
+      } else {
+        const route = parseRoute(window.location.hash);
+        setActiveApp(route.app);
+        setScreen(route.screen);
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+
+    // Initial load sync
+    if (window.location.hash) {
+      const initialRoute = parseRoute(window.location.hash);
+      setActiveApp(initialRoute.app);
+      setScreen(initialRoute.screen);
+    } else {
+      window.history.replaceState({ app: 'taco', screen: 'hub' }, '', '#/hub');
+    }
+
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, [parseRoute]);
   
   const [gameDimensions, setGameDimensions] = useState({ width: window.innerWidth, height: window.innerHeight });
   const [isMobile, setIsMobile] = useState(false);
@@ -483,6 +574,7 @@ export default function Game({ user, onLogout }: GameProps) {
 
   const handleUpdateUsername = async (name: string) => {
       setCustomUsername(name);
+      if (onUpdateUsername) onUpdateUsername(name);
       await saveUsername(user.uid, name);
   };
 
@@ -952,7 +1044,7 @@ export default function Game({ user, onLogout }: GameProps) {
         {activeApp === 'iq' ? (
              <IQGame 
                 user={user}
-                onBackToHub={() => setActiveApp('taco')}
+                onBackToHub={handleBackToHub}
                 username={customUsername}
                 onUpdateUsername={handleUpdateUsername}
                 onLogout={onLogout}
@@ -960,7 +1052,7 @@ export default function Game({ user, onLogout }: GameProps) {
         ) : activeApp === 'mine' ? (
              <MinesweeperGame 
                 user={user}
-                onBackToHub={() => setActiveApp('taco')}
+                onBackToHub={handleBackToHub}
                 username={customUsername}
                 onUpdateUsername={handleUpdateUsername}
                 onLogout={onLogout}
@@ -968,7 +1060,7 @@ export default function Game({ user, onLogout }: GameProps) {
         ) : activeApp === 'wordle' ? (
              <WordleGame 
                 user={user}
-                onBackToHub={() => setActiveApp('taco')}
+                onBackToHub={handleBackToHub}
                 username={customUsername}
                 onUpdateUsername={handleUpdateUsername}
                 onLogout={onLogout}
@@ -976,15 +1068,7 @@ export default function Game({ user, onLogout }: GameProps) {
         ) : activeApp === 'angle' ? (
              <AngleGame 
                 user={user}
-                onBackToHub={() => setActiveApp('taco')}
-                username={customUsername}
-                onUpdateUsername={handleUpdateUsername}
-                onLogout={onLogout}
-             />
-        ) : activeApp === 'more-less' ? (
-             <MoreLessGame 
-                user={user}
-                onBackToHub={() => setActiveApp('taco')}
+                onBackToHub={handleBackToHub}
                 username={customUsername}
                 onUpdateUsername={handleUpdateUsername}
                 onLogout={onLogout}
@@ -992,7 +1076,7 @@ export default function Game({ user, onLogout }: GameProps) {
         ) : activeApp === 'spelling-bee' ? (
              <SpellingBeeGame 
                 user={user}
-                onBackToHub={() => setActiveApp('taco')}
+                onBackToHub={handleBackToHub}
                 username={customUsername}
                 onUpdateUsername={handleUpdateUsername}
                 onLogout={onLogout}
@@ -1000,7 +1084,7 @@ export default function Game({ user, onLogout }: GameProps) {
         ) : activeApp === 'tic-tac-toe' ? (
              <TicTacToeGame 
                 user={user}
-                onBackToHub={() => setActiveApp('taco')}
+                onBackToHub={handleBackToHub}
                 username={customUsername}
                 onUpdateUsername={handleUpdateUsername}
                 onLogout={onLogout}
@@ -1008,33 +1092,36 @@ export default function Game({ user, onLogout }: GameProps) {
         ) : activeApp === 'connect-4' ? (
              <Connect4Game 
                 user={user}
-                onBackToHub={() => setActiveApp('taco')}
+                onBackToHub={handleBackToHub}
                 username={customUsername}
                 onUpdateUsername={handleUpdateUsername}
                 onLogout={onLogout}
              />
         ) : activeApp === 'gun-game' ? (
             <GunGameComponent 
-                onBackToHub={() => setActiveApp('taco')}
+                onBackToHub={handleBackToHub}
             />
         ) : activeApp === 'color-memory' ? (
             <ColorMemoryComponent 
-                onBackToHub={() => setActiveApp('taco')}
+                onBackToHub={handleBackToHub}
+            />
+        ) : activeApp === 'particle-physics' ? (
+            <ParticlePhysicsComponent 
+                onBackToHub={handleBackToHub}
             />
         ) : screen === 'hub' ? (
              <HubScreen 
                 user={user} 
-                onLaunchGame={() => setScreen('start')}
-                onLaunchIQ={() => setActiveApp('iq')}
-                onLaunchMinesweeper={() => setActiveApp('mine')}
-                onLaunchWordle={() => setActiveApp('wordle')}
-                onLaunchAngle={() => setActiveApp('angle')}
-                onLaunchMoreLess={() => setActiveApp('more-less')}
-                onLaunchSpellingBee={() => setActiveApp('spelling-bee')}
-                onLaunchTicTacToe={() => setActiveApp('tic-tac-toe')}
-                onLaunchConnect4={() => setActiveApp('connect-4')}
+                onLaunchGame={() => navigateTo('taco', 'start')}
+                onLaunchIQ={() => navigateTo('iq')}
+                onLaunchMinesweeper={() => navigateTo('mine')}
+                onLaunchWordle={() => navigateTo('wordle')}
+                onLaunchAngle={() => navigateTo('angle')}
+                onLaunchSpellingBee={() => navigateTo('spelling-bee')}
+                onLaunchTicTacToe={() => navigateTo('tic-tac-toe')}
+                onLaunchConnect4={() => navigateTo('connect-4')}
                 onLaunchGunGame={() => {
-                    setActiveApp('gun-game');
+                    navigateTo('gun-game');
                     try {
                         if (document.documentElement.requestFullscreen) {
                             document.documentElement.requestFullscreen();
@@ -1047,10 +1134,12 @@ export default function Game({ user, onLogout }: GameProps) {
                         console.warn("Fullscreen request failed:", err);
                     }
                 }}
-                onLaunchColorMemory={() => setActiveApp('color-memory')}
+                onLaunchColorMemory={() => navigateTo('color-memory')}
+                onLaunchParticlePhysics={() => navigateTo('particle-physics')}
                 onLogout={onLogout}
                 username={customUsername}
                 onUpdateUsername={handleUpdateUsername}
+                onGoogleSignIn={onGoogleSignIn}
              />
         ) : (
             // --- TACO TYPER GAME ---
@@ -1079,8 +1168,14 @@ export default function Game({ user, onLogout }: GameProps) {
                 )}
 
                 {screen === 'playing' && (
-                    <div className="absolute top-0 left-0 w-full p-2 box-border bg-white/10 z-10 hidden md:flex flex-col gap-2" style={{ color: COLORS.text }}>
-                        <div className="flex justify-between w-full text-[10px] md:text-base">
+                    <div className="absolute top-0 left-0 w-full p-2 box-border bg-black/40 backdrop-blur-xs z-10 flex flex-col gap-1.5" style={{ color: COLORS.text }}>
+                        <div className="flex justify-between items-center w-full text-[10px] md:text-sm font-bold">
+                            <button
+                                onClick={() => setScreen('paused')}
+                                className="px-2 py-0.5 bg-neutral-900 border border-neutral-700 hover:border-white rounded text-[10px] md:text-xs text-white cursor-pointer"
+                            >
+                                ⏸️ Menu
+                            </button>
                             <div>
                                 {playStyle === 'competitive' ? `Time: ${formatTimer(elapsedTime)}` : `Score: ${score}`}
                             </div>
@@ -1092,7 +1187,7 @@ export default function Game({ user, onLogout }: GameProps) {
                             </div>
                         </div>
                         {(screen === 'playing' || streak > 0) && (
-                            <div className="w-full h-1.5 md:h-2.5 bg-[#333] border-2 relative" style={{ borderColor: COLORS.text }}>
+                            <div className="w-full h-1.5 md:h-2 bg-[#333] border relative" style={{ borderColor: COLORS.text }}>
                                 <div 
                                     className="h-full transition-all duration-300 ease-out"
                                     style={{ 
@@ -1100,7 +1195,7 @@ export default function Game({ user, onLogout }: GameProps) {
                                         backgroundColor: streak < COMBO_FIESTA ? '#aaa' : (streak < COMBO_SPICY ? COLORS.comboRed : COLORS.comboPurple)
                                     }}
                                 />
-                                <div className="absolute top-2 md:top-3 left-1/2 transform -translate-x-1/2 text-[8px] md:text-[12px] text-[#aaa] shadow-black drop-shadow-md">
+                                <div className="absolute top-2 md:top-2.5 left-1/2 transform -translate-x-1/2 text-[8px] md:text-[10px] text-[#aaa] shadow-black drop-shadow-md">
                                     Streak: {streak}
                                 </div>
                             </div>
@@ -1141,7 +1236,7 @@ export default function Game({ user, onLogout }: GameProps) {
                             initGame('universal');
                         }}
                         onSpeedTest={startSpeedTest}
-                        onBackToHub={() => setScreen('hub')}
+                        onBackToHub={() => navigateTo('taco', 'hub')}
                         user={user}
                         isGenerating={isGenerating}
                         username={customUsername}
@@ -1208,6 +1303,7 @@ export default function Game({ user, onLogout }: GameProps) {
                         message={infoModalText}
                         stats={gameMode === 'infinite' ? `Reached Speed: ${stateRef.current.infiniteConfig.speedMult.toFixed(1)}x` : undefined}
                         onRestart={() => setScreen('start')}
+                        onHome={() => navigateTo('taco', 'hub')}
                         aiTitle={finalAiTitle}
                         aiScore={finalAiScore}
                         isCalculating={isCalculatingScore}
@@ -1216,7 +1312,11 @@ export default function Game({ user, onLogout }: GameProps) {
                 )}
 
                 {screen === 'paused' && !showExitConfirm && (
-                    <PauseScreen onResume={() => setScreen('playing')} onQuit={handleQuitAttempt} />
+                    <PauseScreen 
+                        onResume={() => setScreen('playing')} 
+                        onQuit={handleQuitAttempt} 
+                        onHome={() => navigateTo('taco', 'hub')}
+                    />
                 )}
 
                 {showExitConfirm && (

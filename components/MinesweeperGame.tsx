@@ -1,9 +1,5 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { User, saveLeaderboardScore, incrementGamePlays } from '../services/firebase';
-import { RandomReveal, RandomText } from './Visuals';
-import { LeaderboardWidget, SettingsModal, Button } from './Overlays';
-import ChatWidget from './ChatWidget';
 import { isMobileDevice } from '../utils/device';
 import { audioService } from '../services/audioService';
 
@@ -28,28 +24,35 @@ interface Cell {
 
 const CONFIG = {
     beginner: { rows: 9, cols: 9, mines: 10, name: 'Beginner' },
-    intermediate: { rows: 16, cols: 16, mines: 40, name: 'Intermediate' },
-    expert: { rows: 16, cols: 30, mines: 99, name: 'Expert' }
+    intermediate: { rows: 14, cols: 14, mines: 32, name: 'Intermediate' },
+    expert: { rows: 16, cols: 24, mines: 64, name: 'Expert' }
 };
 
-const MinesweeperGame: React.FC<MinesweeperGameProps> = ({ user, onBackToHub, username, onUpdateUsername, onLogout }) => {
+const NUMBER_COLORS = [
+    '',
+    '#3b82f6', // 1: Blue
+    '#22c55e', // 2: Green
+    '#ef4444', // 3: Red
+    '#8b5cf6', // 4: Purple
+    '#f97316', // 5: Orange
+    '#06b6d4', // 6: Cyan
+    '#ec4899', // 7: Pink
+    '#e2e8f0', // 8: Gray-white
+];
+
+export default function MinesweeperGame({ user, onBackToHub, username }: MinesweeperGameProps) {
     const [difficulty, setDifficulty] = useState<Difficulty>('beginner');
     const [grid, setGrid] = useState<Cell[][]>([]);
     const [gameState, setGameState] = useState<'menu' | 'playing' | 'won' | 'lost'>('menu');
-    const [minesLeft, setMinesLeft] = useState(0);
+    const [minesLeft, setMinesLeft] = useState(10);
     const [timer, setTimer] = useState(0);
     const [firstClick, setFirstClick] = useState(true);
-    const [boardId, setBoardId] = useState(0);
-    
-    // New State for Mobile Selection
-    const [selectedCell, setSelectedCell] = useState<{r: number, c: number} | null>(null);
-    
-    const [showSettings, setShowSettings] = useState(false);
+    const [touchMode, setTouchMode] = useState<'dig' | 'flag'>('dig');
     const [isMobile, setIsMobile] = useState(false);
-    const [showMobileLeaderboard, setShowMobileLeaderboard] = useState(false);
 
     const timerRef = useRef<number | null>(null);
-    
+    const longPressTimer = useRef<number | null>(null);
+
     const displayableName = username || user.displayName || 'Player';
 
     useEffect(() => {
@@ -86,13 +89,12 @@ const MinesweeperGame: React.FC<MinesweeperGameProps> = ({ user, onBackToHub, us
             }
             newGrid.push(row);
         }
+        setDifficulty(diff);
         setGrid(newGrid);
         setMinesLeft(mines);
         setTimer(0);
         setFirstClick(true);
         setGameState('playing');
-        setBoardId(prev => prev + 1);
-        setSelectedCell(null);
         incrementGamePlays('minesweeper');
     };
 
@@ -113,7 +115,7 @@ const MinesweeperGame: React.FC<MinesweeperGameProps> = ({ user, onBackToHub, us
         }
 
         for (let r = 0; r < rows; r++) {
-            for (let c = 0; r < rows && c < cols; c++) {
+            for (let c = 0; c < cols; c++) {
                 if (!newGrid[r][c].isMine) {
                     let count = 0;
                     for (let dr = -1; dr <= 1; dr++) {
@@ -133,7 +135,8 @@ const MinesweeperGame: React.FC<MinesweeperGameProps> = ({ user, onBackToHub, us
     };
 
     const revealCell = (r: number, c: number, currentGrid: Cell[][]) => {
-        if (r < 0 || r >= CONFIG[difficulty].rows || c < 0 || c >= CONFIG[difficulty].cols) return;
+        const { rows, cols } = CONFIG[difficulty];
+        if (r < 0 || r >= rows || c < 0 || c >= cols) return;
         if (currentGrid[r][c].isRevealed || currentGrid[r][c].isFlagged) return;
 
         currentGrid[r][c].isRevealed = true;
@@ -147,23 +150,8 @@ const MinesweeperGame: React.FC<MinesweeperGameProps> = ({ user, onBackToHub, us
         }
     };
 
-    const handleCellInteraction = (r: number, c: number) => {
-        if (gameState !== 'playing') return;
-        
-        if (isMobile) {
-            // Mobile: Select cell for popup if not revealed
-            if (!grid[r][c].isRevealed) {
-                setSelectedCell({r, c});
-                audioService.playSound('type'); // Feedback click
-            }
-        } else {
-            // Desktop: Dig directly
-            handleCellClick(r, c);
-        }
-    };
-
-    const handleCellClick = (r: number, c: number) => {
-        if (gameState !== 'playing' || grid[r][c].isFlagged) return;
+    const handleDig = (r: number, c: number) => {
+        if (gameState !== 'playing' || grid[r][c].isFlagged || grid[r][c].isRevealed) return;
 
         let currentGrid = [...grid];
         if (firstClick) {
@@ -172,8 +160,8 @@ const MinesweeperGame: React.FC<MinesweeperGameProps> = ({ user, onBackToHub, us
         }
 
         if (currentGrid[r][c].isMine) {
-            audioService.playSound('mine_explode');
-            if (navigator.vibrate) navigator.vibrate([100, 50, 100, 50, 300]);
+            audioService.playSound('wrong_answer');
+            if (navigator.vibrate) navigator.vibrate([100, 50, 200]);
             
             currentGrid[r][c].isRevealed = true;
             currentGrid.forEach(row => row.forEach(cell => {
@@ -184,7 +172,7 @@ const MinesweeperGame: React.FC<MinesweeperGameProps> = ({ user, onBackToHub, us
             return;
         }
 
-        audioService.playSound('mine_click');
+        audioService.playSound('tile_click');
         revealCell(r, c, currentGrid);
         setGrid([...currentGrid]);
 
@@ -194,238 +182,260 @@ const MinesweeperGame: React.FC<MinesweeperGameProps> = ({ user, onBackToHub, us
         }));
 
         if (unrevealedSafe === 0) {
-            audioService.playSound('mine_win');
+            audioService.playSound('correct_answer');
             setGameState('won');
-            handleWin();
+            saveLeaderboardScore(
+                user, displayableName, timer, `${CONFIG[difficulty].name} Master`, 
+                { mistakes: 0, timeTaken: timer, ingredientsMissed: 0, rottenWordsTyped: 0, totalScore: Math.max(10, 500 - timer), levelReached: 1 }, 
+                `minesweeper-${difficulty}`
+            );
         }
     };
 
-    const handleRightClick = (e: React.MouseEvent | null, r: number, c: number) => {
-        if (e) e.preventDefault();
+    const handleFlag = (r: number, c: number) => {
         if (gameState !== 'playing' || grid[r][c].isRevealed) return;
 
+        audioService.playSound('button_click');
         const newGrid = [...grid];
-        newGrid[r][c].isFlagged = !newGrid[r][c].isFlagged;
+        const newFlagState = !newGrid[r][c].isFlagged;
+        newGrid[r][c].isFlagged = newFlagState;
         setGrid(newGrid);
-        setMinesLeft(prev => newGrid[r][c].isFlagged ? prev - 1 : prev + 1);
-        audioService.playSound('mine_flag');
-        if (navigator.vibrate) navigator.vibrate(50);
+        setMinesLeft(prev => newFlagState ? prev - 1 : prev + 1);
+        if (navigator.vibrate) navigator.vibrate(40);
     };
 
-    const handleWin = async () => {
-        if (!user || !displayableName) return;
-        await saveLeaderboardScore(
-            user, displayableName, timer, "Expert Defuser", 
-            { mistakes: 0, timeTaken: timer, ingredientsMissed: 0, rottenWordsTyped: 0, totalScore: 0, levelReached: 1 }, 
-            `minesweeper-${difficulty}`
-        );
-    };
-
-    const handleMobileAction = (action: 'dig' | 'flag') => {
-        if (!selectedCell) return;
-        
-        if (action === 'dig') {
-            handleCellClick(selectedCell.r, selectedCell.c);
+    const handleCellClick = (r: number, c: number) => {
+        if (touchMode === 'flag') {
+            handleFlag(r, c);
         } else {
-            handleRightClick(null, selectedCell.r, selectedCell.c);
+            handleDig(r, c);
         }
-        setSelectedCell(null);
     };
 
-    const cellSize = isMobile ? '32px' : '30px';
+    const handleContextMenu = (e: React.MouseEvent, r: number, c: number) => {
+        e.preventDefault();
+        handleFlag(r, c);
+    };
+
+    const handleTouchStart = (r: number, c: number) => {
+        longPressTimer.current = window.setTimeout(() => {
+            handleFlag(r, c);
+            longPressTimer.current = null;
+        }, 450);
+    };
+
+    const handleTouchEnd = () => {
+        if (longPressTimer.current) {
+            clearTimeout(longPressTimer.current);
+            longPressTimer.current = null;
+        }
+    };
 
     return (
-        <div className="flex h-full w-full bg-[#000] text-white overflow-hidden relative font-['Inter',_sans-serif]">
-            {/* Random Doodles */}
-            <div className="absolute inset-0 opacity-10 pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at 70% 30%, #57a863 2px, transparent 2px), radial-gradient(circle at 30% 70%, #57a863 2px, transparent 2px)', backgroundSize: '100px 100px' }}></div>
-            
-            {!isMobile && (
-                <div className="flex flex-col absolute top-0 right-0 h-full w-[300px] z-[50] border-l border-[#333] animate-fade-in" style={{ animationDelay: '0.2s' }}>
-                    <LeaderboardWidget className="h-[66%] border-b-0" allowedModes={['minesweeper-beginner', 'minesweeper-intermediate', 'minesweeper-expert']} defaultMode={`minesweeper-${difficulty}`} />
-                    <ChatWidget user={user} className="h-[34%]" />
+        <div className="flex flex-col items-center justify-center w-full h-full bg-[#050508] text-white relative overflow-y-auto custom-scrollbar p-3 select-none font-sans">
+            <div className="absolute inset-0 opacity-15 pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at 70% 30%, #ef4444 2px, transparent 2px)', backgroundSize: '70px 70px' }}></div>
+
+            {/* Top Bar */}
+            <div className="flex justify-between items-center w-full max-w-xl mb-3 z-10">
+                <button 
+                    onClick={() => {
+                        audioService.playSound('button_click');
+                        onBackToHub();
+                    }} 
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-neutral-900/80 hover:bg-neutral-800 border border-neutral-700 rounded-full text-sm font-bold transition-transform hover:scale-105"
+                    title="Back to Hub"
+                >
+                    <span>⬅️</span>
+                    <span className="hidden sm:inline">Hub</span>
+                </button>
+
+                <div className="flex flex-col items-center">
+                    <h1 className="text-xl md:text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-red-400 to-amber-500 tracking-wide">
+                        MINESWEEPER
+                    </h1>
                 </div>
-            )}
-            
-             {isMobile && (
-                <>
-                    <div className="absolute top-4 right-4 z-[60]">
-                        <button onClick={() => setShowMobileLeaderboard(true)} className="text-2xl hover:scale-110 transition-transform bg-[#111] p-2 rounded-full border border-[#f4b400]">🏆</button>
-                    </div>
-                    {showMobileLeaderboard && (
-                        <div className="fixed inset-0 z-[100] bg-black/95 flex flex-col p-4 animate-fade-in">
-                            <div className="flex justify-between items-center mb-4">
-                                <h2 className="text-[#f4b400] text-xl font-bold">Defuser Ranks</h2>
-                                <button onClick={() => setShowMobileLeaderboard(false)} className="text-red-500 text-2xl font-bold p-2">✕</button>
-                            </div>
-                            <LeaderboardWidget className="flex-1 border-none shadow-none p-0" allowedModes={['minesweeper-beginner', 'minesweeper-intermediate', 'minesweeper-expert']} defaultMode={`minesweeper-${difficulty}`} />
-                        </div>
+
+                <div className="w-16 flex justify-end">
+                    {gameState !== 'menu' && (
+                        <button
+                            onClick={() => setGameState('menu')}
+                            className="px-2.5 py-1 bg-neutral-800 hover:bg-neutral-700 border border-neutral-600 rounded-full text-xs font-bold text-neutral-300"
+                        >
+                            Menu
+                        </button>
                     )}
-                </>
-            )}
-            
-            <div className="absolute top-4 left-4 flex gap-4 z-[60]">
-                <button onClick={onBackToHub} className="text-2xl hover:scale-110 transition-transform" title="Back to Hub">🏠</button>
-                <button onClick={() => setShowSettings(true)} className="text-2xl hover:rotate-90 transition-transform" title="Settings">⚙️</button>
+                </div>
             </div>
 
-            {showSettings && <SettingsModal onClose={() => setShowSettings(false)} username={displayableName} onUpdateUsername={onUpdateUsername} onLogout={onLogout} />}
-            
-            <div className={`flex-1 flex flex-col items-center justify-center p-2 md:p-4 relative z-10 ${isMobile ? '' : 'md:mr-[300px]'}`}>
-                
-                {gameState === 'menu' ? (
-                     <RandomReveal className="bg-[#111] border-4 border-white p-4 md:p-8 max-w-lg w-full text-center shadow-2xl">
-                        <h1 className="text-2xl md:text-4xl text-green-500 mb-8 font-['Press_Start_2P']"><RandomText text="MINESWEEPER" /></h1>
-                        <div className="flex flex-col gap-4">
-                            {(['beginner', 'intermediate', 'expert'] as Difficulty[]).map(d => (
-                                <button 
-                                    key={d}
-                                    onClick={() => { setDifficulty(d); initBoard(d); }}
-                                    className="group relative bg-[#222] border-2 border-[#555] p-4 text-white uppercase font-bold tracking-widest hover:border-green-500 hover:bg-[#2a2a2a] transition-all overflow-hidden active:scale-95"
-                                >
-                                    <span className="relative z-10 text-sm md:text-base">{CONFIG[d].name}</span>
-                                    <div className="absolute inset-0 bg-green-500/10 transform -translate-x-full group-hover:translate-x-0 transition-transform duration-300" />
-                                </button>
-                            ))}
-                        </div>
-                        {isMobile && <p className="text-[#666] text-xs mt-6">Tap a tile to Dig or Flag 🚩</p>}
-                     </RandomReveal>
-                ) : (
-                    <div className="flex flex-col items-center animate-fade-in w-full h-full justify-start md:justify-center pt-16 md:pt-0">
-                        <div className="bg-[#c0c0c0] border-t-2 border-l-2 border-white border-b-2 border-r-2 border-[#808080] p-2 mb-4 flex justify-between items-center w-full max-w-[95vw] md:w-auto gap-4 md:gap-8 shadow-lg font-mono box-border">
-                             <div className="text-red-600 text-2xl font-bold bg-black px-2 border-t-2 border-l-2 border-[#808080] border-b-2 border-r-2 border-white">
-                                {String(minesLeft).padStart(3, '0')}
-                             </div>
-                             <button 
-                                onClick={() => setGameState('menu')} 
-                                className="text-2xl active:translate-y-px border-2 border-[#c0c0c0] hover:bg-[#dcdcdc] rounded-sm"
-                                title="Reset"
-                             >
-                                 {gameState === 'playing' ? '🙂' : gameState === 'won' ? '😎' : '😵'}
-                             </button>
-                             <div className="text-red-600 text-2xl font-bold bg-black px-2 border-t-2 border-l-2 border-[#808080] border-b-2 border-r-2 border-white">
-                                {String(timer).padStart(3, '0')}
-                             </div>
-                        </div>
+            {/* Menu or Game */}
+            {gameState === 'menu' ? (
+                <div className="bg-neutral-900/90 border border-neutral-800 p-6 sm:p-8 rounded-2xl max-w-md w-full text-center shadow-2xl animate-fade-in flex flex-col items-center z-10">
+                    <div className="text-5xl mb-4 animate-bounce">💣</div>
+                    <h2 className="text-2xl font-black mb-1 text-red-400">Minefield Sector</h2>
+                    <p className="text-neutral-400 text-xs mb-6">Uncover safe zones without detonating hidden explosives.</p>
 
-                        <div className="p-1 bg-[#c0c0c0] border-t-[3px] border-l-[3px] border-white border-b-[3px] border-r-[3px] border-[#808080] shadow-2xl max-w-[98vw] max-h-[70vh] overflow-auto custom-scrollbar">
-                            <div 
-                                style={{ 
-                                    display: 'grid', 
-                                    gridTemplateColumns: `repeat(${CONFIG[difficulty].cols}, ${cellSize})`,
-                                    gridTemplateRows: `repeat(${CONFIG[difficulty].rows}, ${cellSize})`,
-                                    gap: '0px',
+                    <div className="flex flex-col gap-3 w-full mb-6">
+                        {(['beginner', 'intermediate', 'expert'] as Difficulty[]).map(d => (
+                            <button
+                                key={d}
+                                onClick={() => {
+                                    audioService.playSound('button_click');
+                                    initBoard(d);
                                 }}
+                                className="group p-4 bg-neutral-950 border border-neutral-800 hover:border-red-500 rounded-xl transition-all text-left flex justify-between items-center active:scale-98"
                             >
-                                {grid.map((row, rIdx) => (
-                                    row.map((cell, cIdx) => {
-                                        const isRevealed = cell.isRevealed;
-                                        const isFlagged = cell.isFlagged;
-                                        const isMine = cell.isMine;
-                                        const neighbor = cell.neighborMines;
-                                        const key = `${boardId}-${cell.x}-${cell.y}`;
-                                        
-                                        const isSelected = selectedCell?.r === rIdx && selectedCell?.c === cIdx;
+                                <div>
+                                    <div className="font-black text-white text-base group-hover:text-red-400 transition-colors">
+                                        {CONFIG[d].name}
+                                    </div>
+                                    <div className="text-xs text-neutral-500 font-mono mt-0.5">
+                                        {CONFIG[d].rows}x{CONFIG[d].cols} Grid • {CONFIG[d].mines} Mines
+                                    </div>
+                                </div>
+                                <span className="text-xl group-hover:translate-x-1 transition-transform">➡️</span>
+                            </button>
+                        ))}
+                    </div>
 
-                                        let content: React.ReactNode = null;
-                                        let className = "mine-cell"; 
-
-                                        if (isRevealed) {
-                                            className += " revealed";
-                                            if (isMine) {
-                                                className += " mine";
-                                                content = '💣';
-                                            } else if (neighbor > 0) {
-                                                const colors = ['#0000ff', '#008000', '#ff0000', '#000080', '#800000', '#008080', '#000000', '#808080'];
-                                                content = <span style={{ color: colors[neighbor-1] }} className="font-bold font-mono text-base md:text-lg">{neighbor}</span>;
-                                            }
-                                        } else if (isFlagged) {
-                                            content = <span className="text-red-600">🚩</span>;
-                                        }
-
-                                        if (isSelected) {
-                                            className += " border-[#f4b400] z-20"; // Highlight selected cell on mobile
-                                        }
-
-                                        return (
-                                            <RandomReveal 
-                                                key={key}
-                                                distance={200} 
-                                                delay={Math.random() * 0.5} 
-                                                duration={0.4}
-                                                className={`flex items-center justify-center cursor-pointer select-none text-sm md:text-base ${className}`}
-                                                style={isSelected ? { borderColor: '#f4b400', boxShadow: '0 0 5px #f4b400' } : {}}
-                                                onMouseDown={(e: React.MouseEvent) => {
-                                                    if (isMobile) return;
-                                                    if (e.button === 2) handleRightClick(e, rIdx, cIdx);
-                                                    else if (e.button === 0) handleCellInteraction(rIdx, cIdx);
-                                                }}
-                                                onClick={() => {
-                                                    if (isMobile) handleCellInteraction(rIdx, cIdx);
-                                                }}
-                                                onContextMenu={(e: React.MouseEvent) => e.preventDefault()}
-                                            >
-                                                {content}
-                                            </RandomReveal>
-                                        );
-                                    })
-                                ))}
-                            </div>
+                    <div className="text-xs text-neutral-500 flex items-center gap-2">
+                        <span>💡 Tip: Tap to dig, long-press to flag.</span>
+                    </div>
+                </div>
+            ) : (
+                <div className="flex flex-col items-center w-full max-w-2xl z-10 animate-fade-in">
+                    {/* Header Controls */}
+                    <div className="bg-neutral-900/95 border border-neutral-800 rounded-2xl px-5 py-3 mb-3 flex justify-between items-center w-full shadow-lg">
+                        {/* Mine Counter */}
+                        <div className="bg-neutral-950 px-3 py-1 rounded-lg border border-neutral-800 font-mono text-red-500 font-black text-lg flex items-center gap-1.5">
+                            <span>💣</span>
+                            <span>{String(Math.max(0, minesLeft)).padStart(3, '0')}</span>
                         </div>
 
-                        {/* MOBILE ACTION POPUP */}
-                        {isMobile && selectedCell && (
-                            <div 
-                                className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-[2px] animate-fade-in" 
-                                onClick={() => setSelectedCell(null)}
-                            >
-                                <div 
-                                    className="bg-[#222] border-2 border-white p-4 rounded-xl shadow-[0_0_20px_rgba(0,0,0,0.8)] flex gap-4 animate-pop-in" 
-                                    onClick={e => e.stopPropagation()}
-                                >
-                                    <button 
-                                        onClick={() => handleMobileAction('flag')}
-                                        className="flex flex-col items-center justify-center w-16 h-16 bg-[#333] border-2 border-[#555] rounded-full hover:bg-[#444] active:scale-95 transition-all text-red-500"
+                        {/* Reset Smiley */}
+                        <button
+                            onClick={() => {
+                                audioService.playSound('button_click');
+                                initBoard(difficulty);
+                            }}
+                            className="text-2xl p-1.5 bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 rounded-xl transition-transform active:scale-90"
+                            title="Reset Board"
+                        >
+                            {gameState === 'playing' ? '🙂' : gameState === 'won' ? '😎' : '💥'}
+                        </button>
+
+                        {/* Timer */}
+                        <div className="bg-neutral-950 px-3 py-1 rounded-lg border border-neutral-800 font-mono text-amber-400 font-black text-lg flex items-center gap-1.5">
+                            <span>⏱️</span>
+                            <span>{String(Math.min(999, timer)).padStart(3, '0')}</span>
+                        </div>
+                    </div>
+
+                    {/* Mode Switcher for Mobile Touch */}
+                    <div className="flex items-center gap-2 mb-3">
+                        <button
+                            onClick={() => {
+                                audioService.playSound('button_click');
+                                setTouchMode('dig');
+                            }}
+                            className={`px-4 py-1.5 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all ${
+                                touchMode === 'dig' ? 'bg-blue-600 text-white shadow-lg' : 'bg-neutral-900 text-neutral-400 border border-neutral-800'
+                            }`}
+                        >
+                            <span>⛏️</span>
+                            <span>Dig Mode</span>
+                        </button>
+                        <button
+                            onClick={() => {
+                                audioService.playSound('button_click');
+                                setTouchMode('flag');
+                            }}
+                            className={`px-4 py-1.5 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all ${
+                                touchMode === 'flag' ? 'bg-red-600 text-white shadow-lg' : 'bg-neutral-900 text-neutral-400 border border-neutral-800'
+                            }`}
+                        >
+                            <span>🚩</span>
+                            <span>Flag Mode</span>
+                        </button>
+                    </div>
+
+                    {/* Minefield Grid Container */}
+                    <div className="bg-neutral-900/90 border border-neutral-800 rounded-2xl p-2.5 shadow-2xl overflow-auto max-w-full max-h-[62vh] custom-scrollbar">
+                        <div 
+                            className="grid gap-1"
+                            style={{
+                                gridTemplateColumns: `repeat(${CONFIG[difficulty].cols}, minmax(0, 1fr))`
+                            }}
+                        >
+                            {grid.map((row, rIdx) => 
+                                row.map((cell, cIdx) => {
+                                    const cellClass = cell.isRevealed
+                                        ? cell.isMine
+                                            ? 'bg-red-700/80 border-red-500'
+                                            : 'bg-neutral-950/90 border-neutral-800/80'
+                                        : 'bg-neutral-800 hover:bg-neutral-750 active:bg-neutral-700 border-neutral-700 shadow-sm';
+
+                                    const cellSize = difficulty === 'expert' ? 'w-7 h-7 sm:w-8 sm:h-8 text-xs sm:text-sm' : difficulty === 'intermediate' ? 'w-8 h-8 sm:w-9 sm:h-9 text-sm sm:text-base' : 'w-9 h-9 sm:w-11 sm:h-11 text-base sm:text-lg';
+
+                                    return (
+                                        <button
+                                            key={`${rIdx}-${cIdx}`}
+                                            onClick={() => handleCellClick(rIdx, cIdx)}
+                                            onContextMenu={(e) => handleContextMenu(e, rIdx, cIdx)}
+                                            onTouchStart={() => handleTouchStart(rIdx, cIdx)}
+                                            onTouchEnd={handleTouchEnd}
+                                            className={`${cellSize} rounded-lg border flex items-center justify-center font-black transition-all ${cellClass}`}
+                                            disabled={gameState !== 'playing' && !cell.isRevealed}
+                                        >
+                                            {cell.isRevealed ? (
+                                                cell.isMine ? (
+                                                    '💣'
+                                                ) : cell.neighborMines > 0 ? (
+                                                    <span style={{ color: NUMBER_COLORS[cell.neighborMines] }}>
+                                                        {cell.neighborMines}
+                                                    </span>
+                                                ) : null
+                                            ) : cell.isFlagged ? (
+                                                <span className="animate-bounce">🚩</span>
+                                            ) : null}
+                                        </button>
+                                    );
+                                })
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Victory / Defeat Modal */}
+                    {(gameState === 'won' || gameState === 'lost') && (
+                        <div className="fixed inset-0 bg-black/85 flex items-center justify-center z-50 p-4 animate-fade-in">
+                            <div className={`bg-neutral-900 border-2 ${gameState === 'won' ? 'border-green-500' : 'border-red-500'} rounded-2xl p-6 sm:p-8 max-w-sm w-full flex flex-col items-center text-center shadow-2xl`}>
+                                <div className="text-5xl mb-3">{gameState === 'won' ? '😎' : '💥'}</div>
+                                <h3 className={`text-2xl font-black mb-2 ${gameState === 'won' ? 'text-green-400' : 'text-red-400'}`}>
+                                    {gameState === 'won' ? 'SECTOR CLEARED!' : 'DETONATION!'}
+                                </h3>
+                                <p className="text-neutral-400 text-xs mb-6">
+                                    {gameState === 'won' 
+                                        ? `All safe tiles uncovered in ${timer} seconds.` 
+                                        : 'A hidden mine was triggered. Better luck on the next sweep!'}
+                                </p>
+                                <div className="flex gap-3 w-full">
+                                    <button
+                                        onClick={() => setGameState('menu')}
+                                        className="flex-1 py-3 bg-neutral-800 hover:bg-neutral-700 text-white font-bold rounded-xl text-sm transition-colors"
                                     >
-                                        <span className="text-2xl">🚩</span>
-                                        <span className="text-[10px] text-white mt-1">FLAG</span>
+                                        Menu
                                     </button>
-                                    <button 
-                                        onClick={() => handleMobileAction('dig')}
-                                        className="flex flex-col items-center justify-center w-16 h-16 bg-[#333] border-2 border-[#555] rounded-full hover:bg-[#444] active:scale-95 transition-all text-green-500"
+                                    <button
+                                        onClick={() => initBoard(difficulty)}
+                                        className={`flex-1 py-3 ${gameState === 'won' ? 'bg-green-600 hover:bg-green-500' : 'bg-red-600 hover:bg-red-500'} text-white font-black rounded-xl text-sm transition-transform active:scale-95 shadow-lg`}
                                     >
-                                        <span className="text-2xl">⛏️</span>
-                                        <span className="text-[10px] text-white mt-1">DIG</span>
-                                    </button>
-                                    <button 
-                                        onClick={() => setSelectedCell(null)}
-                                        className="flex flex-col items-center justify-center w-16 h-16 bg-[#333] border-2 border-[#555] rounded-full hover:bg-[#444] active:scale-95 transition-all text-gray-400"
-                                    >
-                                        <span className="text-2xl">✕</span>
-                                        <span className="text-[10px] text-white mt-1">CANCEL</span>
+                                        Play Again
                                     </button>
                                 </div>
                             </div>
-                        )}
-                        
-                        {(gameState === 'won' || gameState === 'lost') && (
-                            <div className="absolute inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
-                                <RandomReveal className="bg-[#111] border-4 border-white p-8 text-center max-w-md w-full shadow-2xl">
-                                    <div className="text-6xl mb-4 animate-pop-in">{gameState === 'won' ? '😎' : '💥'}</div>
-                                    <h2 className={`text-2xl md:text-3xl mb-6 font-bold ${gameState === 'won' ? 'text-green-500' : 'text-red-600'}`}>
-                                        <RandomText text={gameState === 'won' ? 'MISSION ACCOMPLISHED' : 'DETONATION'} />
-                                    </h2>
-                                    <div className="flex flex-col gap-4">
-                                        <Button onClick={() => initBoard(difficulty)}>{gameState === 'won' ? 'Next Operation' : 'Retry'}</Button>
-                                        <button onClick={() => setGameState('menu')} className="text-xs text-[#aaa] hover:text-white mt-2 border-b border-transparent hover:border-white w-max mx-auto">Return to Menu</button>
-                                    </div>
-                                </RandomReveal>
-                            </div>
-                        )}
-                    </div>
-                )}
-            </div>
+                        </div>
+                    )}
+                </div>
+            )}
         </div>
     );
-};
-
-export default MinesweeperGame;
+}

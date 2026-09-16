@@ -271,16 +271,6 @@
     <div id="ambient-glow"></div>
     <canvas id="particle-canvas"></canvas>
 
-    <div id="intro-modal">
-        <div class="modal-content">
-            <h2>Color Memory: ULTRA</h2>
-            <p><strong>Phase 1:</strong> Memorize the color displayed in the square for 3 seconds.<br><br>
-               <strong>Phase 2:</strong> Use the Hue, Saturation, and Brightness sliders to perfectly reconstruct the color.<br><br>
-               <strong>Phase 3:</strong> Confirm to see how accurate your human optics are. Rack up streaks and rank up!</p>
-            <button id="btnInit" style="border-color: var(--accent); color: var(--accent);">INITIALIZE SYSTEM</button>
-        </div>
-    </div>
-
     <header>
         <h1>Chromatics</h1>
         <div class="timer-container" id="timerContainer">
@@ -614,15 +604,12 @@
             dom.sliderS.addEventListener('input', () => updateVisuals(true));
             dom.sliderV.addEventListener('input', () => updateVisuals(true));
 
-            document.getElementById('btnInit').addEventListener('click', () => {
-                AudioEngine.init();
-                AudioEngine.success();
-                document.getElementById('intro-modal').style.opacity = '0';
-                setTimeout(() => document.getElementById('intro-modal').style.display = 'none', 500);
-                updateVisuals();
-            });
-
-            return { init: () => { updateVisuals(); } };
+            return { 
+                init: () => { 
+                    try { AudioEngine.init(); } catch(e){}
+                    updateVisuals(); 
+                } 
+            };
         })();
 
         window.addEventListener('DOMContentLoaded', Game.init);
