@@ -471,7 +471,7 @@ export const saveSpeedTestStats = async (user: User, wpm: number, accuracy: numb
 
 // --- Global Stats Tracking ---
 
-export const incrementGamePlays = async (gameKey: 'taco_typer' | 'iq_test' | 'minesweeper' | 'wordle' | 'angle' | 'spelling_bee' | 'tic_tac_toe' | 'connect_4' | 'gun_game' | 'color_memory' | 'particle_physics') => {
+export const incrementGamePlays = async (gameKey: 'taco_typer' | 'iq_test' | 'minesweeper' | 'wordle' | 'angle' | 'spelling_bee' | 'tic_tac_toe' | 'connect_4' | 'gun_game' | 'color_memory' | 'particle_physics' | 'more_less') => {
     const key = `play_count_${gameKey}`;
     const curr = parseInt(localStorage.getItem(key) || '0', 10);
     localStorage.setItem(key, String(curr + 1));
@@ -497,7 +497,8 @@ export const incrementGamePlays = async (gameKey: 'taco_typer' | 'iq_test' | 'mi
                  connect_4_plays: gameKey === 'connect_4' ? 1 : 0,
                  gun_game_plays: gameKey === 'gun_game' ? 1 : 0,
                  color_memory_plays: gameKey === 'color_memory' ? 1 : 0,
-                 particle_physics_plays: gameKey === 'particle_physics' ? 1 : 0
+                 particle_physics_plays: gameKey === 'particle_physics' ? 1 : 0,
+                 more_less_plays: gameKey === 'more_less' ? 1 : 0
              });
         }
     }
@@ -531,7 +532,7 @@ export const getGlobalGameStats = async (): Promise<GlobalGameStats> => {
 };
 
 export const resetGlobalGameStats = async () => {
-    const keys = ['taco_typer', 'iq_test', 'minesweeper', 'wordle', 'angle', 'spelling_bee', 'tic_tac_toe', 'connect_4', 'gun_game', 'color_memory', 'particle_physics'];
+    const keys = ['taco_typer', 'iq_test', 'minesweeper', 'wordle', 'angle', 'spelling_bee', 'tic_tac_toe', 'connect_4', 'gun_game', 'color_memory', 'particle_physics', 'more_less'];
     keys.forEach(k => localStorage.setItem(`play_count_${k}`, '0'));
 
     if (!dbExport) return true;
@@ -548,7 +549,8 @@ export const resetGlobalGameStats = async () => {
             connect_4_plays: 0,
             gun_game_plays: 0,
             color_memory_plays: 0,
-            particle_physics_plays: 0
+            particle_physics_plays: 0,
+            more_less_plays: 0
         });
         return true;
     } catch {

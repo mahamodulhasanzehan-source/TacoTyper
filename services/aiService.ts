@@ -278,6 +278,85 @@ class AIService {
     }
   }
 
+  async generateMoreLessItems(count: number = 8): Promise<{ name: string; value: number; image: string }[]> {
+    const ai = this.getClient();
+    if (!ai) {
+      return this.getMoreLessFallbacks(count);
+    }
+
+    try {
+      const randomSeed = Math.floor(Math.random() * 1000000);
+      const response = await ai.models.generateContent({
+        model: 'gemini-3.8-flash',
+        contents: `Generate a list of exactly ${count} interesting trivia items for a "Higher or Lower" trivia comparison game. Each item must have:
+- "name": Concise description of the item and its unit, e.g. "Mount Everest (Height in m)" or "Tokyo (Population)" or "Cheetah (Top speed km/h)"
+- "value": An integer numerical value for comparison
+- "image": A single appropriate emoji representing the item, e.g. "🏔️", "🏙️", "🐆"
+Use seed ${randomSeed}. Return ONLY a JSON array of objects.`,
+        config: {
+          temperature: 1,
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.ARRAY,
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                name: { type: Type.STRING },
+                value: { type: Type.INTEGER },
+                image: { type: Type.STRING }
+              },
+              required: ['name', 'value', 'image']
+            }
+          }
+        }
+      });
+
+      const jsonStr = response.text;
+      if (jsonStr) {
+        const data = JSON.parse(jsonStr);
+        if (Array.isArray(data) && data.length >= count) {
+          return data.slice(0, count).map((item: any) => ({
+            name: String(item.name),
+            value: Number(item.value) || 0,
+            image: String(item.image) || "❓"
+          }));
+        }
+      }
+      return this.getMoreLessFallbacks(count);
+    } catch (e) {
+      console.warn("AI More/Less Gen fallback activated:", e);
+      return this.getMoreLessFallbacks(count);
+    }
+  }
+
+  private getMoreLessFallbacks(count: number = 8): { name: string; value: number; image: string }[] {
+    const pool = [
+      { name: "Mount Everest (Height in m)", value: 8849, image: "🏔️" },
+      { name: "Burj Khalifa (Height in m)", value: 828, image: "🏙️" },
+      { name: "Eiffel Tower (Height in m)", value: 330, image: "🗼" },
+      { name: "Statue of Liberty (Height in m)", value: 93, image: "🗽" },
+      { name: "Great Wall of China (Length in km)", value: 21196, image: "🧱" },
+      { name: "Amazon River (Length in km)", value: 6400, image: "🌊" },
+      { name: "Titanic (Length in m)", value: 269, image: "🚢" },
+      { name: "Golden Gate Bridge (Length in m)", value: 2737, image: "🌉" },
+      { name: "Moon Distance from Earth (km)", value: 384400, image: "🌙" },
+      { name: "International Space Station (Altitude in km)", value: 408, image: "🛰️" },
+      { name: "Blue Whale (Weight in kg)", value: 150000, image: "🐋" },
+      { name: "African Elephant (Weight in kg)", value: 6000, image: "🐘" },
+      { name: "Tyrannosaurus Rex (Weight in kg)", value: 8000, image: "🦖" },
+      { name: "Cheetah (Top Speed in km/h)", value: 120, image: "🐆" },
+      { name: "Commercial Jet (Speed in km/h)", value: 900, image: "✈️" },
+      { name: "Speed of Sound (km/h)", value: 1235, image: "🔊" },
+      { name: "Tokyo (Population)", value: 14000000, image: "🏙️" },
+      { name: "Sahara Desert (Area in sq km)", value: 9200000, image: "🏜️" },
+      { name: "Human Heartbeats Per Day", value: 100000, image: "❤️" },
+      { name: "Days to Orbit Sun (Earth)", value: 365, image: "🌍" },
+      { name: "Mariana Trench (Depth in m)", value: 11034, image: "🌊" }
+    ];
+    const shuffled = [...pool].sort(() => 0.5 - Math.random());
+    return shuffled.slice(0, count);
+  }
+
   private getFallbackText() {
     const p1 = SPEED_TEST_TEXTS[Math.floor(Math.random() * SPEED_TEST_TEXTS.length)];
     let p2 = SPEED_TEST_TEXTS[Math.floor(Math.random() * SPEED_TEST_TEXTS.length)];

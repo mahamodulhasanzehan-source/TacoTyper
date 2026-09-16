@@ -98,4 +98,5 @@ export interface GlobalGameStats {
   gun_game_plays: number;
   color_memory_plays: number;
   particle_physics_plays: number;
+  more_less_plays?: number;
 }
