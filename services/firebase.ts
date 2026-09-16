@@ -178,7 +178,18 @@ export const signInWithGoogle = async () => {
     }
     const provider = new GoogleAuthProvider();
     try {
-        const result = await signInWithPopup(authExport, provider);
+        const originalOpen = window.open;
+        let result;
+        try {
+            // Intercept window.open so the browser creates a new Chrome tab rather than a separate popup window
+            window.open = function(url?: string | URL, target?: string, features?: string) {
+                return originalOpen.call(window, url, target || '_blank');
+            };
+            result = await signInWithPopup(authExport, provider);
+        } finally {
+            window.open = originalOpen;
+        }
+
         const user = result.user;
 
         if (dbExport) {
@@ -835,7 +846,7 @@ export const subscribeToChannel = (channelId: string, callback: (messages: ChatM
         const recentMsgs = msgs.length > 50 ? msgs.slice(msgs.length - 50) : msgs;
         callback(recentMsgs);
     }, (error) => {
-        console.error("Error subscribing to chat:", error);
+        console.warn("Could not subscribe to chat stream (check Firestore rules for 'messages'):", error?.message || error);
     });
 };
 

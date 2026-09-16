@@ -232,10 +232,21 @@ const HubScreen: React.FC<HubScreenProps> = ({
                         <RandomReveal delay={0.2} distance={200}>
                             <button 
                                 onClick={() => setShowSettings(true)}
-                                className="text-2xl hover:rotate-90 transition-transform duration-500 ease-[var(--ease-smooth)]"
-                                title="Settings"
+                                className="group relative flex items-center justify-center p-0.5 rounded-full hover:scale-110 transition-transform duration-300 ease-[var(--ease-smooth)]"
+                                title="Settings & Profile"
                             >
-                                ⚙️
+                                {user.photoURL ? (
+                                    <img 
+                                        src={user.photoURL} 
+                                        alt={user.displayName || "Profile"} 
+                                        className="w-8 h-8 rounded-full border-2 border-[#f4b400] object-cover shadow-sm group-hover:border-white transition-colors"
+                                        referrerPolicy="no-referrer"
+                                    />
+                                ) : (
+                                    <span className="text-2xl hover:rotate-90 transition-transform duration-500 ease-[var(--ease-smooth)] inline-block">
+                                        ⚙️
+                                    </span>
+                                )}
                             </button>
                         </RandomReveal>
                     </div>
