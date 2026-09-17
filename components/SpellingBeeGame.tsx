@@ -227,49 +227,49 @@ const SpellingBeeGame: React.FC<SpellingBeeGameProps> = ({ user, username, onBac
                 {loading ? (
                     <LoadingScreen text="Preparing Spelling Challenge..." color="#f59e0b" />
                 ) : wordData ? (
-                    <div key={wordData.word} className="flex flex-col items-center w-full bg-neutral-900/90 border-2 border-neutral-800 rounded-2xl p-6 sm:p-8 gap-5 shadow-2xl animate-fade-in">
+                    <div key={wordData.word} className="flex flex-col items-center w-full bg-neutral-900/90 border-2 border-neutral-800 rounded-2xl p-4 sm:p-6 md:p-8 gap-4 sm:gap-5 shadow-2xl animate-fade-in max-w-full">
                         
                         {/* Audio Buttons */}
-                        <div className="flex items-center gap-4">
+                        <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-4 w-full">
                             <button 
                                 onClick={() => playAudio(wordData.word)}
-                                className="px-5 py-3.5 bg-amber-500 hover:bg-amber-400 text-black font-black rounded-2xl flex items-center gap-2 shadow-[0_0_20px_rgba(245,158,11,0.4)] transition-transform hover:scale-105 active:scale-95"
+                                className="px-3.5 sm:px-5 py-2.5 sm:py-3.5 bg-amber-500 hover:bg-amber-400 text-black font-black rounded-xl sm:rounded-2xl flex items-center gap-1.5 sm:gap-2 shadow-[0_0_20px_rgba(245,158,11,0.4)] transition-transform hover:scale-105 active:scale-95 text-xs sm:text-base"
                                 title="Hear Word (Google UK English Male)"
                             >
-                                <span className="text-2xl">🔊</span>
+                                <span className="text-lg sm:text-2xl">🔊</span>
                                 <span>Say Word</span>
                             </button>
                             <button 
                                 onClick={() => playAudio(wordData.sentence)}
-                                className="px-5 py-3.5 bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 text-white font-bold rounded-2xl flex items-center gap-2 transition-transform hover:scale-105 active:scale-95"
+                                className="px-3.5 sm:px-5 py-2.5 sm:py-3.5 bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 text-white font-bold rounded-xl sm:rounded-2xl flex items-center gap-1.5 sm:gap-2 transition-transform hover:scale-105 active:scale-95 text-xs sm:text-base"
                                 title="Hear In Sentence"
                             >
-                                <span className="text-2xl">💬</span>
-                                <span className="hidden sm:inline">In Sentence</span>
+                                <span className="text-lg sm:text-2xl">💬</span>
+                                <span>In Sentence</span>
                             </button>
                             <button 
                                 onClick={() => playAudio(wordData.word, 0.65)}
-                                className="px-3.5 py-3.5 bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 text-amber-400 font-bold rounded-2xl flex items-center transition-transform hover:scale-105 active:scale-95"
+                                className="px-3 sm:px-3.5 py-2.5 sm:py-3.5 bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 text-amber-400 font-bold rounded-xl sm:rounded-2xl flex items-center transition-transform hover:scale-105 active:scale-95 text-xs sm:text-base"
                                 title="Slow Spellout"
                             >
-                                <span>🐢</span>
+                                <span className="text-lg sm:text-xl">🐢</span>
                             </button>
                         </div>
 
                         {/* Meaning */}
-                        <div className="text-center w-full bg-neutral-950/60 p-4 rounded-xl border border-neutral-800">
-                            <div className="text-xs text-amber-400 font-bold uppercase tracking-wider mb-1">Definition</div>
-                            <p className="text-neutral-200 text-sm sm:text-base leading-relaxed">{wordData.meaning}</p>
+                        <div className="text-center w-full bg-neutral-950/60 p-3 sm:p-4 rounded-xl border border-neutral-800">
+                            <div className="text-[10px] sm:text-xs text-amber-400 font-bold uppercase tracking-wider mb-1">Definition</div>
+                            <p className="text-neutral-200 text-xs sm:text-sm md:text-base leading-relaxed">{wordData.meaning}</p>
                         </div>
 
                         {/* Guess Form */}
-                        <form onSubmit={handleGuess} className="w-full flex flex-col gap-3">
+                        <form onSubmit={handleGuess} className="w-full flex flex-col gap-2.5 sm:gap-3">
                             <input
                                 ref={inputRef}
                                 type="text"
                                 value={guess}
                                 onChange={(e) => setGuess(e.target.value)}
-                                className={`w-full p-4 text-center text-2xl font-bold bg-neutral-950 border-2 rounded-xl focus:outline-none text-white transition-all ${
+                                className={`w-full p-3 sm:p-4 text-center text-xl sm:text-2xl font-bold bg-neutral-950 border-2 rounded-xl focus:outline-none text-white transition-all ${
                                     inputState === 'correct' ? 'border-green-500 bg-green-950/30' :
                                     inputState === 'wrong' ? 'border-red-500 bg-red-950/30 animate-shake' :
                                     'border-neutral-700 focus:border-amber-400'
@@ -283,7 +283,7 @@ const SpellingBeeGame: React.FC<SpellingBeeGameProps> = ({ user, username, onBac
                             {!gameOver && inputState !== 'correct' && (
                                 <button 
                                     type="submit" 
-                                    className="w-full py-3.5 bg-gradient-to-r from-amber-500 to-yellow-400 hover:from-amber-400 hover:to-yellow-300 text-black font-black rounded-xl transition-transform active:scale-98 shadow-lg text-sm sm:text-base"
+                                    className="w-full py-3 sm:py-3.5 bg-gradient-to-r from-amber-500 to-yellow-400 hover:from-amber-400 hover:to-yellow-300 text-black font-black rounded-xl transition-transform active:scale-98 shadow-lg text-xs sm:text-base"
                                 >
                                     SUBMIT SPELLING
                                 </button>

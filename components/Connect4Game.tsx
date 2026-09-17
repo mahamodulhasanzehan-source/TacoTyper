@@ -345,20 +345,18 @@ export default function Connect4Game({ user, onBackToHub, username }: Connect4Ga
             </div>
 
             {/* Hover Indicator Row */}
-            <div className="flex justify-center w-full max-w-[95vw] z-10 mb-1">
-                <div className="flex gap-1.5 sm:gap-2.5 px-3 md:px-5">
+            <div className="flex justify-center w-full max-w-full z-10 mb-2 px-1">
+                <div className="flex gap-1 sm:gap-2 md:gap-2.5 px-2 min-[400px]:px-3 sm:px-4 md:px-5">
                     {Array.from({ length: COLS }).map((_, cIdx) => (
                         <div 
                             key={`hover-${cIdx}`} 
-                            className="w-9 h-6 sm:w-12 sm:h-8 md:w-16 md:h-8 flex items-center justify-center cursor-pointer transition-opacity"
+                            className="w-[min(10.5vw,42px)] h-[min(10.5vw,42px)] min-w-[28px] min-h-[28px] sm:w-12 sm:h-12 md:w-16 md:h-16 flex items-center justify-center cursor-pointer"
                             onClick={() => handleColumnClick(cIdx)}
                             onMouseEnter={() => setHoveredCol(cIdx)}
                             onMouseLeave={() => setHoveredCol(null)}
                         >
                             {hoveredCol === cIdx && isPlayerTurn && !gameOver && board[0][cIdx] === null && (
-                                <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-red-500/80 shadow-[0_0_12px_rgba(239,68,68,0.8)] animate-bounce flex items-center justify-center text-xs font-bold text-white">
-                                    ▼
-                                </div>
+                                <div className="w-full h-full rounded-full bg-gradient-to-b from-red-500/80 to-red-600/80 shadow-[0_0_16px_rgba(239,68,68,0.7)] border-2 border-red-400/60 scale-95 transition-transform" />
                             )}
                         </div>
                     ))}
@@ -366,26 +364,29 @@ export default function Connect4Game({ user, onBackToHub, username }: Connect4Ga
             </div>
 
             {/* Arcade Style Connect 4 Board */}
-            <div className="flex flex-col items-center justify-center z-10">
+            <div className="flex flex-col items-center justify-center z-10 max-w-full px-2">
                 <div 
-                    className="bg-gradient-to-b from-blue-600 to-blue-800 p-2.5 sm:p-3.5 md:p-5 rounded-2xl sm:rounded-3xl flex flex-col gap-1.5 sm:gap-2.5 shadow-[0_15px_35px_rgba(30,64,175,0.45)] border-4 border-blue-400/40 relative"
+                    className="bg-gradient-to-b from-blue-600 to-blue-800 p-2 min-[400px]:p-3 sm:p-4 md:p-5 rounded-2xl sm:rounded-3xl flex flex-col gap-1 sm:gap-2 md:gap-2.5 shadow-[0_15px_35px_rgba(30,64,175,0.45)] border-2 sm:border-4 border-blue-400/40 relative max-w-full"
                     onMouseLeave={() => setHoveredCol(null)}
                 >
                     {board.map((row, rIdx) => (
-                        <div key={rIdx} className="flex gap-1.5 sm:gap-2.5">
+                        <div key={rIdx} className="flex gap-1 sm:gap-2 md:gap-2.5">
                             {row.map((cell, cIdx) => {
                                 const isDropTarget = lastDrop?.r === rIdx && lastDrop?.c === cIdx;
+                                const dropDistance = `calc(-${(rIdx + 1) * 115}% - ${(rIdx + 1) * 10}px)`;
+
                                 return (
                                     <div
                                         key={`${rIdx}-${cIdx}`}
                                         onClick={() => handleColumnClick(cIdx)}
                                         onMouseEnter={() => setHoveredCol(cIdx)}
-                                        className="w-9 h-9 sm:w-12 sm:h-12 md:w-16 md:h-16 rounded-full flex items-center justify-center cursor-pointer bg-[#050c18] shadow-[inset_0_4px_8px_rgba(0,0,0,0.8)] overflow-hidden transition-transform hover:scale-105 active:scale-95"
+                                        className="w-[min(10.5vw,42px)] h-[min(10.5vw,42px)] min-w-[28px] min-h-[28px] sm:w-12 sm:h-12 md:w-16 md:h-16 rounded-full flex items-center justify-center cursor-pointer bg-[#050c18] shadow-[inset_0_4px_8px_rgba(0,0,0,0.8)] transition-transform hover:scale-105 active:scale-95 relative"
                                     >
                                         {cell && (
                                             <div 
-                                                className={`w-full h-full rounded-full shadow-[inset_0_-4px_6px_rgba(0,0,0,0.4),0_2px_8px_rgba(0,0,0,0.5)] transition-all ${
-                                                    isDropTarget ? 'animate-bounce' : ''
+                                                style={isDropTarget ? { ['--drop-y' as any]: dropDistance } : undefined}
+                                                className={`w-full h-full rounded-full shadow-[inset_0_-4px_6px_rgba(0,0,0,0.4),0_2px_8px_rgba(0,0,0,0.5)] ${
+                                                    isDropTarget ? 'animate-drop' : ''
                                                 } ${
                                                     cell === 'R' 
                                                         ? 'bg-gradient-to-b from-red-500 to-red-600 shadow-[0_0_10px_rgba(239,68,68,0.6)]' 

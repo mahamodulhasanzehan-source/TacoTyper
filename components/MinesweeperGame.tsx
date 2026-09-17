@@ -302,7 +302,7 @@ export default function MinesweeperGame({ user, onBackToHub, username }: Mineswe
                     </div>
                 </div>
             ) : (
-                <div className="flex flex-col items-center w-full max-w-2xl z-10 animate-fade-in">
+                <div className={`flex flex-col items-center w-full ${difficulty === 'expert' ? 'max-w-4xl' : difficulty === 'intermediate' ? 'max-w-xl' : 'max-w-md'} z-10 animate-fade-in`}>
                     {/* Header Controls */}
                     <div className="bg-neutral-900/95 border border-neutral-800 rounded-2xl px-5 py-3 mb-3 flex justify-between items-center w-full shadow-lg">
                         {/* Mine Counter */}
@@ -359,11 +359,11 @@ export default function MinesweeperGame({ user, onBackToHub, username }: Mineswe
                     </div>
 
                     {/* Minefield Grid Container */}
-                    <div className="bg-neutral-900/90 border border-neutral-800 rounded-2xl p-2.5 shadow-2xl overflow-auto max-w-full max-h-[62vh] custom-scrollbar">
+                    <div className="bg-neutral-900/90 border border-neutral-800 rounded-2xl p-2 sm:p-3 shadow-2xl overflow-auto max-w-full max-h-[72vh] custom-scrollbar flex justify-center">
                         <div 
-                            className="grid gap-1"
+                            className="inline-grid gap-0.5 sm:gap-1"
                             style={{
-                                gridTemplateColumns: `repeat(${CONFIG[difficulty].cols}, minmax(0, 1fr))`
+                                gridTemplateColumns: `repeat(${CONFIG[difficulty].cols}, max-content)`
                             }}
                         >
                             {grid.map((row, rIdx) => 
@@ -374,7 +374,11 @@ export default function MinesweeperGame({ user, onBackToHub, username }: Mineswe
                                             : 'bg-neutral-950/90 border-neutral-800/80'
                                         : 'bg-neutral-800 hover:bg-neutral-750 active:bg-neutral-700 border-neutral-700 shadow-sm';
 
-                                    const cellSize = difficulty === 'expert' ? 'w-7 h-7 sm:w-8 sm:h-8 text-xs sm:text-sm' : difficulty === 'intermediate' ? 'w-8 h-8 sm:w-9 sm:h-9 text-sm sm:text-base' : 'w-9 h-9 sm:w-11 sm:h-11 text-base sm:text-lg';
+                                    const cellSize = difficulty === 'expert' 
+                                        ? 'w-5 h-5 sm:w-6 sm:h-6 md:w-7 md:h-7 text-[9px] sm:text-xs md:text-sm' 
+                                        : difficulty === 'intermediate' 
+                                            ? 'w-[min(5.5vw,26px)] h-[min(5.5vw,26px)] min-w-[20px] min-h-[20px] sm:w-7 sm:h-7 md:w-8 md:h-8 text-[10px] sm:text-xs md:text-sm' 
+                                            : 'w-[min(9vw,38px)] h-[min(9vw,38px)] min-w-[26px] min-h-[26px] sm:w-10 sm:h-10 md:w-11 md:h-11 text-xs sm:text-base md:text-lg';
 
                                     return (
                                         <button
@@ -383,7 +387,7 @@ export default function MinesweeperGame({ user, onBackToHub, username }: Mineswe
                                             onContextMenu={(e) => handleContextMenu(e, rIdx, cIdx)}
                                             onTouchStart={() => handleTouchStart(rIdx, cIdx)}
                                             onTouchEnd={handleTouchEnd}
-                                            className={`${cellSize} rounded-lg border flex items-center justify-center font-black transition-all ${cellClass}`}
+                                            className={`${cellSize} shrink-0 rounded-lg border flex items-center justify-center font-black transition-all ${cellClass}`}
                                             disabled={gameState !== 'playing' && !cell.isRevealed}
                                         >
                                             {cell.isRevealed ? (

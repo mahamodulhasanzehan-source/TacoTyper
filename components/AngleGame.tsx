@@ -202,7 +202,7 @@ export default function AngleGame({ user, onBackToHub, username }: AngleGameProp
                 <div 
                     ref={dialRef}
                     onPointerDown={handleDialPointer}
-                    className="relative w-44 h-44 sm:w-56 sm:h-56 bg-neutral-900/90 rounded-full border-4 border-neutral-700 flex items-center justify-center cursor-crosshair shadow-2xl transition-all mb-3 hover:border-fuchsia-500/60"
+                    className="relative w-[min(52vw,180px)] h-[min(52vw,180px)] sm:w-52 sm:h-52 md:w-56 md:h-56 bg-neutral-900/90 rounded-full border-4 border-neutral-700 flex items-center justify-center cursor-crosshair shadow-2xl transition-all mb-2.5 hover:border-fuchsia-500/60"
                     title="Tap dial to pick angle"
                 >
                     <svg className="absolute inset-0 w-full h-full" viewBox="0 0 100 100">
@@ -251,39 +251,35 @@ export default function AngleGame({ user, onBackToHub, username }: AngleGameProp
                         {/* Center Hub */}
                         <circle cx="50" cy="50" r="4" fill="#ffffff" />
                     </svg>
-
-                    <div className="absolute -bottom-2 bg-neutral-950 px-2.5 py-0.5 rounded-full border border-neutral-800 text-[10px] text-neutral-400 font-bold">
-                        Tap dial or use keypad
-                    </div>
                 </div>
 
                 {/* Status & Input Display */}
                 <div className="flex flex-col items-center w-full mb-3">
-                    <div className="text-xs text-neutral-400 font-bold mb-1">
+                    <div className="text-[11px] sm:text-xs text-neutral-400 font-bold mb-1">
                         Attempts remaining: <span className="text-amber-400 font-mono text-sm">{6 - previousGuesses.length}</span>
                     </div>
 
                     <div className="flex items-center gap-2 mb-2">
-                        <div className="w-28 px-3 py-1.5 text-center text-2xl font-mono font-black bg-neutral-950 border-2 border-neutral-700 rounded-xl text-white flex items-center justify-center">
+                        <div className="w-24 sm:w-28 px-3 py-1 text-center text-xl sm:text-2xl font-mono font-black bg-neutral-950 border-2 border-neutral-700 rounded-xl text-white flex items-center justify-center">
                             {guess || '0'}°
                         </div>
                     </div>
 
                     {feedback && (
-                        <div className="flex flex-col items-center text-center animate-fade-in mb-2 min-h-[36px]">
-                            <span className="text-sm font-black" style={{ color: feedback.color }}>{feedback.message}</span>
-                            {feedback.arrow && <span className="text-xs font-bold text-neutral-300 mt-0.5">{feedback.arrow}</span>}
+                        <div className="flex flex-col items-center text-center animate-fade-in mb-2 min-h-[32px]">
+                            <span className="text-xs sm:text-sm font-black" style={{ color: feedback.color }}>{feedback.message}</span>
+                            {feedback.arrow && <span className="text-[10px] sm:text-xs font-bold text-neutral-300 mt-0.5">{feedback.arrow}</span>}
                         </div>
                     )}
 
                     {/* Numeric Keypad */}
                     {!gameOver && (
-                        <div className="grid grid-cols-3 gap-1.5 w-full max-w-[280px]">
+                        <div className="grid grid-cols-3 gap-1.5 w-full max-w-[260px] sm:max-w-[280px]">
                             {['1', '2', '3', '4', '5', '6', '7', '8', '9', 'DEL', '0', 'ENTER'].map((key) => (
                                 <button
                                     key={key}
                                     onClick={() => handleKeypadClick(key)}
-                                    className={`h-11 rounded-xl font-black text-sm flex items-center justify-center transition-all active:scale-95 ${
+                                    className={`h-9 min-[380px]:h-10 sm:h-11 rounded-xl font-black text-xs sm:text-sm flex items-center justify-center transition-all active:scale-95 ${
                                         key === 'ENTER' 
                                             ? 'bg-fuchsia-600 hover:bg-fuchsia-500 text-white shadow-lg' 
                                             : key === 'DEL'

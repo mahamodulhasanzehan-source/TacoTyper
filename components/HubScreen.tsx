@@ -32,6 +32,8 @@ interface GameCard {
     description: string;
     icon: string;
     color: string;
+    accentGlow: string;
+    tag: string;
     plays: number;
     action: () => void;
 }
@@ -79,7 +81,9 @@ const HubScreen: React.FC<HubScreenProps> = ({
                 title: 'Taco Typer',
                 description: 'The Original Typing Challenge',
                 icon: '🌮',
-                color: '#f4b400',
+                color: '#f59e0b',
+                accentGlow: 'rgba(245, 158, 11, 0.25)',
+                tag: 'TYPING',
                 plays: stats.taco_typer_plays,
                 action: onLaunchGame
             },
@@ -88,7 +92,9 @@ const HubScreen: React.FC<HubScreenProps> = ({
                 title: 'IQ Test',
                 description: 'Logic & Patterns Assessment',
                 icon: '🧠',
-                color: '#4facfe',
+                color: '#38bdf8',
+                accentGlow: 'rgba(56, 189, 248, 0.25)',
+                tag: 'BRAIN',
                 plays: stats.iq_test_plays,
                 action: onLaunchIQ
             },
@@ -97,7 +103,9 @@ const HubScreen: React.FC<HubScreenProps> = ({
                 title: 'Minesweeper',
                 description: 'Classic Strategic Survival',
                 icon: '💣',
-                color: '#57a863',
+                color: '#22c55e',
+                accentGlow: 'rgba(34, 197, 94, 0.25)',
+                tag: 'SURVIVAL',
                 plays: stats.minesweeper_plays,
                 action: onLaunchMinesweeper
             },
@@ -106,7 +114,9 @@ const HubScreen: React.FC<HubScreenProps> = ({
                 title: 'Wordle',
                 description: 'Guess the Hidden Word',
                 icon: '📝',
-                color: '#57a863',
+                color: '#84cc16',
+                accentGlow: 'rgba(132, 204, 22, 0.25)',
+                tag: 'WORD PUZZLE',
                 plays: stats.wordle_plays || 0,
                 action: onLaunchWordle
             },
@@ -115,7 +125,9 @@ const HubScreen: React.FC<HubScreenProps> = ({
                 title: 'Angle',
                 description: 'Estimate the Angle',
                 icon: '📐',
-                color: '#d900ff',
+                color: '#d946ef',
+                accentGlow: 'rgba(217, 70, 239, 0.25)',
+                tag: 'GEOMETRY',
                 plays: stats.angle_plays || 0,
                 action: onLaunchAngle
             },
@@ -124,7 +136,9 @@ const HubScreen: React.FC<HubScreenProps> = ({
                 title: 'Spelling Bee',
                 description: 'Listen and Spell',
                 icon: '🐝',
-                color: '#f4b400',
+                color: '#eab308',
+                accentGlow: 'rgba(234, 179, 8, 0.25)',
+                tag: 'VOCABULARY',
                 plays: stats.spelling_bee_plays || 0,
                 action: onLaunchSpellingBee
             },
@@ -133,7 +147,9 @@ const HubScreen: React.FC<HubScreenProps> = ({
                 title: 'Tic Tac Toe',
                 description: 'Classic 3x3 Strategy',
                 icon: '❌',
-                color: '#4facfe',
+                color: '#6366f1',
+                accentGlow: 'rgba(99, 102, 241, 0.25)',
+                tag: 'CLASSIC',
                 plays: stats.tic_tac_toe_plays || 0,
                 action: onLaunchTicTacToe
             },
@@ -142,7 +158,9 @@ const HubScreen: React.FC<HubScreenProps> = ({
                 title: 'Connect 4',
                 description: 'Drop and Connect',
                 icon: '🔴',
-                color: '#ff2a2a',
+                color: '#f43f5e',
+                accentGlow: 'rgba(244, 63, 94, 0.25)',
+                tag: 'STRATEGY',
                 plays: stats.connect_4_plays || 0,
                 action: onLaunchConnect4
             },
@@ -151,7 +169,9 @@ const HubScreen: React.FC<HubScreenProps> = ({
                 title: 'Gun Game',
                 description: '3D Target Practice',
                 icon: '🔫',
-                color: '#57a863',
+                color: '#14b8a6',
+                accentGlow: 'rgba(20, 184, 166, 0.25)',
+                tag: '3D ACTION',
                 plays: stats.gun_game_plays || 0,
                 action: onLaunchGunGame
             },
@@ -160,16 +180,20 @@ const HubScreen: React.FC<HubScreenProps> = ({
                 title: 'Color Memory',
                 description: 'Match the Target Color',
                 icon: '🎨',
-                color: '#d900ff',
+                color: '#a855f7',
+                accentGlow: 'rgba(168, 85, 247, 0.25)',
+                tag: 'MEMORY',
                 plays: stats.color_memory_plays || 0,
                 action: onLaunchColorMemory
             },
             {
                 id: 'particlephysics',
                 title: 'Particle Physics',
-                description: 'Satisfying Flow & Collision Sim',
+                description: 'Flow & Collision Sim',
                 icon: '⚛️',
-                color: '#00f2fe',
+                color: '#06b6d4',
+                accentGlow: 'rgba(6, 182, 212, 0.25)',
+                tag: 'SANDBOX',
                 plays: stats.particle_physics_plays || 0,
                 action: onLaunchParticlePhysics
             }
@@ -252,45 +276,181 @@ const HubScreen: React.FC<HubScreenProps> = ({
                     </div>
                 </div>
 
-                {/* Vertical Game List */}
-                <div className="flex flex-col gap-6 pb-10 pr-2">
-                    {sortedGames.map((game, index) => (
+                {/* Most Played Game (Top Featured) */}
+                {/* Featured / Most Played Game at the Top */}
+                {sortedGames.length > 0 && (
+                    <div className="mb-5 pr-2">
+                        <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-center gap-1.5 text-amber-400 text-[10px] md:text-xs font-bold tracking-wider">
+                                <span>🔥</span>
+                                <span>MOST PLAYED</span>
+                            </div>
+                            <span className="text-[10px] text-amber-400/90 font-mono font-bold">
+                                {sortedGames[0].plays.toLocaleString()}
+                            </span>
+                        </div>
+
                         <RandomReveal 
-                            key={game.id} 
-                            delay={0.3 + (index * 0.1)} 
-                            distance={300}
-                            className="group relative w-full bg-[#111] border-4 border-white flex items-center p-6 cursor-pointer hover:border-[var(--hover-color)] transition-colors duration-300 min-h-[140px] hover-scale"
-                            style={{ '--hover-color': game.color } as React.CSSProperties}
-                            onClick={game.action}
+                            key={`featured-${sortedGames[0].id}`} 
+                            delay={0.25} 
+                            distance={200}
+                            className="group relative w-full aspect-[3/1] min-h-[92px] sm:min-h-[105px] bg-neutral-950/75 hover:bg-neutral-900/90 text-white rounded-2xl border-2 border-amber-400/80 hover:border-amber-400 flex items-center p-3 sm:p-4.5 cursor-pointer transition-all duration-300 hover-scale shadow-[0_0_20px_rgba(245,158,11,0.2)] hover:shadow-[0_0_30px_rgba(245,158,11,0.4)] overflow-hidden backdrop-blur-md"
+                            style={{ 
+                                '--accent-color': sortedGames[0].color,
+                                '--accent-glow': sortedGames[0].accentGlow
+                            } as React.CSSProperties}
+                            onClick={sortedGames[0].action}
                         >
-                            <div className="text-4xl md:text-6xl mr-6 group-hover:scale-110 transition-transform duration-300 ease-[var(--ease-spring)]">
-                                {game.icon}
+                            {/* Radial Glow Highlight */}
+                            <div 
+                                className="absolute inset-0 pointer-events-none opacity-30 group-hover:opacity-75 transition-opacity duration-500"
+                                style={{ background: `radial-gradient(circle at 85% 50%, ${sortedGames[0].accentGlow} 0%, transparent 60%)` }}
+                            />
+
+                            {/* Watermark Icon */}
+                            <div className="absolute -right-2 -bottom-2 text-7xl sm:text-8xl opacity-10 group-hover:opacity-25 group-hover:scale-110 transition-all duration-500 pointer-events-none select-none">
+                                {sortedGames[0].icon}
+                            </div>
+
+                            {/* Crown / Top Badge */}
+                            <div className="absolute top-2 right-2.5 flex items-center gap-1 px-2 py-0.5 bg-amber-400 text-black text-[7px] sm:text-[8px] font-black rounded-full border border-black shadow-sm z-10">
+                                <span>👑</span>
+                                <span>#1 POPULAR</span>
+                            </div>
+
+                            {/* Icon Frame */}
+                            <div className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 rounded-xl bg-white/5 border border-amber-400/50 group-hover:border-amber-400 flex items-center justify-center text-2xl sm:text-3xl md:text-4xl mr-3 sm:mr-4 group-hover:scale-105 transition-all duration-300 shrink-0 shadow-inner z-10">
+                                {sortedGames[0].icon}
                             </div>
                             
-                            <div className="flex-1 flex flex-col justify-center">
-                                <h2 className="text-sm md:text-xl text-[var(--hover-color)] mb-2 transition-colors duration-300">
-                                    {game.title}
+                            {/* Middle Info */}
+                            <div className="flex-1 flex flex-col justify-center min-w-0 z-10 pr-2">
+                                <div className="flex items-center gap-2 mb-0.5 sm:mb-1">
+                                    <span className="text-[7px] sm:text-[8px] font-black uppercase px-1.5 py-0.5 rounded border border-amber-400/40 bg-amber-400/10 text-amber-400">
+                                        {sortedGames[0].tag}
+                                    </span>
+                                    <div className="text-[8px] sm:text-[9px] text-amber-400 font-bold flex items-center gap-1">
+                                        <span className="inline-block w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span>
+                                        <span>{sortedGames[0].plays.toLocaleString()}</span>
+                                    </div>
+                                </div>
+                                <h2 className="text-xs sm:text-base md:text-lg text-white group-hover:text-amber-300 transition-colors duration-300 leading-snug truncate font-black">
+                                    {sortedGames[0].title}
                                 </h2>
-                                <div className="text-[10px] md:text-xs text-[#888]">
-                                    {game.description}
-                                </div>
-                                <div className="text-[8px] text-[#555] mt-2">
-                                    {game.plays.toLocaleString()} Players
+                                <div className="text-[8px] sm:text-[10px] md:text-xs text-neutral-400 leading-tight font-sans font-medium line-clamp-1 mt-0.5">
+                                    {sortedGames[0].description}
                                 </div>
                             </div>
                             
-                            {/* Play Indicator - Moves in from right on hover */}
-                            <div className="opacity-0 group-hover:opacity-100 transform translate-x-10 group-hover:translate-x-0 transition-all duration-300 flex items-center">
+                            {/* Play Action */}
+                            <div className="flex items-center shrink-0 z-10 pl-1">
                                 <span 
-                                    className="text-black px-4 py-2 text-xs border-2 border-white"
-                                    style={{ backgroundColor: game.color }}
+                                    className="text-black font-black px-3.5 sm:px-4 py-1.5 sm:py-2 text-[10px] sm:text-xs rounded-xl border border-amber-400 bg-amber-400 shadow-md transition-all group-hover:scale-105 group-hover:bg-amber-300 flex items-center gap-1"
                                 >
-                                    PLAY
+                                    <span>PLAY</span>
+                                    <span className="text-[8px] group-hover:translate-x-0.5 transition-transform">▶</span>
                                 </span>
                             </div>
                         </RandomReveal>
-                    ))}
-                </div>
+                    </div>
+                )}
+
+                {/* 2-Column Game Grid for Remaining Games */}
+                {sortedGames.length > 1 && (
+                    <div className="flex flex-col gap-3 pb-10 pr-2">
+                        <div className="flex items-center gap-2 text-[#aaa] text-[10px] md:text-xs mb-1">
+                            <span>🎮</span>
+                            <span>ALL GAMES</span>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                            {sortedGames.slice(1).map((game, index) => (
+                                <RandomReveal 
+                                    key={game.id} 
+                                    delay={0.3 + (index * 0.05)} 
+                                    distance={200}
+                                    className="group relative w-full aspect-[3/1] min-h-[82px] sm:min-h-[92px] text-white rounded-2xl border-2 flex items-center p-3 sm:p-3.5 cursor-pointer transition-all duration-300 hover-scale shadow-lg overflow-hidden bg-neutral-950/70 hover:bg-neutral-900/90 backdrop-blur-md"
+                                    style={{ 
+                                        borderColor: `${game.color}55`,
+                                        '--accent-color': game.color,
+                                        '--accent-glow': game.accentGlow 
+                                    } as React.CSSProperties}
+                                    onClick={game.action}
+                                >
+                                    {/* Radial Glow on Hover */}
+                                    <div 
+                                        className="absolute inset-0 pointer-events-none opacity-20 group-hover:opacity-75 transition-opacity duration-500"
+                                        style={{ background: `radial-gradient(circle at 85% 50%, ${game.accentGlow} 0%, transparent 65%)` }}
+                                    />
+
+                                    {/* Subtle Watermark Icon */}
+                                    <div className="absolute -right-2 -bottom-2 text-6xl sm:text-7xl opacity-10 group-hover:opacity-25 group-hover:scale-110 transition-all duration-500 pointer-events-none select-none">
+                                        {game.icon}
+                                    </div>
+
+                                    {/* Left: Icon Frame */}
+                                    <div 
+                                        className="w-11 h-11 sm:w-12 sm:h-12 md:w-13 md:h-13 rounded-xl flex items-center justify-center bg-white/5 border text-2xl sm:text-3xl mr-2.5 sm:mr-3 group-hover:scale-105 transition-transform duration-300 shadow-inner shrink-0 z-10"
+                                        style={{ borderColor: `${game.color}55` }}
+                                    >
+                                        {game.icon}
+                                    </div>
+
+                                    {/* Middle: Tag, Title, Description, Player Count */}
+                                    <div className="flex-1 flex flex-col justify-center min-w-0 z-10 pr-2">
+                                        <div className="flex items-center gap-2 mb-0.5">
+                                            <span 
+                                                className="text-[7px] sm:text-[8px] font-black tracking-wider uppercase px-1.5 py-0.5 rounded border bg-black/40 backdrop-blur-sm"
+                                                style={{ 
+                                                    borderColor: `${game.color}66`,
+                                                    color: game.color 
+                                                }}
+                                            >
+                                                {game.tag}
+                                            </span>
+
+                                            <div 
+                                                className="text-[7px] sm:text-[8px] font-bold flex items-center gap-1 font-mono"
+                                                style={{ color: game.color }}
+                                            >
+                                                <span 
+                                                    className="w-1.5 h-1.5 rounded-full animate-pulse"
+                                                    style={{ backgroundColor: game.color }}
+                                                />
+                                                <span>{game.plays.toLocaleString()}</span>
+                                            </div>
+                                        </div>
+
+                                        <h2 
+                                            className="text-xs sm:text-sm md:text-base text-white group-hover:text-[var(--accent-color)] transition-colors duration-300 truncate leading-snug font-black"
+                                        >
+                                            {game.title}
+                                        </h2>
+
+                                        <div className="text-[8px] sm:text-[9px] md:text-[10px] text-neutral-400 line-clamp-1 leading-tight font-sans font-medium mt-0.5">
+                                            {game.description}
+                                        </div>
+                                    </div>
+
+                                    {/* Right: PLAY Action Button */}
+                                    <div className="flex items-center shrink-0 z-10 pl-1">
+                                        <span 
+                                            className="px-2.5 sm:px-3 py-1 sm:py-1.5 text-[8px] sm:text-[9px] font-black rounded-lg border shadow-sm transition-all group-hover:scale-105 flex items-center gap-1"
+                                            style={{ 
+                                                backgroundColor: `${game.color}25`,
+                                                borderColor: game.color,
+                                                color: '#fff'
+                                            }}
+                                        >
+                                            <span>PLAY</span>
+                                            <span className="text-[7px] group-hover:translate-x-0.5 transition-transform">▶</span>
+                                        </span>
+                                    </div>
+                                </RandomReveal>
+                            ))}
+                        </div>
+                    </div>
+                )}
             </div>
 
             {/* Sidebar Chat - Desktop Only */}

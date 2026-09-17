@@ -685,17 +685,17 @@ export const StartScreen: React.FC<StartScreenProps> = ({
                  </Button>
             </div>
 
-            <RandomReveal className="bg-[#111] border-4 border-white p-8 rounded-none max-w-lg w-full text-center shadow-[10px_10px_0px_#f4b400] relative">
-                <h1 className="text-4xl text-[#f4b400] mb-2 font-['Press_Start_2P']"><RandomText text="TACO TYPER" /></h1>
-                <p className="text-xs text-[#aaa] mb-8">Type fast, don't drop the food!</p>
+            <RandomReveal className="bg-[#111] border-2 sm:border-4 border-white p-5 sm:p-8 rounded-none max-w-lg w-full text-center shadow-[6px_6px_0px_#f4b400] sm:shadow-[10px_10px_0px_#f4b400] relative mx-2">
+                <h1 className="text-2xl sm:text-3xl md:text-4xl text-[#f4b400] mb-2 font-['Press_Start_2P'] tracking-tight"><RandomText text="TACO TYPER" /></h1>
+                <p className="text-xs text-[#aaa] mb-6 sm:mb-8">Type fast, don't drop the food!</p>
 
-                <div className="flex flex-col gap-4 mb-6 items-center">
-                    <div className="flex gap-4 w-full">
-                        <Button onClick={onStart} className="flex-1 hover:scale-105 text-lg">Play Standard</Button>
-                        <Button onClick={onInfinite} variant="accent" className="flex-1 hover:scale-105">Infinite Mode</Button>
+                <div className="flex flex-col gap-3 sm:gap-4 mb-5 sm:mb-6 items-center">
+                    <div className="flex flex-col sm:flex-row gap-2.5 sm:gap-4 w-full">
+                        <Button onClick={onStart} className="flex-1 hover:scale-105 text-sm sm:text-base md:text-lg py-2.5 sm:py-3">Play Standard</Button>
+                        <Button onClick={onInfinite} variant="accent" className="flex-1 hover:scale-105 text-sm sm:text-base py-2.5 sm:py-3">Infinite Mode</Button>
                     </div>
                     
-                    <Button onClick={onSpeedTest} variant="pro" className="w-full hover:scale-105" disabled={isGenerating}>
+                    <Button onClick={onSpeedTest} variant="pro" className="w-full hover:scale-105 text-sm sm:text-base py-2.5 sm:py-3" disabled={isGenerating}>
                         {isGenerating ? 'Generating...' : 'Speed Test (AI)'}
                     </Button>
                 </div>
@@ -805,8 +805,8 @@ export const LevelCompleteScreen: React.FC<LevelCompleteProps> = ({ levelName, m
 
 export const GameOverScreen: React.FC<GameOverProps> = ({ score, message, stats, onRestart, onHome, aiTitle, aiScore, isCalculating, isTimeScore }) => (
     <Overlay>
-        <div className="flex flex-col md:flex-row gap-4 max-w-4xl w-full items-start justify-center p-4">
-             <RandomReveal className="bg-[#111] border-4 border-white p-8 text-center w-full md:w-[400px] flex flex-col gap-4 relative">
+        <div className="flex flex-col md:flex-row gap-4 max-w-4xl w-full items-center md:items-start justify-center p-2 sm:p-4">
+             <RandomReveal className="bg-[#111] border-2 sm:border-4 border-white p-5 sm:p-8 text-center w-full max-w-md md:w-[400px] flex flex-col gap-3 sm:gap-4 relative mx-2">
                 {isCalculating ? (
                     <div className="absolute top-2 right-2 text-[10px] text-[#f4b400] animate-pulse">AI Analyzing...</div>
                 ) : (
@@ -817,12 +817,12 @@ export const GameOverScreen: React.FC<GameOverProps> = ({ score, message, stats,
                     )
                 )}
 
-                <h2 className="text-3xl text-red-500 mt-4 mb-2"><RandomText text="GAME OVER" /></h2>
-                <div className="text-sm text-[#aaa] mb-4 h-10 flex items-center justify-center">{message}</div>
+                <h2 className="text-2xl sm:text-3xl text-red-500 mt-2 sm:mt-4 mb-1 sm:mb-2"><RandomText text="GAME OVER" /></h2>
+                <div className="text-xs sm:text-sm text-[#aaa] mb-2 sm:mb-4 min-h-[32px] flex items-center justify-center">{message}</div>
                 
-                <div className="flex flex-col gap-2 bg-[#222] p-4 rounded border border-[#333]">
-                    <div className="text-xs text-[#888] uppercase">{isTimeScore ? "Final Time" : "Final Score"}</div>
-                    <div className="text-4xl text-white font-bold">
+                <div className="flex flex-col gap-1.5 sm:gap-2 bg-[#222] p-3 sm:p-4 rounded border border-[#333]">
+                    <div className="text-[10px] sm:text-xs text-[#888] uppercase">{isTimeScore ? "Final Time" : "Final Score"}</div>
+                    <div className="text-3xl sm:text-4xl text-white font-bold">
                         {isCalculating ? (
                             <span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"/>
                         ) : (
@@ -833,14 +833,14 @@ export const GameOverScreen: React.FC<GameOverProps> = ({ score, message, stats,
                             )
                         )}
                     </div>
-                    {stats && <div className="text-xs text-[#f4b400] mt-1">{stats}</div>}
+                    {stats && <div className="text-[11px] sm:text-xs text-[#f4b400] mt-1">{stats}</div>}
                 </div>
 
-                <div className="flex gap-3 mt-4">
+                <div className="flex gap-2 sm:gap-3 mt-3 sm:mt-4">
                     {onHome && (
-                        <Button onClick={onHome} variant="secondary" className="flex-1 text-xs">HOME</Button>
+                        <Button onClick={onHome} variant="secondary" className="flex-1 text-xs py-2 sm:py-2.5">HOME</Button>
                     )}
-                    <Button onClick={onRestart} className="flex-1 text-xs">PLAY AGAIN</Button>
+                    <Button onClick={onRestart} className="flex-1 text-xs py-2 sm:py-2.5">PLAY AGAIN</Button>
                 </div>
             </RandomReveal>
         </div>
@@ -849,19 +849,19 @@ export const GameOverScreen: React.FC<GameOverProps> = ({ score, message, stats,
 
 export const BossIntroScreen: React.FC<BossIntroProps> = ({ onStart }) => (
     <Overlay>
-        <RandomReveal className="bg-[#111] border-4 border-red-600 p-8 text-center max-w-lg w-full shadow-[0_0_50px_rgba(255,0,0,0.3)]">
-            <h1 className="text-4xl text-red-600 mb-4 font-creepster tracking-widest animate-pulse">THE RUSH</h1>
-            <p className="text-sm text-white mb-6 leading-loose">
+        <RandomReveal className="bg-[#111] border-2 sm:border-4 border-red-600 p-5 sm:p-8 text-center max-w-lg w-full shadow-[0_0_50px_rgba(255,0,0,0.3)] mx-2">
+            <h1 className="text-2xl sm:text-4xl text-red-600 mb-3 sm:mb-4 font-creepster tracking-widest animate-pulse">THE RUSH</h1>
+            <p className="text-xs sm:text-sm text-white mb-5 sm:mb-6 leading-relaxed sm:leading-loose">
                 The dinner rush is here.<br/>
                 Socialize with guests while cooking.<br/>
                 <span className="text-[#f4b400]">Don't get distracted!</span>
             </p>
-            <div className="flex justify-center mb-8 gap-4">
-                 <span className="text-4xl animate-bounce delay-100">🍷</span>
-                 <span className="text-4xl animate-bounce delay-200">🥗</span>
-                 <span className="text-4xl animate-bounce delay-300">🍛</span>
+            <div className="flex justify-center mb-6 sm:mb-8 gap-4">
+                 <span className="text-3xl sm:text-4xl animate-bounce delay-100">🍷</span>
+                 <span className="text-3xl sm:text-4xl animate-bounce delay-200">🥗</span>
+                 <span className="text-3xl sm:text-4xl animate-bounce delay-300">🍛</span>
             </div>
-            <Button onClick={onStart} className="w-full bg-red-600 border-red-800 text-white hover:bg-red-700 hover:scale-110">
+            <Button onClick={onStart} className="w-full bg-red-600 border-red-800 text-white hover:bg-red-700 hover:scale-105 text-sm sm:text-base py-2.5 sm:py-3">
                 OPEN DOORS
             </Button>
         </RandomReveal>

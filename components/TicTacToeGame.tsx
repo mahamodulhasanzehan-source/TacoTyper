@@ -50,6 +50,8 @@ export default function TicTacToeGame({ user, onBackToHub, username }: TicTacToe
     const [winningLine, setWinningLine] = useState<number[] | null>(null);
     const [streak, setStreak] = useState(0);
     const [aiPlaysFirst, setAiPlaysFirst] = useState(false);
+    const [currentStarter, setCurrentStarter] = useState<'player' | 'ai'>('player');
+    const [nextAiPlaysFirst, setNextAiPlaysFirst] = useState(false);
 
     const combos = is4x4 ? COMBOS_4X4_MATCH_3 : COMBOS_3X3;
 
@@ -59,13 +61,15 @@ export default function TicTacToeGame({ user, onBackToHub, username }: TicTacToe
         setGameOver(false);
         setWinner(null);
         setWinningLine(null);
+        setAiPlaysFirst(aiFirst);
+        setCurrentStarter(aiFirst ? 'ai' : 'player');
         setIsPlayerTurn(!aiFirst);
         incrementGamePlays('tic_tac_toe' as any);
     }, [difficulty, aiPlaysFirst]);
 
     useEffect(() => {
-        startNewGame(difficulty, aiPlaysFirst);
-    }, [difficulty, aiPlaysFirst, startNewGame]);
+        startNewGame(difficulty, false);
+    }, []);
 
     const checkWinState = (squares: Player[], currentCombos: number[][]): { winner: Player | 'Draw', line?: number[] } | null => {
         for (const combo of currentCombos) {
@@ -162,6 +166,19 @@ export default function TicTacToeGame({ user, onBackToHub, username }: TicTacToe
         setWinner(res);
         if (line) setWinningLine(line);
 
+        // Turn order rules based on outcome:
+        // If player 1 went first and lost -> player 1 goes first again.
+        // If won or draw -> player 2 goes first.
+        // If player 2 (AI) went first and lost -> player 2 goes first again.
+        // If won or draw -> player 1 goes first.
+        let nextAi = false;
+        if (currentStarter === 'player') {
+            nextAi = res === 'O' ? false : true;
+        } else {
+            nextAi = res === 'X' ? true : false;
+        }
+        setNextAiPlaysFirst(nextAi);
+
         if (res === 'X') {
             audioService.playSound('correct_answer');
             const newStreak = streak + 1;
@@ -231,7 +248,7 @@ export default function TicTacToeGame({ user, onBackToHub, username }: TicTacToe
                     <button
                         onClick={() => {
                             audioService.playSound('button_click');
-                            startNewGame();
+                            startNewGame(difficulty, aiPlaysFirst);
                         }}
                         className="px-2.5 py-1 bg-neutral-800 hover:bg-neutral-700 border border-neutral-600 rounded-full text-xs font-bold text-neutral-300"
                         title="Reset Game"
@@ -243,20 +260,21 @@ export default function TicTacToeGame({ user, onBackToHub, username }: TicTacToe
 
             {/* Difficulty Controls */}
             <div className="flex flex-wrap items-center justify-center gap-2.5 mb-4 z-10 max-w-md">
-                {/* Difficulty Selector with grid sizes indicated */}
                 <div className="flex bg-neutral-900 p-1 rounded-xl border border-neutral-800">
                     {[
-                        { label: 'Easy (3x3)', val: 0 },
-                        { label: 'Medium (3x3)', val: 1 },
-                        { label: 'Hard (4x4)', val: 2 }
+                        { label: 'Easy', val: 0 },
+                        { label: 'Medium', val: 1 },
+                        { label: 'Hard', val: 2 }
                     ].map(d => (
                         <button
                             key={d.val}
                             onClick={() => {
                                 audioService.playSound('button_click');
-                                setDifficulty(d.val as 0 | 1 | 2);
+                                const newDiff = d.val as 0 | 1 | 2;
+                                setDifficulty(newDiff);
+                                startNewGame(newDiff, aiPlaysFirst);
                             }}
-                            className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${
+                            className={`px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all ${
                                 difficulty === d.val 
                                     ? d.val === 2 ? 'bg-amber-500 text-black shadow font-black' : 'bg-sky-500 text-black shadow font-black'
                                     : 'text-neutral-400 hover:text-white'
@@ -271,7 +289,8 @@ export default function TicTacToeGame({ user, onBackToHub, username }: TicTacToe
                 <button
                     onClick={() => {
                         audioService.playSound('button_click');
-                        setAiPlaysFirst(prev => !prev);
+                        const newAi = !aiPlaysFirst;
+                        startNewGame(difficulty, newAi);
                     }}
                     className="px-3 py-1.5 bg-neutral-900 border border-neutral-800 hover:border-neutral-700 text-neutral-300 rounded-xl text-xs font-bold transition-colors"
                     title="Toggle first move"
@@ -281,8 +300,8 @@ export default function TicTacToeGame({ user, onBackToHub, username }: TicTacToe
             </div>
 
             {/* Game Board */}
-            <div className="flex flex-col items-center justify-center z-10">
-                <div className={`grid gap-2 bg-neutral-900/90 p-3 rounded-2xl border-2 border-neutral-800 shadow-2xl ${is4x4 ? 'grid-cols-4' : 'grid-cols-3'}`}>
+            <div className="flex flex-col items-center justify-center z-10 w-full px-2">
+                <div className={`grid gap-1.5 sm:gap-2 bg-neutral-900/90 p-2.5 sm:p-3 rounded-2xl border-2 border-neutral-800 shadow-2xl max-w-full ${is4x4 ? 'grid-cols-4' : 'grid-cols-3'}`}>
                     {board.map((cell, index) => {
                         const isWinCell = winningLine?.includes(index);
                         return (
@@ -291,8 +310,8 @@ export default function TicTacToeGame({ user, onBackToHub, username }: TicTacToe
                                 onClick={() => handleCellClick(index)}
                                 className={`rounded-xl font-black flex items-center justify-center transition-all duration-150 active:scale-95 shadow-inner ${
                                     !is4x4
-                                        ? 'w-20 h-20 sm:w-24 sm:h-24 md:w-28 md:h-28 text-4xl sm:text-5xl md:text-6xl'
-                                        : 'w-16 h-16 sm:w-18 sm:h-18 md:w-20 md:h-20 text-3xl sm:text-4xl'
+                                        ? 'w-[23vw] max-w-[110px] min-w-[64px] h-[23vw] max-h-[110px] min-h-[64px] sm:w-24 sm:h-24 md:w-28 md:h-28 text-3xl sm:text-5xl md:text-6xl'
+                                        : 'w-[18vw] max-w-[82px] min-w-[50px] h-[18vw] max-h-[82px] min-h-[50px] sm:w-18 sm:h-18 md:w-20 md:h-20 text-2xl sm:text-3xl md:text-4xl'
                                 } ${
                                     isWinCell 
                                         ? 'bg-amber-500/20 border-2 border-amber-400 animate-pulse' 
@@ -318,7 +337,7 @@ export default function TicTacToeGame({ user, onBackToHub, username }: TicTacToe
                         <button
                             onClick={() => {
                                 audioService.playSound('button_click');
-                                startNewGame();
+                                startNewGame(difficulty, nextAiPlaysFirst);
                             }}
                             className="px-6 py-2.5 bg-sky-500 hover:bg-sky-400 text-black font-bold rounded-full shadow-lg transition-transform active:scale-95 text-sm sm:text-base"
                         >

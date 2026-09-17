@@ -247,11 +247,11 @@ export default function WordleGame({ user, username, onBackToHub }: WordleGamePr
                                 audioService.playSound('button_click');
                                 setWordLength(len);
                             }}
-                            className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-all ${
-                                wordLength === len ? 'bg-green-600 text-white shadow' : 'text-neutral-400 hover:text-white'
+                            className={`w-8 h-7 text-xs font-bold rounded-lg flex items-center justify-center transition-all ${
+                                wordLength === len ? 'bg-green-600 text-white shadow font-black' : 'text-neutral-400 hover:text-white'
                             }`}
                         >
-                            {len} Letters {len >= 6 ? '🔥' : ''}
+                            {len}
                         </button>
                     ))}
                 </div>
@@ -311,11 +311,13 @@ export default function WordleGame({ user, username, onBackToHub }: WordleGamePr
                                             borderColor = 'border-neutral-500 bg-neutral-900';
                                         }
 
-                                        const boxSize = wordLength >= 8 
-                                            ? 'w-9 h-10 sm:w-11 sm:h-12 text-lg sm:text-xl' 
+                                        const boxSize = wordLength === 9 
+                                            ? 'w-[min(9vw,40px)] h-[min(10.5vw,46px)] min-w-[28px] min-h-[34px] sm:w-11 sm:h-12 text-sm min-[380px]:text-base sm:text-xl' 
+                                            : wordLength === 8
+                                            ? 'w-[min(10vw,44px)] h-[min(11.5vw,50px)] min-w-[30px] min-h-[36px] sm:w-11 sm:h-12 text-base sm:text-xl'
                                             : wordLength === 7
-                                            ? 'w-10 h-11 sm:w-12 sm:h-13 text-xl sm:text-2xl'
-                                            : 'w-11 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 text-2xl sm:text-3xl';
+                                            ? 'w-[min(11.5vw,48px)] h-[min(13vw,54px)] min-w-[34px] min-h-[40px] sm:w-12 sm:h-13 text-lg sm:text-2xl'
+                                            : 'w-[min(13.5vw,56px)] h-[min(15vw,62px)] min-w-[38px] min-h-[44px] sm:w-14 sm:h-14 md:w-16 md:h-16 text-xl sm:text-2xl md:text-3xl';
 
                                         return (
                                             <div 
@@ -333,9 +335,9 @@ export default function WordleGame({ user, username, onBackToHub }: WordleGamePr
                     </div>
 
                     {/* Virtual Keyboard */}
-                    <div className="flex flex-col gap-1.5 w-full max-w-lg px-2 z-10">
+                    <div className="flex flex-col gap-1 sm:gap-1.5 w-full max-w-lg px-1 sm:px-2 z-10">
                         {keyboardRows.map((row, i) => (
-                            <div key={i} className="flex justify-center gap-1 sm:gap-1.5">
+                            <div key={i} className="flex justify-center gap-0.5 min-[380px]:gap-1 sm:gap-1.5">
                                 {row.map(key => {
                                     const status = getKeyStatus(key);
                                     let bgColor = 'bg-neutral-800 text-neutral-200 border-neutral-700';
@@ -350,8 +352,10 @@ export default function WordleGame({ user, username, onBackToHub }: WordleGamePr
                                             key={key}
                                             onClick={() => handleKeyPress(key)}
                                             className={`${bgColor} border active:scale-95 font-black rounded-lg ${
-                                                key.length > 1 ? 'px-2 sm:px-3 text-xs' : 'w-7 sm:w-9 md:w-10 text-sm sm:text-base'
-                                            } h-11 sm:h-12 flex items-center justify-center transition-all ${isPressed ? 'scale-90 brightness-150' : ''}`}
+                                                key.length > 1 
+                                                    ? 'px-1 min-[380px]:px-2 sm:px-3 text-[9px] min-[380px]:text-[11px] sm:text-xs' 
+                                                    : 'w-[min(8.5vw,36px)] sm:w-9 md:w-10 text-xs sm:text-base'
+                                            } h-9 min-[380px]:h-10 sm:h-12 flex items-center justify-center transition-all ${isPressed ? 'scale-90 brightness-150' : ''}`}
                                         >
                                             {key === 'BACKSPACE' ? '⌫' : key}
                                         </button>

@@ -213,11 +213,10 @@ body {
   100% { transform: translateX(-100%); opacity: 0; }
 }
 @keyframes dropPiece {
-  0% { transform: translateY(-400px); opacity: 0; }
-  10% { opacity: 1; }
-  60% { transform: translateY(0); }
-  80% { transform: translateY(-20px); }
-  100% { transform: translateY(0); }
+  0% { transform: translateY(var(--drop-y, -350px)); opacity: 0.9; }
+  75% { transform: translateY(0); }
+  88% { transform: translateY(-10px); }
+  100% { transform: translateY(0); opacity: 1; }
 }
 
 /* Utility Classes for Animations */
