@@ -5,6 +5,7 @@ import { incrementGamePlays } from '../services/firebase';
 export interface FruitDef {
     id: number;
     name: string;
+    emoji: string;
     radius: number;
     score: number;
     color: string;
@@ -12,191 +13,42 @@ export interface FruitDef {
 }
 
 export const FRUIT_TYPES: FruitDef[] = [
-    { id: 0, name: 'Cherry', radius: 18, score: 2, color: '#e11d48', accentColor: '#9f1239' },
-    { id: 1, name: 'Strawberry', radius: 25, score: 4, color: '#f43f5e', accentColor: '#be123c' },
-    { id: 2, name: 'Grape', radius: 33, score: 6, color: '#9333ea', accentColor: '#6b21a8' },
-    { id: 3, name: 'Dekopon', radius: 42, score: 10, color: '#f97316', accentColor: '#c2410c' },
-    { id: 4, name: 'Persimmon', radius: 52, score: 15, color: '#ea580c', accentColor: '#9a3412' },
-    { id: 5, name: 'Apple', radius: 63, score: 21, color: '#dc2626', accentColor: '#991b1b' },
-    { id: 6, name: 'Pear', radius: 75, score: 28, color: '#84cc16', accentColor: '#4d7c0f' },
-    { id: 7, name: 'Peach', radius: 88, score: 36, color: '#fb7185', accentColor: '#e11d48' },
-    { id: 8, name: 'Pineapple', radius: 102, score: 45, color: '#eab308', accentColor: '#a16207' },
-    { id: 9, name: 'Melon', radius: 118, score: 55, color: '#22c55e', accentColor: '#15803d' },
-    { id: 10, name: 'Watermelon', radius: 136, score: 70, color: '#16a34a', accentColor: '#14532d' },
+    { id: 0, name: 'Cherry', emoji: '🍒', radius: 18, score: 2, color: '#e11d48', accentColor: '#9f1239' },
+    { id: 1, name: 'Strawberry', emoji: '🍓', radius: 25, score: 4, color: '#f43f5e', accentColor: '#be123c' },
+    { id: 2, name: 'Grape', emoji: '🍇', radius: 33, score: 6, color: '#9333ea', accentColor: '#6b21a8' },
+    { id: 3, name: 'Dekopon', emoji: '🍊', radius: 42, score: 10, color: '#f97316', accentColor: '#c2410c' },
+    { id: 4, name: 'Persimmon', emoji: '🍅', radius: 52, score: 15, color: '#ea580c', accentColor: '#9a3412' },
+    { id: 5, name: 'Apple', emoji: '🍎', radius: 63, score: 21, color: '#dc2626', accentColor: '#991b1b' },
+    { id: 6, name: 'Pear', emoji: '🍐', radius: 75, score: 28, color: '#84cc16', accentColor: '#4d7c0f' },
+    { id: 7, name: 'Peach', emoji: '🍑', radius: 88, score: 36, color: '#fb7185', accentColor: '#e11d48' },
+    { id: 8, name: 'Pineapple', emoji: '🍍', radius: 102, score: 45, color: '#eab308', accentColor: '#a16207' },
+    { id: 9, name: 'Melon', emoji: '🍈', radius: 118, score: 55, color: '#22c55e', accentColor: '#15803d' },
+    { id: 10, name: 'Watermelon', emoji: '🍉', radius: 136, score: 70, color: '#16a34a', accentColor: '#14532d' },
 ];
 
 export const FruitSVG: React.FC<{ tier: number; size?: number; className?: string }> = ({ tier, size, className = '' }) => {
     const fruit = FRUIT_TYPES[Math.min(tier, FRUIT_TYPES.length - 1)];
     const s = size || fruit.radius * 2;
+    const fontSize = Math.max(12, Math.round(s * 0.65));
 
     return (
-        <svg 
-            width={s} 
-            height={s} 
-            viewBox="-100 -100 200 200" 
-            className={`shrink-0 select-none pointer-events-none drop-shadow-md ${className}`}
-            style={{ width: `${s}px`, height: `${s}px` }}
+        <div 
+            className={`relative rounded-full flex items-center justify-center shrink-0 select-none shadow-md ${className}`}
+            style={{ 
+                width: `${s}px`, 
+                height: `${s}px`,
+                background: `radial-gradient(circle at 35% 35%, #ffffff 0%, ${fruit.color} 35%, ${fruit.accentColor} 100%)`,
+                border: '1.5px solid rgba(255,255,255,0.4)',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.35)'
+            }}
         >
-            <defs>
-                <radialGradient id={`grad-${tier}`} cx="35%" cy="35%" r="65%">
-                    <stop offset="0%" stopColor="#ffffff" stopOpacity="0.4" />
-                    <stop offset="25%" stopColor={fruit.color} />
-                    <stop offset="100%" stopColor={fruit.accentColor} />
-                </radialGradient>
-                <filter id={`shadow-${tier}`} x="-20%" y="-20%" width="140%" height="140%">
-                    <feDropShadow dx="0" dy="4" stdDeviation="6" floodOpacity="0.3" />
-                </filter>
-            </defs>
-
-            {/* Circular Hitbox Boundary Base */}
-            <circle cx="0" cy="0" r="96" fill={`url(#grad-${tier})`} stroke="rgba(255,255,255,0.25)" strokeWidth="3" />
-
-            {/* Individual Unique Fruit Art */}
-            {tier === 0 && (
-                // Cherry: double stem, leaf, cute shine
-                <g>
-                    <ellipse cx="-15" cy="5" rx="35" ry="38" fill="#be123c" />
-                    <ellipse cx="25" cy="15" rx="30" ry="33" fill="#be123c" />
-                    <path d="M -15,-20 Q 0,-70 20,-80 Q 25,-40 25,-10" fill="none" stroke="#65a30d" strokeWidth="6" strokeLinecap="round" />
-                    <ellipse cx="30" cy="-75" rx="14" ry="7" fill="#4d7c0f" transform="rotate(-25 30 -75)" />
-                    <circle cx="-25" cy="-5" r="10" fill="#ffffff" opacity="0.6" />
-                </g>
-            )}
-
-            {tier === 1 && (
-                // Strawberry: seed dots and green cap
-                <g>
-                    <path d="M 0,-85 Q -30,-80 -45,-60 Q 0,-75 0,-60 Q 0,-75 45,-60 Q 30,-80 0,-85" fill="#4d7c0f" />
-                    <ellipse cx="0" cy="-70" rx="35" ry="15" fill="#65a30d" />
-                    {/* Seeds */}
-                    {[[-30,-20], [-10,-35], [20,-25], [-35,20], [-5,10], [25,25], [0,50], [-20,60], [20,65]].map(([sx, sy], i) => (
-                        <ellipse key={i} cx={sx} cy={sy} rx="4" ry="6" fill="#fde047" transform={`rotate(${i * 10} ${sx} ${sy})`} />
-                    ))}
-                    <ellipse cx="-35" cy="-35" rx="18" ry="10" fill="#ffffff" opacity="0.5" transform="rotate(-30 -35 -35)" />
-                </g>
-            )}
-
-            {tier === 2 && (
-                // Grape: cluster of juicy spheres & curly vine
-                <g>
-                    <path d="M 0,-70 Q 15,-90 0,-95" fill="none" stroke="#4d7c0f" strokeWidth="5" strokeLinecap="round" />
-                    <ellipse cx="-15" cy="-75" rx="14" ry="7" fill="#65a30d" transform="rotate(-30 -15 -75)" />
-                    {/* Internal grape globes */}
-                    {[[-30,-30], [0,-35], [30,-30], [-45,5], [-15,0], [20,0], [45,5], [-30,40], [0,40], [30,40], [-15,70], [15,70], [0,85]].map(([gx, gy], i) => (
-                        <circle key={i} cx={gx} cy={gy} r="20" fill="#7e22ce" stroke="#581c87" strokeWidth="2" />
-                    ))}
-                    <ellipse cx="-30" cy="-45" rx="14" ry="7" fill="#ffffff" opacity="0.5" transform="rotate(-20 -30 -45)" />
-                </g>
-            )}
-
-            {tier === 3 && (
-                // Dekopon (Mandarin/Tangerine with top protruding knob)
-                <g>
-                    {/* The signature "deko" knob on top */}
-                    <path d="M -22,-85 C -25,-105 25,-105 22,-85 Z" fill="#ea580c" stroke="#c2410c" strokeWidth="2" />
-                    <ellipse cx="12" cy="-94" rx="12" ry="6" fill="#4d7c0f" transform="rotate(20 12 -94)" />
-                    {/* Citrus dimple texture dots */}
-                    {[[-40,-20], [-20,-45], [30,-30], [-50,20], [-10,15], [40,10], [-30,55], [20,50]].map(([px, py], i) => (
-                        <circle key={i} cx={px} cy={py} r="2.5" fill="#c2410c" opacity="0.5" />
-                    ))}
-                    <ellipse cx="-35" cy="-40" rx="20" ry="10" fill="#ffffff" opacity="0.45" transform="rotate(-35 -35 -40)" />
-                </g>
-            )}
-
-            {tier === 4 && (
-                // Persimmon: rich orange with 4-lobed calyx
-                <g>
-                    {/* 4 green calyx leaves on top */}
-                    <path d="M 0,-65 C -25,-95 -50,-65 -30,-50 C -55,-40 -50,-15 -25,-30 C -15,5 15,5 25,-30 C 50,-15 55,-40 30,-50 C 50,-65 25,-95 0,-65" fill="#3f6212" stroke="#1a2e05" strokeWidth="3" />
-                    <ellipse cx="0" cy="-55" rx="16" ry="12" fill="#65a30d" />
-                    <circle cx="0" cy="-55" r="4" fill="#365314" />
-                    {/* Soft quadrants */}
-                    <path d="M 0,-30 L 0,85" stroke="#9a3412" strokeWidth="4" opacity="0.3" strokeDasharray="6 6" />
-                    <ellipse cx="-40" cy="-35" rx="22" ry="12" fill="#ffffff" opacity="0.4" transform="rotate(-30 -40 -35)" />
-                </g>
-            )}
-
-            {tier === 5 && (
-                // Apple: glossy red, top stem indentation, leaf
-                <g>
-                    {/* Top dip indentation */}
-                    <path d="M 0,-80 Q -10,-95 -18,-92 Q -12,-75 0,-70 Q 12,-75 18,-92 Q 10,-95 0,-80" fill="#7f1d1d" />
-                    <path d="M 0,-70 Q -8,-105 -2,-110" fill="none" stroke="#78350f" strokeWidth="6" strokeLinecap="round" />
-                    <ellipse cx="16" cy="-88" rx="18" ry="8" fill="#4ade80" stroke="#15803d" strokeWidth="2" transform="rotate(30 16 -88)" />
-                    {/* Crescent highlight */}
-                    <path d="M -60,-20 A 70 70 0 0 1 -20,-70" fill="none" stroke="#ffffff" strokeWidth="10" strokeLinecap="round" opacity="0.4" />
-                </g>
-            )}
-
-            {tier === 6 && (
-                // Pear: pear silhouette shading & sweet freckles
-                <g>
-                    <path d="M 0,-75 Q 8,-105 15,-110" fill="none" stroke="#78350f" strokeWidth="6" strokeLinecap="round" />
-                    <ellipse cx="-16" cy="-90" rx="16" ry="7" fill="#65a30d" transform="rotate(-30 -16 -90)" />
-                    {/* Pear neck shading */}
-                    <ellipse cx="0" cy="-25" rx="60" ry="55" fill="#a3e635" opacity="0.35" />
-                    {[[-30,20], [-15,40], [25,30], [10,60], [-40,-10], [30,-15]].map(([fx, fy], i) => (
-                        <circle key={i} cx={fx} cy={fy} r="2" fill="#4d7c0f" opacity="0.6" />
-                    ))}
-                    <ellipse cx="-45" cy="-35" rx="20" ry="10" fill="#ffffff" opacity="0.5" transform="rotate(-40 -45 -35)" />
-                </g>
-            )}
-
-            {tier === 7 && (
-                // Peach: pink blushing with vertical cleft crease
-                <g>
-                    <path d="M 0,-80 L 0,-100" stroke="#78350f" strokeWidth="6" strokeLinecap="round" />
-                    <ellipse cx="-20" cy="-85" rx="18" ry="8" fill="#22c55e" stroke="#15803d" strokeWidth="2" transform="rotate(-25 -20 -85)" />
-                    <ellipse cx="20" cy="-85" rx="18" ry="8" fill="#22c55e" stroke="#15803d" strokeWidth="2" transform="rotate(25 20 -85)" />
-                    {/* Signature cleft curve */}
-                    <path d="M 0,-65 C 20,-10 15,35 0,85 C -15,35 -20,-10 0,-65" fill="#be123c" opacity="0.25" />
-                    <ellipse cx="-45" cy="-25" rx="22" ry="12" fill="#ffffff" opacity="0.5" transform="rotate(-35 -45 -25)" />
-                </g>
-            )}
-
-            {tier === 8 && (
-                // Pineapple: diamond grid rind & spiky crown
-                <g>
-                    {/* Spiky green top crown */}
-                    <path d="M 0,-70 L -15,-115 L 0,-85 L 15,-115 Z" fill="#15803d" />
-                    <path d="M -10,-70 L -35,-105 L -10,-85 Z" fill="#16a34a" />
-                    <path d="M 10,-70 L 35,-105 L 10,-85 Z" fill="#16a34a" />
-                    {/* Diamond criss-cross texture */}
-                    <path d="M -70,-30 L 70,50 M -70,10 L 50,85 M -50,-65 L 70,10 M -70,50 L 70,-30 M -50,85 L 70,10 M -70,10 L 50,-65" stroke="#a16207" strokeWidth="3" opacity="0.5" />
-                    {/* Centered diamond eye dots */}
-                    {[[-35,-15], [0,-35], [35,-15], [-50,20], [-15,5], [20,5], [50,20], [-35,50], [0,35], [35,50], [0,70]].map(([dx, dy], i) => (
-                        <circle key={i} cx={dx} cy={dy} r="4" fill="#713f12" />
-                    ))}
-                    <ellipse cx="-45" cy="-35" rx="20" ry="10" fill="#ffffff" opacity="0.4" transform="rotate(-30 -45 -35)" />
-                </g>
-            )}
-
-            {tier === 9 && (
-                // Melon: mint green with white netting lines & T-stem
-                <g>
-                    {/* T-stem */}
-                    <path d="M 0,-75 L 0,-95 M -15,-95 L 15,-95" stroke="#15803d" strokeWidth="6" strokeLinecap="round" />
-                    {/* Netting lines (cantaloupe netting) */}
-                    <path d="M -80,-20 Q 0,-40 80,-20 M -85,15 Q 0,-5 85,15 M -75,50 Q 0,35 75,50 M -50,-70 Q -40,0 -50,70 M 0,-85 Q 0,0 0,85 M 50,-70 Q 40,0 50,70" fill="none" stroke="#f0fdf4" strokeWidth="3.5" opacity="0.75" strokeDasharray="7 5" />
-                    <ellipse cx="-45" cy="-45" rx="25" ry="14" fill="#ffffff" opacity="0.45" transform="rotate(-30 -45 -45)" />
-                </g>
-            )}
-
-            {tier === 10 && (
-                // Watermelon: giant green with dark emerald vertical wavy stripes
-                <g>
-                    {/* Wavy watermelon stripes */}
-                    <path d="M -65,-50 Q -50,0 -65,50" fill="none" stroke="#064e3b" strokeWidth="18" strokeLinecap="round" opacity="0.85" />
-                    <path d="M -30,-80 Q -15,0 -30,80" fill="none" stroke="#064e3b" strokeWidth="20" strokeLinecap="round" opacity="0.85" />
-                    <path d="M 0,-90 Q 5,0 0,90" fill="none" stroke="#064e3b" strokeWidth="22" strokeLinecap="round" opacity="0.85" />
-                    <path d="M 30,-80 Q 45,0 30,80" fill="none" stroke="#064e3b" strokeWidth="20" strokeLinecap="round" opacity="0.85" />
-                    <path d="M 65,-50 Q 80,0 65,50" fill="none" stroke="#064e3b" strokeWidth="18" strokeLinecap="round" opacity="0.85" />
-                    {/* Big glossy shine */}
-                    <ellipse cx="-45" cy="-45" rx="28" ry="14" fill="#ffffff" opacity="0.5" transform="rotate(-35 -45 -45)" />
-                    <circle cx="55" cy="-35" r="8" fill="#ffffff" opacity="0.3" />
-                </g>
-            )}
-        </svg>
+            <span 
+                style={{ fontSize: `${fontSize}px`, lineHeight: 1 }} 
+                className="drop-shadow-sm select-none pointer-events-none"
+            >
+                {fruit.emoji}
+            </span>
+        </div>
     );
 };
 
@@ -445,7 +297,13 @@ export default function FruitMergeGame({ onBackToHub }: FruitMergeGameProps) {
                                     });
 
                                     spawnMergeJuice(midX, midY, nextDef.color);
-                                    audioService.playSound('piece_land');
+                                    if (nextTierIdx >= 10) {
+                                        audioService.playSound('success');
+                                    } else if (nextTierIdx >= 5) {
+                                        audioService.playSound('powerup');
+                                    } else {
+                                        audioService.playSound('piece_land');
+                                    }
 
                                     // Increase score
                                     scoreRef.current += nextDef.score;
@@ -634,38 +492,30 @@ export default function FruitMergeGame({ onBackToHub }: FruitMergeGameProps) {
         return () => cancelAnimationFrame(animationFrameId);
     }, [currentTier, dropX]);
 
-    // Canvas face detail drawing
+    // Canvas fruit emoji rendering
     const drawFruitFace = (ctx: CanvasRenderingContext2D, tier: number, r: number) => {
-        const eyeSize = Math.max(2, r * 0.1);
-        const eyeOffset = r * 0.35;
+        const def = FRUIT_TYPES[tier];
+        if (!def) return;
 
-        // Eyes
-        ctx.fillStyle = '#18181b';
+        // Soft top-left gloss shine
+        ctx.save();
         ctx.beginPath();
-        ctx.arc(-eyeOffset, -r * 0.1, eyeSize, 0, Math.PI * 2);
-        ctx.arc(eyeOffset, -r * 0.1, eyeSize, 0, Math.PI * 2);
+        ctx.ellipse(-r * 0.35, -r * 0.35, r * 0.28, r * 0.16, -Math.PI / 4, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.45)';
         ctx.fill();
+        ctx.restore();
 
-        // Eye highlights
-        ctx.fillStyle = '#ffffff';
-        ctx.beginPath();
-        ctx.arc(-eyeOffset - eyeSize * 0.3, -r * 0.1 - eyeSize * 0.3, eyeSize * 0.4, 0, Math.PI * 2);
-        ctx.arc(eyeOffset - eyeSize * 0.3, -r * 0.1 - eyeSize * 0.3, eyeSize * 0.4, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Blush cheeks
-        ctx.fillStyle = 'rgba(251, 113, 133, 0.5)';
-        ctx.beginPath();
-        ctx.arc(-eyeOffset * 1.2, r * 0.1, eyeSize * 1.2, 0, Math.PI * 2);
-        ctx.arc(eyeOffset * 1.2, r * 0.1, eyeSize * 1.2, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Smile
-        ctx.strokeStyle = '#18181b';
-        ctx.lineWidth = Math.max(1.5, r * 0.06);
-        ctx.beginPath();
-        ctx.arc(0, 0, r * 0.22, 0.2 * Math.PI, 0.8 * Math.PI, false);
-        ctx.stroke();
+        // Fruit emoji centered inside the circular hitbox
+        ctx.save();
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        const fontSize = Math.max(14, Math.round(r * 1.25));
+        ctx.font = `${fontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif`;
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.25)';
+        ctx.shadowBlur = 4;
+        ctx.shadowOffsetY = 2;
+        ctx.fillText(def.emoji, 0, r * 0.04);
+        ctx.restore();
     };
 
     // Pointer movement & drop coordinate handling

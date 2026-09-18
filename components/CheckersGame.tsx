@@ -43,11 +43,32 @@ export default function CheckersGame({ onBackToHub }: CheckersGameProps) {
     const [difficulty, setDifficulty] = useState<Difficulty>('medium');
     const [selectedPos, setSelectedPos] = useState<Position | null>(null);
     const [validMoves, setValidMoves] = useState<Move[]>([]);
+    const [lastMove, setLastMove] = useState<{ from: Position; to: Position } | null>(null);
     const [isBotThinking, setIsBotThinking] = useState(false);
     const [winner, setWinner] = useState<PlayerColor | 'draw' | null>(null);
     const [capturedRed, setCapturedRed] = useState(0);
     const [capturedBlack, setCapturedBlack] = useState(0);
     const [moveHistory, setMoveHistory] = useState<{ board: Piece[][]; turn: PlayerColor }[]>([]);
+
+    // Container auto-resize logic for mobile responsiveness
+    const boardContainerRef = useRef<HTMLDivElement>(null);
+    const [boardDim, setBoardDim] = useState<number>(360);
+
+    useEffect(() => {
+        const el = boardContainerRef.current;
+        if (!el) return;
+        const updateSize = () => {
+            const { clientWidth, clientHeight } = el;
+            if (clientWidth && clientHeight) {
+                const s = Math.min(clientWidth - 12, clientHeight - 12, 540);
+                setBoardDim(Math.max(260, Math.floor(s)));
+            }
+        };
+        updateSize();
+        const ro = new ResizeObserver(updateSize);
+        ro.observe(el);
+        return () => ro.disconnect();
+    }, []);
 
     useEffect(() => {
         incrementGamePlays('checkers');
@@ -94,7 +115,6 @@ export default function CheckersGame({ onBackToHub }: CheckersGameProps) {
 
                     if (midPiece && !isPlayerPiece(midPiece, color) && !landPiece) {
                         foundNext = true;
-                        // Clone board for next jump simulation
                         const nextB = currentB.map(row => [...row]);
                         nextB[landR][landC] = nextB[currPos.r][currPos.c];
                         nextB[currPos.r][currPos.c] = null;
@@ -167,20 +187,25 @@ export default function CheckersGame({ onBackToHub }: CheckersGameProps) {
             }
         }
 
-        // Mandatory jump rule: if any jump is possible, only jumps can be played
         return allJumps.length > 0 ? allJumps : allSimple;
     }, []);
 
     // Apply move and return new board
-    const applyMove = (b: Piece[][], move: Move): Piece[][] => {
+    const applyMove = (b: Piece[][], move: Move): { newBoard: Piece[][]; crowned: boolean } => {
         const next = b.map(row => [...row]);
         const piece = next[move.from.r][move.from.c];
         next[move.from.r][move.from.c] = null;
 
-        // King promotion
         let finalPiece = piece;
-        if (piece === 'R' && move.to.r === 0) finalPiece = 'RK';
-        if (piece === 'B' && move.to.r === 7) finalPiece = 'BK';
+        let crowned = false;
+        if (piece === 'R' && move.to.r === 0) {
+            finalPiece = 'RK';
+            crowned = true;
+        }
+        if (piece === 'B' && move.to.r === 7) {
+            finalPiece = 'BK';
+            crowned = true;
+        }
 
         next[move.to.r][move.to.c] = finalPiece;
 
@@ -190,7 +215,7 @@ export default function CheckersGame({ onBackToHub }: CheckersGameProps) {
                 next[jp.r][jp.c] = null;
             }
         }
-        return next;
+        return { newBoard: next, crowned };
     };
 
     // Check game over
@@ -199,123 +224,128 @@ export default function CheckersGame({ onBackToHub }: CheckersGameProps) {
         if (legal.length === 0) {
             const opp: PlayerColor = currentTurn === 'red' ? 'black' : 'red';
             setWinner(opp);
-            if (opp === 'red') audioService.playSound('mine_win');
-            else audioService.playSound('failure');
+            audioService.playSound(opp === 'red' ? 'mine_win' : 'failure');
             return true;
         }
         return false;
     }, [getAllLegalMoves]);
 
-    // Bot AI Decision
-    const executeBotMove = useCallback(() => {
-        if (winner) return;
-        const legalMoves = getAllLegalMoves(board, 'black');
-        if (legalMoves.length === 0) {
-            setWinner('red');
-            audioService.playSound('mine_win');
-            return;
+    // Heuristic Board Evaluation for Bot
+    const evaluateBoard = (b: Piece[][]): number => {
+        let score = 0;
+        for (let r = 0; r < 8; r++) {
+            for (let c = 0; c < 8; c++) {
+                const p = b[r][c];
+                if (!p) continue;
+
+                let val = 10;
+                if (isKing(p)) val = 25;
+                else {
+                    // Slight incentive to advance toward king's row and control center
+                    if (p === 'B') val += r * 1.5;
+                    else if (p === 'R') val += (7 - r) * 1.5;
+                }
+
+                // Center board control bonus
+                if ((r === 3 || r === 4) && (c >= 2 && c <= 5)) {
+                    val += 3;
+                }
+
+                if (p === 'B' || p === 'BK') score += val;
+                else score -= val;
+            }
         }
+        return score;
+    };
+
+    // Minimax search with alpha-beta pruning
+    const minimax = (
+        b: Piece[][],
+        depth: number,
+        alpha: number,
+        beta: number,
+        isMaximizing: boolean
+    ): number => {
+        if (depth === 0) return evaluateBoard(b);
+
+        const currentTurn: PlayerColor = isMaximizing ? 'black' : 'red';
+        const legalMoves = getAllLegalMoves(b, currentTurn);
+
+        if (legalMoves.length === 0) {
+            return isMaximizing ? -1000 : 1000;
+        }
+
+        if (isMaximizing) {
+            let maxEval = -Infinity;
+            for (const move of legalMoves) {
+                const { newBoard: nextB } = applyMove(b, move);
+                const evalVal = minimax(nextB, depth - 1, alpha, beta, false);
+                maxEval = Math.max(maxEval, evalVal);
+                alpha = Math.max(alpha, evalVal);
+                if (beta <= alpha) break;
+            }
+            return maxEval;
+        } else {
+            let minEval = Infinity;
+            for (const move of legalMoves) {
+                const { newBoard: nextB } = applyMove(b, move);
+                const evalVal = minimax(nextB, depth - 1, alpha, beta, true);
+                minEval = Math.min(minEval, evalVal);
+                beta = Math.min(beta, evalVal);
+                if (beta <= alpha) break;
+            }
+            return minEval;
+        }
+    };
+
+    // Bot decision engine
+    const executeBotMove = useCallback(() => {
+        if (turn !== 'black' || winner) return;
 
         setIsBotThinking(true);
 
+        const thinkDelay = difficulty === 'easy' ? 220 : difficulty === 'medium' ? 320 : 420;
+
         setTimeout(() => {
+            const legalMoves = getAllLegalMoves(board, 'black');
+            if (legalMoves.length === 0) {
+                setIsBotThinking(false);
+                setWinner('red');
+                audioService.playSound('mine_win');
+                return;
+            }
+
             let chosenMove: Move;
 
             if (difficulty === 'easy') {
-                // EASY: 75% random, occasional blunder, plays quickly and casually
-                chosenMove = legalMoves[Math.floor(Math.random() * legalMoves.length)];
+                // Easy: 70% random, 30% best immediate
+                if (Math.random() < 0.7) {
+                    chosenMove = legalMoves[Math.floor(Math.random() * legalMoves.length)];
+                } else {
+                    legalMoves.sort((a, b) => (b.jumps?.length || 0) - (a.jumps?.length || 0));
+                    chosenMove = legalMoves[0];
+                }
             } else if (difficulty === 'medium') {
-                // MEDIUM: 2-ply evaluation: prefers captures and kinging, avoids giving free pieces
-                let bestScore = -Infinity;
+                // Medium: Minimax depth 2 with tactical jump priority
+                let bestVal = -Infinity;
                 let bestMoves: Move[] = [];
-
                 for (const move of legalMoves) {
-                    const simulated = applyMove(board, move);
-                    let score = 0;
-
-                    // Reward captures
-                    if (move.jumps && move.jumps.length > 0) score += move.jumps.length * 50;
-                    // Reward kinging
-                    if (simulated[move.to.r][move.to.c] === 'BK') score += 40;
-                    // Center control
-                    if (move.to.r >= 3 && move.to.r <= 4 && move.to.c >= 2 && move.to.c <= 5) score += 10;
-
-                    // Opponent immediate response (1 ply)
-                    const oppMoves = getAllLegalMoves(simulated, 'red');
-                    let maxOppCapture = 0;
-                    for (const om of oppMoves) {
-                        if (om.jumps && om.jumps.length > maxOppCapture) {
-                            maxOppCapture = om.jumps.length;
-                        }
-                    }
-                    score -= maxOppCapture * 45;
-
-                    if (score > bestScore) {
-                        bestScore = score;
+                    const { newBoard: nextB } = applyMove(board, move);
+                    const val = minimax(nextB, 2, -Infinity, Infinity, false);
+                    if (val > bestVal) {
+                        bestVal = val;
                         bestMoves = [move];
-                    } else if (score === bestScore) {
+                    } else if (val === bestVal) {
                         bestMoves.push(move);
                     }
                 }
                 chosenMove = bestMoves[Math.floor(Math.random() * bestMoves.length)] || legalMoves[0];
             } else {
-                // HARD: Alpha-Beta Minimax (depth 4)
-                // Thorough positional & piece-advantage evaluation
-                const evaluateBoard = (b: Piece[][]): number => {
-                    let score = 0;
-                    for (let r = 0; r < 8; r++) {
-                        for (let c = 0; c < 8; c++) {
-                            const p = b[r][c];
-                            if (!p) continue;
-                            const isBot = p === 'B' || p === 'BK';
-                            const king = isKing(p);
-                            const val = king ? 280 : 100;
-                            const advancement = isBot ? r * 4 : (7 - r) * 4;
-                            const backRankBonus = (isBot && r === 0) || (!isBot && r === 7) ? 20 : 0;
-                            const centerBonus = (r >= 3 && r <= 4 && c >= 2 && c <= 5) ? 12 : 0;
-
-                            const total = val + advancement + backRankBonus + centerBonus;
-                            if (isBot) score += total;
-                            else score -= total;
-                        }
-                    }
-                    return score;
-                };
-
-                const minimax = (b: Piece[][], depth: number, alpha: number, beta: number, isMaximizing: boolean): number => {
-                    const moves = getAllLegalMoves(b, isMaximizing ? 'black' : 'red');
-                    if (depth === 0 || moves.length === 0) {
-                        if (moves.length === 0) return isMaximizing ? -9999 : 9999;
-                        return evaluateBoard(b);
-                    }
-
-                    if (isMaximizing) {
-                        let maxEval = -Infinity;
-                        for (const m of moves) {
-                            const nextB = applyMove(b, m);
-                            const evaluation = minimax(nextB, depth - 1, alpha, beta, false);
-                            maxEval = Math.max(maxEval, evaluation);
-                            alpha = Math.max(alpha, evaluation);
-                            if (beta <= alpha) break;
-                        }
-                        return maxEval;
-                    } else {
-                        let minEval = Infinity;
-                        for (const m of moves) {
-                            const nextB = applyMove(b, m);
-                            const evaluation = minimax(nextB, depth - 1, alpha, beta, true);
-                            minEval = Math.min(minEval, evaluation);
-                            beta = Math.min(beta, evaluation);
-                            if (beta <= alpha) break;
-                        }
-                        return minEval;
-                    }
-                };
-
+                // Hard: Minimax depth 4 with positional weighting
                 let bestVal = -Infinity;
                 let bestMoves: Move[] = [];
                 for (const move of legalMoves) {
-                    const nextB = applyMove(board, move);
+                    const { newBoard: nextB } = applyMove(board, move);
                     const val = minimax(nextB, 4, -Infinity, Infinity, false);
                     if (val > bestVal) {
                         bestVal = val;
@@ -329,9 +359,17 @@ export default function CheckersGame({ onBackToHub }: CheckersGameProps) {
 
             // Execute chosen bot move
             setMoveHistory(prev => [...prev, { board, turn: 'black' }]);
-            const newBoard = applyMove(board, chosenMove);
+            const { newBoard, crowned } = applyMove(board, chosenMove);
             setBoard(newBoard);
-            audioService.playSound(chosenMove.jumps?.length ? 'mine_explode' : 'piece_drop');
+            setLastMove({ from: chosenMove.from, to: chosenMove.to });
+
+            if (crowned) {
+                audioService.playSound('powerup');
+            } else if (chosenMove.jumps?.length) {
+                audioService.playSound('hit');
+            } else {
+                audioService.playSound('piece_land');
+            }
 
             // Count captures
             let rCount = 0;
@@ -348,7 +386,7 @@ export default function CheckersGame({ onBackToHub }: CheckersGameProps) {
             setIsBotThinking(false);
             setTurn('red');
             checkWinCondition(newBoard, 'red');
-        }, 320);
+        }, thinkDelay);
     }, [board, difficulty, getAllLegalMoves, winner, checkWinCondition]);
 
     // Handle bot turn trigger
@@ -367,11 +405,18 @@ export default function CheckersGame({ onBackToHub }: CheckersGameProps) {
         // If clicking on an existing valid destination move
         const targetMove = validMoves.find(m => m.to.r === r && m.to.c === c);
         if (targetMove && selectedPos) {
-            // Apply player move
             setMoveHistory(prev => [...prev, { board, turn: 'red' }]);
-            const newBoard = applyMove(board, targetMove);
+            const { newBoard, crowned } = applyMove(board, targetMove);
             setBoard(newBoard);
-            audioService.playSound(targetMove.jumps?.length ? 'mine_explode' : 'piece_drop');
+            setLastMove({ from: targetMove.from, to: targetMove.to });
+
+            if (crowned) {
+                audioService.playSound('powerup');
+            } else if (targetMove.jumps?.length) {
+                audioService.playSound('hit');
+            } else {
+                audioService.playSound('piece_land');
+            }
 
             // Recalculate captured
             let rCount = 0;
@@ -403,7 +448,7 @@ export default function CheckersGame({ onBackToHub }: CheckersGameProps) {
             if (pieceMoves.length > 0) {
                 setSelectedPos({ r, c });
                 setValidMoves(pieceMoves);
-                audioService.playSound('button_click');
+                audioService.playSound('tile_click');
             } else {
                 setSelectedPos(null);
                 setValidMoves([]);
@@ -416,12 +461,12 @@ export default function CheckersGame({ onBackToHub }: CheckersGameProps) {
 
     const handleUndo = () => {
         if (moveHistory.length < 2 || isBotThinking) return;
-        // Undo last bot move and last player move
         const previousState = moveHistory[moveHistory.length - 2];
         setBoard(previousState.board);
         setTurn('red');
         setSelectedPos(null);
         setValidMoves([]);
+        setLastMove(null);
         setWinner(null);
         setMoveHistory(prev => prev.slice(0, prev.length - 2));
         audioService.playSound('button_click');
@@ -432,6 +477,7 @@ export default function CheckersGame({ onBackToHub }: CheckersGameProps) {
         setTurn('red');
         setSelectedPos(null);
         setValidMoves([]);
+        setLastMove(null);
         setWinner(null);
         setCapturedRed(0);
         setCapturedBlack(0);
@@ -495,18 +541,18 @@ export default function CheckersGame({ onBackToHub }: CheckersGameProps) {
                 </div>
             </div>
 
-            {/* Board Container Area */}
-            <div className="flex-1 flex flex-col md:flex-row items-center justify-center p-2 sm:p-4 gap-3 md:gap-8 overflow-hidden min-h-0">
+            {/* Board Container Area with dynamic responsive space */}
+            <div className="flex-1 flex flex-col md:flex-row items-center justify-center p-2 sm:p-4 gap-2 md:gap-8 overflow-hidden min-h-0">
                 
-                {/* Stats / Player side info (Left or Top) */}
-                <div className="flex md:flex-col items-center justify-between md:justify-center gap-4 w-full md:w-48 shrink-0 bg-neutral-900/60 border border-neutral-800/80 p-3 rounded-2xl">
+                {/* Stats / Player cards */}
+                <div className="flex md:flex-col items-center justify-between md:justify-center gap-3 w-full md:w-52 shrink-0 bg-neutral-900/70 border border-neutral-800/80 px-3 py-2 md:py-4 rounded-2xl shadow-lg">
                     {/* Bot Card */}
-                    <div className={`flex items-center gap-2.5 p-2 rounded-xl border transition-all ${turn === 'black' ? 'border-amber-500 bg-amber-500/10 shadow-md' : 'border-transparent'}`}>
-                        <div className="w-8 h-8 rounded-full bg-neutral-800 border-2 border-neutral-700 flex items-center justify-center text-sm shadow-inner">
+                    <div className={`flex items-center gap-2.5 p-2 rounded-xl border transition-all flex-1 md:w-full ${turn === 'black' ? 'border-amber-500 bg-amber-500/15 shadow-md scale-[1.02]' : 'border-transparent'}`}>
+                        <div className="w-8 h-8 rounded-full bg-neutral-800 border-2 border-neutral-700 flex items-center justify-center text-sm shadow-inner shrink-0">
                             🤖
                         </div>
-                        <div>
-                            <div className="text-xs font-bold flex items-center gap-1.5">
+                        <div className="min-w-0">
+                            <div className="text-[11px] sm:text-xs font-bold flex items-center gap-1.5 truncate">
                                 <span>Bot ({difficulty})</span>
                                 {isBotThinking && <span className="inline-block w-1.5 h-1.5 bg-amber-400 rounded-full animate-ping" />}
                             </div>
@@ -517,88 +563,99 @@ export default function CheckersGame({ onBackToHub }: CheckersGameProps) {
                     <div className="hidden md:block text-neutral-600 font-bold text-xs uppercase tracking-widest text-center">VS</div>
 
                     {/* Human Player Card */}
-                    <div className={`flex items-center gap-2.5 p-2 rounded-xl border transition-all ${turn === 'red' ? 'border-rose-500 bg-rose-500/10 shadow-md' : 'border-transparent'}`}>
-                        <div className="w-8 h-8 rounded-full bg-rose-700 border-2 border-rose-400 flex items-center justify-center text-sm shadow-md">
+                    <div className={`flex items-center gap-2.5 p-2 rounded-xl border transition-all flex-1 md:w-full ${turn === 'red' ? 'border-rose-500 bg-rose-500/15 shadow-md scale-[1.02]' : 'border-transparent'}`}>
+                        <div className="w-8 h-8 rounded-full bg-rose-700 border-2 border-rose-400 flex items-center justify-center text-sm shadow-md shrink-0">
                             👤
                         </div>
-                        <div>
-                            <div className="text-xs font-bold">You (Red)</div>
+                        <div className="min-w-0">
+                            <div className="text-[11px] sm:text-xs font-bold text-rose-300 truncate">You (Red)</div>
                             <div className="text-[10px] text-neutral-400 font-mono">Lost: {capturedRed}/12</div>
                         </div>
                     </div>
                 </div>
 
-                {/* 8x8 Checkers Board */}
-                <div className="relative flex items-center justify-center aspect-square h-full max-h-[520px] max-w-[520px] p-2 sm:p-3 bg-neutral-900 border-4 border-neutral-800 rounded-2xl shadow-2xl">
-                    <div className="w-full h-full grid grid-cols-8 grid-rows-8 border-2 border-neutral-950 rounded-xl overflow-hidden shadow-inner">
-                        {board.map((row, r) =>
-                            row.map((piece, c) => {
-                                const isDark = (r + c) % 2 === 1;
-                                const isSelected = selectedPos?.r === r && selectedPos?.c === c;
-                                const isDestination = validMoves.some(m => m.to.r === r && m.to.c === c);
+                {/* 8x8 Checkers Board with ResizeObserver Auto-Fitting */}
+                <div ref={boardContainerRef} className="flex-1 min-h-0 w-full flex items-center justify-center p-1">
+                    <div 
+                        style={{ width: `${boardDim}px`, height: `${boardDim}px` }}
+                        className="relative flex items-center justify-center p-2 sm:p-3 bg-neutral-900 border-3 sm:border-4 border-neutral-800 rounded-2xl shadow-2xl transition-all"
+                    >
+                        <div className="w-full h-full grid grid-cols-8 grid-rows-8 border-2 border-neutral-950 rounded-xl overflow-hidden shadow-inner">
+                            {board.map((row, r) =>
+                                row.map((piece, c) => {
+                                    const isDark = (r + c) % 2 === 1;
+                                    const isSelected = selectedPos?.r === r && selectedPos?.c === c;
+                                    const isDestination = validMoves.some(m => m.to.r === r && m.to.c === c);
+                                    const isRecentMove = lastMove && ((lastMove.from.r === r && lastMove.from.c === c) || (lastMove.to.r === r && lastMove.to.c === c));
 
-                                return (
-                                    <div
-                                        key={`${r}-${c}`}
-                                        onClick={() => handleSquareClick(r, c)}
-                                        className={`relative flex items-center justify-center transition-colors select-none ${
-                                            isDark ? 'bg-[#18181b]' : 'bg-[#27272a]'
-                                        } ${isDark ? 'cursor-pointer' : ''}`}
-                                    >
-                                        {/* Selection Highlight */}
-                                        {isSelected && (
-                                            <div className="absolute inset-0 bg-rose-500/30 ring-2 ring-rose-400 ring-inset z-10" />
-                                        )}
+                                    return (
+                                        <div
+                                            key={`${r}-${c}`}
+                                            onClick={() => handleSquareClick(r, c)}
+                                            className={`relative flex items-center justify-center transition-colors select-none ${
+                                                isDark ? 'bg-[#18181b]' : 'bg-[#27272a]'
+                                            } ${isDark ? 'cursor-pointer' : ''}`}
+                                        >
+                                            {/* Recent Move Trail Highlight */}
+                                            {isRecentMove && (
+                                                <div className="absolute inset-0 bg-amber-500/15 pointer-events-none" />
+                                            )}
 
-                                        {/* Valid Destination Marker */}
-                                        {isDestination && (
-                                            <div className="absolute w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-emerald-400/80 border-2 border-emerald-200 animate-pulse z-20 shadow-lg" />
-                                        )}
+                                            {/* Selection Highlight */}
+                                            {isSelected && (
+                                                <div className="absolute inset-0 bg-rose-500/30 ring-2 ring-rose-400 ring-inset z-10 animate-pulse" />
+                                            )}
 
-                                        {/* Piece */}
-                                        {piece && (
-                                            <div
-                                                className={`relative w-[82%] h-[82%] rounded-full flex items-center justify-center transition-transform hover:scale-105 active:scale-95 shadow-lg ${
-                                                    piece.startsWith('R')
-                                                        ? 'bg-gradient-to-br from-rose-500 to-rose-700 border-2 sm:border-3 border-rose-300 shadow-rose-950'
-                                                        : 'bg-gradient-to-br from-neutral-700 to-neutral-950 border-2 sm:border-3 border-neutral-500 shadow-black'
-                                                }`}
-                                            >
-                                                {/* Ridge ring detail */}
-                                                <div className="w-[72%] h-[72%] rounded-full border border-white/20 flex items-center justify-center">
-                                                    {isKing(piece) && (
-                                                        <span className="text-sm sm:text-xl drop-shadow-md select-none">👑</span>
-                                                    )}
+                                            {/* Valid Destination Marker with smooth pulsing glow */}
+                                            {isDestination && (
+                                                <div className="absolute w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-emerald-400/90 border-2 border-white animate-pulse z-20 shadow-lg shadow-emerald-500/50" />
+                                            )}
+
+                                            {/* Piece with smooth hover and transitions */}
+                                            {piece && (
+                                                <div
+                                                    className={`relative w-[84%] h-[84%] rounded-full flex items-center justify-center transition-all duration-300 ease-out transform hover:scale-105 active:scale-95 shadow-lg ${
+                                                        piece.startsWith('R')
+                                                            ? 'bg-gradient-to-br from-rose-500 to-rose-700 border-2 sm:border-3 border-rose-300 shadow-rose-950/80 ring-1 ring-rose-300/40'
+                                                            : 'bg-gradient-to-br from-neutral-700 to-neutral-950 border-2 sm:border-3 border-neutral-400 shadow-black ring-1 ring-neutral-500/40'
+                                                    }`}
+                                                >
+                                                    {/* Concentric inner ridge detail */}
+                                                    <div className="w-[72%] h-[72%] rounded-full border border-white/20 flex items-center justify-center shadow-inner">
+                                                        {isKing(piece) && (
+                                                            <span className="text-sm sm:text-xl drop-shadow-md select-none transform transition-transform hover:scale-125 animate-bounce">👑</span>
+                                                        )}
+                                                    </div>
                                                 </div>
-                                            </div>
-                                        )}
-                                    </div>
-                                );
-                            })
+                                            )}
+                                        </div>
+                                    );
+                                })
+                            )}
+                        </div>
+
+                        {/* Game Over Screen Modal */}
+                        {winner && (
+                            <div className="absolute inset-0 bg-black/85 backdrop-blur-sm flex flex-col items-center justify-center p-6 text-center animate-fade-in rounded-2xl z-30">
+                                <div className="text-5xl mb-2">{winner === 'red' ? '🏆' : '💀'}</div>
+                                <h2 className="text-2xl sm:text-3xl font-black mb-1 font-mono text-amber-400">
+                                    {winner === 'red' ? 'VICTORY!' : 'DEFEATED'}
+                                </h2>
+                                <p className="text-sm text-neutral-300 mb-6">
+                                    {winner === 'red'
+                                        ? `You conquered the ${difficulty} checkers bot!`
+                                        : `The ${difficulty} bot outmaneuvered you.`}
+                                </p>
+
+                                <button
+                                    onClick={handleRestart}
+                                    className="px-6 py-3 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black font-black text-sm uppercase tracking-wider rounded-xl shadow-lg transition-transform hover:scale-105 active:scale-95 cursor-pointer"
+                                >
+                                    Play Again 🔄
+                                </button>
+                            </div>
                         )}
                     </div>
-
-                    {/* Game Over Screen Modal */}
-                    {winner && (
-                        <div className="absolute inset-0 bg-black/85 backdrop-blur-sm flex flex-col items-center justify-center p-6 text-center animate-fade-in rounded-2xl z-30">
-                            <div className="text-5xl mb-2">{winner === 'red' ? '🏆' : '💀'}</div>
-                            <h2 className="text-2xl sm:text-3xl font-black mb-1 font-mono text-amber-400">
-                                {winner === 'red' ? 'VICTORY!' : 'DEFEATED'}
-                            </h2>
-                            <p className="text-sm text-neutral-400 mb-6">
-                                {winner === 'red'
-                                    ? `You conquered the ${difficulty} checkers bot!`
-                                    : `The ${difficulty} bot outmaneuvered you.`}
-                            </p>
-
-                            <button
-                                onClick={handleRestart}
-                                className="px-6 py-3 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black font-black text-sm uppercase tracking-wider rounded-xl shadow-lg transition-transform hover:scale-105 active:scale-95 cursor-pointer"
-                            >
-                                Play Again 🔄
-                            </button>
-                        </div>
-                    )}
                 </div>
             </div>
         </div>
