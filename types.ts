@@ -84,7 +84,10 @@ export type ActiveApp =
   | 'connect-4'
   | 'gun-game'
   | 'color-memory'
-  | 'particle-physics';
+  | 'particle-physics'
+  | 'fruit-merge'
+  | 'checkers'
+  | 'dots-and-boxes';
 
 export interface GlobalGameStats {
   taco_typer_plays: number;
@@ -99,4 +102,7 @@ export interface GlobalGameStats {
   color_memory_plays: number;
   particle_physics_plays: number;
   more_less_plays?: number;
+  fruit_merge_plays?: number;
+  checkers_plays?: number;
+  dots_and_boxes_plays?: number;
 }

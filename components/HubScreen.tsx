@@ -20,6 +20,9 @@ interface HubScreenProps {
     onLaunchGunGame: () => void;
     onLaunchColorMemory: () => void;
     onLaunchParticlePhysics: () => void;
+    onLaunchFruitMerge: () => void;
+    onLaunchCheckers: () => void;
+    onLaunchDotsAndBoxes: () => void;
     onLogout: () => void;
     username?: string | null;
     onUpdateUsername: (name: string) => void;
@@ -51,6 +54,9 @@ const HubScreen: React.FC<HubScreenProps> = ({
     onLaunchGunGame, 
     onLaunchColorMemory, 
     onLaunchParticlePhysics, 
+    onLaunchFruitMerge,
+    onLaunchCheckers,
+    onLaunchDotsAndBoxes,
     onLogout, 
     username, 
     onUpdateUsername,
@@ -59,7 +65,7 @@ const HubScreen: React.FC<HubScreenProps> = ({
     const [showSettings, setShowSettings] = useState(false);
     const [showFriends, setShowFriends] = useState(false);
     const [isMobile, setIsMobile] = useState(false);
-    const [stats, setStats] = useState<GlobalGameStats>({ taco_typer_plays: 0, iq_test_plays: 0, minesweeper_plays: 0, wordle_plays: 0, angle_plays: 0, spelling_bee_plays: 0, tic_tac_toe_plays: 0, connect_4_plays: 0, gun_game_plays: 0, color_memory_plays: 0, particle_physics_plays: 0 });
+    const [stats, setStats] = useState<GlobalGameStats>({ taco_typer_plays: 0, iq_test_plays: 0, minesweeper_plays: 0, wordle_plays: 0, angle_plays: 0, spelling_bee_plays: 0, tic_tac_toe_plays: 0, connect_4_plays: 0, gun_game_plays: 0, color_memory_plays: 0, particle_physics_plays: 0, fruit_merge_plays: 0, checkers_plays: 0, dots_and_boxes_plays: 0 });
     const [sortedGames, setSortedGames] = useState<GameCard[]>([]);
     
     const displayableName = username || user.displayName || 'Chef';
@@ -196,13 +202,46 @@ const HubScreen: React.FC<HubScreenProps> = ({
                 tag: 'SANDBOX',
                 plays: stats.particle_physics_plays || 0,
                 action: onLaunchParticlePhysics
+            },
+            {
+                id: 'fruitmerge',
+                title: 'Fruit Merge',
+                description: 'Suika Watermelon Evolution',
+                icon: '🍉',
+                color: '#10b981',
+                accentGlow: 'rgba(16, 185, 129, 0.5)',
+                tag: 'PHYSICS',
+                plays: stats.fruit_merge_plays || 0,
+                action: onLaunchFruitMerge
+            },
+            {
+                id: 'checkers',
+                title: 'Checkers',
+                description: 'Classic Strategy Draughts',
+                icon: '👑',
+                color: '#f43f5e',
+                accentGlow: 'rgba(244, 63, 94, 0.5)',
+                tag: 'BOARD',
+                plays: stats.checkers_plays || 0,
+                action: onLaunchCheckers
+            },
+            {
+                id: 'dotsandboxes',
+                title: 'Dots & Boxes',
+                description: 'Grid Line Capture Battle',
+                icon: '📦',
+                color: '#0ea5e9',
+                accentGlow: 'rgba(14, 165, 233, 0.5)',
+                tag: 'LOGIC',
+                plays: stats.dots_and_boxes_plays || 0,
+                action: onLaunchDotsAndBoxes
             }
         ];
 
         games.sort((a, b) => b.plays - a.plays);
         setSortedGames(games);
 
-    }, [stats, onLaunchGame, onLaunchIQ, onLaunchMinesweeper, onLaunchWordle, onLaunchAngle, onLaunchSpellingBee, onLaunchTicTacToe, onLaunchConnect4, onLaunchGunGame, onLaunchColorMemory, onLaunchParticlePhysics, isMobile]);
+    }, [stats, onLaunchGame, onLaunchIQ, onLaunchMinesweeper, onLaunchWordle, onLaunchAngle, onLaunchSpellingBee, onLaunchTicTacToe, onLaunchConnect4, onLaunchGunGame, onLaunchColorMemory, onLaunchParticlePhysics, onLaunchFruitMerge, onLaunchCheckers, onLaunchDotsAndBoxes, isMobile]);
 
     return (
         <div className="flex h-full w-full bg-[#000] text-white overflow-hidden relative font-['Press_Start_2P']">

@@ -12,6 +12,12 @@ interface SpellingBeeGameProps {
     onLogout: () => void;
 }
 
+const KEYBOARD_ROWS = [
+    ['Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P'],
+    ['A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L'],
+    ['ENTER', 'Z', 'X', 'C', 'V', 'B', 'N', 'M', 'BACKSPACE']
+];
+
 const SpellingBeeGame: React.FC<SpellingBeeGameProps> = ({ user, username, onBackToHub }) => {
     const [difficulty, setDifficulty] = useState(1);
     const [wordQueue, setWordQueue] = useState<{ word: string, meaning: string, sentence: string }[]>([]);
@@ -22,25 +28,25 @@ const SpellingBeeGame: React.FC<SpellingBeeGameProps> = ({ user, username, onBac
     const [gameOver, setGameOver] = useState(false);
     const [streak, setStreak] = useState(0);
     const [inputState, setInputState] = useState<'idle' | 'correct' | 'wrong'>('idle');
-    const [speechSpeed, setSpeechSpeed] = useState<number>(0.9); // Default clear British pace
-    const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
-    const inputRef = useRef<HTMLInputElement>(null);
+    const [pressedKey, setPressedKey] = useState<string | null>(null);
 
-    // Initialize TTS voices
+    const activeSeqRef = useRef(0);
+    const isMountedRef = useRef(true);
+
     useEffect(() => {
-        const updateVoices = () => {
+        isMountedRef.current = true;
+        return () => {
+            isMountedRef.current = false;
             if ('speechSynthesis' in window) {
-                setVoices(window.speechSynthesis.getVoices());
+                window.speechSynthesis.cancel();
             }
         };
-        updateVoices();
-        if ('speechSynthesis' in window) {
-            window.speechSynthesis.onvoiceschanged = updateVoices;
-        }
     }, []);
 
     const getUKVoice = useCallback((): SpeechSynthesisVoice | null => {
-        if (!('speechSynthesis' in window) || voices.length === 0) return null;
+        if (!('speechSynthesis' in window)) return null;
+        const voices = window.speechSynthesis.getVoices();
+        if (!voices || voices.length === 0) return null;
         
         // 1. Exact match "Google UK English Male"
         const exact = voices.find(v => v.name.toLowerCase().includes('google') && v.name.toLowerCase().includes('uk english male'));
@@ -56,43 +62,52 @@ const SpellingBeeGame: React.FC<SpellingBeeGameProps> = ({ user, username, onBac
 
         // 4. Default fallback
         return voices.find(v => v.lang.startsWith('en')) || null;
-    }, [voices]);
+    }, []);
 
-    const playAudio = useCallback((text: string, rateMultiplier: number = 1.0) => {
-        if ('speechSynthesis' in window) {
+    const playAudio = useCallback((text: string, rate: number = 0.9) => {
+        if ('speechSynthesis' in window && text) {
             window.speechSynthesis.cancel();
             const utterance = new SpeechSynthesisUtterance(text);
             const voice = getUKVoice();
             if (voice) utterance.voice = voice;
-            utterance.rate = speechSpeed * rateMultiplier;
+            utterance.rate = rate;
             utterance.pitch = 1.0;
             window.speechSynthesis.speak(utterance);
         }
-    }, [getUKVoice, speechSpeed]);
+    }, [getUKVoice]);
 
     const fetchWords = useCallback(async (diff: number) => {
+        const currentSeq = ++activeSeqRef.current;
         setLoading(true);
         setFeedback(null);
         setGuess('');
         setInputState('idle');
-        const data = await aiService.generateSpellingBeeWordsBatch(5, diff);
-        setWordQueue(data.slice(1));
-        setWordData(data[0]);
-        setLoading(false);
 
-        // Auto speak word
-        if (data[0]) {
-            setTimeout(() => {
-                playAudio(data[0].word);
-            }, 300);
+        if ('speechSynthesis' in window) {
+            window.speechSynthesis.cancel();
         }
 
-        if (inputRef.current) {
-            inputRef.current.focus();
+        const data = await aiService.generateSpellingBeeWordsBatch(5, diff);
+        if (!isMountedRef.current || currentSeq !== activeSeqRef.current) return;
+
+        if (data && data.length > 0) {
+            setWordQueue(data.slice(1));
+            setWordData(data[0]);
+            setLoading(false);
+
+            // Auto-speak target word once at 0.9x speed
+            setTimeout(() => {
+                if (isMountedRef.current && currentSeq === activeSeqRef.current) {
+                    playAudio(data[0].word, 0.9);
+                }
+            }, 350);
+        } else {
+            setLoading(false);
         }
     }, [playAudio]);
 
     const nextWord = useCallback(async () => {
+        const currentSeq = ++activeSeqRef.current;
         if (wordQueue.length > 0) {
             setFeedback(null);
             setGuess('');
@@ -101,11 +116,10 @@ const SpellingBeeGame: React.FC<SpellingBeeGameProps> = ({ user, username, onBac
             setWordData(next);
             setWordQueue(prev => prev.slice(1));
             setTimeout(() => {
-                playAudio(next.word);
-            }, 200);
-            if (inputRef.current) {
-                inputRef.current.focus();
-            }
+                if (isMountedRef.current && currentSeq === activeSeqRef.current) {
+                    playAudio(next.word, 0.9);
+                }
+            }, 250);
         } else {
             const newDiff = Math.min(10, difficulty + 1);
             setDifficulty(newDiff);
@@ -121,15 +135,17 @@ const SpellingBeeGame: React.FC<SpellingBeeGameProps> = ({ user, username, onBac
         incrementGamePlays('spelling_bee');
     }, [fetchWords]);
 
+    // Mount only once to start new game
     useEffect(() => {
         startNewGame();
-    }, [startNewGame]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
-    const handleGuess = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!wordData || gameOver || loading) return;
+    const submitGuess = useCallback(async () => {
+        if (!wordData || gameOver || loading || inputState === 'correct') return;
 
         const cleanGuess = guess.trim().toLowerCase();
+        if (!cleanGuess) return;
         
         if (cleanGuess === wordData.word.toLowerCase()) {
             audioService.playSound('correct_answer');
@@ -143,7 +159,7 @@ const SpellingBeeGame: React.FC<SpellingBeeGameProps> = ({ user, username, onBac
             }, 1200);
         } else {
             audioService.playSound('wrong_answer');
-            setFeedback({ message: `Incorrect!`, color: '#f87171' });
+            setFeedback({ message: 'Incorrect!', color: '#f87171' });
             setInputState('wrong');
             setGameOver(true);
 
@@ -158,20 +174,55 @@ const SpellingBeeGame: React.FC<SpellingBeeGameProps> = ({ user, username, onBac
                 );
             }
         }
-    };
+    }, [wordData, gameOver, loading, inputState, guess, streak, nextWord, user, username, difficulty]);
+
+    const handleKeyPress = useCallback((key: string) => {
+        if (gameOver || loading || inputState === 'correct') return;
+
+        setPressedKey(key);
+        setTimeout(() => setPressedKey(null), 100);
+
+        if (key === 'ENTER' || key === 'SUBMIT') {
+            submitGuess();
+        } else if (key === 'BACKSPACE') {
+            audioService.playSound('button_click');
+            setGuess(prev => prev.slice(0, -1));
+            if (inputState === 'wrong') setInputState('idle');
+        } else if (/^[A-Z]$/.test(key)) {
+            if (guess.length < 24) {
+                audioService.playSound('button_click');
+                setGuess(prev => prev + key);
+                if (inputState === 'wrong') setInputState('idle');
+            }
+        }
+    }, [gameOver, loading, inputState, submitGuess, guess.length]);
+
+    // Physical keyboard listener
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Enter') handleKeyPress('ENTER');
+            else if (e.key === 'Backspace') handleKeyPress('BACKSPACE');
+            else {
+                const key = e.key.toUpperCase();
+                if (/^[A-Z]$/.test(key)) handleKeyPress(key);
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [handleKeyPress]);
 
     return (
-        <div className="flex flex-col items-center justify-center w-full h-full bg-[#050508] text-white relative overflow-y-auto custom-scrollbar p-4 select-none font-sans">
+        <div className="flex flex-col items-center justify-between w-full h-full bg-[#050508] text-white relative overflow-y-auto custom-scrollbar p-3 sm:p-4 select-none font-sans">
             <div className="absolute inset-0 opacity-15 pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at 80% 20%, #f59e0b 2px, transparent 2px), radial-gradient(circle at 20% 80%, #f59e0b 2px, transparent 2px)', backgroundSize: '80px 80px' }}></div>
 
-            {/* Top Navigation */}
-            <div className="flex justify-between items-center w-full max-w-xl mb-4 z-10">
+            {/* Top Navigation Bar - Pinned at top */}
+            <div className="flex justify-between items-center w-full max-w-xl shrink-0 pt-1 sm:pt-2 mb-2 z-10">
                 <button 
                     onClick={() => {
                         audioService.playSound('button_click');
                         onBackToHub();
                     }} 
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-neutral-900/80 hover:bg-neutral-800 border border-neutral-700 rounded-full text-sm font-bold transition-transform hover:scale-105"
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-neutral-900/90 hover:bg-neutral-800 border border-neutral-700 rounded-full text-sm font-bold transition-transform hover:scale-105 active:scale-95 shadow-md"
                     title="Back to Hub"
                 >
                     <span>⬅️</span>
@@ -179,10 +230,10 @@ const SpellingBeeGame: React.FC<SpellingBeeGameProps> = ({ user, username, onBac
                 </button>
 
                 <div className="flex flex-col items-center">
-                    <h1 className="text-xl md:text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-yellow-300 tracking-wide">
+                    <h1 className="text-lg sm:text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-yellow-300 tracking-wide">
                         SPELLING BEE
                     </h1>
-                    <div className="text-xs text-neutral-400 font-bold mt-0.5">
+                    <div className="text-[11px] sm:text-xs text-neutral-400 font-bold mt-0.5">
                         🔥 Streak: <span className="text-amber-400 font-mono text-sm">{streak}</span> | Level: <span className="text-yellow-300 font-bold">{difficulty}</span>
                     </div>
                 </div>
@@ -193,7 +244,7 @@ const SpellingBeeGame: React.FC<SpellingBeeGameProps> = ({ user, username, onBac
                             audioService.playSound('button_click');
                             startNewGame();
                         }}
-                        className="px-2.5 py-1 bg-neutral-800 hover:bg-neutral-700 border border-neutral-600 rounded-full text-xs font-bold text-neutral-300"
+                        className="p-2 sm:px-2.5 sm:py-1 bg-neutral-800 hover:bg-neutral-700 border border-neutral-600 rounded-full text-xs font-bold text-neutral-300 transition-transform active:scale-95 shadow-md"
                         title="Restart Game"
                     >
                         🔄
@@ -201,106 +252,88 @@ const SpellingBeeGame: React.FC<SpellingBeeGameProps> = ({ user, username, onBac
                 </div>
             </div>
 
-            {/* Speech Speed Pill Controls */}
-            <div className="flex items-center gap-2 mb-4 z-10 bg-neutral-900/90 border border-neutral-800 px-3 py-1.5 rounded-2xl text-xs">
-                <span className="text-neutral-400 font-bold">TTS Speed:</span>
-                {[
-                    { label: '0.7x Slow', rate: 0.7 },
-                    { label: '0.9x Clear', rate: 0.9 },
-                    { label: '1.1x Fast', rate: 1.1 }
-                ].map(item => (
-                    <button
-                        key={item.label}
-                        onClick={() => {
-                            audioService.playSound('button_click');
-                            setSpeechSpeed(item.rate);
-                        }}
-                        className={`px-2 py-0.5 rounded-lg font-bold transition-colors ${speechSpeed === item.rate ? 'bg-amber-500 text-black' : 'text-neutral-400 hover:text-white'}`}
-                    >
-                        {item.label}
-                    </button>
-                ))}
-            </div>
-
-            {/* Card & Inputs */}
-            <div className="flex flex-col items-center justify-center w-full max-w-xl px-4 z-10">
+            {/* Main Content Area */}
+            <div className="flex-1 flex flex-col items-center justify-center w-full max-w-xl my-auto py-1 sm:py-2 z-10">
                 {loading ? (
                     <LoadingScreen text="Preparing Spelling Challenge..." color="#f59e0b" />
                 ) : wordData ? (
-                    <div key={wordData.word} className="flex flex-col items-center w-full bg-neutral-900/90 border-2 border-neutral-800 rounded-2xl p-4 sm:p-6 md:p-8 gap-4 sm:gap-5 shadow-2xl animate-fade-in max-w-full">
+                    <div key={wordData.word} className="flex flex-col items-center w-full bg-neutral-900/90 border-2 border-neutral-800 rounded-2xl p-3.5 sm:p-5 md:p-6 gap-3 sm:gap-4 shadow-2xl animate-fade-in max-w-full">
                         
-                        {/* Audio Buttons */}
-                        <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-4 w-full">
+                        {/* Audio Controls */}
+                        <div className="flex items-center justify-center gap-2 sm:gap-3 w-full">
                             <button 
-                                onClick={() => playAudio(wordData.word)}
-                                className="px-3.5 sm:px-5 py-2.5 sm:py-3.5 bg-amber-500 hover:bg-amber-400 text-black font-black rounded-xl sm:rounded-2xl flex items-center gap-1.5 sm:gap-2 shadow-[0_0_20px_rgba(245,158,11,0.4)] transition-transform hover:scale-105 active:scale-95 text-xs sm:text-base"
-                                title="Hear Word (Google UK English Male)"
+                                onClick={() => playAudio(wordData.word, 0.9)}
+                                className="flex-1 max-w-[200px] px-3.5 sm:px-5 py-2.5 sm:py-3 bg-amber-500 hover:bg-amber-400 text-black font-black rounded-xl sm:rounded-2xl flex items-center justify-center gap-1.5 sm:gap-2 shadow-[0_0_20px_rgba(245,158,11,0.4)] transition-transform hover:scale-105 active:scale-95 text-xs sm:text-sm"
+                                title="Hear Word (0.9x Clear British)"
                             >
-                                <span className="text-lg sm:text-2xl">🔊</span>
+                                <span className="text-base sm:text-xl">🔊</span>
                                 <span>Say Word</span>
                             </button>
                             <button 
-                                onClick={() => playAudio(wordData.sentence)}
-                                className="px-3.5 sm:px-5 py-2.5 sm:py-3.5 bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 text-white font-bold rounded-xl sm:rounded-2xl flex items-center gap-1.5 sm:gap-2 transition-transform hover:scale-105 active:scale-95 text-xs sm:text-base"
-                                title="Hear In Sentence"
+                                onClick={() => playAudio(wordData.sentence, 0.1)}
+                                className="flex-1 max-w-[200px] px-3.5 sm:px-5 py-2.5 sm:py-3 bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 text-white font-bold rounded-xl sm:rounded-2xl flex items-center justify-center gap-1.5 sm:gap-2 transition-transform hover:scale-105 active:scale-95 text-xs sm:text-sm"
+                                title="Hear In Sentence (0.1x Speed)"
                             >
-                                <span className="text-lg sm:text-2xl">💬</span>
+                                <span className="text-base sm:text-xl">💬</span>
                                 <span>In Sentence</span>
                             </button>
                             <button 
-                                onClick={() => playAudio(wordData.word, 0.65)}
-                                className="px-3 sm:px-3.5 py-2.5 sm:py-3.5 bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 text-amber-400 font-bold rounded-xl sm:rounded-2xl flex items-center transition-transform hover:scale-105 active:scale-95 text-xs sm:text-base"
+                                onClick={() => playAudio(wordData.word, 0.6)}
+                                className="px-3 py-2.5 sm:py-3 bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 text-amber-400 font-bold rounded-xl sm:rounded-2xl flex items-center justify-center transition-transform hover:scale-105 active:scale-95 text-xs sm:text-sm"
                                 title="Slow Spellout"
                             >
-                                <span className="text-lg sm:text-xl">🐢</span>
+                                <span className="text-base sm:text-lg">🐢</span>
                             </button>
                         </div>
 
-                        {/* Meaning */}
-                        <div className="text-center w-full bg-neutral-950/60 p-3 sm:p-4 rounded-xl border border-neutral-800">
-                            <div className="text-[10px] sm:text-xs text-amber-400 font-bold uppercase tracking-wider mb-1">Definition</div>
-                            <p className="text-neutral-200 text-xs sm:text-sm md:text-base leading-relaxed">{wordData.meaning}</p>
+                        {/* Meaning / Definition */}
+                        <div className="text-center w-full bg-neutral-950/70 p-2.5 sm:p-3.5 rounded-xl border border-neutral-800">
+                            <div className="text-[9px] sm:text-xs text-amber-400 font-bold uppercase tracking-wider mb-1">Definition</div>
+                            <p className="text-neutral-200 text-xs sm:text-sm md:text-base leading-relaxed line-clamp-3">{wordData.meaning}</p>
                         </div>
 
-                        {/* Guess Form */}
-                        <form onSubmit={handleGuess} className="w-full flex flex-col gap-2.5 sm:gap-3">
-                            <input
-                                ref={inputRef}
-                                type="text"
-                                value={guess}
-                                onChange={(e) => setGuess(e.target.value)}
-                                className={`w-full p-3 sm:p-4 text-center text-xl sm:text-2xl font-bold bg-neutral-950 border-2 rounded-xl focus:outline-none text-white transition-all ${
-                                    inputState === 'correct' ? 'border-green-500 bg-green-950/30' :
-                                    inputState === 'wrong' ? 'border-red-500 bg-red-950/30 animate-shake' :
-                                    'border-neutral-700 focus:border-amber-400'
+                        {/* Visual Typed Word Display Box (No Native Autocorrect / No Soft Keyboard) */}
+                        <div className="w-full flex flex-col gap-2">
+                            <div 
+                                className={`w-full min-h-[50px] sm:min-h-[58px] p-2.5 sm:p-3 text-center flex items-center justify-center bg-neutral-950 border-2 rounded-xl transition-all ${
+                                    inputState === 'correct' ? 'border-green-500 bg-green-950/40 shadow-[0_0_20px_rgba(34,197,94,0.4)]' :
+                                    inputState === 'wrong' ? 'border-red-500 bg-red-950/40 animate-shake shadow-[0_0_20px_rgba(239,68,68,0.4)]' :
+                                    'border-amber-400/80 bg-neutral-950'
                                 }`}
-                                placeholder="Spell the word..."
-                                disabled={gameOver || loading || inputState === 'correct'}
-                                autoFocus
-                                autoComplete="off"
-                                spellCheck="false"
-                            />
-                            {!gameOver && inputState !== 'correct' && (
-                                <button 
-                                    type="submit" 
-                                    className="w-full py-3 sm:py-3.5 bg-gradient-to-r from-amber-500 to-yellow-400 hover:from-amber-400 hover:to-yellow-300 text-black font-black rounded-xl transition-transform active:scale-98 shadow-lg text-xs sm:text-base"
-                                >
-                                    SUBMIT SPELLING
-                                </button>
-                            )}
-                        </form>
+                            >
+                                {guess ? (
+                                    <div className="flex items-center justify-center gap-1 sm:gap-1.5 flex-wrap">
+                                        {guess.split('').map((char, index) => (
+                                            <span 
+                                                key={index} 
+                                                className="text-lg sm:text-2xl font-black uppercase text-amber-300 tracking-wider"
+                                            >
+                                                {char}
+                                            </span>
+                                        ))}
+                                        {!gameOver && inputState !== 'correct' && (
+                                            <span className="w-2 h-5 sm:h-6 bg-amber-400 animate-pulse inline-block ml-0.5" />
+                                        )}
+                                    </div>
+                                ) : (
+                                    <span className="text-neutral-500 text-xs sm:text-sm font-bold tracking-wide">
+                                        Type or tap keys to spell...
+                                    </span>
+                                )}
+                            </div>
+                        </div>
 
                         {feedback && (
-                            <div className="text-lg font-black text-center" style={{ color: feedback.color }}>
+                            <div className="text-sm sm:text-base font-black text-center" style={{ color: feedback.color }}>
                                 {feedback.message}
                             </div>
                         )}
 
                         {gameOver && (
-                            <div className="flex flex-col items-center gap-4 w-full animate-fade-in">
-                                <div className="p-4 bg-red-950/40 border border-red-500/50 rounded-xl w-full text-center">
-                                    <div className="text-neutral-400 text-xs mb-1 uppercase font-bold">The correct spelling was:</div>
-                                    <div className="text-2xl sm:text-3xl font-black text-white tracking-widest uppercase text-amber-400">
+                            <div className="flex flex-col items-center gap-3 w-full animate-fade-in">
+                                <div className="p-3 bg-red-950/50 border border-red-500/60 rounded-xl w-full text-center">
+                                    <div className="text-neutral-400 text-[10px] sm:text-xs mb-1 uppercase font-bold">The correct spelling was:</div>
+                                    <div className="text-xl sm:text-2xl font-black text-amber-400 tracking-widest uppercase">
                                         {wordData.word}
                                     </div>
                                 </div>
@@ -309,7 +342,7 @@ const SpellingBeeGame: React.FC<SpellingBeeGameProps> = ({ user, username, onBac
                                         audioService.playSound('button_click');
                                         startNewGame();
                                     }}
-                                    className="px-8 py-3 bg-amber-500 hover:bg-amber-400 text-black font-black rounded-full transition-transform active:scale-95 shadow-xl text-sm"
+                                    className="px-6 py-2.5 bg-amber-500 hover:bg-amber-400 text-black font-black rounded-full transition-transform active:scale-95 shadow-xl text-xs sm:text-sm"
                                 >
                                     PLAY AGAIN
                                 </button>
@@ -317,8 +350,39 @@ const SpellingBeeGame: React.FC<SpellingBeeGameProps> = ({ user, username, onBac
                         )}
                     </div>
                 ) : (
-                    <div className="text-xl text-red-400">Failed to load word. Please try again.</div>
+                    <div className="text-base text-red-400">Failed to load word. Please try again.</div>
                 )}
+            </div>
+
+            {/* Virtual On-Screen Keyboard - Pinned at bottom */}
+            <div className="flex flex-col gap-1 sm:gap-1.5 w-full max-w-lg px-1 sm:px-2 shrink-0 pb-1 sm:pb-3 mt-auto z-10">
+                {KEYBOARD_ROWS.map((row, i) => (
+                    <div key={i} className="flex justify-center gap-0.5 min-[380px]:gap-1 sm:gap-1.5">
+                        {row.map(key => {
+                            const isEnter = key === 'ENTER' || key === 'SUBMIT';
+                            const isBackspace = key === 'BACKSPACE';
+                            const isPressed = pressedKey === key;
+
+                            return (
+                                <button
+                                    key={key}
+                                    type="button"
+                                    onClick={() => handleKeyPress(key)}
+                                    disabled={gameOver || loading || inputState === 'correct'}
+                                    className={`border active:scale-95 font-black rounded-lg transition-all ${
+                                        isEnter 
+                                            ? 'bg-amber-500 hover:bg-amber-400 text-black border-amber-400 px-2 min-[380px]:px-2.5 sm:px-3 text-[9px] min-[380px]:text-[10px] sm:text-xs shadow-[0_0_10px_rgba(245,158,11,0.3)] font-black' 
+                                            : isBackspace 
+                                            ? 'bg-neutral-800 hover:bg-neutral-700 text-amber-400 border-neutral-700 px-1.5 min-[380px]:px-2 sm:px-3 text-[11px] min-[380px]:text-xs sm:text-sm' 
+                                            : 'bg-neutral-800 hover:bg-neutral-700 text-neutral-100 border-neutral-700 w-[min(8.6vw,36px)] sm:w-9 md:w-10 text-xs sm:text-base'
+                                    } h-9 min-[380px]:h-10 sm:h-12 flex items-center justify-center ${isPressed ? 'scale-90 brightness-150' : ''} disabled:opacity-50`}
+                                >
+                                    {isBackspace ? '⌫' : isEnter ? 'SUBMIT' : key}
+                                </button>
+                            );
+                        })}
+                    </div>
+                ))}
             </div>
         </div>
     );

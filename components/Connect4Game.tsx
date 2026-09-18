@@ -311,17 +311,17 @@ export default function Connect4Game({ user, onBackToHub, username }: Connect4Ga
     };
 
     return (
-        <div className="flex flex-col items-center justify-center w-full h-full bg-[#050508] text-white relative overflow-y-auto custom-scrollbar p-4 select-none font-sans">
+        <div className="flex flex-col items-center justify-between w-full h-full bg-[#050508] text-white relative overflow-y-auto custom-scrollbar p-2.5 sm:p-4 select-none font-sans">
             <div className="absolute inset-0 opacity-15 pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at 50% 50%, #2563eb 2px, transparent 2px)', backgroundSize: '60px 60px' }}></div>
 
-            {/* Top Navigation */}
-            <div className="flex justify-between items-center w-full max-w-xl mb-4 z-10">
+            {/* Top Navigation - Pinned at top */}
+            <div className="flex justify-between items-center w-full max-w-xl shrink-0 pt-1 sm:pt-2 mb-2 z-10">
                 <button 
                     onClick={() => {
                         audioService.playSound('button_click');
                         onBackToHub();
                     }} 
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-neutral-900/80 hover:bg-neutral-800 border border-neutral-700 rounded-full text-sm font-bold transition-transform hover:scale-105"
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-neutral-900/80 hover:bg-neutral-800 border border-neutral-700 rounded-full text-sm font-bold transition-transform hover:scale-105 active:scale-95 shadow-md"
                     title="Back to Hub"
                 >
                     <span>⬅️</span>
@@ -344,79 +344,82 @@ export default function Connect4Game({ user, onBackToHub, username }: Connect4Ga
                 </div>
             </div>
 
-            {/* Hover Indicator Row */}
-            <div className="flex justify-center w-full max-w-full z-10 mb-2 px-1">
-                <div className="flex gap-1 sm:gap-2 md:gap-2.5 px-2 min-[400px]:px-3 sm:px-4 md:px-5">
-                    {Array.from({ length: COLS }).map((_, cIdx) => (
-                        <div 
-                            key={`hover-${cIdx}`} 
-                            className="w-[min(10.5vw,42px)] h-[min(10.5vw,42px)] min-w-[28px] min-h-[28px] sm:w-12 sm:h-12 md:w-16 md:h-16 flex items-center justify-center cursor-pointer"
-                            onClick={() => handleColumnClick(cIdx)}
-                            onMouseEnter={() => setHoveredCol(cIdx)}
-                            onMouseLeave={() => setHoveredCol(null)}
-                        >
-                            {hoveredCol === cIdx && isPlayerTurn && !gameOver && board[0][cIdx] === null && (
-                                <div className="w-full h-full rounded-full bg-gradient-to-b from-red-500/80 to-red-600/80 shadow-[0_0_16px_rgba(239,68,68,0.7)] border-2 border-red-400/60 scale-95 transition-transform" />
-                            )}
-                        </div>
-                    ))}
-                </div>
-            </div>
-
-            {/* Arcade Style Connect 4 Board */}
-            <div className="flex flex-col items-center justify-center z-10 max-w-full px-2">
-                <div 
-                    className="bg-gradient-to-b from-blue-600 to-blue-800 p-2 min-[400px]:p-3 sm:p-4 md:p-5 rounded-2xl sm:rounded-3xl flex flex-col gap-1 sm:gap-2 md:gap-2.5 shadow-[0_15px_35px_rgba(30,64,175,0.45)] border-2 sm:border-4 border-blue-400/40 relative max-w-full"
-                    onMouseLeave={() => setHoveredCol(null)}
-                >
-                    {board.map((row, rIdx) => (
-                        <div key={rIdx} className="flex gap-1 sm:gap-2 md:gap-2.5">
-                            {row.map((cell, cIdx) => {
-                                const isDropTarget = lastDrop?.r === rIdx && lastDrop?.c === cIdx;
-                                const dropDistance = `calc(-${(rIdx + 1) * 115}% - ${(rIdx + 1) * 10}px)`;
-
-                                return (
-                                    <div
-                                        key={`${rIdx}-${cIdx}`}
-                                        onClick={() => handleColumnClick(cIdx)}
-                                        onMouseEnter={() => setHoveredCol(cIdx)}
-                                        className="w-[min(10.5vw,42px)] h-[min(10.5vw,42px)] min-w-[28px] min-h-[28px] sm:w-12 sm:h-12 md:w-16 md:h-16 rounded-full flex items-center justify-center cursor-pointer bg-[#050c18] shadow-[inset_0_4px_8px_rgba(0,0,0,0.8)] transition-transform hover:scale-105 active:scale-95 relative"
-                                    >
-                                        {cell && (
-                                            <div 
-                                                style={isDropTarget ? { ['--drop-y' as any]: dropDistance } : undefined}
-                                                className={`w-full h-full rounded-full shadow-[inset_0_-4px_6px_rgba(0,0,0,0.4),0_2px_8px_rgba(0,0,0,0.5)] ${
-                                                    isDropTarget ? 'animate-drop' : ''
-                                                } ${
-                                                    cell === 'R' 
-                                                        ? 'bg-gradient-to-b from-red-500 to-red-600 shadow-[0_0_10px_rgba(239,68,68,0.6)]' 
-                                                        : 'bg-gradient-to-b from-amber-400 to-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.6)]'
-                                                }`}
-                                            />
-                                        )}
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    ))}
-                </div>
-
-                {gameOver && (
-                    <div className="mt-6 flex flex-col items-center animate-fade-in bg-neutral-900/90 border border-neutral-700 p-4 sm:p-6 rounded-2xl shadow-xl">
-                        <div className={`text-xl sm:text-2xl font-black mb-3 ${winner === 'R' ? 'text-red-400' : winner === 'Y' ? 'text-amber-400' : 'text-white'}`}>
-                            {winner === 'R' ? '🎉 You Won!' : winner === 'Y' ? '😢 AI Won!' : '🤝 Game Drawn!'}
-                        </div>
-                        <button
-                            onClick={() => {
-                                audioService.playSound('button_click');
-                                startNewGame();
-                            }}
-                            className="px-6 py-2.5 bg-red-600 hover:bg-red-500 text-white font-bold rounded-full shadow-lg transition-transform active:scale-95 text-sm sm:text-base"
-                        >
-                            Play Again
-                        </button>
+            {/* Middle Section: Board & Hover Indicator */}
+            <div className="flex-1 flex flex-col items-center justify-center w-full max-w-xl my-auto py-1 z-10">
+                {/* Hover Indicator Row */}
+                <div className="flex justify-center w-full max-w-full z-10 mb-1 px-1">
+                    <div className="flex gap-1 sm:gap-2 md:gap-2.5 px-2 min-[400px]:px-3 sm:px-4 md:px-5">
+                        {Array.from({ length: COLS }).map((_, cIdx) => (
+                            <div 
+                                key={`hover-${cIdx}`} 
+                                className="w-[min(10.5vw,42px)] h-[min(10.5vw,42px)] min-w-[28px] min-h-[28px] sm:w-12 sm:h-12 md:w-16 md:h-16 flex items-center justify-center cursor-pointer"
+                                onClick={() => handleColumnClick(cIdx)}
+                                onMouseEnter={() => setHoveredCol(cIdx)}
+                                onMouseLeave={() => setHoveredCol(null)}
+                            >
+                                {hoveredCol === cIdx && isPlayerTurn && !gameOver && board[0][cIdx] === null && (
+                                    <div className="w-full h-full rounded-full bg-gradient-to-b from-red-500/80 to-red-600/80 shadow-[0_0_16px_rgba(239,68,68,0.7)] border-2 border-red-400/60 scale-95 transition-transform" />
+                                )}
+                            </div>
+                        ))}
                     </div>
-                )}
+                </div>
+
+                {/* Arcade Style Connect 4 Board */}
+                <div className="flex flex-col items-center justify-center z-10 max-w-full px-2">
+                    <div 
+                        className="bg-gradient-to-b from-blue-600 to-blue-800 p-2 min-[400px]:p-3 sm:p-4 md:p-5 rounded-2xl sm:rounded-3xl flex flex-col gap-1 sm:gap-2 md:gap-2.5 shadow-[0_15px_35px_rgba(30,64,175,0.45)] border-2 sm:border-4 border-blue-400/40 relative max-w-full"
+                        onMouseLeave={() => setHoveredCol(null)}
+                    >
+                        {board.map((row, rIdx) => (
+                            <div key={rIdx} className="flex gap-1 sm:gap-2 md:gap-2.5">
+                                {row.map((cell, cIdx) => {
+                                    const isDropTarget = lastDrop?.r === rIdx && lastDrop?.c === cIdx;
+                                    const dropDistance = `calc(-${(rIdx + 1) * 115}% - ${(rIdx + 1) * 10}px)`;
+
+                                    return (
+                                        <div 
+                                            key={`${rIdx}-${cIdx}`}
+                                            onClick={() => handleColumnClick(cIdx)}
+                                            onMouseEnter={() => setHoveredCol(cIdx)}
+                                            className="w-[min(10.5vw,42px)] h-[min(10.5vw,42px)] min-w-[28px] min-h-[28px] sm:w-12 sm:h-12 md:w-16 md:h-16 rounded-full flex items-center justify-center cursor-pointer bg-[#050c18] shadow-[inset_0_4px_8px_rgba(0,0,0,0.8)] transition-transform hover:scale-105 active:scale-95 relative"
+                                        >
+                                            {cell && (
+                                                <div 
+                                                    style={isDropTarget ? { ['--drop-y' as any]: dropDistance } : undefined}
+                                                    className={`w-full h-full rounded-full shadow-[inset_0_-4px_6px_rgba(0,0,0,0.4),0_2px_8px_rgba(0,0,0,0.5)] ${
+                                                        isDropTarget ? 'animate-drop' : ''
+                                                    } ${
+                                                        cell === 'R' 
+                                                            ? 'bg-gradient-to-b from-red-500 to-red-600 shadow-[0_0_10px_rgba(239,68,68,0.6)]' 
+                                                            : 'bg-gradient-to-b from-amber-400 to-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.6)]'
+                                                    }`}
+                                                />
+                                            )}
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        ))}
+                    </div>
+
+                    {gameOver && (
+                        <div className="mt-4 flex flex-col items-center animate-fade-in bg-neutral-900/90 border border-neutral-700 p-4 sm:p-6 rounded-2xl shadow-xl">
+                            <div className={`text-xl sm:text-2xl font-black mb-3 ${winner === 'R' ? 'text-red-400' : winner === 'Y' ? 'text-amber-400' : 'text-white'}`}>
+                                {winner === 'R' ? '🎉 You Won!' : winner === 'Y' ? '😢 AI Won!' : '🤝 Game Drawn!'}
+                            </div>
+                            <button 
+                                onClick={() => {
+                                    audioService.playSound('button_click');
+                                    startNewGame();
+                                }}
+                                className="px-6 py-2.5 bg-red-600 hover:bg-red-500 text-white font-bold rounded-full shadow-lg transition-transform active:scale-95 text-sm sm:text-base"
+                            >
+                                Play Again
+                            </button>
+                        </div>
+                    )}
+                </div>
             </div>
         </div>
     );

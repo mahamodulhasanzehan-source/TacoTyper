@@ -150,17 +150,17 @@ export default function AngleGame({ user, onBackToHub, username }: AngleGameProp
     }, [handleKeypadClick, gameOver]);
 
     return (
-        <div className="flex flex-col items-center justify-center w-full h-full bg-[#050508] text-white relative overflow-y-auto custom-scrollbar p-3 select-none font-sans">
+        <div className="flex flex-col items-center justify-between w-full h-full bg-[#050508] text-white relative overflow-y-auto custom-scrollbar p-2.5 sm:p-3 select-none font-sans">
             <div className="absolute inset-0 opacity-15 pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at 10% 20%, #d946ef 2px, transparent 2px)', backgroundSize: '70px 70px' }}></div>
 
-            {/* Top Bar */}
-            <div className="flex justify-between items-center w-full max-w-md mb-2 z-10">
+            {/* Top Bar - Pinned at Top */}
+            <div className="flex justify-between items-center w-full max-w-md shrink-0 pt-1 sm:pt-2 mb-2 z-10">
                 <button 
                     onClick={() => {
                         audioService.playSound('button_click');
                         onBackToHub();
                     }} 
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-neutral-900/80 hover:bg-neutral-800 border border-neutral-700 rounded-full text-sm font-bold transition-transform hover:scale-105"
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-neutral-900/80 hover:bg-neutral-800 border border-neutral-700 rounded-full text-sm font-bold transition-transform hover:scale-105 active:scale-95 shadow-md"
                     title="Back to Hub"
                 >
                     <span>⬅️</span>
@@ -178,10 +178,11 @@ export default function AngleGame({ user, onBackToHub, username }: AngleGameProp
                 </div>
             </div>
 
-            <div className="flex flex-col items-center w-full max-w-md z-10">
+            {/* Middle Section: Protractor Dial & Feedback */}
+            <div className="flex-1 flex flex-col items-center justify-center w-full max-w-md my-auto py-1 z-10">
                 {/* Protractor Dial */}
                 <div 
-                    className="relative w-[min(52vw,180px)] h-[min(52vw,180px)] sm:w-52 sm:h-52 md:w-56 md:h-56 bg-neutral-900/90 rounded-full border-4 border-neutral-700 flex items-center justify-center shadow-2xl transition-all mb-2.5"
+                    className="relative w-[min(48vw,175px)] h-[min(48vw,175px)] sm:w-48 sm:h-48 md:w-52 md:h-52 bg-neutral-900/90 rounded-full border-4 border-neutral-700 flex items-center justify-center shadow-2xl transition-all mb-2"
                 >
                     <svg className="absolute inset-0 w-full h-full" viewBox="0 0 100 100">
                         {/* Reference Base Line (0 deg) */}
@@ -222,84 +223,86 @@ export default function AngleGame({ user, onBackToHub, username }: AngleGameProp
                 </div>
 
                 {/* Status & Input Display */}
-                <div className="flex flex-col items-center w-full mb-3">
+                <div className="flex flex-col items-center w-full">
                     <div className="text-[11px] sm:text-xs text-neutral-400 font-bold mb-1">
                         Attempts remaining: <span className="text-amber-400 font-mono text-sm">{6 - previousGuesses.length}</span>
                     </div>
 
-                    <div className="flex items-center gap-2 mb-2">
-                        <div className="w-24 sm:w-28 px-3 py-1 text-center text-xl sm:text-2xl font-mono font-black bg-neutral-950 border-2 border-neutral-700 rounded-xl text-white flex items-center justify-center">
+                    <div className="flex items-center gap-2 mb-1.5">
+                        <div className="w-24 sm:w-28 px-3 py-1 text-center text-xl sm:text-2xl font-mono font-black bg-neutral-950 border-2 border-neutral-700 rounded-xl text-white flex items-center justify-center shadow-inner">
                             {guess || '0'}°
                         </div>
                     </div>
 
                     {feedback && (
-                        <div className="flex flex-col items-center text-center animate-fade-in mb-2 min-h-[32px]">
+                        <div className="flex flex-col items-center text-center animate-fade-in min-h-[28px]">
                             <span className="text-xs sm:text-sm font-black" style={{ color: feedback.color }}>{feedback.message}</span>
                             {feedback.arrow && <span className="text-[10px] sm:text-xs font-bold text-neutral-300 mt-0.5">{feedback.arrow}</span>}
                         </div>
                     )}
-
-                    {/* Numeric Keypad */}
-                    {!gameOver && (
-                        <div className="grid grid-cols-3 gap-1.5 w-full max-w-[260px] sm:max-w-[280px]">
-                            {['1', '2', '3', '4', '5', '6', '7', '8', '9', 'DEL', '0', 'ENTER'].map((key) => (
-                                <button
-                                    key={key}
-                                    onClick={() => handleKeypadClick(key)}
-                                    className={`h-9 min-[380px]:h-10 sm:h-11 rounded-xl font-black text-xs sm:text-sm flex items-center justify-center transition-all active:scale-95 ${
-                                        key === 'ENTER' 
-                                            ? 'bg-fuchsia-600 hover:bg-fuchsia-500 text-white shadow-lg' 
-                                            : key === 'DEL'
-                                            ? 'bg-neutral-800 hover:bg-neutral-700 text-neutral-300'
-                                            : 'bg-neutral-900 hover:bg-neutral-800 text-white border border-neutral-800'
-                                    }`}
-                                >
-                                    {key === 'DEL' ? '⌫' : key === 'ENTER' ? 'SUBMIT' : key}
-                                </button>
-                            ))}
-                        </div>
-                    )}
                 </div>
+            </div>
 
-                {/* Result Modal */}
-                {gameOver && (
-                    <div className="fixed inset-0 bg-black/85 flex items-center justify-center z-50 p-4 animate-fade-in">
-                        <div className={`bg-neutral-900 border-2 ${isWon ? 'border-emerald-500' : 'border-fuchsia-500'} rounded-2xl p-6 max-w-xs w-full flex flex-col items-center text-center shadow-2xl`}>
-                            <div className="text-5xl mb-3">{isWon ? '🎯' : '📐'}</div>
-                            <h3 className={`text-xl font-black mb-2 ${isWon ? 'text-emerald-400' : 'text-fuchsia-400'}`}>
-                                {isWon ? 'BULLSEYE!' : 'ROUND OVER'}
-                            </h3>
-                            
-                            <div className="bg-neutral-950 p-3 rounded-xl border border-neutral-800 w-full mb-4">
-                                <p className="text-neutral-400 text-xs font-bold mb-1">Target Angle</p>
-                                <div className="text-3xl font-black text-fuchsia-400 font-mono">{targetAngle}°</div>
-                            </div>
-
-                            <div className="flex gap-3 w-full">
-                                <button 
-                                    onClick={() => {
-                                        audioService.playSound('button_click');
-                                        onBackToHub();
-                                    }}
-                                    className="flex-1 py-2.5 bg-neutral-800 hover:bg-neutral-700 text-white font-bold rounded-xl text-xs transition-colors"
-                                >
-                                    Hub
-                                </button>
-                                <button 
-                                    onClick={() => {
-                                        audioService.playSound('button_click');
-                                        startNewGame();
-                                    }}
-                                    className="flex-1 py-2.5 bg-fuchsia-600 hover:bg-fuchsia-500 text-white font-black rounded-xl text-xs transition-transform active:scale-95 shadow-lg"
-                                >
-                                    Next Angle
-                                </button>
-                            </div>
-                        </div>
+            {/* Bottom Keypad - Pinned at bottom */}
+            <div className="w-full max-w-[280px] shrink-0 pb-1 sm:pb-3 mt-auto z-10 flex flex-col items-center">
+                {!gameOver && (
+                    <div className="grid grid-cols-3 gap-1.5 w-full">
+                        {['1', '2', '3', '4', '5', '6', '7', '8', '9', 'DEL', '0', 'ENTER'].map((key) => (
+                            <button
+                                key={key}
+                                onClick={() => handleKeypadClick(key)}
+                                className={`h-9 min-[380px]:h-10 sm:h-11 rounded-xl font-black text-xs sm:text-sm flex items-center justify-center transition-all active:scale-95 ${
+                                    key === 'ENTER' 
+                                        ? 'bg-fuchsia-600 hover:bg-fuchsia-500 text-white shadow-lg' 
+                                        : key === 'DEL'
+                                        ? 'bg-neutral-800 hover:bg-neutral-700 text-neutral-300'
+                                        : 'bg-neutral-900 hover:bg-neutral-800 text-white border border-neutral-800'
+                                }`}
+                            >
+                                {key === 'DEL' ? '⌫' : key === 'ENTER' ? 'SUBMIT' : key}
+                            </button>
+                        ))}
                     </div>
                 )}
             </div>
+
+            {/* Result Modal */}
+            {gameOver && (
+                <div className="fixed inset-0 bg-black/85 flex items-center justify-center z-50 p-4 animate-fade-in">
+                    <div className={`bg-neutral-900 border-2 ${isWon ? 'border-emerald-500' : 'border-fuchsia-500'} rounded-2xl p-6 max-w-xs w-full flex flex-col items-center text-center shadow-2xl`}>
+                        <div className="text-5xl mb-3">{isWon ? '🎯' : '📐'}</div>
+                        <h3 className={`text-xl font-black mb-2 ${isWon ? 'text-emerald-400' : 'text-fuchsia-400'}`}>
+                            {isWon ? 'BULLSEYE!' : 'ROUND OVER'}
+                        </h3>
+                        
+                        <div className="bg-neutral-950 p-3 rounded-xl border border-neutral-800 w-full mb-4">
+                            <p className="text-neutral-400 text-xs font-bold mb-1">Target Angle</p>
+                            <div className="text-3xl font-black text-fuchsia-400 font-mono">{targetAngle}°</div>
+                        </div>
+
+                        <div className="flex gap-3 w-full">
+                            <button 
+                                onClick={() => {
+                                    audioService.playSound('button_click');
+                                    onBackToHub();
+                                }}
+                                className="flex-1 py-2.5 bg-neutral-800 hover:bg-neutral-700 text-white font-bold rounded-xl text-xs transition-colors"
+                            >
+                                Hub
+                            </button>
+                            <button 
+                                onClick={() => {
+                                    audioService.playSound('button_click');
+                                    startNewGame();
+                                }}
+                                className="flex-1 py-2.5 bg-fuchsia-600 hover:bg-fuchsia-500 text-white font-black rounded-xl text-xs transition-transform active:scale-95 shadow-lg"
+                            >
+                                Next Angle
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

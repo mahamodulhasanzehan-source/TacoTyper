@@ -232,17 +232,17 @@ export default function MinesweeperGame({ user, onBackToHub, username }: Mineswe
     };
 
     return (
-        <div className="flex flex-col items-center justify-center w-full h-full bg-[#050508] text-white relative overflow-y-auto custom-scrollbar p-3 select-none font-sans">
+        <div className="flex flex-col items-center justify-between w-full h-full bg-[#050508] text-white relative overflow-y-auto custom-scrollbar p-2.5 sm:p-3 select-none font-sans">
             <div className="absolute inset-0 opacity-15 pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at 70% 30%, #ef4444 2px, transparent 2px)', backgroundSize: '70px 70px' }}></div>
 
-            {/* Top Bar */}
-            <div className="flex justify-between items-center w-full max-w-xl mb-3 z-10">
+            {/* Top Bar - Pinned at top */}
+            <div className="flex justify-between items-center w-full max-w-xl shrink-0 pt-1 sm:pt-2 mb-2 z-10">
                 <button 
                     onClick={() => {
                         audioService.playSound('button_click');
                         onBackToHub();
                     }} 
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-neutral-900/80 hover:bg-neutral-800 border border-neutral-700 rounded-full text-sm font-bold transition-transform hover:scale-105"
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-neutral-900/80 hover:bg-neutral-800 border border-neutral-700 rounded-full text-sm font-bold transition-transform hover:scale-105 active:scale-95 shadow-md"
                     title="Back to Hub"
                 >
                     <span>⬅️</span>
@@ -257,9 +257,9 @@ export default function MinesweeperGame({ user, onBackToHub, username }: Mineswe
 
                 <div className="w-16 flex justify-end">
                     {gameState !== 'menu' && (
-                        <button
+                        <button 
                             onClick={() => setGameState('menu')}
-                            className="px-2.5 py-1 bg-neutral-800 hover:bg-neutral-700 border border-neutral-600 rounded-full text-xs font-bold text-neutral-300"
+                            className="px-2.5 py-1 bg-neutral-800 hover:bg-neutral-700 border border-neutral-600 rounded-full text-xs font-bold text-neutral-300 transition-transform active:scale-95 shadow-md"
                         >
                             Menu
                         </button>
@@ -268,6 +268,7 @@ export default function MinesweeperGame({ user, onBackToHub, username }: Mineswe
             </div>
 
             {/* Menu or Game */}
+            <div className="flex-1 flex flex-col items-center justify-center w-full my-auto py-1 z-10">
             {gameState === 'menu' ? (
                 <div className="bg-neutral-900/90 border border-neutral-800 p-6 sm:p-8 rounded-2xl max-w-md w-full text-center shadow-2xl animate-fade-in flex flex-col items-center z-10">
                     <div className="text-5xl mb-4 animate-bounce">💣</div>
@@ -440,6 +441,7 @@ export default function MinesweeperGame({ user, onBackToHub, username }: Mineswe
                     )}
                 </div>
             )}
+            </div>
         </div>
     );
 }

@@ -197,17 +197,17 @@ export default function WordleGame({ user, username, onBackToHub }: WordleGamePr
     };
 
     return (
-        <div className="flex flex-col items-center justify-center w-full h-full bg-[#050508] text-white relative overflow-y-auto custom-scrollbar p-3 select-none font-sans">
+        <div className="flex flex-col items-center justify-between w-full h-full bg-[#050508] text-white relative overflow-y-auto custom-scrollbar p-2.5 sm:p-3 select-none font-sans">
             <div className="absolute inset-0 opacity-15 pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at 20% 30%, #22c55e 2px, transparent 2px)', backgroundSize: '70px 70px' }}></div>
 
-            {/* Top Bar */}
-            <div className="flex justify-between items-center w-full max-w-xl mb-3 z-10">
+            {/* Top Bar - Pinned at Top */}
+            <div className="flex justify-between items-center w-full max-w-xl shrink-0 pt-1 sm:pt-2 mb-2 z-10">
                 <button 
                     onClick={() => {
                         audioService.playSound('button_click');
                         onBackToHub();
                     }} 
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-neutral-900/80 hover:bg-neutral-800 border border-neutral-700 rounded-full text-sm font-bold transition-transform hover:scale-105"
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-neutral-900/80 hover:bg-neutral-800 border border-neutral-700 rounded-full text-sm font-bold transition-transform hover:scale-105 active:scale-95 shadow-md"
                     title="Back to Hub"
                 >
                     <span>⬅️</span>
@@ -229,7 +229,7 @@ export default function WordleGame({ user, username, onBackToHub }: WordleGamePr
                             audioService.playSound('button_click');
                             startNewGame(wordLength);
                         }}
-                        className="px-2.5 py-1 bg-neutral-800 hover:bg-neutral-700 border border-neutral-600 rounded-full text-xs font-bold text-neutral-300"
+                        className="px-2.5 py-1 bg-neutral-800 hover:bg-neutral-700 border border-neutral-600 rounded-full text-xs font-bold text-neutral-300 transition-transform active:scale-95 shadow-md"
                         title="New Word"
                     >
                         🔄
@@ -237,53 +237,54 @@ export default function WordleGame({ user, username, onBackToHub }: WordleGamePr
                 </div>
             </div>
 
-            {/* Word Length / Hard Mode Pills */}
-            <div className="flex flex-wrap items-center justify-center gap-2 mb-3 z-10">
-                <div className="flex bg-neutral-900/90 border border-neutral-800 p-1 rounded-xl">
-                    {[5, 6, 7, 8, 9].map(len => (
-                        <button
-                            key={len}
-                            onClick={() => {
-                                audioService.playSound('button_click');
-                                setWordLength(len);
-                            }}
-                            className={`w-8 h-7 text-xs font-bold rounded-lg flex items-center justify-center transition-all ${
-                                wordLength === len ? 'bg-green-600 text-white shadow font-black' : 'text-neutral-400 hover:text-white'
-                            }`}
-                        >
-                            {len}
-                        </button>
-                    ))}
+            {/* Middle Container for Grid & Controls */}
+            <div className="flex-1 flex flex-col items-center justify-center w-full max-w-xl my-auto py-1 z-10">
+                {/* Word Length / Hard Mode Pills */}
+                <div className="flex flex-wrap items-center justify-center gap-2 mb-3 z-10">
+                    <div className="flex bg-neutral-900/90 border border-neutral-800 p-1 rounded-xl">
+                        {[5, 6, 7, 8, 9].map(len => (
+                            <button
+                                key={len}
+                                onClick={() => {
+                                    audioService.playSound('button_click');
+                                    setWordLength(len);
+                                }}
+                                className={`w-8 h-7 text-xs font-bold rounded-lg flex items-center justify-center transition-all ${
+                                    wordLength === len ? 'bg-green-600 text-white shadow font-black' : 'text-neutral-400 hover:text-white'
+                                }`}
+                            >
+                                {len}
+                            </button>
+                        ))}
+                    </div>
+
+                    <button
+                        onClick={() => {
+                            audioService.playSound('button_click');
+                            setStrictRules(prev => !prev);
+                        }}
+                        className={`px-2.5 py-1 text-xs font-bold rounded-xl border transition-all ${
+                            strictRules ? 'bg-red-950/80 border-red-500 text-red-300' : 'bg-neutral-900 border-neutral-800 text-neutral-400'
+                        }`}
+                        title="Strict rule enforcement"
+                    >
+                        Strict Clues: {strictRules ? 'ON' : 'OFF'}
+                    </button>
                 </div>
 
-                <button
-                    onClick={() => {
-                        audioService.playSound('button_click');
-                        setStrictRules(prev => !prev);
-                    }}
-                    className={`px-2.5 py-1 text-xs font-bold rounded-xl border transition-all ${
-                        strictRules ? 'bg-red-950/80 border-red-500 text-red-300' : 'bg-neutral-900 border-neutral-800 text-neutral-400'
-                    }`}
-                    title="Strict rule enforcement"
-                >
-                    Strict Clues: {strictRules ? 'ON' : 'OFF'}
-                </button>
-            </div>
+                {message && !gameOver && (
+                    <div className="absolute top-24 bg-neutral-900 text-white border border-amber-500/80 px-4 py-2 rounded-xl font-bold z-30 shadow-xl animate-fade-in text-sm">
+                        {message}
+                    </div>
+                )}
 
-            {message && !gameOver && (
-                <div className="absolute top-28 bg-neutral-900 text-white border border-amber-500/80 px-4 py-2 rounded-xl font-bold z-30 shadow-xl animate-fade-in text-sm">
-                    {message}
-                </div>
-            )}
-
-            {isLoading ? (
-                <div className="flex-1 flex items-center justify-center z-10 w-full">
-                    <LoadingScreen text="Generating puzzle..." color="#22c55e" />
-                </div>
-            ) : (
-                <>
-                    {/* Letter Grid */}
-                    <div className={`flex flex-col gap-1.5 sm:gap-2 mb-4 z-10 ${isWon ? 'animate-bounce' : ''} ${isLost ? 'animate-shake' : ''}`}>
+                {isLoading ? (
+                    <div className="flex-1 flex items-center justify-center z-10 w-full py-8">
+                        <LoadingScreen text="Generating puzzle..." color="#22c55e" />
+                    </div>
+                ) : (
+                    /* Letter Grid */
+                    <div className={`flex flex-col gap-1.5 sm:gap-2 mb-2 z-10 ${isWon ? 'animate-bounce' : ''} ${isLost ? 'animate-shake' : ''}`}>
                         {Array.from({ length: ROWS }).map((_, rowIndex) => {
                             const guess = guesses[rowIndex] || (rowIndex === guesses.length ? currentGuess : '');
                             const isSubmitted = rowIndex < guesses.length;
@@ -333,9 +334,13 @@ export default function WordleGame({ user, username, onBackToHub }: WordleGamePr
                             );
                         })}
                     </div>
+                )}
+            </div>
 
-                    {/* Virtual Keyboard */}
-                    <div className="flex flex-col gap-1 sm:gap-1.5 w-full max-w-lg px-1 sm:px-2 z-10">
+            {/* Virtual Keyboard - Pinned at Bottom */}
+            {!isLoading && (
+                <>
+                    <div className="flex flex-col gap-1 sm:gap-1.5 w-full max-w-lg px-1 sm:px-2 shrink-0 pb-1 sm:pb-3 mt-auto z-10">
                         {keyboardRows.map((row, i) => (
                             <div key={i} className="flex justify-center gap-0.5 min-[380px]:gap-1 sm:gap-1.5">
                                 {row.map(key => {

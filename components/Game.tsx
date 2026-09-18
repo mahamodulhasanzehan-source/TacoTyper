@@ -41,6 +41,9 @@ import Connect4Game from './Connect4Game';
 import GunGameComponent from './GunGameComponent';
 import ColorMemoryComponent from './ColorMemoryComponent';
 import ParticlePhysicsComponent from './ParticlePhysicsComponent';
+import FruitMergeGame from './FruitMergeGame';
+import CheckersGame from './CheckersGame';
+import DotsAndBoxesGame from './DotsAndBoxesGame';
 import { LeaderboardWidget } from './Overlays'; // Import LeaderboardWidget
 import { 
   StartScreen, 
@@ -66,7 +69,7 @@ interface GameProps {
   onGoogleSignIn?: () => Promise<void>;
 }
 
-type AppId = 'taco' | 'iq' | 'mine' | 'wordle' | 'angle' | 'more-less' | 'spelling-bee' | 'tic-tac-toe' | 'connect-4' | 'gun-game' | 'color-memory' | 'particle-physics';
+type AppId = 'taco' | 'iq' | 'mine' | 'wordle' | 'angle' | 'more-less' | 'spelling-bee' | 'tic-tac-toe' | 'connect-4' | 'gun-game' | 'color-memory' | 'particle-physics' | 'fruit-merge' | 'checkers' | 'dots-and-boxes';
 
 export default function Game({ 
   user, 
@@ -1118,6 +1121,24 @@ export default function Game({
             <ParticlePhysicsComponent 
                 onBackToHub={handleBackToHub}
             />
+        ) : activeApp === 'fruit-merge' ? (
+            <FruitMergeGame 
+                onBackToHub={handleBackToHub}
+                user={user}
+                username={customUsername}
+            />
+        ) : activeApp === 'checkers' ? (
+            <CheckersGame 
+                onBackToHub={handleBackToHub}
+                user={user}
+                username={customUsername}
+            />
+        ) : activeApp === 'dots-and-boxes' ? (
+            <DotsAndBoxesGame 
+                onBackToHub={handleBackToHub}
+                user={user}
+                username={customUsername}
+            />
         ) : screen === 'hub' ? (
              <HubScreen 
                 user={user} 
@@ -1145,6 +1166,9 @@ export default function Game({
                 }}
                 onLaunchColorMemory={() => navigateTo('color-memory')}
                 onLaunchParticlePhysics={() => navigateTo('particle-physics')}
+                onLaunchFruitMerge={() => navigateTo('fruit-merge')}
+                onLaunchCheckers={() => navigateTo('checkers')}
+                onLaunchDotsAndBoxes={() => navigateTo('dots-and-boxes')}
                 onLogout={onLogout}
                 username={customUsername}
                 onUpdateUsername={handleUpdateUsername}

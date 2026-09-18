@@ -151,17 +151,17 @@ const IQGame: React.FC<IQGameProps> = ({ user, onBackToHub, username }) => {
     };
 
     return (
-        <div className="flex flex-col items-center justify-center w-full h-full bg-[#050508] text-white relative overflow-y-auto custom-scrollbar p-4 select-none font-sans">
+        <div className="flex flex-col items-center justify-between w-full h-full bg-[#050508] text-white relative overflow-y-auto custom-scrollbar p-3 sm:p-4 select-none font-sans">
             <div className="absolute inset-0 opacity-15 pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at 20% 80%, #3b82f6 2px, transparent 2px), radial-gradient(circle at 80% 20%, #3b82f6 2px, transparent 2px)', backgroundSize: '80px 80px' }}></div>
             
-            {/* Top Bar */}
-            <div className="flex justify-between items-center w-full max-w-xl mb-4 z-10">
+            {/* Top Bar - Pinned at top */}
+            <div className="flex justify-between items-center w-full max-w-xl shrink-0 pt-1 sm:pt-2 mb-2 z-10">
                 <button 
                     onClick={() => {
                         audioService.playSound('button_click');
                         onBackToHub();
                     }} 
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-neutral-900/80 hover:bg-neutral-800 border border-neutral-700 rounded-full text-sm font-bold transition-transform hover:scale-105"
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-neutral-900/80 hover:bg-neutral-800 border border-neutral-700 rounded-full text-sm font-bold transition-transform hover:scale-105 active:scale-95 shadow-md"
                     title="Back to Hub"
                 >
                     <span>⬅️</span>
@@ -184,7 +184,7 @@ const IQGame: React.FC<IQGameProps> = ({ user, onBackToHub, username }) => {
             </div>
 
             {/* Main Area */}
-            <div className="flex-1 flex flex-col items-center justify-center w-full max-w-xl z-10">
+            <div className="flex-1 flex flex-col items-center justify-center w-full max-w-xl my-auto py-1 z-10">
                 {/* WELCOME SCREEN */}
                 {screen === 'welcome' && (
                     <div className="bg-neutral-900/90 border border-neutral-800 p-6 sm:p-8 rounded-2xl max-w-md w-full text-center shadow-2xl animate-fade-in flex flex-col items-center">

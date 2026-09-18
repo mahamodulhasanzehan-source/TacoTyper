@@ -502,7 +502,7 @@ export const saveSpeedTestStats = async (user: User, wpm: number, accuracy: numb
 
 // --- Global Stats Tracking ---
 
-export const incrementGamePlays = async (gameKey: 'taco_typer' | 'iq_test' | 'minesweeper' | 'wordle' | 'angle' | 'spelling_bee' | 'tic_tac_toe' | 'connect_4' | 'gun_game' | 'color_memory' | 'particle_physics' | 'more_less') => {
+export const incrementGamePlays = async (gameKey: 'taco_typer' | 'iq_test' | 'minesweeper' | 'wordle' | 'angle' | 'spelling_bee' | 'tic_tac_toe' | 'connect_4' | 'gun_game' | 'color_memory' | 'particle_physics' | 'more_less' | 'fruit_merge' | 'checkers' | 'dots_and_boxes') => {
     const key = `play_count_${gameKey}`;
     const curr = parseInt(localStorage.getItem(key) || '0', 10);
     localStorage.setItem(key, String(curr + 1));
@@ -529,7 +529,10 @@ export const incrementGamePlays = async (gameKey: 'taco_typer' | 'iq_test' | 'mi
                  gun_game_plays: gameKey === 'gun_game' ? 1 : 0,
                  color_memory_plays: gameKey === 'color_memory' ? 1 : 0,
                  particle_physics_plays: gameKey === 'particle_physics' ? 1 : 0,
-                 more_less_plays: gameKey === 'more_less' ? 1 : 0
+                 more_less_plays: gameKey === 'more_less' ? 1 : 0,
+                 fruit_merge_plays: gameKey === 'fruit_merge' ? 1 : 0,
+                 checkers_plays: gameKey === 'checkers' ? 1 : 0,
+                 dots_and_boxes_plays: gameKey === 'dots_and_boxes' ? 1 : 0
              });
         }
     }
@@ -547,7 +550,10 @@ export const getGlobalGameStats = async (): Promise<GlobalGameStats> => {
         connect_4_plays: parseInt(localStorage.getItem('play_count_connect_4') || '0', 10),
         gun_game_plays: parseInt(localStorage.getItem('play_count_gun_game') || '0', 10),
         color_memory_plays: parseInt(localStorage.getItem('play_count_color_memory') || '0', 10),
-        particle_physics_plays: parseInt(localStorage.getItem('play_count_particle_physics') || '0', 10)
+        particle_physics_plays: parseInt(localStorage.getItem('play_count_particle_physics') || '0', 10),
+        fruit_merge_plays: parseInt(localStorage.getItem('play_count_fruit_merge') || '0', 10),
+        checkers_plays: parseInt(localStorage.getItem('play_count_checkers') || '0', 10),
+        dots_and_boxes_plays: parseInt(localStorage.getItem('play_count_dots_and_boxes') || '0', 10)
     };
     if (!dbExport) return fallback;
     try {

@@ -68,22 +68,31 @@ const MoreLessGame: React.FC<MoreLessGameProps> = ({ onBackToHub }) => {
     };
 
     return (
-        <div className="flex flex-col items-center justify-start sm:justify-center w-full h-full bg-[#000] text-white font-['Inter'] relative overflow-y-auto custom-scrollbar p-3 sm:p-4">
+        <div className="flex flex-col items-center justify-between w-full h-full bg-[#000] text-white font-['Inter'] relative overflow-y-auto custom-scrollbar p-3 sm:p-4">
             {/* Random Doodles */}
             <div className="absolute inset-0 opacity-10 pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at 30% 20%, #ff2a2a 2px, transparent 2px), radial-gradient(circle at 70% 80%, #ff2a2a 2px, transparent 2px)', backgroundSize: '120px 120px' }}></div>
             
-            <div className="flex justify-between items-center w-full max-w-4xl p-3 sm:p-4 z-10 sticky top-0 bg-black/80 backdrop-blur-sm border-b border-neutral-800/60 mb-2">
-                <button onClick={onBackToHub} className="text-xl sm:text-2xl hover:scale-110 transition-transform">⬅️</button>
+            {/* Top Bar - Pinned at top */}
+            <div className="flex justify-between items-center w-full max-w-4xl shrink-0 pt-1 sm:pt-2 mb-2 z-10">
+                <button 
+                    onClick={onBackToHub} 
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-neutral-900/80 hover:bg-neutral-800 border border-neutral-700 rounded-full text-sm font-bold transition-transform hover:scale-105 active:scale-95 shadow-md"
+                    title="Back to Hub"
+                >
+                    <span>⬅️</span>
+                    <span className="hidden sm:inline">Hub</span>
+                </button>
                 <h1 className="text-base sm:text-xl md:text-2xl font-bold font-['Press_Start_2P'] text-[#ff2a2a]">MORE / LESS</h1>
-                <div className="text-base sm:text-xl font-bold">Score: {score}/7</div>
+                <div className="text-sm sm:text-base md:text-xl font-bold font-mono">Score: <span className="text-[#ff2a2a]">{score}</span>/7</div>
             </div>
 
+            <div className="flex-1 flex flex-col items-center justify-center w-full max-w-4xl my-auto py-1 z-10">
             {isLoading ? (
                 <div className="flex-1 flex items-center justify-center z-10 w-full">
                     <LoadingScreen text="Loading items..." color="#ff2a2a" />
                 </div>
             ) : !gameOver && item1 && item2 ? (
-                <div className="flex flex-col md:flex-row items-center justify-center gap-3 sm:gap-6 md:gap-8 w-full max-w-4xl px-2 z-10 my-auto pb-6">
+                <div className="flex flex-col md:flex-row items-center justify-center gap-3 sm:gap-6 md:gap-8 w-full max-w-4xl px-2 z-10 pb-4">
                     <div key={item1.name} className="flex flex-col items-center justify-center w-full md:w-1/2 min-h-[11rem] sm:min-h-[14rem] md:min-h-[16rem] bg-[#111] border-2 sm:border-4 border-[#333] rounded-xl p-4 sm:p-6 animate-slide-in-right">
                         <div className="text-4xl sm:text-5xl md:text-6xl mb-2 sm:mb-4">{item1.image}</div>
                         <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-center">{item1.name}</h2>
@@ -158,6 +167,7 @@ const MoreLessGame: React.FC<MoreLessGameProps> = ({ onBackToHub }) => {
                     </div>
                 </div>
             ) : null}
+            </div>
         </div>
     );
 };

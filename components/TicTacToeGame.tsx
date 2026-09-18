@@ -246,17 +246,17 @@ export default function TicTacToeGame({ user, onBackToHub, username }: TicTacToe
     };
 
     return (
-        <div className="flex flex-col items-center justify-center w-full h-full bg-[#050508] text-white relative overflow-y-auto custom-scrollbar p-4 select-none font-sans">
+        <div className="flex flex-col items-center justify-between w-full h-full bg-[#050508] text-white relative overflow-y-auto custom-scrollbar p-2.5 sm:p-4 select-none font-sans">
             <div className="absolute inset-0 opacity-15 pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at 50% 50%, #38bdf8 2px, transparent 2px)', backgroundSize: '60px 60px' }}></div>
 
-            {/* Top Bar */}
-            <div className="flex justify-between items-center w-full max-w-lg mb-3 z-10">
+            {/* Top Bar - Pinned at top */}
+            <div className="flex justify-between items-center w-full max-w-lg shrink-0 pt-1 sm:pt-2 mb-2 z-10">
                 <button
                     onClick={() => {
                         audioService.playSound('button_click');
                         onBackToHub();
                     }}
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-neutral-900/80 hover:bg-neutral-800 border border-neutral-700 rounded-full text-sm font-bold transition-transform hover:scale-105"
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-neutral-900/80 hover:bg-neutral-800 border border-neutral-700 rounded-full text-sm font-bold transition-transform hover:scale-105 active:scale-95 shadow-md"
                     title="Back to Hub"
                 >
                     <span>⬅️</span>
@@ -278,63 +278,65 @@ export default function TicTacToeGame({ user, onBackToHub, username }: TicTacToe
                             audioService.playSound('button_click');
                             startNewGame(difficulty, aiPlaysFirst);
                         }}
-                        className="px-2.5 py-1 bg-neutral-800 hover:bg-neutral-700 border border-neutral-600 rounded-full text-xs font-bold text-neutral-300"
+                        className="px-2.5 py-1 bg-neutral-800 hover:bg-neutral-700 border border-neutral-600 rounded-full text-xs font-bold text-neutral-300 transition-transform active:scale-95 shadow-md"
                         title="Reset Game"
                     >
-                        🔄 Reset
+                        🔄
                     </button>
                 </div>
             </div>
 
-            {/* Difficulty Controls */}
-            <div className="flex flex-wrap items-center justify-center gap-2.5 mb-2.5 z-10 max-w-md">
-                <div className="flex bg-neutral-900 p-1 rounded-xl border border-neutral-800">
-                    {[
-                        { label: 'Easy', val: 0 },
-                        { label: 'Medium', val: 1 },
-                        { label: 'Hard (5×5)', val: 2 }
-                    ].map(d => (
-                        <button
-                            key={d.val}
-                            onClick={() => {
-                                audioService.playSound('button_click');
-                                const newDiff = d.val as 0 | 1 | 2;
-                                setDifficulty(newDiff);
-                                startNewGame(newDiff, aiPlaysFirst);
-                            }}
-                            className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${
-                                difficulty === d.val 
-                                    ? d.val === 2 ? 'bg-amber-500 text-black shadow font-black' : 'bg-sky-500 text-black shadow font-black'
-                                    : 'text-neutral-400 hover:text-white'
-                            }`}
-                        >
-                            {d.label}
-                        </button>
-                    ))}
+            {/* Middle Content */}
+            <div className="flex-1 flex flex-col items-center justify-center w-full max-w-lg my-auto py-1 z-10">
+                {/* Difficulty Controls */}
+                <div className="flex flex-wrap items-center justify-center gap-2 mb-2 z-10 max-w-md">
+                    <div className="flex bg-neutral-900 p-1 rounded-xl border border-neutral-800">
+                        {[
+                            { label: 'Easy', val: 0 },
+                            { label: 'Medium', val: 1 },
+                            { label: 'Hard (5×5)', val: 2 }
+                        ].map(d => (
+                            <button
+                                key={d.val}
+                                onClick={() => {
+                                    audioService.playSound('button_click');
+                                    const newDiff = d.val as 0 | 1 | 2;
+                                    setDifficulty(newDiff);
+                                    startNewGame(newDiff, aiPlaysFirst);
+                                }}
+                                className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-all ${
+                                    difficulty === d.val 
+                                        ? d.val === 2 ? 'bg-amber-500 text-black shadow font-black' : 'bg-sky-500 text-black shadow font-black'
+                                        : 'text-neutral-400 hover:text-white'
+                                }`}
+                            >
+                                {d.label}
+                            </button>
+                        ))}
+                    </div>
+
+                    {/* First turn toggle */}
+                    <button
+                        onClick={() => {
+                            audioService.playSound('button_click');
+                            const newAi = !aiPlaysFirst;
+                            startNewGame(difficulty, newAi);
+                        }}
+                        className="px-2.5 py-1 bg-neutral-900 border border-neutral-800 hover:border-neutral-700 text-neutral-300 rounded-xl text-xs font-bold transition-colors"
+                        title="Toggle first move"
+                    >
+                        {aiPlaysFirst ? '🤖 AI Starts' : '👤 You Start'}
+                    </button>
                 </div>
 
-                {/* First turn toggle */}
-                <button
-                    onClick={() => {
-                        audioService.playSound('button_click');
-                        const newAi = !aiPlaysFirst;
-                        startNewGame(difficulty, newAi);
-                    }}
-                    className="px-3 py-1.5 bg-neutral-900 border border-neutral-800 hover:border-neutral-700 text-neutral-300 rounded-xl text-xs font-bold transition-colors"
-                    title="Toggle first move"
-                >
-                    {aiPlaysFirst ? '🤖 AI Starts' : '👤 You Start'}
-                </button>
-            </div>
+                {/* Game Mode Objective Hint */}
+                <div className="z-10 mb-2.5 text-[11px] sm:text-xs font-semibold px-3 py-0.5 rounded-full bg-neutral-900/90 border border-neutral-800 text-neutral-300 flex items-center gap-1.5 shadow-sm">
+                    <span className={is5x5 ? 'text-amber-400' : 'text-sky-400'}>●</span>
+                    <span>{is5x5 ? '5×5 Grid • Match 4 in a row to win' : '3×3 Grid • Match 3 in a row to win'}</span>
+                </div>
 
-            {/* Game Mode Objective Hint */}
-            <div className="z-10 mb-3 text-xs font-semibold px-3 py-1 rounded-full bg-neutral-900/90 border border-neutral-800 text-neutral-300 flex items-center gap-1.5 shadow-sm">
-                <span className={is5x5 ? 'text-amber-400' : 'text-sky-400'}>●</span>
-                <span>{is5x5 ? '5×5 Grid • Match 4 in a row to win' : '3×3 Grid • Match 3 in a row to win'}</span>
-            </div>
-
-            {/* Game Board */}
-            <div className="flex flex-col items-center justify-center z-10 w-full px-2">
+                {/* Game Board */}
+                <div className="flex flex-col items-center justify-center z-10 w-full px-2">
                 <div className={`grid gap-1.5 sm:gap-2 bg-neutral-900/90 p-2 sm:p-3 rounded-2xl border-2 border-neutral-800 shadow-2xl max-w-full ${is5x5 ? 'grid-cols-5' : 'grid-cols-3'}`}>
                     {board.map((cell, index) => {
                         const isWinCell = winningLine?.includes(index);
@@ -379,6 +381,7 @@ export default function TicTacToeGame({ user, onBackToHub, username }: TicTacToe
                         </button>
                     </div>
                 )}
+            </div>
             </div>
         </div>
     );
