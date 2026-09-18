@@ -11,10 +11,10 @@ export default function ColorMemoryComponent({ onBackToHub }: ColorMemoryProps) 
     }, []);
 
     return (
-        <div className="fixed inset-0 w-full h-full bg-black z-50">
+        <div className="fixed inset-0 w-full h-full bg-black z-50 overflow-hidden">
             <button 
                 onClick={onBackToHub}
-                className="absolute top-4 left-4 z-[60] text-2xl hover:scale-110 transition-transform bg-white/10 p-2 rounded-full backdrop-blur-sm"
+                className="absolute top-2.5 left-2.5 sm:top-4 sm:left-4 z-[60] text-lg sm:text-2xl hover:scale-110 active:scale-95 transition-transform bg-neutral-900/90 hover:bg-neutral-800 p-1.5 sm:p-2.5 rounded-full border border-neutral-700 backdrop-blur-md shadow-lg cursor-pointer flex items-center justify-center"
                 title="Back to Hub"
             >
                 🏠

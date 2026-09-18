@@ -88,7 +88,7 @@ export default function WordleGame({ user, username, onBackToHub }: WordleGamePr
 
             if (!isValid) {
                 audioService.playSound('wrong_answer');
-                setMessage('Not in word list');
+                setMessage('Not a valid English word');
                 setShakeRow(guesses.length);
                 setTimeout(() => setShakeRow(-1), 500);
                 setTimeout(() => setMessage(''), 1500);

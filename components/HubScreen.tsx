@@ -319,7 +319,7 @@ const HubScreen: React.FC<HubScreenProps> = ({
                             </div>
 
                             {/* Icon Frame */}
-                            <div className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 rounded-xl bg-white/5 border border-amber-400/50 group-hover:border-amber-400 flex items-center justify-center text-2xl sm:text-3xl md:text-4xl mr-3 sm:mr-4 group-hover:scale-105 transition-all duration-300 shrink-0 shadow-inner z-10">
+                            <div className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 rounded-xl bg-white/5 border border-amber-400/50 group-hover:border-amber-400 flex items-center justify-center text-3xl sm:text-4xl md:text-[40px] leading-none mr-3 sm:mr-4 group-hover:scale-105 transition-all duration-300 shrink-0 shadow-inner z-10">
                                 {sortedGames[0].icon}
                             </div>
                             
@@ -390,7 +390,7 @@ const HubScreen: React.FC<HubScreenProps> = ({
 
                                     {/* Left: Icon Frame */}
                                     <div 
-                                        className="w-11 h-11 sm:w-12 sm:h-12 md:w-13 md:h-13 rounded-xl flex items-center justify-center bg-white/5 border text-2xl sm:text-3xl mr-2.5 sm:mr-3 group-hover:scale-105 transition-transform duration-300 shadow-inner shrink-0 z-10"
+                                        className="w-11 h-11 sm:w-12 sm:h-12 md:w-13 md:h-13 rounded-xl flex items-center justify-center bg-white/5 border text-[26px] sm:text-[30px] md:text-[34px] leading-none mr-2.5 sm:mr-3 group-hover:scale-105 transition-transform duration-300 shadow-inner shrink-0 z-10"
                                         style={{ borderColor: `${game.color}55` }}
                                     >
                                         {game.icon}

@@ -256,13 +256,165 @@
         .modal-content h2 { font-family: 'Orbitron', sans-serif; color: var(--accent); font-size: 2rem; margin-top: 0; }
         .modal-content p { font-size: 1.1rem; line-height: 1.6; color: #ccc; margin-bottom: 30px; }
         
-        /* Responsive adjustments */
-        @media (max-width: 1200px) {
-            body { display: flex; flex-direction: column; overflow-y: auto; gap: 30px; }
-            main { flex-wrap: wrap; margin-bottom: 20px; }
-            aside.stats-sidebar, aside.history-sidebar { width: 90%; max-width: 600px; margin: 0 auto; height: auto; }
-            aside.history-sidebar { height: 300px; }
-            footer { margin-bottom: 50px; }
+        /* Responsive adjustments for portrait, phone, and varied aspect ratios */
+        @media (max-width: 1024px), (orientation: portrait) {
+            body { 
+                display: flex; 
+                flex-direction: column; 
+                align-items: center; 
+                overflow-y: auto; 
+                overflow-x: hidden;
+                gap: 12px;
+                padding: 10px 12px 40px;
+                min-height: 100vh;
+            }
+
+            header {
+                order: 1;
+                width: 100%;
+                max-width: 520px;
+                padding: 0 10px 0 52px; /* Leaves room for Home back button */
+                height: 52px;
+                justify-content: space-between;
+            }
+
+            header h1 {
+                font-size: clamp(1.2rem, 5vw, 1.8rem);
+                letter-spacing: 2px;
+            }
+
+            .timer-container {
+                width: 54px;
+                height: 54px;
+                transform: scale(0.7);
+                transform-origin: right center;
+            }
+            .timer-container.active {
+                transform: scale(0.8);
+            }
+
+            main {
+                order: 2;
+                display: flex;
+                flex-direction: row;
+                flex-wrap: nowrap;
+                align-items: center;
+                justify-content: center;
+                gap: clamp(8px, 3vw, 24px);
+                margin: 0;
+                width: 100%;
+                max-width: 540px;
+            }
+
+            :root {
+                --square-size: clamp(140px, min(47vw, 34vh), 320px);
+                --slider-thickness: clamp(19px, 4.5vw, 28px);
+            }
+
+            .sliders-panel {
+                padding: clamp(8px, 2vw, 16px) clamp(8px, 2vw, 16px);
+                gap: clamp(6px, 2vw, 12px);
+                border-radius: 14px;
+                flex-shrink: 0;
+            }
+
+            .slider-column {
+                gap: 8px;
+            }
+
+            .slider-label {
+                font-size: 0.65rem;
+                letter-spacing: 1px;
+            }
+
+            .square-container {
+                border-radius: 14px;
+                flex-shrink: 0;
+            }
+
+            footer {
+                order: 3;
+                width: 100%;
+                max-width: 520px;
+                margin: 6px 0 0;
+            }
+
+            .controls {
+                gap: 16px;
+            }
+
+            button {
+                padding: 10px 26px;
+                font-size: 0.95rem;
+                letter-spacing: 1.5px;
+            }
+
+            .result-display {
+                margin-top: -8px;
+                height: 50px;
+            }
+
+            .score-main {
+                font-size: 1.8rem;
+            }
+
+            .score-sub {
+                font-size: 0.75rem;
+            }
+
+            aside.stats-sidebar {
+                order: 4;
+                width: 100%;
+                max-width: 520px;
+                margin: 14px 0 0;
+                height: auto;
+                padding: 14px;
+            }
+
+            aside.stats-sidebar .stats-grid {
+                display: grid;
+                grid-template-columns: repeat(3, 1fr);
+                gap: 10px;
+            }
+
+            .stat-box {
+                margin-bottom: 0;
+            }
+
+            .stat-label {
+                font-size: 0.68rem;
+            }
+
+            .stat-value {
+                font-size: 1.15rem;
+            }
+
+            .rank-title {
+                font-size: 0.95rem;
+            }
+
+            aside.history-sidebar {
+                order: 5;
+                width: 100%;
+                max-width: 520px;
+                margin: 12px 0 0;
+                height: 220px;
+                padding: 14px;
+            }
+        }
+
+        @media (max-width: 420px) {
+            :root {
+                --square-size: clamp(130px, 45vw, 220px);
+                --slider-thickness: 18px;
+            }
+            aside.stats-sidebar .stats-grid {
+                grid-template-columns: repeat(2, 1fr) !important;
+            }
+            button {
+                padding: 9px 20px;
+                font-size: 0.85rem;
+            }
         }
     </style>
 </head>
@@ -284,11 +436,13 @@
 
     <aside class="stats-sidebar glass-panel">
         <h3 style="font-family: 'Orbitron'; margin-top:0; color: #fff; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px;">TELEMETRY</h3>
-        <div class="stat-box"><div class="stat-label">Rank</div><div class="rank-title" id="statRank">Unranked</div></div>
-        <div class="stat-box"><div class="stat-label">Best Score</div><div class="stat-value" id="statBest">0.00</div></div>
-        <div class="stat-box"><div class="stat-label">Average Accuracy</div><div class="stat-value" id="statAvg">0.00</div></div>
-        <div class="stat-box"><div class="stat-label">Current Streak (>8.0)</div><div class="stat-value" id="statStreak">0</div></div>
-        <div class="stat-box"><div class="stat-label">Matches Played</div><div class="stat-value" id="statPlayed">0</div></div>
+        <div class="stats-grid">
+            <div class="stat-box"><div class="stat-label">Rank</div><div class="rank-title" id="statRank">Unranked</div></div>
+            <div class="stat-box"><div class="stat-label">Best Score</div><div class="stat-value" id="statBest">0.00</div></div>
+            <div class="stat-box"><div class="stat-label">Average Accuracy</div><div class="stat-value" id="statAvg">0.00</div></div>
+            <div class="stat-box"><div class="stat-label">Current Streak (>8.0)</div><div class="stat-value" id="statStreak">0</div></div>
+            <div class="stat-box"><div class="stat-label">Matches Played</div><div class="stat-value" id="statPlayed">0</div></div>
+        </div>
     </aside>
 
     <main>

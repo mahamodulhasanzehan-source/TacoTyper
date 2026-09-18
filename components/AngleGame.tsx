@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { User, incrementGamePlays, saveLeaderboardScore } from '../services/firebase';
 import { audioService } from '../services/audioService';
 
@@ -20,7 +20,6 @@ export default function AngleGame({ user, onBackToHub, username }: AngleGameProp
     const [previousGuesses, setPreviousGuesses] = useState<number[]>([]);
     const [isWon, setIsWon] = useState(false);
     
-    const dialRef = useRef<HTMLDivElement>(null);
     const displayableName = username || user.displayName || 'Angler';
 
     const startNewGame = useCallback(() => {
@@ -135,24 +134,6 @@ export default function AngleGame({ user, onBackToHub, username }: AngleGameProp
     }, [gameOver, handleGuess]);
 
     // Handle touch/click on dial to set angle directly
-    const handleDialPointer = (e: React.PointerEvent<HTMLDivElement>) => {
-        if (gameOver || !dialRef.current) return;
-        const rect = dialRef.current.getBoundingClientRect();
-        const centerX = rect.left + rect.width / 2;
-        const centerY = rect.top + rect.height / 2;
-        const x = e.clientX - centerX;
-        const y = e.clientY - centerY;
-
-        // Angle in radians from 12 o'clock or 3 o'clock
-        // standard circle (0 is right, counter-clockwise)
-        let rad = Math.atan2(y, x);
-        let deg = Math.round((rad * 180) / Math.PI);
-        if (deg < 0) deg += 360;
-
-        audioService.playSound('button_click');
-        setGuess(deg.toString());
-    };
-
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
             if (gameOver) return;
@@ -200,10 +181,7 @@ export default function AngleGame({ user, onBackToHub, username }: AngleGameProp
             <div className="flex flex-col items-center w-full max-w-md z-10">
                 {/* Protractor Dial */}
                 <div 
-                    ref={dialRef}
-                    onPointerDown={handleDialPointer}
-                    className="relative w-[min(52vw,180px)] h-[min(52vw,180px)] sm:w-52 sm:h-52 md:w-56 md:h-56 bg-neutral-900/90 rounded-full border-4 border-neutral-700 flex items-center justify-center cursor-crosshair shadow-2xl transition-all mb-2.5 hover:border-fuchsia-500/60"
-                    title="Tap dial to pick angle"
+                    className="relative w-[min(52vw,180px)] h-[min(52vw,180px)] sm:w-52 sm:h-52 md:w-56 md:h-56 bg-neutral-900/90 rounded-full border-4 border-neutral-700 flex items-center justify-center shadow-2xl transition-all mb-2.5"
                 >
                     <svg className="absolute inset-0 w-full h-full" viewBox="0 0 100 100">
                         {/* Reference Base Line (0 deg) */}
@@ -218,13 +196,13 @@ export default function AngleGame({ user, onBackToHub, username }: AngleGameProp
                             className="transition-all duration-700 ease-out"
                         />
 
-                        {/* Previous Guesses */}
+                        {/* Previous Guesses (shown only after submit) */}
                         {previousGuesses.map((g, i) => (
                             <line 
                                 key={i}
                                 x1="50" y1="50" 
                                 x2="95" y2="50" 
-                                stroke="#525252" strokeWidth="1.5" strokeDasharray="2,2"
+                                stroke="#737373" strokeWidth="1.5" strokeDasharray="2,2"
                                 style={{ transform: `rotate(${g}deg)`, transformOrigin: '50px 50px' }}
                             />
                         ))}
@@ -237,16 +215,6 @@ export default function AngleGame({ user, onBackToHub, username }: AngleGameProp
                             className="transition-all duration-700 ease-out shadow-[0_0_10px_rgba(217,70,239,0.8)]"
                             style={{ transform: `rotate(${targetAngle}deg)`, transformOrigin: '50px 50px' }}
                         />
-                        
-                        {/* Current Guess Line preview */}
-                        {guess && !isNaN(parseInt(guess, 10)) && (
-                            <line 
-                                x1="50" y1="50" 
-                                x2="95" y2="50" 
-                                stroke="#38bdf8" strokeWidth="2" strokeDasharray="3,3"
-                                style={{ transform: `rotate(${parseInt(guess, 10)}deg)`, transformOrigin: '50px 50px' }}
-                            />
-                        )}
 
                         {/* Center Hub */}
                         <circle cx="50" cy="50" r="4" fill="#ffffff" />
