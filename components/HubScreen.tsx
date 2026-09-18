@@ -81,8 +81,8 @@ const HubScreen: React.FC<HubScreenProps> = ({
                 title: 'Taco Typer',
                 description: 'The Original Typing Challenge',
                 icon: '🌮',
-                color: '#f59e0b',
-                accentGlow: 'rgba(245, 158, 11, 0.25)',
+                color: '#ff9900',
+                accentGlow: 'rgba(255, 153, 0, 0.5)',
                 tag: 'TYPING',
                 plays: stats.taco_typer_plays,
                 action: onLaunchGame
@@ -92,8 +92,8 @@ const HubScreen: React.FC<HubScreenProps> = ({
                 title: 'IQ Test',
                 description: 'Logic & Patterns Assessment',
                 icon: '🧠',
-                color: '#38bdf8',
-                accentGlow: 'rgba(56, 189, 248, 0.25)',
+                color: '#00d0ff',
+                accentGlow: 'rgba(0, 208, 255, 0.5)',
                 tag: 'BRAIN',
                 plays: stats.iq_test_plays,
                 action: onLaunchIQ
@@ -103,8 +103,8 @@ const HubScreen: React.FC<HubScreenProps> = ({
                 title: 'Minesweeper',
                 description: 'Classic Strategic Survival',
                 icon: '💣',
-                color: '#22c55e',
-                accentGlow: 'rgba(34, 197, 94, 0.25)',
+                color: '#00ff66',
+                accentGlow: 'rgba(0, 255, 102, 0.5)',
                 tag: 'SURVIVAL',
                 plays: stats.minesweeper_plays,
                 action: onLaunchMinesweeper
@@ -114,8 +114,8 @@ const HubScreen: React.FC<HubScreenProps> = ({
                 title: 'Wordle',
                 description: 'Guess the Hidden Word',
                 icon: '📝',
-                color: '#84cc16',
-                accentGlow: 'rgba(132, 204, 22, 0.25)',
+                color: '#bbf000',
+                accentGlow: 'rgba(187, 240, 0, 0.5)',
                 tag: 'WORD PUZZLE',
                 plays: stats.wordle_plays || 0,
                 action: onLaunchWordle
@@ -125,8 +125,8 @@ const HubScreen: React.FC<HubScreenProps> = ({
                 title: 'Angle',
                 description: 'Estimate the Angle',
                 icon: '📐',
-                color: '#d946ef',
-                accentGlow: 'rgba(217, 70, 239, 0.25)',
+                color: '#ff1493',
+                accentGlow: 'rgba(255, 20, 147, 0.5)',
                 tag: 'GEOMETRY',
                 plays: stats.angle_plays || 0,
                 action: onLaunchAngle
@@ -136,8 +136,8 @@ const HubScreen: React.FC<HubScreenProps> = ({
                 title: 'Spelling Bee',
                 description: 'Listen and Spell',
                 icon: '🐝',
-                color: '#eab308',
-                accentGlow: 'rgba(234, 179, 8, 0.25)',
+                color: '#ffd000',
+                accentGlow: 'rgba(255, 208, 0, 0.5)',
                 tag: 'VOCABULARY',
                 plays: stats.spelling_bee_plays || 0,
                 action: onLaunchSpellingBee
@@ -147,8 +147,8 @@ const HubScreen: React.FC<HubScreenProps> = ({
                 title: 'Tic Tac Toe',
                 description: 'Classic 3x3 Strategy',
                 icon: '❌',
-                color: '#6366f1',
-                accentGlow: 'rgba(99, 102, 241, 0.25)',
+                color: '#7b61ff',
+                accentGlow: 'rgba(123, 97, 255, 0.5)',
                 tag: 'CLASSIC',
                 plays: stats.tic_tac_toe_plays || 0,
                 action: onLaunchTicTacToe
@@ -158,8 +158,8 @@ const HubScreen: React.FC<HubScreenProps> = ({
                 title: 'Connect 4',
                 description: 'Drop and Connect',
                 icon: '🔴',
-                color: '#f43f5e',
-                accentGlow: 'rgba(244, 63, 94, 0.25)',
+                color: '#ff2255',
+                accentGlow: 'rgba(255, 34, 85, 0.5)',
                 tag: 'STRATEGY',
                 plays: stats.connect_4_plays || 0,
                 action: onLaunchConnect4
@@ -169,8 +169,8 @@ const HubScreen: React.FC<HubScreenProps> = ({
                 title: 'Gun Game',
                 description: '3D Target Practice',
                 icon: '🔫',
-                color: '#14b8a6',
-                accentGlow: 'rgba(20, 184, 166, 0.25)',
+                color: '#00f5d4',
+                accentGlow: 'rgba(0, 245, 212, 0.5)',
                 tag: '3D ACTION',
                 plays: stats.gun_game_plays || 0,
                 action: onLaunchGunGame
@@ -180,8 +180,8 @@ const HubScreen: React.FC<HubScreenProps> = ({
                 title: 'Color Memory',
                 description: 'Match the Target Color',
                 icon: '🎨',
-                color: '#a855f7',
-                accentGlow: 'rgba(168, 85, 247, 0.25)',
+                color: '#d946ef',
+                accentGlow: 'rgba(217, 70, 239, 0.5)',
                 tag: 'MEMORY',
                 plays: stats.color_memory_plays || 0,
                 action: onLaunchColorMemory
@@ -191,8 +191,8 @@ const HubScreen: React.FC<HubScreenProps> = ({
                 title: 'Particle Physics',
                 description: 'Flow & Collision Sim',
                 icon: '⚛️',
-                color: '#06b6d4',
-                accentGlow: 'rgba(6, 182, 212, 0.25)',
+                color: '#00f0ff',
+                accentGlow: 'rgba(0, 240, 255, 0.5)',
                 tag: 'SANDBOX',
                 plays: stats.particle_physics_plays || 0,
                 action: onLaunchParticlePhysics
@@ -208,9 +208,9 @@ const HubScreen: React.FC<HubScreenProps> = ({
         <div className="flex h-full w-full bg-[#000] text-white overflow-hidden relative font-['Press_Start_2P']">
             <div className="absolute inset-0 opacity-10 pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at 40% 60%, #fff 2px, transparent 2px), radial-gradient(circle at 60% 40%, #fff 2px, transparent 2px)', backgroundSize: '150px 150px' }}></div>
             
-            <div className="flex-1 flex flex-col p-4 md:p-8 relative z-10 overflow-y-auto custom-scrollbar">
+            <div className="flex-1 flex flex-col p-3 sm:p-5 md:p-8 relative z-10 overflow-y-auto custom-scrollbar">
                 
-                <div className="flex justify-between items-start md:items-center mb-8 flex-col md:flex-row gap-4">
+                <div className="flex justify-between items-start md:items-center mb-6 sm:mb-8 flex-col md:flex-row gap-4">
                     <RandomReveal distance={200} className="flex flex-col gap-1">
                         <h1 className="text-xl md:text-3xl text-[#f4b400]">
                             <RandomText text="Taco Hub" />
@@ -276,17 +276,22 @@ const HubScreen: React.FC<HubScreenProps> = ({
                     </div>
                 </div>
 
-                {/* Most Played Game (Top Featured) */}
                 {/* Featured / Most Played Game at the Top */}
                 {sortedGames.length > 0 && (
-                    <div className="mb-5 pr-2">
+                    <div className="mb-4 sm:mb-5">
                         <div className="flex items-center justify-between mb-2">
-                            <div className="flex items-center gap-1.5 text-amber-400 text-[10px] md:text-xs font-bold tracking-wider">
+                            <div 
+                                className="flex items-center gap-1.5 text-[10px] md:text-xs font-bold tracking-wider"
+                                style={{ color: sortedGames[0].color }}
+                            >
                                 <span>🔥</span>
                                 <span>MOST PLAYED</span>
                             </div>
-                            <span className="text-[10px] text-amber-400/90 font-mono font-bold">
-                                {sortedGames[0].plays.toLocaleString()}
+                            <span 
+                                className="text-[10px] font-mono font-bold"
+                                style={{ color: sortedGames[0].color }}
+                            >
+                                {sortedGames[0].plays.toLocaleString()} plays
                             </span>
                         </div>
 
@@ -294,8 +299,11 @@ const HubScreen: React.FC<HubScreenProps> = ({
                             key={`featured-${sortedGames[0].id}`} 
                             delay={0.25} 
                             distance={200}
-                            className="group relative w-full aspect-[3/1] min-h-[92px] sm:min-h-[105px] bg-neutral-950/75 hover:bg-neutral-900/90 text-white rounded-2xl border-2 border-amber-400/80 hover:border-amber-400 flex items-center p-3 sm:p-4.5 cursor-pointer transition-all duration-300 hover-scale shadow-[0_0_20px_rgba(245,158,11,0.2)] hover:shadow-[0_0_30px_rgba(245,158,11,0.4)] overflow-hidden backdrop-blur-md"
+                            className="group relative w-full min-h-[86px] sm:min-h-[105px] text-white rounded-xl sm:rounded-2xl border-2 flex items-center p-2.5 sm:p-4.5 cursor-pointer transition-all duration-300 hover-scale shadow-2xl overflow-hidden backdrop-blur-md"
                             style={{ 
+                                borderColor: sortedGames[0].color,
+                                background: `linear-gradient(135deg, ${sortedGames[0].color}25 0%, rgba(16, 16, 22, 0.88) 45%, rgba(0, 0, 0, 0.96) 100%)`,
+                                boxShadow: `0 6px 30px ${sortedGames[0].accentGlow}, inset 0 0 20px ${sortedGames[0].color}20`,
                                 '--accent-color': sortedGames[0].color,
                                 '--accent-glow': sortedGames[0].accentGlow
                             } as React.CSSProperties}
@@ -303,41 +311,66 @@ const HubScreen: React.FC<HubScreenProps> = ({
                         >
                             {/* Radial Glow Highlight */}
                             <div 
-                                className="absolute inset-0 pointer-events-none opacity-30 group-hover:opacity-75 transition-opacity duration-500"
+                                className="absolute inset-0 pointer-events-none opacity-40 group-hover:opacity-90 transition-opacity duration-500"
                                 style={{ background: `radial-gradient(circle at 85% 50%, ${sortedGames[0].accentGlow} 0%, transparent 60%)` }}
                             />
 
                             {/* Watermark Icon */}
-                            <div className="absolute -right-2 -bottom-2 text-7xl sm:text-8xl opacity-10 group-hover:opacity-25 group-hover:scale-110 transition-all duration-500 pointer-events-none select-none">
+                            <div className="absolute -right-2 -bottom-2 text-7xl sm:text-8xl opacity-10 group-hover:opacity-30 group-hover:scale-110 transition-all duration-500 pointer-events-none select-none">
                                 {sortedGames[0].icon}
                             </div>
 
                             {/* Crown / Top Badge */}
-                            <div className="absolute top-2 right-2.5 flex items-center gap-1 px-2 py-0.5 bg-amber-400 text-black text-[7px] sm:text-[8px] font-black rounded-full border border-black shadow-sm z-10">
+                            <div 
+                                className="absolute top-2 right-2.5 flex items-center gap-1 px-2 py-0.5 text-black text-[7px] sm:text-[8px] font-black rounded-full border border-black shadow-sm z-10"
+                                style={{ backgroundColor: sortedGames[0].color }}
+                            >
                                 <span>👑</span>
                                 <span>#1 POPULAR</span>
                             </div>
 
                             {/* Icon Frame */}
-                            <div className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 rounded-xl bg-white/5 border border-amber-400/50 group-hover:border-amber-400 flex items-center justify-center text-3xl sm:text-4xl md:text-[40px] leading-none mr-3 sm:mr-4 group-hover:scale-105 transition-all duration-300 shrink-0 shadow-inner z-10">
+                            <div 
+                                className="w-11 h-11 sm:w-14 sm:h-14 md:w-16 md:h-16 rounded-xl border flex items-center justify-center text-2xl sm:text-4xl md:text-[40px] leading-none mr-2.5 sm:mr-4 group-hover:scale-105 transition-all duration-300 shrink-0 shadow-inner z-10"
+                                style={{ 
+                                    backgroundColor: `${sortedGames[0].color}28`,
+                                    borderColor: sortedGames[0].color,
+                                    boxShadow: `0 0 14px ${sortedGames[0].accentGlow}`
+                                }}
+                            >
                                 {sortedGames[0].icon}
                             </div>
                             
                             {/* Middle Info */}
                             <div className="flex-1 flex flex-col justify-center min-w-0 z-10 pr-2">
                                 <div className="flex items-center gap-2 mb-0.5 sm:mb-1">
-                                    <span className="text-[7px] sm:text-[8px] font-black uppercase px-1.5 py-0.5 rounded border border-amber-400/40 bg-amber-400/10 text-amber-400">
+                                    <span 
+                                        className="text-[7px] sm:text-[8px] font-black uppercase px-1.5 py-0.5 rounded border backdrop-blur-sm"
+                                        style={{ 
+                                            borderColor: sortedGames[0].color,
+                                            backgroundColor: `${sortedGames[0].color}25`,
+                                            color: sortedGames[0].color 
+                                        }}
+                                    >
                                         {sortedGames[0].tag}
                                     </span>
-                                    <div className="text-[8px] sm:text-[9px] text-amber-400 font-bold flex items-center gap-1">
-                                        <span className="inline-block w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span>
+                                    <div 
+                                        className="text-[7px] sm:text-[9px] font-bold flex items-center gap-1 font-mono"
+                                        style={{ color: sortedGames[0].color }}
+                                    >
+                                        <span 
+                                            className="inline-block w-1.5 h-1.5 rounded-full animate-pulse"
+                                            style={{ backgroundColor: sortedGames[0].color }}
+                                        />
                                         <span>{sortedGames[0].plays.toLocaleString()}</span>
                                     </div>
                                 </div>
-                                <h2 className="text-xs sm:text-base md:text-lg text-white group-hover:text-amber-300 transition-colors duration-300 leading-snug truncate font-black">
+                                <h2 
+                                    className="text-xs sm:text-base md:text-lg text-white group-hover:text-[var(--accent-color)] transition-colors duration-300 leading-snug truncate font-black"
+                                >
                                     {sortedGames[0].title}
                                 </h2>
-                                <div className="text-[8px] sm:text-[10px] md:text-xs text-neutral-400 leading-tight font-sans font-medium line-clamp-1 mt-0.5">
+                                <div className="text-[8px] sm:text-[10px] md:text-xs text-neutral-300 leading-tight font-sans font-medium line-clamp-1 mt-0.5">
                                     {sortedGames[0].description}
                                 </div>
                             </div>
@@ -345,7 +378,12 @@ const HubScreen: React.FC<HubScreenProps> = ({
                             {/* Play Action */}
                             <div className="flex items-center shrink-0 z-10 pl-1">
                                 <span 
-                                    className="text-black font-black px-3.5 sm:px-4 py-1.5 sm:py-2 text-[10px] sm:text-xs rounded-xl border border-amber-400 bg-amber-400 shadow-md transition-all group-hover:scale-105 group-hover:bg-amber-300 flex items-center gap-1"
+                                    className="text-black font-black px-3 sm:px-4 py-1.5 sm:py-2 text-[9px] sm:text-xs rounded-lg sm:rounded-xl border shadow-md transition-all group-hover:scale-105 flex items-center gap-1"
+                                    style={{ 
+                                        backgroundColor: sortedGames[0].color,
+                                        borderColor: sortedGames[0].color,
+                                        boxShadow: `0 0 12px ${sortedGames[0].accentGlow}`
+                                    }}
                                 >
                                     <span>PLAY</span>
                                     <span className="text-[8px] group-hover:translate-x-0.5 transition-transform">▶</span>
@@ -355,23 +393,25 @@ const HubScreen: React.FC<HubScreenProps> = ({
                     </div>
                 )}
 
-                {/* 2-Column Game Grid for Remaining Games */}
+                {/* 2-Column Game Grid for Remaining Games (2 Columns even on mobile phones) */}
                 {sortedGames.length > 1 && (
-                    <div className="flex flex-col gap-3 pb-10 pr-2">
+                    <div className="flex flex-col gap-2.5 sm:gap-3 pb-10">
                         <div className="flex items-center gap-2 text-[#aaa] text-[10px] md:text-xs mb-1">
                             <span>🎮</span>
                             <span>ALL GAMES</span>
                         </div>
 
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                        <div className="grid grid-cols-2 gap-2 sm:gap-3.5">
                             {sortedGames.slice(1).map((game, index) => (
                                 <RandomReveal 
                                     key={game.id} 
                                     delay={0.3 + (index * 0.05)} 
                                     distance={200}
-                                    className="group relative w-full aspect-[3/1] min-h-[82px] sm:min-h-[92px] text-white rounded-2xl border-2 flex items-center p-3 sm:p-3.5 cursor-pointer transition-all duration-300 hover-scale shadow-lg overflow-hidden bg-neutral-950/70 hover:bg-neutral-900/90 backdrop-blur-md"
+                                    className="group relative w-full min-h-[76px] sm:min-h-[92px] text-white rounded-xl sm:rounded-2xl border-2 flex items-center p-2 sm:p-3.5 cursor-pointer transition-all duration-300 hover-scale shadow-lg overflow-hidden backdrop-blur-md"
                                     style={{ 
-                                        borderColor: `${game.color}55`,
+                                        borderColor: `${game.color}99`,
+                                        background: `linear-gradient(135deg, ${game.color}20 0%, rgba(12, 12, 16, 0.85) 45%, rgba(4, 4, 6, 0.96) 100%)`,
+                                        boxShadow: `0 4px 20px ${game.accentGlow}, inset 0 0 15px ${game.color}15`,
                                         '--accent-color': game.color,
                                         '--accent-glow': game.accentGlow 
                                     } as React.CSSProperties}
@@ -379,30 +419,35 @@ const HubScreen: React.FC<HubScreenProps> = ({
                                 >
                                     {/* Radial Glow on Hover */}
                                     <div 
-                                        className="absolute inset-0 pointer-events-none opacity-20 group-hover:opacity-75 transition-opacity duration-500"
-                                        style={{ background: `radial-gradient(circle at 85% 50%, ${game.accentGlow} 0%, transparent 65%)` }}
+                                        className="absolute inset-0 pointer-events-none opacity-30 group-hover:opacity-90 transition-opacity duration-500"
+                                        style={{ background: `radial-gradient(circle at 90% 50%, ${game.accentGlow} 0%, transparent 65%)` }}
                                     />
 
                                     {/* Subtle Watermark Icon */}
-                                    <div className="absolute -right-2 -bottom-2 text-6xl sm:text-7xl opacity-10 group-hover:opacity-25 group-hover:scale-110 transition-all duration-500 pointer-events-none select-none">
+                                    <div className="absolute -right-2 -bottom-2 text-5xl sm:text-7xl opacity-10 group-hover:opacity-30 group-hover:scale-110 transition-all duration-500 pointer-events-none select-none">
                                         {game.icon}
                                     </div>
 
                                     {/* Left: Icon Frame */}
                                     <div 
-                                        className="w-11 h-11 sm:w-12 sm:h-12 md:w-13 md:h-13 rounded-xl flex items-center justify-center bg-white/5 border text-[26px] sm:text-[30px] md:text-[34px] leading-none mr-2.5 sm:mr-3 group-hover:scale-105 transition-transform duration-300 shadow-inner shrink-0 z-10"
-                                        style={{ borderColor: `${game.color}55` }}
+                                        className="w-8 h-8 sm:w-12 sm:h-12 md:w-13 md:h-13 rounded-lg sm:rounded-xl flex items-center justify-center border text-[20px] sm:text-[28px] md:text-[32px] leading-none mr-2 sm:mr-3 group-hover:scale-105 transition-transform duration-300 shadow-inner shrink-0 z-10"
+                                        style={{ 
+                                            backgroundColor: `${game.color}28`,
+                                            borderColor: `${game.color}bb`,
+                                            boxShadow: `0 0 10px ${game.accentGlow}`
+                                        }}
                                     >
                                         {game.icon}
                                     </div>
 
                                     {/* Middle: Tag, Title, Description, Player Count */}
-                                    <div className="flex-1 flex flex-col justify-center min-w-0 z-10 pr-2">
-                                        <div className="flex items-center gap-2 mb-0.5">
+                                    <div className="flex-1 flex flex-col justify-center min-w-0 z-10 pr-1 sm:pr-2">
+                                        <div className="flex items-center gap-1 sm:gap-2 mb-0.5">
                                             <span 
-                                                className="text-[7px] sm:text-[8px] font-black tracking-wider uppercase px-1.5 py-0.5 rounded border bg-black/40 backdrop-blur-sm"
+                                                className="text-[6.5px] sm:text-[8px] font-black tracking-wider uppercase px-1 sm:px-1.5 py-0.2 sm:py-0.5 rounded border backdrop-blur-sm truncate"
                                                 style={{ 
-                                                    borderColor: `${game.color}66`,
+                                                    borderColor: game.color,
+                                                    backgroundColor: `${game.color}30`,
                                                     color: game.color 
                                                 }}
                                             >
@@ -410,11 +455,11 @@ const HubScreen: React.FC<HubScreenProps> = ({
                                             </span>
 
                                             <div 
-                                                className="text-[7px] sm:text-[8px] font-bold flex items-center gap-1 font-mono"
+                                                className="text-[6.5px] sm:text-[8px] font-bold flex items-center gap-0.5 sm:gap-1 font-mono shrink-0"
                                                 style={{ color: game.color }}
                                             >
                                                 <span 
-                                                    className="w-1.5 h-1.5 rounded-full animate-pulse"
+                                                    className="w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full animate-pulse"
                                                     style={{ backgroundColor: game.color }}
                                                 />
                                                 <span>{game.plays.toLocaleString()}</span>
@@ -422,28 +467,29 @@ const HubScreen: React.FC<HubScreenProps> = ({
                                         </div>
 
                                         <h2 
-                                            className="text-xs sm:text-sm md:text-base text-white group-hover:text-[var(--accent-color)] transition-colors duration-300 truncate leading-snug font-black"
+                                            className="text-[9px] sm:text-sm md:text-base text-white group-hover:text-[var(--accent-color)] transition-colors duration-300 truncate leading-tight font-black"
                                         >
                                             {game.title}
                                         </h2>
 
-                                        <div className="text-[8px] sm:text-[9px] md:text-[10px] text-neutral-400 line-clamp-1 leading-tight font-sans font-medium mt-0.5">
+                                        <div className="text-[7.5px] sm:text-[9px] md:text-[10px] text-neutral-300 line-clamp-1 leading-tight font-sans font-medium mt-0.5 hidden xs:block">
                                             {game.description}
                                         </div>
                                     </div>
 
                                     {/* Right: PLAY Action Button */}
-                                    <div className="flex items-center shrink-0 z-10 pl-1">
+                                    <div className="flex items-center shrink-0 z-10 pl-0.5 sm:pl-1">
                                         <span 
-                                            className="px-2.5 sm:px-3 py-1 sm:py-1.5 text-[8px] sm:text-[9px] font-black rounded-lg border shadow-sm transition-all group-hover:scale-105 flex items-center gap-1"
+                                            className="px-1.5 sm:px-3 py-1 sm:py-1.5 text-[7px] sm:text-[9px] font-black rounded-md sm:rounded-lg border shadow-sm transition-all group-hover:scale-105 flex items-center gap-1"
                                             style={{ 
-                                                backgroundColor: `${game.color}25`,
+                                                backgroundColor: `${game.color}35`,
                                                 borderColor: game.color,
-                                                color: '#fff'
+                                                color: '#fff',
+                                                boxShadow: `0 0 8px ${game.accentGlow}`
                                             }}
                                         >
-                                            <span>PLAY</span>
-                                            <span className="text-[7px] group-hover:translate-x-0.5 transition-transform">▶</span>
+                                            <span className="hidden sm:inline">PLAY</span>
+                                            <span className="text-[7px] sm:text-[8px] group-hover:translate-x-0.5 transition-transform">▶</span>
                                         </span>
                                     </div>
                                 </RandomReveal>
