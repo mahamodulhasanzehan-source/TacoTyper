@@ -18,32 +18,52 @@ const COMBOS_3X3 = [
     [0, 4, 8], [2, 4, 6]
 ];
 
-// In 4x4, winning requires matching 3 in a row
-const COMBOS_4X4_MATCH_3 = [
-    // Rows
-    [0, 1, 2], [1, 2, 3],
-    [4, 5, 6], [5, 6, 7],
-    [8, 9, 10], [9, 10, 11],
-    [12, 13, 14], [13, 14, 15],
-    // Columns
-    [0, 4, 8], [4, 8, 12],
-    [1, 5, 9], [5, 9, 13],
-    [2, 6, 10], [6, 10, 14],
-    [3, 7, 11], [7, 11, 15],
-    // Diagonals (\)
-    [0, 5, 10], [5, 10, 15],
-    [1, 6, 11],
-    [4, 9, 14],
-    // Anti-Diagonals (/)
-    [3, 6, 9], [6, 9, 12],
-    [2, 5, 8],
-    [7, 10, 13]
-];
+// In 5x5, winning requires matching 4 in a row
+const generate5x5Combos = (): number[][] => {
+    const list: number[][] = [];
+    // Horizontal (length 4)
+    for (let r = 0; r < 5; r++) {
+        for (let c = 0; c <= 1; c++) {
+            list.push([r * 5 + c, r * 5 + c + 1, r * 5 + c + 2, r * 5 + c + 3]);
+        }
+    }
+    // Vertical (length 4)
+    for (let c = 0; c < 5; c++) {
+        for (let r = 0; r <= 1; r++) {
+            list.push([r * 5 + c, (r + 1) * 5 + c, (r + 2) * 5 + c, (r + 3) * 5 + c]);
+        }
+    }
+    // Diagonal (\)
+    for (let r = 0; r <= 1; r++) {
+        for (let c = 0; c <= 1; c++) {
+            list.push([
+                r * 5 + c,
+                (r + 1) * 5 + c + 1,
+                (r + 2) * 5 + c + 2,
+                (r + 3) * 5 + c + 3
+            ]);
+        }
+    }
+    // Anti-diagonal (/)
+    for (let r = 0; r <= 1; r++) {
+        for (let c = 3; c <= 4; c++) {
+            list.push([
+                r * 5 + c,
+                (r + 1) * 5 + c - 1,
+                (r + 2) * 5 + c - 2,
+                (r + 3) * 5 + c - 3
+            ]);
+        }
+    }
+    return list;
+};
+
+const COMBOS_5X5_MATCH_4 = generate5x5Combos();
 
 export default function TicTacToeGame({ user, onBackToHub, username }: TicTacToeGameProps) {
-    const [difficulty, setDifficulty] = useState<0 | 1 | 2>(2); // 0: Easy (3x3), 1: Medium (3x3), 2: Hard (4x4)
-    const is4x4 = difficulty === 2;
-    const [board, setBoard] = useState<Player[]>(Array(16).fill(null));
+    const [difficulty, setDifficulty] = useState<0 | 1 | 2>(2); // 0: Easy (3x3), 1: Medium (3x3), 2: Hard (5x5 match 4)
+    const is5x5 = difficulty === 2;
+    const [board, setBoard] = useState<Player[]>(Array(25).fill(null));
     const [isPlayerTurn, setIsPlayerTurn] = useState(true);
     const [gameOver, setGameOver] = useState(false);
     const [winner, setWinner] = useState<Player | 'Draw'>(null);
@@ -53,10 +73,10 @@ export default function TicTacToeGame({ user, onBackToHub, username }: TicTacToe
     const [currentStarter, setCurrentStarter] = useState<'player' | 'ai'>('player');
     const [nextAiPlaysFirst, setNextAiPlaysFirst] = useState(false);
 
-    const combos = is4x4 ? COMBOS_4X4_MATCH_3 : COMBOS_3X3;
+    const combos = is5x5 ? COMBOS_5X5_MATCH_4 : COMBOS_3X3;
 
     const startNewGame = useCallback((diff: 0 | 1 | 2 = difficulty, aiFirst: boolean = aiPlaysFirst) => {
-        const size = diff === 2 ? 16 : 9;
+        const size = diff === 2 ? 25 : 9;
         setBoard(Array(size).fill(null));
         setGameOver(false);
         setWinner(null);
@@ -84,7 +104,7 @@ export default function TicTacToeGame({ user, onBackToHub, username }: TicTacToe
         return null;
     };
 
-    // Minimax for 3x3, Heuristic for 4x4
+    // Minimax / Smart Heuristic for 3x3 and 5x5 Match 4
     const getBestMove = (squares: Player[]): number => {
         const available = squares.map((v, i) => v === null ? i : null).filter((v): v is number => v !== null);
         if (available.length === 0) return -1;
@@ -109,7 +129,7 @@ export default function TicTacToeGame({ user, onBackToHub, username }: TicTacToe
             if (win?.winner === 'X') return idx;
         }
 
-        // Medium 3x3 or Hard 4x4: Heuristic combo weighting
+        // Medium 3x3 or Hard 5x5: Strategic combo weighting
         let bestScore = -Infinity;
         let bestMove = available[0];
 
@@ -119,17 +139,25 @@ export default function TicTacToeGame({ user, onBackToHub, username }: TicTacToe
                 if (combo.includes(idx)) {
                     const oCount = combo.filter(c => squares[c] === 'O').length;
                     const xCount = combo.filter(c => squares[c] === 'X').length;
-                    if (xCount === 0 && oCount === 1) score += 3;
-                    if (xCount === 1 && oCount === 0) score += 2;
-                    if (xCount === 0 && oCount === 0) score += 1;
+                    if (xCount === 0) {
+                        if (oCount === 2) score += is5x5 ? 25 : 6;
+                        else if (oCount === 1) score += 4;
+                        else if (oCount === 0) score += 2;
+                    }
+                    if (oCount === 0) {
+                        if (xCount === 2) score += is5x5 ? 18 : 5;
+                        else if (xCount === 1) score += 3;
+                    }
                 }
             }
-            // Center preference
-            if (is4x4 && (idx === 5 || idx === 6 || idx === 9 || idx === 10)) {
-                score += 2;
-            } else if (!is4x4 && idx === 4) {
-                score += 2;
+            // Center & inner ring preference
+            if (is5x5) {
+                if (idx === 12) score += 6; // Exact center
+                else if ([6, 7, 8, 11, 13, 16, 17, 18].includes(idx)) score += 3; // Inner 3x3
+            } else if (idx === 4) {
+                score += 3;
             }
+
             if (score > bestScore) {
                 bestScore = score;
                 bestMove = idx;
@@ -188,7 +216,7 @@ export default function TicTacToeGame({ user, onBackToHub, username }: TicTacToe
                     user,
                     username || user.displayName || 'Chef',
                     newStreak,
-                    is4x4 ? 'Tic Tac Toe 4x4 Champion' : 'Tic Tac Toe Grandmaster',
+                    is5x5 ? 'Tic Tac Toe 5x5 Champion' : 'Tic Tac Toe Grandmaster',
                     { mistakes: 0, timeTaken: 0, ingredientsMissed: 0, rottenWordsTyped: 0, totalScore: newStreak, levelReached: newStreak },
                     'tic_tac_toe'
                 );
@@ -222,7 +250,7 @@ export default function TicTacToeGame({ user, onBackToHub, username }: TicTacToe
             <div className="absolute inset-0 opacity-15 pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at 50% 50%, #38bdf8 2px, transparent 2px)', backgroundSize: '60px 60px' }}></div>
 
             {/* Top Bar */}
-            <div className="flex justify-between items-center w-full max-w-lg mb-4 z-10">
+            <div className="flex justify-between items-center w-full max-w-lg mb-3 z-10">
                 <button
                     onClick={() => {
                         audioService.playSound('button_click');
@@ -259,12 +287,12 @@ export default function TicTacToeGame({ user, onBackToHub, username }: TicTacToe
             </div>
 
             {/* Difficulty Controls */}
-            <div className="flex flex-wrap items-center justify-center gap-2.5 mb-4 z-10 max-w-md">
+            <div className="flex flex-wrap items-center justify-center gap-2.5 mb-2.5 z-10 max-w-md">
                 <div className="flex bg-neutral-900 p-1 rounded-xl border border-neutral-800">
                     {[
                         { label: 'Easy', val: 0 },
                         { label: 'Medium', val: 1 },
-                        { label: 'Hard', val: 2 }
+                        { label: 'Hard (5×5)', val: 2 }
                     ].map(d => (
                         <button
                             key={d.val}
@@ -274,7 +302,7 @@ export default function TicTacToeGame({ user, onBackToHub, username }: TicTacToe
                                 setDifficulty(newDiff);
                                 startNewGame(newDiff, aiPlaysFirst);
                             }}
-                            className={`px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all ${
+                            className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${
                                 difficulty === d.val 
                                     ? d.val === 2 ? 'bg-amber-500 text-black shadow font-black' : 'bg-sky-500 text-black shadow font-black'
                                     : 'text-neutral-400 hover:text-white'
@@ -299,9 +327,15 @@ export default function TicTacToeGame({ user, onBackToHub, username }: TicTacToe
                 </button>
             </div>
 
+            {/* Game Mode Objective Hint */}
+            <div className="z-10 mb-3 text-xs font-semibold px-3 py-1 rounded-full bg-neutral-900/90 border border-neutral-800 text-neutral-300 flex items-center gap-1.5 shadow-sm">
+                <span className={is5x5 ? 'text-amber-400' : 'text-sky-400'}>●</span>
+                <span>{is5x5 ? '5×5 Grid • Match 4 in a row to win' : '3×3 Grid • Match 3 in a row to win'}</span>
+            </div>
+
             {/* Game Board */}
             <div className="flex flex-col items-center justify-center z-10 w-full px-2">
-                <div className={`grid gap-1.5 sm:gap-2 bg-neutral-900/90 p-2.5 sm:p-3 rounded-2xl border-2 border-neutral-800 shadow-2xl max-w-full ${is4x4 ? 'grid-cols-4' : 'grid-cols-3'}`}>
+                <div className={`grid gap-1.5 sm:gap-2 bg-neutral-900/90 p-2 sm:p-3 rounded-2xl border-2 border-neutral-800 shadow-2xl max-w-full ${is5x5 ? 'grid-cols-5' : 'grid-cols-3'}`}>
                     {board.map((cell, index) => {
                         const isWinCell = winningLine?.includes(index);
                         return (
@@ -309,9 +343,9 @@ export default function TicTacToeGame({ user, onBackToHub, username }: TicTacToe
                                 key={index}
                                 onClick={() => handleCellClick(index)}
                                 className={`rounded-xl font-black flex items-center justify-center transition-all duration-150 active:scale-95 shadow-inner ${
-                                    !is4x4
+                                    !is5x5
                                         ? 'w-[23vw] max-w-[110px] min-w-[64px] h-[23vw] max-h-[110px] min-h-[64px] sm:w-24 sm:h-24 md:w-28 md:h-28 text-3xl sm:text-5xl md:text-6xl'
-                                        : 'w-[18vw] max-w-[82px] min-w-[50px] h-[18vw] max-h-[82px] min-h-[50px] sm:w-18 sm:h-18 md:w-20 md:h-20 text-2xl sm:text-3xl md:text-4xl'
+                                        : 'w-[14vw] max-w-[64px] min-w-[42px] h-[14vw] max-h-[64px] min-h-[42px] sm:w-14 sm:h-14 md:w-16 md:h-16 text-xl sm:text-2xl md:text-3xl'
                                 } ${
                                     isWinCell 
                                         ? 'bg-amber-500/20 border-2 border-amber-400 animate-pulse' 

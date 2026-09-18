@@ -9,8 +9,8 @@
 
         :root {
             /* Using clamp for responsive but stable dimensions */
-            --square-size: clamp(250px, 35vw, 450px);
-            --slider-thickness: 35px;
+            --square-size: clamp(200px, min(28vw, 32vh), 320px);
+            --slider-thickness: 18px;
             
             --bg-color: #000000;
             --panel-bg: rgba(20, 20, 25, 0.6);
@@ -30,8 +30,8 @@
             color: var(--text-main);
             font-family: 'Poppins', sans-serif;
             display: grid;
-            grid-template-columns: 250px 1fr 300px;
-            grid-template-rows: 100px 1fr 100px;
+            grid-template-columns: 260px 1fr 280px;
+            grid-template-rows: 80px 1fr 90px;
             min-height: 100vh;
             overflow: hidden;
             user-select: none;
@@ -137,33 +137,51 @@
             grid-column: 2;
             grid-row: 2;
             display: flex;
-            flex-direction: row; /* Strict row alignment */
+            flex-direction: column; /* Sliders stacked below the colour box */
             align-items: center;
             justify-content: center;
-            gap: 40px; /* Space between sliders and square */
+            gap: 16px;
             z-index: 10;
+            width: 100%;
         }
 
-        /* STRICT SLIDER CSS FIX */
+        /* Horizontal Sliders Panel stacked below the colour box */
         .sliders-panel {
             display: flex;
-            flex-direction: row;
-            gap: 20px;
-            padding: 20px 25px;
+            flex-direction: column;
+            gap: 10px;
+            padding: 14px 20px;
+            width: min(var(--square-size) + 80px, 440px);
+            max-width: 95%;
         }
 
-        .slider-column {
+        .slider-row {
             display: flex;
             flex-direction: column;
-            align-items: center;
-            gap: 15px; /* Gap between slider and its label */
+            gap: 4px;
+            width: 100%;
         }
 
-        .slider-wrapper {
-            position: relative;
-            /* Wrapper strictly defines the visible bounds */
-            width: var(--slider-thickness);
-            height: var(--square-size);
+        .slider-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .slider-label {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.72rem;
+            color: var(--text-muted);
+            letter-spacing: 2px;
+            font-weight: 700;
+        }
+
+        .slider-val {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.72rem;
+            color: #ffffff;
+            letter-spacing: 1px;
+            font-weight: 700;
         }
 
         input[type="range"] {
@@ -171,20 +189,14 @@
             appearance: none;
             margin: 0;
             padding: 0;
-            position: absolute;
-            top: 0; 
-            left: 0;
-            /* Length becomes width, thickness becomes height prior to rotation */
-            width: var(--square-size);
+            position: relative;
+            width: 100%;
             height: var(--slider-thickness);
             border-radius: calc(var(--slider-thickness) / 2);
             border: 2px solid rgba(255,255,255,0.2);
-            box-shadow: inset 0 0 10px rgba(0,0,0,0.8);
-            
-            /* The ultimate fix for perfect CSS rotation positioning */
-            transform-origin: top left;
-            transform: rotate(-90deg) translateX(-100%);
-            
+            box-shadow: inset 0 0 8px rgba(0,0,0,0.8);
+            outline: none;
+            cursor: pointer;
             transition: opacity 0.3s, filter 0.3s;
         }
 
@@ -192,22 +204,25 @@
 
         input[type="range"]::-webkit-slider-thumb {
             -webkit-appearance: none; appearance: none;
-            width: calc(var(--slider-thickness) * 1.1);
-            height: calc(var(--slider-thickness) * 1.1);
+            width: calc(var(--slider-thickness) * 1.25);
+            height: calc(var(--slider-thickness) * 1.25);
             border-radius: 50%;
             background: #fff;
-            border: 4px solid #000;
+            border: 3px solid #000;
             cursor: pointer;
-            box-shadow: 0 0 15px rgba(255,255,255,0.6);
+            box-shadow: 0 0 12px rgba(255,255,255,0.7);
             transition: transform 0.1s;
         }
-        input[type="range"]:not(:disabled)::-webkit-slider-thumb:hover { transform: scale(1.2); }
+        input[type="range"]:not(:disabled)::-webkit-slider-thumb:hover { transform: scale(1.18); }
 
-        .slider-label {
-            font-family: 'Orbitron', sans-serif;
-            font-size: 0.8rem;
-            color: var(--text-muted);
-            letter-spacing: 2px;
+        input[type="range"]::-moz-range-thumb {
+            width: calc(var(--slider-thickness) * 1.25);
+            height: calc(var(--slider-thickness) * 1.25);
+            border-radius: 50%;
+            background: #fff;
+            border: 3px solid #000;
+            cursor: pointer;
+            box-shadow: 0 0 12px rgba(255,255,255,0.7);
         }
 
         /* Central Square Area */
@@ -296,35 +311,39 @@
             main {
                 order: 2;
                 display: flex;
-                flex-direction: row;
-                flex-wrap: nowrap;
+                flex-direction: column;
                 align-items: center;
                 justify-content: center;
-                gap: clamp(8px, 3vw, 24px);
+                gap: 12px;
                 margin: 0;
                 width: 100%;
-                max-width: 540px;
+                max-width: 500px;
             }
 
             :root {
-                --square-size: clamp(140px, min(47vw, 34vh), 320px);
-                --slider-thickness: clamp(19px, 4.5vw, 28px);
+                --square-size: clamp(140px, min(50vw, 24vh), 230px);
+                --slider-thickness: 16px;
             }
 
             .sliders-panel {
-                padding: clamp(8px, 2vw, 16px) clamp(8px, 2vw, 16px);
-                gap: clamp(6px, 2vw, 12px);
+                width: 100%;
+                max-width: 420px;
+                padding: 10px 16px;
+                gap: 8px;
                 border-radius: 14px;
-                flex-shrink: 0;
             }
 
-            .slider-column {
-                gap: 8px;
+            .slider-row {
+                gap: 3px;
             }
 
             .slider-label {
                 font-size: 0.65rem;
                 letter-spacing: 1px;
+            }
+
+            .slider-val {
+                font-size: 0.65rem;
             }
 
             .square-container {
@@ -446,32 +465,35 @@
     </aside>
 
     <main>
-        <!-- The Sliders explicitly placed to the left -->
-        <div class="sliders-panel glass-panel">
-            <div class="slider-column">
-                <div class="slider-wrapper">
-                    <input type="range" id="sliderH" min="0" max="360" value="0" disabled>
-                </div>
-                <div class="slider-label">HUE</div>
-            </div>
-            <div class="slider-column">
-                <div class="slider-wrapper">
-                    <input type="range" id="sliderS" min="0" max="100" value="0" disabled>
-                </div>
-                <div class="slider-label">SAT</div>
-            </div>
-            <div class="slider-column">
-                <div class="slider-wrapper">
-                    <input type="range" id="sliderV" min="0" max="100" value="100" disabled>
-                </div>
-                <div class="slider-label">BRT</div>
-            </div>
-        </div>
-
-        <!-- The Central Square explicitly placed to the right -->
+        <!-- The Central Color Square -->
         <div class="square-container" id="squareContainer">
             <div class="color-layer" id="layer-user"><div class="layer-label">YOURS</div></div>
             <div class="color-layer" id="layer-target"><div class="layer-label">TARGET</div></div>
+        </div>
+
+        <!-- The Sliders stacked below horizontally -->
+        <div class="sliders-panel glass-panel">
+            <div class="slider-row">
+                <div class="slider-header">
+                    <span class="slider-label">HUE</span>
+                    <span class="slider-val" id="valH">0°</span>
+                </div>
+                <input type="range" id="sliderH" min="0" max="360" value="0" disabled>
+            </div>
+            <div class="slider-row">
+                <div class="slider-header">
+                    <span class="slider-label">SATURATION</span>
+                    <span class="slider-val" id="valS">0%</span>
+                </div>
+                <input type="range" id="sliderS" min="0" max="100" value="0" disabled>
+            </div>
+            <div class="slider-row">
+                <div class="slider-header">
+                    <span class="slider-label">BRIGHTNESS</span>
+                    <span class="slider-val" id="valV">100%</span>
+                </div>
+                <input type="range" id="sliderV" min="0" max="100" value="100" disabled>
+            </div>
         </div>
     </main>
 
@@ -554,6 +576,9 @@
                 sliderH: document.getElementById('sliderH'),
                 sliderS: document.getElementById('sliderS'),
                 sliderV: document.getElementById('sliderV'),
+                valH: document.getElementById('valH'),
+                valS: document.getElementById('valS'),
+                valV: document.getElementById('valV'),
                 layerTarget: document.getElementById('layer-target'),
                 layerUser: document.getElementById('layer-user'),
                 squareContainer: document.getElementById('squareContainer'),
@@ -592,7 +617,14 @@
             // Safe interaction functions to prevent JS crashes
             const disableSliders = () => { dom.sliderH.disabled = true; dom.sliderS.disabled = true; dom.sliderV.disabled = true; };
             const enableSliders = () => { dom.sliderH.disabled = false; dom.sliderS.disabled = false; dom.sliderV.disabled = false; };
-            const resetSliders = () => { dom.sliderH.value = 0; dom.sliderS.value = 0; dom.sliderV.value = 100; };
+            const resetSliders = () => { 
+                dom.sliderH.value = 0; 
+                dom.sliderS.value = 0; 
+                dom.sliderV.value = 100; 
+                if (dom.valH) dom.valH.innerText = '0°';
+                if (dom.valS) dom.valS.innerText = '0%';
+                if (dom.valV) dom.valV.innerText = '100%';
+            };
 
             const updateVisuals = (playAudio = false) => {
                 const h = parseFloat(dom.sliderH.value);
@@ -609,6 +641,10 @@
                 dom.sliderH.style.background = `linear-gradient(to right, #f00 0%, #ff0 17%, #0f0 33%, #0ff 50%, #00f 67%, #f0f 83%, #f00 100%)`;
                 dom.sliderS.style.background = `linear-gradient(to right, rgb(${hsvToRgb(h, 0, v).join(',')}), rgb(${hsvToRgb(h, 100, v).join(',')}))`;
                 dom.sliderV.style.background = `linear-gradient(to right, rgb(${hsvToRgb(h, s, 0).join(',')}), rgb(${hsvToRgb(h, s, 100).join(',')}))`;
+
+                if (dom.valH) dom.valH.innerText = `${Math.round(h)}°`;
+                if (dom.valS) dom.valS.innerText = `${Math.round(s)}%`;
+                if (dom.valV) dom.valV.innerText = `${Math.round(v)}%`;
 
                 if (playAudio && phase === 2) AudioEngine.sliderMove();
             };
