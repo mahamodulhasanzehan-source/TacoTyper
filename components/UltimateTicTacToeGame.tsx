@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { audioService } from '../services/audioService';
 import { incrementGamePlays } from '../services/firebase';
 
@@ -11,6 +11,7 @@ interface UltimateTicTacToeProps {
 type Player = 'X' | 'O';
 type CellValue = Player | null;
 type SubBoardWinner = Player | 'TIE' | null;
+type Difficulty = 'easy' | 'medium' | 'hard' | 'master';
 
 interface MoveHistory {
   mainRow: number;
@@ -23,10 +24,20 @@ interface MoveHistory {
   prevBoardState: CellValue[][][][];
 }
 
+const WIN_LINES = [
+  [[0, 0], [0, 1], [0, 2]],
+  [[1, 0], [1, 1], [1, 2]],
+  [[2, 0], [2, 1], [2, 2]],
+  [[0, 0], [1, 0], [2, 0]],
+  [[0, 1], [1, 1], [2, 1]],
+  [[0, 2], [1, 2], [2, 2]],
+  [[0, 0], [1, 1], [2, 2]],
+  [[0, 2], [1, 1], [2, 0]]
+];
+
 export default function UltimateTicTacToeGame({ onBackToHub }: UltimateTicTacToeProps) {
-  // 3x3 array of 3x3 boards: board[mainR][mainC][subR][subC]
+  // 3x3 array of 3x3 boards: boards[mainR][mainC][subR][subC]
   const [boards, setBoards] = useState<CellValue[][][][]>(() => createInitialBoards());
-  // 3x3 status of each sub-board: 'X' | 'O' | 'TIE' | null
   const [subWinners, setSubWinners] = useState<SubBoardWinner[][]>(() => createInitialSubWinners());
   
   // Next board player must play in. If null, player has a Free Move anywhere open.
@@ -34,10 +45,11 @@ export default function UltimateTicTacToeGame({ onBackToHub }: UltimateTicTacToe
   
   const [turn, setTurn] = useState<Player>('X');
   const [gameMode, setGameMode] = useState<'bot' | 'pvp'>('bot');
-  const [botDifficulty, setBotDifficulty] = useState<'easy' | 'medium' | 'hard'>('medium');
+  const [botDifficulty, setBotDifficulty] = useState<Difficulty>('master');
   const [isBotThinking, setIsBotThinking] = useState<boolean>(false);
   const [mainWinner, setMainWinner] = useState<Player | 'TIE' | null>(null);
   const [history, setHistory] = useState<MoveHistory[]>([]);
+  const [lastMove, setLastMove] = useState<{ mr: number; mc: number; sr: number; sc: number } | null>(null);
   const [showRules, setShowRules] = useState<boolean>(false);
 
   useEffect(() => {
@@ -65,26 +77,13 @@ export default function UltimateTicTacToeGame({ onBackToHub }: UltimateTicTacToe
     setTurn('X');
     setMainWinner(null);
     setHistory([]);
+    setLastMove(null);
     setIsBotThinking(false);
   }, []);
 
   // Check 3x3 line winner
   const check3x3Winner = (grid: CellValue[][]): Player | 'TIE' | null => {
-    const lines = [
-      // Rows
-      [[0, 0], [0, 1], [0, 2]],
-      [[1, 0], [1, 1], [1, 2]],
-      [[2, 0], [2, 1], [2, 2]],
-      // Cols
-      [[0, 0], [1, 0], [2, 0]],
-      [[0, 1], [1, 1], [2, 1]],
-      [[0, 2], [1, 2], [2, 2]],
-      // Diagonals
-      [[0, 0], [1, 1], [2, 2]],
-      [[0, 2], [1, 1], [2, 0]]
-    ];
-
-    for (const line of lines) {
+    for (const line of WIN_LINES) {
       const [a, b, c] = line;
       const valA = grid[a[0]][a[1]];
       const valB = grid[b[0]][b[1]];
@@ -93,25 +92,12 @@ export default function UltimateTicTacToeGame({ onBackToHub }: UltimateTicTacToe
         return valA;
       }
     }
-
-    // Check full
     const isFull = grid.every(row => row.every(cell => cell !== null));
     return isFull ? 'TIE' : null;
   };
 
   const checkMainWinner = (mainGrid: SubBoardWinner[][]): Player | 'TIE' | null => {
-    const lines = [
-      [[0, 0], [0, 1], [0, 2]],
-      [[1, 0], [1, 1], [1, 2]],
-      [[2, 0], [2, 1], [2, 2]],
-      [[0, 0], [1, 0], [2, 0]],
-      [[0, 1], [1, 1], [2, 1]],
-      [[0, 2], [1, 2], [2, 2]],
-      [[0, 0], [1, 1], [2, 2]],
-      [[0, 2], [1, 1], [2, 0]]
-    ];
-
-    for (const line of lines) {
+    for (const line of WIN_LINES) {
       const [a, b, c] = line;
       const vA = mainGrid[a[0]][a[1]];
       const vB = mainGrid[b[0]][b[1]];
@@ -120,7 +106,6 @@ export default function UltimateTicTacToeGame({ onBackToHub }: UltimateTicTacToe
         return vA;
       }
     }
-
     const isFull = mainGrid.every(row => row.every(cell => cell !== null));
     return isFull ? 'TIE' : null;
   };
@@ -128,163 +113,288 @@ export default function UltimateTicTacToeGame({ onBackToHub }: UltimateTicTacToe
   const makeMove = useCallback((mainR: number, mainC: number, subR: number, subC: number) => {
     if (mainWinner) return;
 
-    // Is move legal?
-    // 1. If activeBoard is set, must be inside activeBoard
-    if (activeBoard && (activeBoard.r !== mainR || activeBoard.c !== mainC)) {
-      return;
-    }
-    // 2. Sub-board must not already be won or tied
-    if (subWinners[mainR][mainC] !== null) {
-      return;
-    }
-    // 3. Target cell must be empty
-    if (boards[mainR][mainC][subR][subC] !== null) {
-      return;
-    }
+    if (activeBoard && (activeBoard.r !== mainR || activeBoard.c !== mainC)) return;
+    if (subWinners[mainR][mainC] !== null) return;
+    if (boards[mainR][mainC][subR][subC] !== null) return;
+
+    // Snapshot for Undo
+    const histItem: MoveHistory = {
+      mainRow: mainR,
+      mainCol: mainC,
+      subRow: subR,
+      subCol: subC,
+      player: turn,
+      prevActiveBoard: activeBoard,
+      prevSubWinners: subWinners.map(row => [...row]),
+      prevBoardState: boards.map(r => r.map(c => c.map(subR => [...subR])))
+    };
+    setHistory(prev => [...prev, histItem]);
+
+    const newBoards = boards.map(r => r.map(c => c.map(subR => [...subR])));
+    newBoards[mainR][mainC][subR][subC] = turn;
+    setBoards(newBoards);
+    setLastMove({ mr: mainR, mc: mainC, sr: subR, sc: subC });
 
     audioService.playSound('tictac_move');
 
-    // Clone state
-    const newBoards = boards.map(r => r.map(c => c.map(sr => [...sr])));
-    const newSubWinners = subWinners.map(r => [...r]);
-
-    // Save history
-    setHistory(prev => [
-      ...prev,
-      {
-        mainRow: mainR,
-        mainCol: mainC,
-        subRow: subR,
-        subCol: subC,
-        player: turn,
-        prevActiveBoard: activeBoard,
-        prevSubWinners: subWinners,
-        prevBoardState: boards
-      }
-    ]);
-
-    // Place mark
-    newBoards[mainR][mainC][subR][subC] = turn;
-
-    // Check if this small board is now won
+    const newSubWinners = subWinners.map(row => [...row]);
+    let boardJustWon = false;
     const subWin = check3x3Winner(newBoards[mainR][mainC]);
-    if (subWin) {
+    if (subWin !== null && subWinners[mainR][mainC] === null) {
       newSubWinners[mainR][mainC] = subWin;
-      audioService.playSound('success');
+      setSubWinners(newSubWinners);
+      boardJustWon = true;
+      audioService.playSound('powerup');
     }
 
-    // Check main game winner
-    const overallWin = checkMainWinner(newSubWinners);
-    if (overallWin) {
-      setMainWinner(overallWin);
-      audioService.playSound('success');
-    }
-
-    // Determine NEXT active board based on Sending Rule (subR, subC)
-    let nextActive: { r: number; c: number } | null = { r: subR, c: subC };
-
-    // If target board is already won or completely full, player gets a Free Move
-    if (newSubWinners[subR][subC] !== null) {
-      nextActive = null; // Free Move
-    } else {
-      // Check if board has any open cells
-      const isBoardFull = newBoards[subR][subC].every(row => row.every(cell => cell !== null));
-      if (isBoardFull) {
-        nextActive = null; // Free Move
+    const mWinner = checkMainWinner(newSubWinners);
+    if (mWinner) {
+      setMainWinner(mWinner);
+      if (mWinner === 'TIE') {
+        audioService.playSound('button_click');
+      } else {
+        audioService.playSound('mine_win');
       }
+      return;
     }
 
-    setBoards(newBoards);
-    setSubWinners(newSubWinners);
-    setActiveBoard(nextActive);
+    // Next active board calculation
+    // Sent to board (subR, subC)
+    const targetBoardWonOrFull = newSubWinners[subR][subC] !== null || 
+      newBoards[subR][subC].every(row => row.every(cell => cell !== null));
+
+    if (targetBoardWonOrFull) {
+      setActiveBoard(null); // Free move!
+    } else {
+      setActiveBoard({ r: subR, c: subC });
+    }
+
     setTurn(t => (t === 'X' ? 'O' : 'X'));
   }, [activeBoard, boards, mainWinner, subWinners, turn]);
 
-  // BOT AI LOGIC
-  useEffect(() => {
-    if (gameMode !== 'bot' || turn !== 'O' || mainWinner) return;
+  // Master Bot Evaluator & Strategic Search
+  const findBestBotMove = useCallback((
+    currentBoards: CellValue[][][][],
+    currentSubWinners: SubBoardWinner[][],
+    currentActive: { r: number; c: number } | null,
+    diff: Difficulty
+  ): { mr: number; mc: number; sr: number; sc: number } | null => {
+    // Collect all legal moves
+    const legalMoves: { mr: number; mc: number; sr: number; sc: number }[] = [];
+    for (let mr = 0; mr < 3; mr++) {
+      for (let mc = 0; mc < 3; mc++) {
+        if (currentActive && (currentActive.r !== mr || currentActive.c !== mc)) continue;
+        if (currentSubWinners[mr][mc] !== null) continue;
+        for (let sr = 0; sr < 3; sr++) {
+          for (let sc = 0; sc < 3; sc++) {
+            if (currentBoards[mr][mc][sr][sc] === null) {
+              legalMoves.push({ mr, mc, sr, sc });
+            }
+          }
+        }
+      }
+    }
 
-    setIsBotThinking(true);
-    const timer = setTimeout(() => {
-      // Gather all legal moves
-      const legalMoves: { mr: number; mc: number; sr: number; sc: number }[] = [];
+    if (legalMoves.length === 0) return null;
+    if (diff === 'easy') {
+      return legalMoves[Math.floor(Math.random() * legalMoves.length)];
+    }
 
-      for (let mr = 0; mr < 3; mr++) {
-        for (let mc = 0; mc < 3; mc++) {
-          // If activeBoard specified, must match
-          if (activeBoard && (activeBoard.r !== mr || activeBoard.c !== mc)) continue;
-          // Must not be won
-          if (subWinners[mr][mc] !== null) continue;
+    // Helper: evaluate sub-board state
+    const evaluateSubBoardThreat = (b: CellValue[][], p: Player): number => {
+      let score = 0;
+      for (const line of WIN_LINES) {
+        const vals = [b[line[0][0]][line[0][1]], b[line[1][0]][line[1][1]], b[line[2][0]][line[2][1]]];
+        const pC = vals.filter(v => v === p).length;
+        const oC = vals.filter(v => v !== null && v !== p).length;
+        if (pC === 2 && oC === 0) score += 20;
+        if (oC === 2 && pC === 0) score -= 25;
+      }
+      return score;
+    };
 
-          for (let sr = 0; sr < 3; sr++) {
-            for (let sc = 0; sc < 3; sc++) {
-              if (boards[mr][mc][sr][sc] === null) {
-                legalMoves.push({ mr, mc, sr, sc });
+    const rateMove = (mv: { mr: number; mc: number; sr: number; sc: number }): number => {
+      let score = 0;
+      const { mr, mc, sr, sc } = mv;
+
+      // 1. Check if placing 'O' wins the small board
+      const testSmall = currentBoards[mr][mc].map(r => [...r]);
+      testSmall[sr][sc] = 'O';
+      const winsSmall = check3x3Winner(testSmall) === 'O';
+
+      if (winsSmall) {
+        score += 250;
+        // Check if winning this small board wins the whole game
+        const testMain = currentSubWinners.map(r => [...r]);
+        testMain[mr][mc] = 'O';
+        if (checkMainWinner(testMain) === 'O') {
+          score += 10000; // Immediate decisive win!
+          return score;
+        }
+        // Strategic macro position
+        if (mr === 1 && mc === 1) score += 120; // Center board
+        else if ((mr === 0 || mr === 2) && (mc === 0 || mc === 2)) score += 80; // Corner boards
+      }
+
+      // 2. Check if this blocks opponent 'X' from winning the small board
+      const blockSmall = currentBoards[mr][mc].map(r => [...r]);
+      blockSmall[sr][sc] = 'X';
+      const opponentWinsSmall = check3x3Winner(blockSmall) === 'X';
+      if (opponentWinsSmall) {
+        score += 180;
+        // Check if opponent winning this would have won them the game
+        const testMainX = currentSubWinners.map(r => [...r]);
+        testMainX[mr][mc] = 'X';
+        if (checkMainWinner(testMainX) === 'X') {
+          score += 5000; // Critical block!
+        }
+      }
+
+      // 3. Positional values inside the sub-board
+      if (sr === 1 && sc === 1) score += 25; // center cell
+      else if ((sr === 0 || sr === 2) && (sc === 0 || sc === 2)) score += 15; // corner cell
+      else score += 5;
+
+      // 4. Create internal 2-in-a-row threat
+      score += evaluateSubBoardThreat(testSmall, 'O');
+
+      // 5. Destination evaluation: Where are we sending the opponent?
+      const targetMainWonOrFull = currentSubWinners[sr][sc] !== null || 
+        currentBoards[sr][sc].every(row => row.every(cell => cell !== null));
+
+      if (targetMainWonOrFull) {
+        // Opponent gets a FREE MOVE anywhere!
+        // Highly dangerous unless we are in a winning position
+        score -= 220;
+      } else {
+        // Target board is (sr, sc). Check if opponent can immediately win that board!
+        const targetBoard = currentBoards[sr][sc];
+        let opponentCanWinTarget = false;
+        for (let tr = 0; tr < 3; tr++) {
+          for (let tc = 0; tc < 3; tc++) {
+            if (targetBoard[tr][tc] === null) {
+              const testT = targetBoard.map(r => [...r]);
+              testT[tr][tc] = 'X';
+              if (check3x3Winner(testT) === 'X') {
+                opponentCanWinTarget = true;
+                break;
+              }
+            }
+          }
+          if (opponentCanWinTarget) break;
+        }
+
+        if (opponentCanWinTarget) {
+          score -= 190; // Don't give opponent an easy sub-board win!
+        }
+
+        // Sending opponent to center board (1,1) is risky if it's uncaptured
+        if (sr === 1 && sc === 1 && currentSubWinners[1][1] === null) {
+          score -= 35;
+        }
+      }
+
+      // Small jitter for variability in non-critical situations
+      score += Math.random() * 2;
+      return score;
+    };
+
+    if (diff === 'medium') {
+      let bestScore = -Infinity;
+      let bestMove = legalMoves[0];
+      for (const mv of legalMoves) {
+        const sc = rateMove(mv);
+        if (sc > bestScore) {
+          bestScore = sc;
+          bestMove = mv;
+        }
+      }
+      return bestMove;
+    }
+
+    // For 'hard' and 'master': 2-ply lookahead
+    // Rate all moves, take top 4 candidates and simulate opponent's best response
+    const scoredMoves = legalMoves.map(mv => ({ mv, score: rateMove(mv) }));
+    scoredMoves.sort((a, b) => b.score - a.score);
+
+    if (diff === 'hard' || scoredMoves[0].score >= 5000) {
+      return scoredMoves[0].mv;
+    }
+
+    // MASTER: Minimax 2-ply simulation on top candidates
+    const candidates = scoredMoves.slice(0, Math.min(6, scoredMoves.length));
+    let masterBestMove = candidates[0].mv;
+    let masterBestScore = -Infinity;
+
+    for (const cand of candidates) {
+      const { mr, mc, sr, sc } = cand.mv;
+      // Simulate state after bot move
+      const simBoards = currentBoards.map(r => r.map(c => c.map(subR => [...subR])));
+      simBoards[mr][mc][sr][sc] = 'O';
+      const simSubWinners = currentSubWinners.map(r => [...r]);
+      const simSubWin = check3x3Winner(simBoards[mr][mc]);
+      if (simSubWin) simSubWinners[mr][mc] = simSubWin;
+
+      // Opponent target board
+      const simNextFree = simSubWinners[sr][sc] !== null || 
+        simBoards[sr][sc].every(row => row.every(cell => cell !== null));
+      const simOpponentTarget = simNextFree ? null : { r: sr, c: sc };
+
+      // Find opponent's best counter-move
+      let opponentBestCounterScore = -Infinity;
+      for (let omr = 0; omr < 3; omr++) {
+        for (let omc = 0; omc < 3; omc++) {
+          if (simOpponentTarget && (simOpponentTarget.r !== omr || simOpponentTarget.c !== omc)) continue;
+          if (simSubWinners[omr][omc] !== null) continue;
+          for (let osr = 0; osr < 3; osr++) {
+            for (let osc = 0; osc < 3; osc++) {
+              if (simBoards[omr][omc][osr][osc] === null) {
+                // Rate opponent reply
+                const testX = simBoards[omr][omc].map(r => [...r]);
+                testX[osr][osc] = 'X';
+                let opScore = 0;
+                if (check3x3Winner(testX) === 'X') {
+                  opScore += 300;
+                  const testM = simSubWinners.map(r => [...r]);
+                  testM[omr][omc] = 'X';
+                  if (checkMainWinner(testM) === 'X') opScore += 10000;
+                }
+                if (opScore > opponentBestCounterScore) {
+                  opponentBestCounterScore = opScore;
+                }
               }
             }
           }
         }
       }
 
-      if (legalMoves.length === 0) {
-        setIsBotThinking(false);
-        return;
+      if (opponentBestCounterScore === -Infinity) opponentBestCounterScore = 0;
+      const combinedScore = cand.score - (opponentBestCounterScore * 0.85);
+      if (combinedScore > masterBestScore) {
+        masterBestScore = combinedScore;
+        masterBestMove = cand.mv;
       }
+    }
 
-      let chosenMove = legalMoves[0];
+    return masterBestMove;
+  }, []);
 
-      if (botDifficulty === 'easy') {
-        chosenMove = legalMoves[Math.floor(Math.random() * legalMoves.length)];
-      } else {
-        // Medium / Hard heuristic scoring
-        let bestScore = -Infinity;
-        for (const mv of legalMoves) {
-          let score = 0;
+  // Bot Turn Trigger
+  useEffect(() => {
+    if (gameMode !== 'bot' || turn !== 'O' || mainWinner) return;
 
-          // 1. Winning the small board
-          const testBoard = boards[mv.mr][mv.mc].map(r => [...r]);
-          testBoard[mv.sr][mv.sc] = 'O';
-          if (check3x3Winner(testBoard) === 'O') {
-            score += 50;
-            // Check if this also wins the entire game
-            const testMain = subWinners.map(r => [...r]);
-            testMain[mv.mr][mv.mc] = 'O';
-            if (checkMainWinner(testMain) === 'O') {
-              score += 500;
-            }
-          }
-
-          // 2. Blocking player X from winning small board
-          const blockBoard = boards[mv.mr][mv.mc].map(r => [...r]);
-          blockBoard[mv.sr][mv.sc] = 'X';
-          if (check3x3Winner(blockBoard) === 'X') {
-            score += 35;
-          }
-
-          // 3. Center square bonus
-          if (mv.sr === 1 && mv.sc === 1) score += 5;
-
-          // 4. Avoid sending opponent to a free move board or advantageous board
-          if (subWinners[mv.sr][mv.sc] !== null) {
-            score -= 15; // gives opponent a free move!
-          }
-
-          // Random tie-breaker
-          score += Math.random() * 3;
-
-          if (score > bestScore) {
-            bestScore = score;
-            chosenMove = mv;
-          }
-        }
+    setIsBotThinking(true);
+    const delay = botDifficulty === 'master' ? 350 : 250;
+    const timer = setTimeout(() => {
+      const best = findBestBotMove(boards, subWinners, activeBoard, botDifficulty);
+      if (best) {
+        makeMove(best.mr, best.mc, best.sr, best.sc);
       }
-
-      makeMove(chosenMove.mr, chosenMove.mc, chosenMove.sr, chosenMove.sc);
       setIsBotThinking(false);
-    }, 450);
+    }, delay);
 
     return () => clearTimeout(timer);
-  }, [activeBoard, boards, botDifficulty, gameMode, mainWinner, makeMove, subWinners, turn]);
+  }, [activeBoard, boards, botDifficulty, findBestBotMove, gameMode, mainWinner, makeMove, subWinners, turn]);
 
   const handleUndo = () => {
     if (history.length === 0 || isBotThinking) return;
@@ -298,181 +408,222 @@ export default function UltimateTicTacToeGame({ onBackToHub }: UltimateTicTacToe
     setTurn(targetState.player);
     setMainWinner(null);
     setHistory(prev => prev.slice(0, targetIdx));
+    if (targetIdx > 0) {
+      const prevMove = history[targetIdx - 1];
+      setLastMove({ mr: prevMove.mainRow, mc: prevMove.mainCol, sr: prevMove.subRow, sc: prevMove.subCol });
+    } else {
+      setLastMove(null);
+    }
     audioService.playSound('button_click');
   };
 
   return (
-    <div className="flex flex-col h-full w-full bg-[#07090e] text-white select-none overflow-y-auto">
+    <div className="flex flex-col h-full w-full bg-[#06080d] text-white select-none overflow-hidden font-sans">
       {/* Header */}
-      <header className="flex items-center justify-between p-3 sm:p-4 bg-[#0d111a] border-b border-neutral-800">
+      <header className="flex items-center justify-between px-3 sm:px-5 py-2.5 bg-[#0b0e17] border-b border-neutral-800 shrink-0">
         <div className="flex items-center gap-3">
           <button
             onClick={onBackToHub}
-            className="px-3 py-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-xs sm:text-sm font-bold transition-all text-neutral-300 hover:text-white flex items-center gap-1.5 cursor-pointer"
+            className="px-3 py-1.5 rounded-full bg-neutral-900 hover:bg-neutral-800 text-xs sm:text-sm font-bold transition-all text-neutral-300 hover:text-white flex items-center gap-1.5 border border-neutral-700 active:scale-95 shadow-md cursor-pointer"
           >
             <span>←</span>
             <span>Hub</span>
           </button>
           <div className="flex items-center gap-2">
-            <span className="text-xl">⚔️</span>
-            <h1 className="text-base sm:text-lg font-bold text-violet-400 tracking-wide">Ultimate Tic-Tac-Toe</h1>
+            <span className="text-lg">⚔️</span>
+            <h1 className="text-sm sm:text-base font-black text-violet-400 tracking-wide">Ultimate Tic-Tac-Toe</h1>
           </div>
         </div>
 
-        <div className="flex items-center gap-2 sm:gap-4">
+        <div className="flex items-center gap-2 sm:gap-3">
           <button
             onClick={() => setShowRules(true)}
-            className="px-2.5 py-1 text-xs bg-neutral-800 hover:bg-neutral-700 text-neutral-300 rounded font-medium cursor-pointer"
+            className="px-2.5 py-1 text-xs bg-neutral-900 hover:bg-neutral-800 text-neutral-300 rounded-lg border border-neutral-700 font-medium cursor-pointer"
           >
             📖 Rules
           </button>
           <button
             onClick={resetGame}
-            className="px-3 py-1 text-xs bg-violet-600 hover:bg-violet-500 text-white font-bold rounded cursor-pointer"
+            className="px-3 py-1 text-xs bg-violet-600 hover:bg-violet-500 text-white font-black rounded-lg shadow-md cursor-pointer transition-transform active:scale-95"
           >
-            New Game
+            Reset
           </button>
         </div>
       </header>
 
-      {/* Control / Status Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-2 bg-[#0b0e14] border-b border-neutral-800 text-xs">
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1.5">
-            <span className="text-neutral-400">Mode:</span>
+      {/* Control / Config Strip */}
+      <div className="flex flex-wrap items-center justify-between gap-2 px-3 sm:px-5 py-2 bg-[#090b12] border-b border-neutral-800/90 text-xs shrink-0">
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Mode */}
+          <div className="flex bg-neutral-900 p-0.5 rounded-lg border border-neutral-800">
             <button
               onClick={() => { setGameMode('bot'); resetGame(); }}
-              className={`px-2 py-0.5 rounded font-bold ${gameMode === 'bot' ? 'bg-violet-500/20 text-violet-300 border border-violet-500/40' : 'text-neutral-400 hover:text-white'}`}
+              className={`px-2.5 py-1 rounded-md font-bold transition-all ${gameMode === 'bot' ? 'bg-violet-600 text-white shadow' : 'text-neutral-400 hover:text-white'}`}
             >
               🤖 vs AI
             </button>
             <button
               onClick={() => { setGameMode('pvp'); resetGame(); }}
-              className={`px-2 py-0.5 rounded font-bold ${gameMode === 'pvp' ? 'bg-violet-500/20 text-violet-300 border border-violet-500/40' : 'text-neutral-400 hover:text-white'}`}
+              className={`px-2.5 py-1 rounded-md font-bold transition-all ${gameMode === 'pvp' ? 'bg-violet-600 text-white shadow' : 'text-neutral-400 hover:text-white'}`}
             >
               👥 2-Player
             </button>
           </div>
 
+          {/* AI Difficulty Selector */}
           {gameMode === 'bot' && (
-            <div className="flex items-center gap-1 text-[11px] text-neutral-400 border-l border-neutral-800 pl-3">
-              <span>Diff:</span>
-              <button
-                onClick={() => setBotDifficulty('easy')}
-                className={`px-1.5 py-0.5 rounded ${botDifficulty === 'easy' ? 'text-emerald-400 font-bold' : ''}`}
-              >
-                Easy
-              </button>
-              <button
-                onClick={() => setBotDifficulty('medium')}
-                className={`px-1.5 py-0.5 rounded ${botDifficulty === 'medium' ? 'text-amber-400 font-bold' : ''}`}
-              >
-                Mid
-              </button>
-              <button
-                onClick={() => setBotDifficulty('hard')}
-                className={`px-1.5 py-0.5 rounded ${botDifficulty === 'hard' ? 'text-red-400 font-bold' : ''}`}
-              >
-                Master
-              </button>
+            <div className="flex items-center gap-1 bg-neutral-900 p-0.5 rounded-lg border border-neutral-800">
+              {(['easy', 'medium', 'hard', 'master'] as Difficulty[]).map(d => (
+                <button
+                  key={d}
+                  onClick={() => setBotDifficulty(d)}
+                  className={`px-2 py-0.5 rounded text-[11px] font-bold capitalize transition-all ${
+                    botDifficulty === d
+                      ? d === 'master'
+                        ? 'bg-rose-500 text-white font-black shadow'
+                        : 'bg-violet-500 text-white font-black shadow'
+                      : 'text-neutral-400 hover:text-white'
+                  }`}
+                >
+                  {d}
+                </button>
+              ))}
             </div>
           )}
         </div>
 
         {/* Turn & Status Indicator */}
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2">
-            <span className="text-neutral-400">Turn:</span>
-            <span className={`font-black px-2 py-0.5 rounded ${turn === 'X' ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40' : 'bg-pink-500/20 text-pink-300 border border-pink-500/40'}`}>
-              {turn === 'X' ? 'Player X' : gameMode === 'bot' ? 'Bot O' : 'Player O'}
+          <div className="flex items-center gap-1.5">
+            <span className="text-neutral-400 text-[11px]">Turn:</span>
+            <span className={`font-black px-2 py-0.5 rounded text-xs ${turn === 'X' ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/50' : 'bg-rose-500/20 text-rose-300 border border-rose-500/50'}`}>
+              {turn === 'X' ? 'Player X' : gameMode === 'bot' ? `Bot O (${botDifficulty})` : 'Player O'}
             </span>
           </div>
+
           {activeBoard === null ? (
-            <span className="px-2 py-0.5 bg-amber-500/20 text-amber-300 border border-amber-500/40 rounded font-bold animate-pulse">
-              🌟 FREE MOVE!
+            <span className="px-2 py-0.5 bg-amber-500/20 text-amber-300 border border-amber-500/50 rounded font-black text-[11px] animate-pulse">
+              ⚡ FREE MOVE
             </span>
           ) : (
-            <span className="text-neutral-400">
-              Target: Board ({activeBoard.r + 1},{activeBoard.c + 1})
+            <span className="text-neutral-400 text-[11px] hidden sm:inline">
+              Target: Board ({activeBoard.r + 1}, {activeBoard.c + 1})
             </span>
           )}
+
           <button
             onClick={handleUndo}
-            disabled={history.length === 0}
-            className={`px-2 py-0.5 rounded transition ${history.length > 0 ? 'bg-neutral-800 hover:bg-neutral-700 text-neutral-200' : 'opacity-40 cursor-not-allowed'}`}
+            disabled={history.length === 0 || isBotThinking}
+            className={`px-2.5 py-1 rounded text-xs transition border ${
+              history.length > 0 && !isBotThinking
+                ? 'bg-neutral-900 border-neutral-700 hover:bg-neutral-800 text-neutral-200 cursor-pointer'
+                : 'opacity-40 border-transparent cursor-not-allowed text-neutral-500'
+            }`}
           >
             ↶ Undo
           </button>
         </div>
       </div>
 
-      {/* Main 9x9 Grid Arena */}
-      <div className="flex-1 flex flex-col items-center justify-center p-3 sm:p-5 relative">
-        <div className="relative bg-[#0d1017] p-2 sm:p-4 rounded-3xl shadow-2xl border-4 border-neutral-800 max-w-[540px] w-full">
-          {/* Main 3x3 Grid */}
-          <div className="grid grid-cols-3 gap-2 sm:gap-3">
+      {/* Main Board Arena: Massive Tic-Tac-Toe Grid with Inner Grids */}
+      <div className="flex-1 flex flex-col items-center justify-center p-2 sm:p-4 min-h-0 relative select-none">
+        <div className="aspect-square w-full max-w-[min(94vw,560px,calc(100vh-170px))] max-h-[min(94vw,560px,calc(100vh-170px))] relative bg-[#090c14] border-2 sm:border-3 border-neutral-800 rounded-2xl shadow-2xl p-2 sm:p-3.5 flex items-center justify-center overflow-hidden">
+          
+          {/* THE MASSIVE TIC-TAC-TOE 3x3 GRID - Equal intersecting lines layout */}
+          <div
+            className="grid w-full h-full aspect-square relative"
+            style={{
+              gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+              gridTemplateRows: 'repeat(3, minmax(0, 1fr))'
+            }}
+          >
             {[0, 1, 2].map(mr =>
               [0, 1, 2].map(mc => {
                 const isTarget = activeBoard === null ? subWinners[mr][mc] === null : (activeBoard.r === mr && activeBoard.c === mc);
                 const subWin = subWinners[mr][mc];
 
+                // Prominent thick dividers for the massive Tic-Tac-Toe # grid
+                const macroBorderClasses = [
+                  mc < 2 ? 'border-r-4 sm:border-r-[5px] border-amber-500/70' : '',
+                  mr < 2 ? 'border-b-4 sm:border-b-[5px] border-amber-500/70' : '',
+                ].filter(Boolean).join(' ');
+
                 return (
                   <div
                     key={`main-${mr}-${mc}`}
-                    className={`relative aspect-square p-1.5 sm:p-2 rounded-2xl transition-all duration-300 flex flex-col justify-between ${
-                      subWin === 'X'
-                        ? 'bg-cyan-950/40 border-2 border-cyan-500/50'
+                    className={`relative w-full h-full min-h-0 min-w-0 p-1 sm:p-1.5 transition-colors overflow-hidden ${macroBorderClasses} ${
+                      isTarget && !subWin && !mainWinner
+                        ? 'bg-amber-500/10 ring-2 ring-inset ring-amber-400/80 shadow-[inset_0_0_14px_rgba(251,191,36,0.18)]'
+                        : subWin === 'X'
+                        ? 'bg-cyan-950/25'
                         : subWin === 'O'
-                        ? 'bg-pink-950/40 border-2 border-pink-500/50'
-                        : subWin === 'TIE'
-                        ? 'bg-neutral-900/50 border-2 border-neutral-700'
-                        : isTarget
-                        ? 'bg-[#151926] border-2 border-amber-400 shadow-[0_0_15px_rgba(251,191,36,0.3)] ring-2 ring-amber-400/50'
-                        : 'bg-[#10131d] border border-neutral-800'
+                        ? 'bg-rose-950/25'
+                        : 'bg-transparent'
                     }`}
                   >
-                    {/* Small 3x3 Grid */}
-                    <div className="grid grid-cols-3 gap-1 h-full w-full">
+                    {/* INNER 3x3 TIC-TAC-TOE GRID */}
+                    <div
+                      className="grid w-full h-full min-h-0 min-w-0"
+                      style={{
+                        gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+                        gridTemplateRows: 'repeat(3, minmax(0, 1fr))'
+                      }}
+                    >
                       {[0, 1, 2].map(sr =>
                         [0, 1, 2].map(sc => {
                           const cellVal = boards[mr][mc][sr][sc];
                           const canPlayHere = isTarget && subWin === null && cellVal === null && !mainWinner && !isBotThinking;
+                          const isLast = lastMove?.mr === mr && lastMove?.mc === mc && lastMove?.sr === sr && lastMove?.sc === sc;
+
+                          // Inner classic Tic-Tac-Toe grid dividers (# lines)
+                          const cellBorderClasses = [
+                            sc < 2 ? 'border-r-2 border-neutral-700/80' : '',
+                            sr < 2 ? 'border-b-2 border-neutral-700/80' : ''
+                          ].filter(Boolean).join(' ');
 
                           return (
                             <button
                               key={`sub-${sr}-${sc}`}
                               onClick={() => makeMove(mr, mc, sr, sc)}
                               disabled={!canPlayHere}
-                              className={`rounded-lg flex items-center justify-center font-black text-sm sm:text-lg transition-all duration-150 ${
-                                cellVal === 'X'
-                                  ? 'bg-cyan-500/20 text-cyan-300'
-                                  : cellVal === 'O'
-                                  ? 'bg-pink-500/20 text-pink-300'
+                              className={`w-full h-full min-h-0 min-w-0 flex items-center justify-center p-0 m-0 leading-none overflow-hidden select-none transition-colors relative ${cellBorderClasses} ${
+                                isLast
+                                  ? 'animate-move-pulse'
                                   : canPlayHere
-                                  ? 'bg-neutral-800/80 hover:bg-amber-500/30 text-transparent hover:text-amber-300 cursor-pointer active:scale-95'
-                                  : 'bg-neutral-900/40 text-transparent'
+                                  ? 'hover:bg-amber-400/20 cursor-pointer active:scale-95'
+                                  : 'cursor-default'
                               }`}
                             >
-                              {cellVal || (canPlayHere ? '•' : '')}
+                              {cellVal === 'X' ? (
+                                <span className="font-black text-cyan-400 text-sm sm:text-base md:text-xl drop-shadow-[0_0_6px_rgba(34,211,238,0.7)] pointer-events-none select-none">
+                                  ✕
+                                </span>
+                              ) : cellVal === 'O' ? (
+                                <span className="font-black text-rose-400 text-sm sm:text-base md:text-xl drop-shadow-[0_0_6px_rgba(244,63,94,0.7)] pointer-events-none select-none">
+                                  ◯
+                                </span>
+                              ) : canPlayHere ? (
+                                <span className="w-1.5 h-1.5 rounded-full bg-amber-400/50 pointer-events-none" />
+                              ) : null}
                             </button>
                           );
                         })
                       )}
                     </div>
 
-                    {/* Sub-board Claim Overlay */}
+                    {/* Sub-board Claim Overlay Watermark */}
                     {subWin && (
-                      <div className="absolute inset-0 bg-black/75 backdrop-blur-[2px] rounded-2xl flex flex-col items-center justify-center pointer-events-none z-10 animate-fade-in">
+                      <div className="absolute inset-0 bg-black/75 backdrop-blur-[1px] flex items-center justify-center pointer-events-none z-10 animate-fade-in">
                         <span
-                          className={`text-4xl sm:text-6xl font-black ${
+                          className={`text-4xl sm:text-6xl font-black select-none ${
                             subWin === 'X'
-                              ? 'text-cyan-400 drop-shadow-[0_0_12px_rgba(6,182,212,0.8)]'
+                              ? 'text-cyan-400 drop-shadow-[0_0_16px_rgba(6,182,212,0.9)]'
                               : subWin === 'O'
-                              ? 'text-pink-400 drop-shadow-[0_0_12px_rgba(236,72,153,0.8)]'
+                              ? 'text-rose-400 drop-shadow-[0_0_16px_rgba(244,63,94,0.9)]'
                               : 'text-neutral-500'
                           }`}
                         >
-                          {subWin === 'TIE' ? '—' : subWin}
+                          {subWin === 'TIE' ? '—' : subWin === 'X' ? '✕' : '◯'}
                         </span>
                       </div>
                     )}
@@ -482,15 +633,17 @@ export default function UltimateTicTacToeGame({ onBackToHub }: UltimateTicTacToe
             )}
           </div>
 
-          {/* Victory Modal Overlay */}
+          {/* Main Winner Modal Overlay */}
           {mainWinner && (
-            <div className="absolute inset-0 bg-black/85 backdrop-blur-md rounded-3xl flex flex-col items-center justify-center p-6 text-center z-30 animate-fade-in">
+            <div className="absolute inset-0 bg-black/85 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center z-30 animate-fade-in">
               <span className="text-5xl mb-2">{mainWinner === 'TIE' ? '🤝' : '🏆'}</span>
               <h2 className="text-2xl sm:text-3xl font-black text-amber-400 mb-1">
                 {mainWinner === 'TIE' ? 'IT IS A DRAW!' : `PLAYER ${mainWinner} WINS!`}
               </h2>
               <p className="text-sm text-neutral-300 mb-6">
-                {mainWinner === 'TIE' ? 'No more winning alignments on the main grid.' : 'Aligned 3 sub-boards on the main grid!'}
+                {mainWinner === 'TIE'
+                  ? 'No winning alignment on the main grid.'
+                  : `Secured 3 sub-boards in a row on the main grid!`}
               </p>
               <button
                 onClick={resetGame}
@@ -501,51 +654,41 @@ export default function UltimateTicTacToeGame({ onBackToHub }: UltimateTicTacToe
             </div>
           )}
         </div>
-
-        {/* Sending Rule Quick Hint */}
-        <p className="mt-4 text-xs text-neutral-400 text-center max-w-md">
-          💡 <span className="text-amber-300 font-bold">Sending Rule:</span> Your move's local position inside a small board sends your opponent directly to that corresponding big board square.
-        </p>
       </div>
 
       {/* Rules Modal */}
       {showRules && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-[#10141e] border border-neutral-700 rounded-2xl max-w-lg w-full p-6 shadow-2xl text-sm">
-            <div className="flex items-center justify-between mb-4 border-b border-neutral-800 pb-3">
-              <h3 className="text-lg font-bold text-violet-400 flex items-center gap-2">
-                <span>📖</span>
-                <span>Rules of Ultimate Tic-Tac-Toe</span>
-              </h3>
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-[#0f131d] border border-neutral-700 p-5 sm:p-6 rounded-2xl max-w-md w-full shadow-2xl text-neutral-200 text-xs sm:text-sm space-y-3">
+            <div className="flex justify-between items-center border-b border-neutral-800 pb-2">
+              <h3 className="text-base font-bold text-violet-400">Rules of Ultimate Tic-Tac-Toe</h3>
               <button
                 onClick={() => setShowRules(false)}
-                className="text-neutral-400 hover:text-white text-lg font-bold"
+                className="w-7 h-7 rounded-full bg-neutral-800 hover:bg-neutral-700 flex items-center justify-center text-white"
               >
                 ✕
               </button>
             </div>
-
-            <div className="space-y-3 text-neutral-300">
-              <p>
-                <strong className="text-white">1. The Layout:</strong> Played on a large 3×3 grid containing 9 smaller 3×3 tic-tac-toe boards (81 spots total).
-              </p>
-              <p>
-                <strong className="text-white">2. The Sending Rule:</strong> Your move's relative position in a small board determines which small board your opponent must play in next.
-              </p>
-              <p>
-                <strong className="text-white">3. Winning a Small Board:</strong> Getting 3-in-a-row inside any small board claims that entire square on the main grid.
-              </p>
-              <p>
-                <strong className="text-white">4. Full or Won Boards (Free Move):</strong> If sent to a small board that is already claimed or completely full, you can place your mark in ANY open square on ANY available small board!
-              </p>
-              <p>
-                <strong className="text-white">5. Winning the Game:</strong> Align three won small boards horizontally, vertically, or diagonally on the main grid.
-              </p>
-            </div>
-
+            <ul className="list-disc pl-4 space-y-2 text-neutral-300">
+              <li>
+                <strong className="text-white">Nested Grid:</strong> The board consists of a large 3×3 grid where each square holds a smaller 3×3 tic-tac-toe board.
+              </li>
+              <li>
+                <strong className="text-white">The Sending Rule:</strong> Your relative position inside a mini board determines the exact mini board your opponent must play in next.
+              </li>
+              <li>
+                <strong className="text-white">Winning a Board:</strong> Get 3 marks in a row in any mini board to claim that square on the main grid.
+              </li>
+              <li>
+                <strong className="text-white">Free Move:</strong> If sent to a board that is already won or full, you can place your mark in ANY open board!
+              </li>
+              <li>
+                <strong className="text-white">Winning the Game:</strong> Align 3 claimed sub-boards horizontally, vertically, or diagonally on the main grid.
+              </li>
+            </ul>
             <button
               onClick={() => setShowRules(false)}
-              className="mt-6 w-full py-2.5 bg-violet-600 hover:bg-violet-500 text-white font-bold rounded-xl"
+              className="w-full mt-3 py-2 bg-violet-600 hover:bg-violet-500 text-white font-bold rounded-xl"
             >
               Got it!
             </button>

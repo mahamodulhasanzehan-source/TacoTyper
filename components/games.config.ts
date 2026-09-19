@@ -144,8 +144,8 @@ export const GAMES_REGISTRY: GameMetadata[] = [
   },
   {
     id: 'snake',
-    title: 'Neon Snake',
-    description: 'Classic Grid & Speed Surge',
+    title: 'Snake',
+    description: 'Classic Grid & Speed Scaling',
     icon: '🐍',
     color: '#22c55e',
     accentGlow: 'rgba(34, 197, 94, 0.5)',
@@ -161,16 +161,6 @@ export const GAMES_REGISTRY: GameMetadata[] = [
     accentGlow: 'rgba(245, 158, 11, 0.5)',
     tag: 'ARCADE',
     statsKey: 'brick_breaker_plays'
-  },
-  {
-    id: 'flappy-flyer',
-    title: 'Flappy Flyer',
-    description: 'One-Tap Physics Aerial Run',
-    icon: '🕊️',
-    color: '#06b6d4',
-    accentGlow: 'rgba(6, 182, 212, 0.5)',
-    tag: 'ACTION',
-    statsKey: 'flappy_flyer_plays'
   },
   {
     id: 'game-2048',

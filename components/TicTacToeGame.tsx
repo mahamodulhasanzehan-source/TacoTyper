@@ -69,6 +69,7 @@ export default function TicTacToeGame({ user, onBackToHub, username }: TicTacToe
     const [winner, setWinner] = useState<Player | 'Draw'>(null);
     const [winningLine, setWinningLine] = useState<number[] | null>(null);
     const [streak, setStreak] = useState(0);
+    const [lastMove, setLastMove] = useState<number | null>(null);
     const [aiPlaysFirst, setAiPlaysFirst] = useState(false);
     const [currentStarter, setCurrentStarter] = useState<'player' | 'ai'>('player');
     const [nextAiPlaysFirst, setNextAiPlaysFirst] = useState(false);
@@ -81,6 +82,7 @@ export default function TicTacToeGame({ user, onBackToHub, username }: TicTacToe
         setGameOver(false);
         setWinner(null);
         setWinningLine(null);
+        setLastMove(null);
         setAiPlaysFirst(aiFirst);
         setCurrentStarter(aiFirst ? 'ai' : 'player');
         setIsPlayerTurn(!aiFirst);
@@ -175,6 +177,7 @@ export default function TicTacToeGame({ user, onBackToHub, username }: TicTacToe
                     const newBoard = [...board];
                     newBoard[move] = 'O';
                     setBoard(newBoard);
+                    setLastMove(move);
                     audioService.playSound('tile_click');
 
                     const state = checkWinState(newBoard, combos);
@@ -235,6 +238,7 @@ export default function TicTacToeGame({ user, onBackToHub, username }: TicTacToe
         const newBoard = [...board];
         newBoard[index] = 'X';
         setBoard(newBoard);
+        setLastMove(index);
         audioService.playSound('tile_click');
 
         const state = checkWinState(newBoard, combos);
@@ -335,33 +339,51 @@ export default function TicTacToeGame({ user, onBackToHub, username }: TicTacToe
                     <span>{is5x5 ? '5×5 Grid • Match 4 in a row to win' : '3×3 Grid • Match 3 in a row to win'}</span>
                 </div>
 
-                {/* Game Board */}
-                <div className="flex flex-col items-center justify-center z-10 w-full px-2">
-                <div className={`grid gap-1.5 sm:gap-2 bg-neutral-900/90 p-2 sm:p-3 rounded-2xl border-2 border-neutral-800 shadow-2xl max-w-full ${is5x5 ? 'grid-cols-5' : 'grid-cols-3'}`}>
-                    {board.map((cell, index) => {
-                        const isWinCell = winningLine?.includes(index);
-                        return (
-                            <button
-                                key={index}
-                                onClick={() => handleCellClick(index)}
-                                className={`rounded-xl font-black flex items-center justify-center transition-all duration-150 active:scale-95 shadow-inner ${
-                                    !is5x5
-                                        ? 'w-[23vw] max-w-[110px] min-w-[64px] h-[23vw] max-h-[110px] min-h-[64px] sm:w-24 sm:h-24 md:w-28 md:h-28 text-3xl sm:text-5xl md:text-6xl'
-                                        : 'w-[14vw] max-w-[64px] min-w-[42px] h-[14vw] max-h-[64px] min-h-[42px] sm:w-14 sm:h-14 md:w-16 md:h-16 text-xl sm:text-2xl md:text-3xl'
-                                } ${
-                                    isWinCell 
-                                        ? 'bg-amber-500/20 border-2 border-amber-400 animate-pulse' 
-                                        : 'bg-neutral-950 border border-neutral-800 hover:border-neutral-700'
-                                } ${
-                                    !cell && isPlayerTurn && !gameOver ? 'cursor-pointer hover:bg-neutral-800/60' : 'cursor-default'
-                                } ${
-                                    cell === 'X' ? 'text-sky-400' : 'text-red-400'
-                                }`}
-                            >
-                                {cell}
-                            </button>
-                        );
-                    })}
+                {/* Game Board: Classic Intersecting Lines Grid */}
+                <div className="flex flex-col items-center justify-center z-10 w-full px-2 select-none">
+                    <div 
+                        className="grid w-full aspect-square max-w-[min(88vw,360px,calc(100vh-280px))]"
+                        style={{
+                            gridTemplateColumns: `repeat(${is5x5 ? 5 : 3}, minmax(0, 1fr))`,
+                            gridTemplateRows: `repeat(${is5x5 ? 5 : 3}, minmax(0, 1fr))`
+                        }}
+                    >
+                        {board.map((cell, index) => {
+                            const cols = is5x5 ? 5 : 3;
+                            const r = Math.floor(index / cols);
+                            const c = index % cols;
+                            const isWinCell = winningLine?.includes(index);
+                            const isLastPlayed = lastMove === index;
+
+                            // Classic intersecting lines: internal dividers only!
+                            const borderClasses = [
+                                c < cols - 1 ? (is5x5 ? 'border-r-2 sm:border-r-3 border-neutral-600/90' : 'border-r-4 sm:border-r-[6px] border-neutral-500/95') : '',
+                                r < cols - 1 ? (is5x5 ? 'border-b-2 sm:border-b-3 border-neutral-600/90' : 'border-b-4 sm:border-b-[6px] border-neutral-500/95') : ''
+                            ].filter(Boolean).join(' ');
+
+                            return (
+                                <button
+                                    key={index}
+                                    onClick={() => handleCellClick(index)}
+                                    className={`w-full h-full min-h-0 min-w-0 font-black flex items-center justify-center transition-colors p-0 m-0 select-none relative ${borderClasses} ${
+                                        isWinCell 
+                                            ? 'bg-amber-400/25' 
+                                            : isLastPlayed
+                                            ? 'animate-move-pulse'
+                                            : !cell && isPlayerTurn && !gameOver 
+                                            ? 'hover:bg-neutral-800/40 cursor-pointer active:scale-95' 
+                                            : 'cursor-default'
+                                    } ${
+                                        !is5x5 ? 'text-4xl sm:text-6xl md:text-7xl' : 'text-2xl sm:text-3xl md:text-4xl'
+                                    } ${
+                                        cell === 'X' ? 'text-sky-400 drop-shadow-[0_0_8px_rgba(56,189,248,0.7)]' : 'text-rose-400 drop-shadow-[0_0_8px_rgba(244,63,94,0.7)]'
+                                    }`}
+                                >
+                                    {cell === 'X' ? '✕' : cell === 'O' ? '◯' : ''}
+                                </button>
+                            );
+                        })}
+                    </div>
                 </div>
 
                 {/* Result Overlay */}
@@ -381,7 +403,6 @@ export default function TicTacToeGame({ user, onBackToHub, username }: TicTacToe
                         </button>
                     </div>
                 )}
-            </div>
             </div>
         </div>
     );

@@ -92,7 +92,6 @@ export type AppId =
   | 'dots-and-boxes'
   | 'snake'
   | 'brick-breaker'
-  | 'flappy-flyer'
   | 'game-2048'
   | 'ultimate-tictactoe';
 
@@ -113,7 +112,6 @@ export type ActiveApp =
   | 'dots-and-boxes'
   | 'snake'
   | 'brick-breaker'
-  | 'flappy-flyer'
   | 'game-2048'
   | 'ultimate-tictactoe';
 
@@ -135,7 +133,6 @@ export interface GlobalGameStats {
   dots_and_boxes_plays?: number;
   snake_plays?: number;
   brick_breaker_plays?: number;
-  flappy_flyer_plays?: number;
   game_2048_plays?: number;
   ultimate_tictactoe_plays?: number;
 }

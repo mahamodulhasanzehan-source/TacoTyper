@@ -20,7 +20,6 @@ import CheckersGame from './CheckersGame';
 import DotsAndBoxesGame from './DotsAndBoxesGame';
 import SnakeGame from './SnakeGame';
 import BrickBreakerGame from './BrickBreakerGame';
-import FlappyFlyerGame from './FlappyFlyerGame';
 import Game2048 from './Game2048';
 import UltimateTicTacToeGame from './UltimateTicTacToeGame';
 
@@ -36,7 +35,7 @@ const VALID_APPS: AppId[] = [
   'taco', 'iq', 'mine', 'wordle', 'angle', 'more-less', 
   'spelling-bee', 'tic-tac-toe', 'connect-4', 'color-memory', 
   'particle-physics', 'fruit-merge', 'checkers', 'dots-and-boxes',
-  'snake', 'brick-breaker', 'flappy-flyer', 'game-2048', 'ultimate-tictactoe'
+  'snake', 'brick-breaker', 'game-2048', 'ultimate-tictactoe'
 ];
 
 export default function Game({ 
@@ -300,14 +299,6 @@ export default function Game({
     case 'brick-breaker':
       return (
         <BrickBreakerGame 
-          onBackToHub={handleBackToHub}
-          user={user}
-          username={customUsername}
-        />
-      );
-    case 'flappy-flyer':
-      return (
-        <FlappyFlyerGame 
           onBackToHub={handleBackToHub}
           user={user}
           username={customUsername}

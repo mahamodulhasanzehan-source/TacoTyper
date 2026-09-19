@@ -34,26 +34,6 @@ export default function DotsAndBoxesGame({ onBackToHub }: DotsAndBoxesProps) {
     const [isAutoFilling, setIsAutoFilling] = useState(false);
     const autoFillTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-    // Dynamic auto-resizing
-    const boardContainerRef = useRef<HTMLDivElement>(null);
-    const [boardDim, setBoardDim] = useState<number>(360);
-
-    useEffect(() => {
-        const el = boardContainerRef.current;
-        if (!el) return;
-        const updateSize = () => {
-            const { clientWidth, clientHeight } = el;
-            if (clientWidth && clientHeight) {
-                const s = Math.min(clientWidth - 12, clientHeight - 12, 540);
-                setBoardDim(Math.max(260, Math.floor(s)));
-            }
-        };
-        updateSize();
-        const ro = new ResizeObserver(updateSize);
-        ro.observe(el);
-        return () => ro.disconnect();
-    }, []);
-
     // Initialize/reset board
     const initBoard = useCallback((size: number) => {
         if (autoFillTimerRef.current) {
@@ -543,14 +523,13 @@ export default function DotsAndBoxesGame({ onBackToHub }: DotsAndBoxesProps) {
                     </div>
                 </div>
 
-                {/* Dots and Boxes Interactive Board Container with Dynamic Auto-Resize */}
-                <div ref={boardContainerRef} className="flex-1 min-h-0 w-full flex items-center justify-center p-1">
+                {/* Dots and Boxes Interactive Board Container with Stable Aspect-Ratio Responsive Sizing */}
+                <div className="flex-1 min-h-0 w-full flex items-center justify-center p-2 sm:p-4">
                     <div 
-                        style={{ width: `${boardDim}px`, height: `${boardDim}px` }} 
-                        className="relative flex items-center justify-center p-3 sm:p-4 bg-neutral-900 border-3 sm:border-4 border-neutral-800 rounded-2xl shadow-2xl overflow-hidden transition-all"
+                        className="aspect-square w-full max-w-[min(100%,calc(100vh-140px),540px)] max-h-[min(100%,calc(100vh-140px),540px)] relative flex items-center justify-center p-2 sm:p-4 bg-neutral-900 border-2 sm:border-4 border-neutral-800 rounded-2xl shadow-2xl overflow-hidden"
                     >
                         <svg
-                            className="w-full h-full"
+                            className="w-full h-full block"
                             viewBox={`-20 -20 ${(gridSize * 100) + 40} ${(gridSize * 100) + 40}`}
                         >
                             {/* 1. Claimed Box Fills: Simply filled with owner's color, NO letters inside */}

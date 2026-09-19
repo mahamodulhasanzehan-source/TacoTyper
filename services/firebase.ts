@@ -561,7 +561,6 @@ export const getGlobalGameStats = async (): Promise<GlobalGameStats> => {
         dots_and_boxes_plays: parseInt(localStorage.getItem('play_count_dots_and_boxes') || '0', 10),
         snake_plays: parseInt(localStorage.getItem('play_count_snake') || '0', 10),
         brick_breaker_plays: parseInt(localStorage.getItem('play_count_brick_breaker') || '0', 10),
-        flappy_flyer_plays: parseInt(localStorage.getItem('play_count_flappy_flyer') || '0', 10),
         game_2048_plays: parseInt(localStorage.getItem('play_count_game_2048') || '0', 10),
         ultimate_tictactoe_plays: parseInt(localStorage.getItem('play_count_ultimate_tictactoe') || '0', 10)
     };

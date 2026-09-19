@@ -283,33 +283,22 @@ export default function SnakeGame({ onBackToHub }: SnakeGameProps) {
           const h = canvas.height;
           const cellSize = w / GRID_SIZE;
 
-          // Background
-          if (theme === 'neon') {
-            ctx.fillStyle = '#090a0f';
-            ctx.fillRect(0, 0, w, h);
-            ctx.strokeStyle = '#1e293b22';
-          } else if (theme === 'retro') {
-            ctx.fillStyle = '#8b956d';
-            ctx.fillRect(0, 0, w, h);
-            ctx.strokeStyle = '#9ca67e';
-          } else {
-            ctx.fillStyle = '#050508';
-            ctx.fillRect(0, 0, w, h);
-            ctx.strokeStyle = '#27272a33';
+          // Grassy Meadow Background: Alternating lush lawn checkerboard pattern
+          const grassLight = '#a7d948';
+          const grassDark = '#8ec338';
+          const soilBorder = '#5d8a23';
+
+          for (let r = 0; r < GRID_SIZE; r++) {
+            for (let c = 0; c < GRID_SIZE; c++) {
+              ctx.fillStyle = (r + c) % 2 === 0 ? grassLight : grassDark;
+              ctx.fillRect(c * cellSize, r * cellSize, cellSize, cellSize);
+            }
           }
 
-          // Grid lines
-          ctx.lineWidth = 1;
-          for (let i = 0; i <= GRID_SIZE; i++) {
-            ctx.beginPath();
-            ctx.moveTo(i * cellSize, 0);
-            ctx.lineTo(i * cellSize, h);
-            ctx.stroke();
-            ctx.beginPath();
-            ctx.moveTo(0, i * cellSize);
-            ctx.lineTo(w, i * cellSize);
-            ctx.stroke();
-          }
+          // Subtle grass blade details along outer soil border
+          ctx.strokeStyle = soilBorder;
+          ctx.lineWidth = 2;
+          ctx.strokeRect(1, 1, w - 2, h - 2);
 
           // Snacks
           const drawSnack = (snack: Snack) => {
@@ -319,16 +308,47 @@ export default function SnakeGame({ onBackToHub }: SnakeGameProps) {
 
             ctx.save();
             if (snack.type === 'apple') {
-              ctx.fillStyle = theme === 'retro' ? '#2f3b1f' : '#ef4444';
-              ctx.shadowColor = theme === 'neon' ? '#ef4444' : 'transparent';
-              ctx.shadowBlur = 10;
+              // Juicy Red Apple with Leaf & Stem
+              // Shadow underneath
+              ctx.fillStyle = 'rgba(0, 0, 0, 0.18)';
               ctx.beginPath();
-              ctx.arc(sx, sy, radius, 0, Math.PI * 2);
+              ctx.ellipse(sx, sy + radius * 0.7, radius * 0.8, radius * 0.35, 0, 0, Math.PI * 2);
+              ctx.fill();
+
+              // Apple body
+              ctx.fillStyle = '#e11d48';
+              ctx.beginPath();
+              ctx.arc(sx - radius * 0.25, sy, radius * 0.72, 0, Math.PI * 2);
+              ctx.arc(sx + radius * 0.25, sy, radius * 0.72, 0, Math.PI * 2);
+              ctx.fill();
+
+              // Apple shine highlight
+              ctx.fillStyle = 'rgba(255, 255, 255, 0.45)';
+              ctx.beginPath();
+              ctx.arc(sx - radius * 0.3, sy - radius * 0.3, radius * 0.25, 0, Math.PI * 2);
+              ctx.fill();
+
+              // Stem
+              ctx.strokeStyle = '#78350f';
+              ctx.lineWidth = 2;
+              ctx.beginPath();
+              ctx.moveTo(sx, sy - radius * 0.5);
+              ctx.quadraticCurveTo(sx + 2, sy - radius * 0.95, sx + 4, sy - radius * 1.05);
+              ctx.stroke();
+
+              // Little Green Leaf
+              ctx.fillStyle = '#22c55e';
+              ctx.beginPath();
+              ctx.ellipse(sx + 4, sy - radius * 0.85, 4, 2, Math.PI / 4, 0, Math.PI * 2);
               ctx.fill();
             } else if (snack.type === 'speed') {
-              ctx.fillStyle = '#38bdf8';
-              ctx.shadowColor = '#38bdf8';
-              ctx.shadowBlur = 12;
+              // Speed Golden Berry
+              ctx.fillStyle = 'rgba(0, 0, 0, 0.18)';
+              ctx.beginPath();
+              ctx.ellipse(sx, sy + radius * 0.7, radius * 0.8, radius * 0.35, 0, 0, Math.PI * 2);
+              ctx.fill();
+
+              ctx.fillStyle = '#0284c7';
               ctx.beginPath();
               ctx.arc(sx, sy, radius, 0, Math.PI * 2);
               ctx.fill();
@@ -338,9 +358,12 @@ export default function SnakeGame({ onBackToHub }: SnakeGameProps) {
               ctx.textBaseline = 'middle';
               ctx.fillText('⚡', sx, sy);
             } else if (snack.type === 'slow') {
-              ctx.fillStyle = '#a855f7';
-              ctx.shadowColor = '#a855f7';
-              ctx.shadowBlur = 12;
+              ctx.fillStyle = 'rgba(0, 0, 0, 0.18)';
+              ctx.beginPath();
+              ctx.ellipse(sx, sy + radius * 0.7, radius * 0.8, radius * 0.35, 0, 0, Math.PI * 2);
+              ctx.fill();
+
+              ctx.fillStyle = '#9333ea';
               ctx.beginPath();
               ctx.arc(sx, sy, radius, 0, Math.PI * 2);
               ctx.fill();
@@ -350,9 +373,12 @@ export default function SnakeGame({ onBackToHub }: SnakeGameProps) {
               ctx.textBaseline = 'middle';
               ctx.fillText('⏱️', sx, sy);
             } else if (snack.type === 'star') {
+              ctx.fillStyle = 'rgba(0, 0, 0, 0.18)';
+              ctx.beginPath();
+              ctx.ellipse(sx, sy + radius * 0.7, radius * 0.8, radius * 0.35, 0, 0, Math.PI * 2);
+              ctx.fill();
+
               ctx.fillStyle = '#eab308';
-              ctx.shadowColor = '#eab308';
-              ctx.shadowBlur = 14;
               ctx.beginPath();
               ctx.arc(sx, sy, radius, 0, Math.PI * 2);
               ctx.fill();
@@ -362,9 +388,12 @@ export default function SnakeGame({ onBackToHub }: SnakeGameProps) {
               ctx.textBaseline = 'middle';
               ctx.fillText('⭐', sx, sy);
             } else if (snack.type === 'ghost') {
+              ctx.fillStyle = 'rgba(0, 0, 0, 0.18)';
+              ctx.beginPath();
+              ctx.ellipse(sx, sy + radius * 0.7, radius * 0.8, radius * 0.35, 0, 0, Math.PI * 2);
+              ctx.fill();
+
               ctx.fillStyle = '#ec4899';
-              ctx.shadowColor = '#ec4899';
-              ctx.shadowBlur = 14;
               ctx.beginPath();
               ctx.arc(sx, sy, radius, 0, Math.PI * 2);
               ctx.fill();
@@ -380,7 +409,7 @@ export default function SnakeGame({ onBackToHub }: SnakeGameProps) {
           drawSnack(snackRef.current);
           if (bonusSnackRef.current) drawSnack(bonusSnackRef.current);
 
-          // Snake Body
+          // Snake Body - Smooth Friendly Garden Serpent
           const isGhost = Date.now() < ghostUntilRef.current;
           const snake = snakeRef.current;
 
@@ -391,39 +420,76 @@ export default function SnakeGame({ onBackToHub }: SnakeGameProps) {
 
             ctx.save();
             if (index === 0) {
-              // Head
-              ctx.fillStyle = theme === 'retro' ? '#1f2910' : isGhost ? '#ec4899' : '#22c55e';
-              ctx.shadowColor = theme === 'neon' ? (isGhost ? '#ec4899' : '#22c55e') : 'transparent';
-              ctx.shadowBlur = 12;
-              ctx.fillRect(px + pad, py + pad, cellSize - pad * 2, cellSize - pad * 2);
+              // Cute Round Head
+              ctx.fillStyle = isGhost ? '#ec4899' : '#1d4ed8'; // Royal garden blue snake (or pink when ghost)
+              ctx.beginPath();
+              ctx.roundRect(px + pad, py + pad, cellSize - pad * 2, cellSize - pad * 2, 8);
+              ctx.fill();
 
-              // Eyes
+              // Big cartoon eyes
               ctx.fillStyle = '#ffffff';
-              const eyeSize = cellSize * 0.2;
+              const eyeRadius = cellSize * 0.18;
+              let eye1X = px + cellSize * 0.32;
+              let eye1Y = py + cellSize * 0.32;
+              let eye2X = px + cellSize * 0.68;
+              let eye2Y = py + cellSize * 0.32;
+              let pupilDx = 0;
+              let pupilDy = 0;
+
               if (dirRef.current === 'RIGHT') {
-                ctx.fillRect(px + cellSize * 0.65, py + cellSize * 0.2, eyeSize, eyeSize);
-                ctx.fillRect(px + cellSize * 0.65, py + cellSize * 0.6, eyeSize, eyeSize);
+                eye1X = px + cellSize * 0.7; eye1Y = py + cellSize * 0.3;
+                eye2X = px + cellSize * 0.7; eye2Y = py + cellSize * 0.7;
+                pupilDx = 1.5;
               } else if (dirRef.current === 'LEFT') {
-                ctx.fillRect(px + cellSize * 0.15, py + cellSize * 0.2, eyeSize, eyeSize);
-                ctx.fillRect(px + cellSize * 0.15, py + cellSize * 0.6, eyeSize, eyeSize);
+                eye1X = px + cellSize * 0.3; eye1Y = py + cellSize * 0.3;
+                eye2X = px + cellSize * 0.3; eye2Y = py + cellSize * 0.7;
+                pupilDx = -1.5;
               } else if (dirRef.current === 'UP') {
-                ctx.fillRect(px + cellSize * 0.2, py + cellSize * 0.15, eyeSize, eyeSize);
-                ctx.fillRect(px + cellSize * 0.6, py + cellSize * 0.15, eyeSize, eyeSize);
+                eye1X = px + cellSize * 0.3; eye1Y = py + cellSize * 0.3;
+                eye2X = px + cellSize * 0.7; eye2Y = py + cellSize * 0.3;
+                pupilDy = -1.5;
               } else {
-                ctx.fillRect(px + cellSize * 0.2, py + cellSize * 0.65, eyeSize, eyeSize);
-                ctx.fillRect(px + cellSize * 0.6, py + cellSize * 0.65, eyeSize, eyeSize);
+                eye1X = px + cellSize * 0.3; eye1Y = py + cellSize * 0.7;
+                eye2X = px + cellSize * 0.7; eye2Y = py + cellSize * 0.7;
+                pupilDy = 1.5;
               }
+
+              ctx.beginPath();
+              ctx.arc(eye1X, eye1Y, eyeRadius, 0, Math.PI * 2);
+              ctx.arc(eye2X, eye2Y, eyeRadius, 0, Math.PI * 2);
+              ctx.fill();
+
+              // Pupil
+              ctx.fillStyle = '#0f172a';
+              ctx.beginPath();
+              ctx.arc(eye1X + pupilDx, eye1Y + pupilDy, eyeRadius * 0.55, 0, Math.PI * 2);
+              ctx.arc(eye2X + pupilDx, eye2Y + pupilDy, eyeRadius * 0.55, 0, Math.PI * 2);
+              ctx.fill();
+
+              // Eye gleam
+              ctx.fillStyle = '#ffffff';
+              ctx.beginPath();
+              ctx.arc(eye1X + pupilDx - 0.8, eye1Y + pupilDy - 0.8, eyeRadius * 0.22, 0, Math.PI * 2);
+              ctx.arc(eye2X + pupilDx - 0.8, eye2Y + pupilDy - 0.8, eyeRadius * 0.22, 0, Math.PI * 2);
+              ctx.fill();
             } else {
-              // Body segment
-              const grad = 1 - (index / snake.length) * 0.45;
-              if (theme === 'retro') {
-                ctx.fillStyle = '#313e20';
-              } else if (theme === 'cyber') {
-                ctx.fillStyle = isGhost ? `rgba(236, 72, 153, ${grad})` : `rgba(6, 182, 212, ${grad})`;
+              // Body segment with alternating friendly garden bands
+              const isEvenSeg = index % 2 === 0;
+              if (isGhost) {
+                ctx.fillStyle = isEvenSeg ? 'rgba(236, 72, 153, 0.75)' : 'rgba(244, 114, 182, 0.75)';
               } else {
-                ctx.fillStyle = isGhost ? `rgba(236, 72, 153, ${grad})` : `rgba(34, 197, 94, ${grad})`;
+                ctx.fillStyle = isEvenSeg ? '#2563eb' : '#3b82f6';
               }
-              ctx.fillRect(px + pad, py + pad, cellSize - pad * 2, cellSize - pad * 2);
+
+              ctx.beginPath();
+              ctx.roundRect(px + pad, py + pad, cellSize - pad * 2, cellSize - pad * 2, index === snake.length - 1 ? 6 : 4);
+              ctx.fill();
+
+              // Cute belly scale stripe
+              ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+              ctx.beginPath();
+              ctx.arc(px + cellSize / 2, py + cellSize / 2, cellSize * 0.16, 0, Math.PI * 2);
+              ctx.fill();
             }
             ctx.restore();
           });
@@ -483,6 +549,32 @@ export default function SnakeGame({ onBackToHub }: SnakeGameProps) {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
+  const touchStartRef = useRef<{ x: number; y: number } | null>(null);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    const touch = e.touches[0];
+    touchStartRef.current = { x: touch.clientX, y: touch.clientY };
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (!touchStartRef.current) return;
+    const touch = e.changedTouches[0];
+    const dx = touch.clientX - touchStartRef.current.x;
+    const dy = touch.clientY - touchStartRef.current.y;
+    touchStartRef.current = null;
+
+    if (Math.abs(dx) < 20 && Math.abs(dy) < 20) return;
+
+    const current = dirRef.current;
+    if (Math.abs(dx) > Math.abs(dy)) {
+      if (dx > 0 && current !== 'LEFT') nextDirRef.current = 'RIGHT';
+      else if (dx < 0 && current !== 'RIGHT') nextDirRef.current = 'LEFT';
+    } else {
+      if (dy > 0 && current !== 'UP') nextDirRef.current = 'DOWN';
+      else if (dy < 0 && current !== 'DOWN') nextDirRef.current = 'UP';
+    }
+  };
+
   const handleDpad = (dir: Direction) => {
     const current = dirRef.current;
     if (dir === 'UP' && current !== 'DOWN') nextDirRef.current = 'UP';
@@ -492,90 +584,78 @@ export default function SnakeGame({ onBackToHub }: SnakeGameProps) {
   };
 
   return (
-    <div className="flex flex-col h-full w-full bg-[#07090e] text-white select-none overflow-y-auto">
+    <div className="flex flex-col h-full w-full bg-[#06080d] text-white select-none overflow-hidden font-sans">
       {/* Top Header Bar */}
-      <header className="flex items-center justify-between p-3 sm:p-4 bg-[#0d111a] border-b border-neutral-800">
+      <header className="flex items-center justify-between px-3 sm:px-5 py-2.5 bg-[#0b0e17] border-b border-neutral-800 shrink-0">
         <div className="flex items-center gap-3">
           <button
             onClick={onBackToHub}
-            className="px-3 py-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-xs sm:text-sm font-bold transition-all text-neutral-300 hover:text-white flex items-center gap-1.5 cursor-pointer"
+            className="px-3 py-1.5 rounded-full bg-neutral-900 hover:bg-neutral-800 text-xs sm:text-sm font-bold transition-all text-neutral-300 hover:text-white flex items-center gap-1.5 border border-neutral-700 active:scale-95 shadow-md cursor-pointer"
           >
             <span>←</span>
             <span>Hub</span>
           </button>
           <div className="flex items-center gap-2">
             <span className="text-xl">🐍</span>
-            <h1 className="text-base sm:text-lg font-bold text-emerald-400 tracking-wide">Neon Snake</h1>
+            <h1 className="text-sm sm:text-base font-black text-emerald-400 tracking-wide">Snake</h1>
           </div>
         </div>
 
-        <div className="flex items-center gap-2 sm:gap-4">
+        <div className="flex items-center gap-3 sm:gap-6">
           <div className="text-right">
-            <div className="text-[10px] sm:text-xs text-neutral-400 uppercase tracking-wider">Score</div>
-            <div className="text-base sm:text-xl font-extrabold text-emerald-400">{score}</div>
+            <div className="text-[10px] sm:text-xs text-neutral-400 uppercase font-semibold">Score</div>
+            <div className="text-sm sm:text-lg font-black text-emerald-400 font-mono">{score}</div>
           </div>
           <div className="text-right border-l border-neutral-800 pl-3">
-            <div className="text-[10px] sm:text-xs text-neutral-400 uppercase tracking-wider">High</div>
-            <div className="text-base sm:text-xl font-extrabold text-amber-400">{highScore}</div>
+            <div className="text-[10px] sm:text-xs text-neutral-400 uppercase font-semibold">High</div>
+            <div className="text-sm sm:text-lg font-black text-amber-400 font-mono">{highScore}</div>
           </div>
         </div>
       </header>
 
       {/* Control / Config Strip */}
-      <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-2 bg-[#0b0e14] border-b border-neutral-800 text-xs text-neutral-400">
+      <div className="flex items-center justify-between gap-2 px-3 sm:px-5 py-2 bg-[#090c13] border-b border-neutral-800 text-xs text-neutral-400 shrink-0">
         <div className="flex items-center gap-2">
-          <span>Theme:</span>
-          <button
-            onClick={() => setTheme('neon')}
-            className={`px-2 py-0.5 rounded ${theme === 'neon' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40' : 'hover:bg-neutral-800'}`}
-          >
-            Neon
-          </button>
-          <button
-            onClick={() => setTheme('cyber')}
-            className={`px-2 py-0.5 rounded ${theme === 'cyber' ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40' : 'hover:bg-neutral-800'}`}
-          >
-            Cyber
-          </button>
-          <button
-            onClick={() => setTheme('retro')}
-            className={`px-2 py-0.5 rounded ${theme === 'retro' ? 'bg-lime-500/20 text-lime-300 border border-lime-500/40' : 'hover:bg-neutral-800'}`}
-          >
-            Retro
-          </button>
+          <span className="text-[11px] font-bold text-neutral-400">Classic Arcade Mode</span>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
           <button
             onClick={() => setWallWrap(!wallWrap)}
-            className={`px-2 py-1 rounded transition-colors ${wallWrap ? 'bg-blue-600/30 text-blue-300 border border-blue-500/50' : 'bg-neutral-800 text-neutral-300'}`}
+            className={`px-2.5 py-1 rounded font-bold transition-colors border ${
+              wallWrap ? 'bg-blue-600/30 text-blue-300 border-blue-500/50' : 'bg-neutral-900 border-neutral-700 text-neutral-300 hover:bg-neutral-800 cursor-pointer'
+            }`}
           >
             {wallWrap ? '🔄 Wrap: ON' : '🧱 Solid Walls'}
           </button>
           <button
             onClick={() => setIsPaused(p => !p)}
-            className="px-2.5 py-1 bg-neutral-800 hover:bg-neutral-700 text-neutral-200 rounded font-medium"
+            className="px-3 py-1 bg-neutral-900 hover:bg-neutral-800 border border-neutral-700 text-neutral-200 rounded font-bold cursor-pointer"
           >
             {isPaused ? '▶ Resume' : '⏸ Pause'}
           </button>
         </div>
       </div>
 
-      {/* Main Play Area */}
-      <div className="flex-1 flex flex-col items-center justify-center p-3 relative">
+      {/* Main Play Area with Responsive Sizing */}
+      <div className="flex-1 flex flex-col items-center justify-center p-2 sm:p-4 min-h-0 relative select-none">
         {activeEffect && (
-          <div className="absolute top-6 z-20 px-3 py-1 bg-neutral-900/90 border border-amber-500/50 rounded-full text-xs font-bold text-amber-300 shadow-lg animate-bounce">
+          <div className="absolute top-4 z-20 px-3 py-1 bg-neutral-900/90 border border-amber-500/50 rounded-full text-xs font-bold text-amber-300 shadow-lg animate-bounce">
             {activeEffect}
           </div>
         )}
 
         {/* Canvas Game Frame */}
-        <div className="relative rounded-2xl overflow-hidden shadow-2xl border-2 border-neutral-800 bg-black flex items-center justify-center">
+        <div 
+          onTouchStart={handleTouchStart}
+          onTouchEnd={handleTouchEnd}
+          className="relative rounded-2xl overflow-hidden shadow-2xl border-4 border-[#5d8a23] bg-[#8ec338] flex items-center justify-center touch-none ring-2 ring-emerald-950/40"
+        >
           <canvas
             ref={canvasRef}
             width={440}
             height={440}
-            className="w-[290px] h-[290px] sm:w-[380px] sm:h-[380px] md:w-[440px] md:h-[440px] block"
+            className="w-full max-w-[min(92vw,540px,calc(100vh-240px))] aspect-square block touch-none select-none"
           />
 
           {/* Game Over Modal Overlay */}
