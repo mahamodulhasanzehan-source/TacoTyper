@@ -502,7 +502,7 @@ export const saveSpeedTestStats = async (user: User, wpm: number, accuracy: numb
 
 // --- Global Stats Tracking ---
 
-export const incrementGamePlays = async (gameKey: 'taco_typer' | 'iq_test' | 'minesweeper' | 'wordle' | 'angle' | 'spelling_bee' | 'tic_tac_toe' | 'connect_4' | 'gun_game' | 'color_memory' | 'particle_physics' | 'more_less' | 'fruit_merge' | 'checkers' | 'dots_and_boxes' | 'snake' | 'brick_breaker' | 'flappy_flyer' | 'game_2048' | 'ultimate_tictactoe') => {
+export const incrementGamePlays = async (gameKey: 'taco_typer' | 'iq_test' | 'minesweeper' | 'wordle' | 'angle' | 'spelling_bee' | 'tic_tac_toe' | 'connect_4' | 'gun_game' | 'color_memory' | 'particle_physics' | 'more_less' | 'fruit_merge' | 'checkers' | 'dots_and_boxes' | 'snake' | 'brick_breaker' | 'flappy_flyer' | 'game_2048' | 'ultimate_tictactoe' | 'simon') => {
     const key = `play_count_${gameKey}`;
     const curr = parseInt(localStorage.getItem(key) || '0', 10);
     localStorage.setItem(key, String(curr + 1));
@@ -537,7 +537,8 @@ export const incrementGamePlays = async (gameKey: 'taco_typer' | 'iq_test' | 'mi
                  brick_breaker_plays: gameKey === 'brick_breaker' ? 1 : 0,
                  flappy_flyer_plays: gameKey === 'flappy_flyer' ? 1 : 0,
                  game_2048_plays: gameKey === 'game_2048' ? 1 : 0,
-                 ultimate_tictactoe_plays: gameKey === 'ultimate_tictactoe' ? 1 : 0
+                 ultimate_tictactoe_plays: gameKey === 'ultimate_tictactoe' ? 1 : 0,
+                 simon_plays: gameKey === 'simon' ? 1 : 0
              });
         }
     }
@@ -562,7 +563,8 @@ export const getGlobalGameStats = async (): Promise<GlobalGameStats> => {
         snake_plays: parseInt(localStorage.getItem('play_count_snake') || '0', 10),
         brick_breaker_plays: parseInt(localStorage.getItem('play_count_brick_breaker') || '0', 10),
         game_2048_plays: parseInt(localStorage.getItem('play_count_game_2048') || '0', 10),
-        ultimate_tictactoe_plays: parseInt(localStorage.getItem('play_count_ultimate_tictactoe') || '0', 10)
+        ultimate_tictactoe_plays: parseInt(localStorage.getItem('play_count_ultimate_tictactoe') || '0', 10),
+        simon_plays: parseInt(localStorage.getItem('play_count_simon') || '0', 10)
     };
     if (!dbExport) return fallback;
     try {

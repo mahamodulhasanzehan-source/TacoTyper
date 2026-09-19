@@ -22,6 +22,7 @@ import SnakeGame from './SnakeGame';
 import BrickBreakerGame from './BrickBreakerGame';
 import Game2048 from './Game2048';
 import UltimateTicTacToeGame from './UltimateTicTacToeGame';
+import SimonGame from './SimonGame';
 
 interface GameProps {
   user: User;
@@ -35,7 +36,7 @@ const VALID_APPS: AppId[] = [
   'taco', 'iq', 'mine', 'wordle', 'angle', 'more-less', 
   'spelling-bee', 'tic-tac-toe', 'connect-4', 'color-memory', 
   'particle-physics', 'fruit-merge', 'checkers', 'dots-and-boxes',
-  'snake', 'brick-breaker', 'game-2048', 'ultimate-tictactoe'
+  'snake', 'brick-breaker', 'game-2048', 'ultimate-tictactoe', 'simon'
 ];
 
 export default function Game({ 
@@ -105,12 +106,12 @@ export default function Game({
   }, []);
 
   const handleBackToHub = useCallback(() => {
-    if (window.history.length > 1 && window.location.hash && window.location.hash !== '#/hub' && window.location.hash !== '#') {
-      window.history.back();
-    } else {
-      navigateTo('taco', 'hub');
+    setActiveApp('taco');
+    setScreen('hub');
+    if (window.location.hash !== '#/hub') {
+      window.history.pushState({ app: 'taco', screen: 'hub' }, '', '#/hub');
     }
-  }, [navigateTo]);
+  }, []);
 
   useEffect(() => {
     const handlePopState = (e: PopStateEvent) => {
@@ -315,6 +316,14 @@ export default function Game({
     case 'ultimate-tictactoe':
       return (
         <UltimateTicTacToeGame 
+          onBackToHub={handleBackToHub}
+          user={user}
+          username={customUsername}
+        />
+      );
+    case 'simon':
+      return (
+        <SimonGame 
           onBackToHub={handleBackToHub}
           user={user}
           username={customUsername}

@@ -256,12 +256,40 @@ export const GameArtwork: React.FC<GameArtworkProps> = ({ id, color }) => {
     case 'color-memory':
       return (
         <svg viewBox="0 0 100 100" className="w-full h-full p-2">
-          {/* 4 Simon-says style quadrant pads */}
-          <path d="M 46 46 L 46 16 A 32 32 0 0 0 16 46 Z" fill="#ef4444" rx="4" />
-          <path d="M 54 46 L 84 46 A 32 32 0 0 0 54 16 Z" fill="#3b82f6" rx="4" />
-          <path d="M 46 54 L 16 54 A 32 32 0 0 0 46 84 Z" fill="#eab308" rx="4" />
-          <path d="M 54 54 L 54 84 A 32 32 0 0 0 84 54 Z" fill="#22c55e" rx="4" />
-          <circle cx="50" cy="50" r="8" fill="#18181b" />
+          {/* Artist Color Palette with Paint Blobs & Brush */}
+          <path
+            d="M 22 45 C 16 28 32 14 55 14 C 78 14 88 28 88 48 C 88 68 76 86 52 86 C 38 86 35 76 35 70 C 35 64 42 62 42 54 C 42 46 32 46 22 45 Z"
+            fill="#334155"
+            stroke="#64748b"
+            strokeWidth="2.5"
+          />
+          {/* Thumb hole */}
+          <circle cx="68" cy="68" r="6.5" fill="#0a0d14" stroke="#475569" strokeWidth="1.5" />
+          {/* Vibrant Color Drops on palette */}
+          <circle cx="34" cy="30" r="5.5" fill="#ec4899" />
+          <circle cx="50" cy="24" r="5.5" fill="#38bdf8" />
+          <circle cx="68" cy="30" r="5.5" fill="#eab308" />
+          <circle cx="78" cy="46" r="5.5" fill="#22c55e" />
+          {/* Paint Brush */}
+          <line x1="18" y1="82" x2="44" y2="56" stroke="#94a3b8" strokeWidth="3" strokeLinecap="round" />
+          <path d="M 44 56 L 50 50 L 46 46 L 40 52 Z" fill="#d97706" />
+          <path d="M 50 50 L 56 44 C 58 42 59 45 56 49 Z" fill="#ec4899" />
+        </svg>
+      );
+
+    case 'simon':
+      return (
+        <svg viewBox="0 0 100 100" className="w-full h-full p-2">
+          {/* Simon 4-quadrant circular disc */}
+          <circle cx="50" cy="50" r="42" fill="#18181b" stroke="#27272a" strokeWidth="2" />
+          {/* 4 Simon-says quadrant pads */}
+          <path d="M 46 46 L 46 16 A 32 32 0 0 0 16 46 Z" fill="#22c55e" />
+          <path d="M 54 46 L 84 46 A 32 32 0 0 0 54 16 Z" fill="#ef4444" />
+          <path d="M 46 54 L 16 54 A 32 32 0 0 0 46 84 Z" fill="#eab308" />
+          <path d="M 54 54 L 54 84 A 32 32 0 0 0 84 54 Z" fill="#3b82f6" />
+          {/* Center console */}
+          <circle cx="50" cy="50" r="14" fill="#09090b" stroke="#3f3f46" strokeWidth="2" />
+          <circle cx="50" cy="50" r="6" fill="#fbbf24" />
         </svg>
       );
 

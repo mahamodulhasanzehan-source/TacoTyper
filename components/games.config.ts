@@ -181,5 +181,15 @@ export const GAMES_REGISTRY: GameMetadata[] = [
     accentGlow: 'rgba(139, 92, 246, 0.5)',
     tag: 'STRATEGY',
     statsKey: 'ultimate_tictactoe_plays'
+  },
+  {
+    id: 'simon',
+    title: 'Simon',
+    description: 'Rhythm & Sequence Memory',
+    icon: '🔴',
+    color: '#ef4444',
+    accentGlow: 'rgba(239, 68, 68, 0.5)',
+    tag: 'MEMORY',
+    statsKey: 'simon_plays'
   }
 ];

@@ -274,13 +274,13 @@ export default function BrickBreakerGame({ onBackToHub }: BrickBreakerProps) {
 
   const resetPaddleAndBall = useCallback(() => {
     paddleRef.current.x = CANVAS_WIDTH / 2 - paddleRef.current.w / 2;
-    // Adjusted initial speed: comfortable, playable, smooth
+    // Adjusted initial speed: comfortable, playable, smooth (reduced by 30%)
     ballsRef.current = [
       {
         x: CANVAS_WIDTH / 2,
         y: CANVAS_HEIGHT - 40,
-        vx: 2.2 * (Math.random() > 0.5 ? 1 : -1),
-        vy: -3.2,
+        vx: 1.55 * (Math.random() > 0.5 ? 1 : -1),
+        vy: -2.25,
         radius: 6,
         isFireball: false,
         stuckToPaddle: true,

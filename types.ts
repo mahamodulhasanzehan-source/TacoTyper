@@ -93,7 +93,8 @@ export type AppId =
   | 'snake'
   | 'brick-breaker'
   | 'game-2048'
-  | 'ultimate-tictactoe';
+  | 'ultimate-tictactoe'
+  | 'simon';
 
 export type ActiveApp = 
   | 'hub'
@@ -113,7 +114,8 @@ export type ActiveApp =
   | 'snake'
   | 'brick-breaker'
   | 'game-2048'
-  | 'ultimate-tictactoe';
+  | 'ultimate-tictactoe'
+  | 'simon';
 
 export interface GlobalGameStats {
   taco_typer_plays: number;
@@ -135,4 +137,5 @@ export interface GlobalGameStats {
   brick_breaker_plays?: number;
   game_2048_plays?: number;
   ultimate_tictactoe_plays?: number;
+  simon_plays?: number;
 }

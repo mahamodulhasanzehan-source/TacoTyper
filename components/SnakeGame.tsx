@@ -409,90 +409,126 @@ export default function SnakeGame({ onBackToHub }: SnakeGameProps) {
           drawSnack(snackRef.current);
           if (bonusSnackRef.current) drawSnack(bonusSnackRef.current);
 
-          // Snake Body - Smooth Friendly Garden Serpent
+          // Snake Body - Smooth Gradient Thick-to-Thin Body
           const isGhost = Date.now() < ghostUntilRef.current;
           const snake = snakeRef.current;
 
-          snake.forEach((part, index) => {
-            const px = part.x * cellSize;
-            const py = part.y * cellSize;
-            const pad = 1.5;
+          // Pass 1: Draw continuous connected body segments (from tail to head)
+          for (let i = snake.length - 1; i >= 0; i--) {
+            const part = snake[i];
+            const px = part.x * cellSize + cellSize / 2;
+            const py = part.y * cellSize + cellSize / 2;
+
+            // Progressive taper ratio: 1.0 at head down to 0.62 at tail
+            const progress = snake.length > 1 ? i / (snake.length - 1) : 0;
+            const radius = (cellSize * 0.46) * (1 - progress * 0.38);
 
             ctx.save();
-            if (index === 0) {
-              // Cute Round Head
-              ctx.fillStyle = isGhost ? '#ec4899' : '#1d4ed8'; // Royal garden blue snake (or pink when ghost)
-              ctx.beginPath();
-              ctx.roundRect(px + pad, py + pad, cellSize - pad * 2, cellSize - pad * 2, 8);
-              ctx.fill();
 
-              // Big cartoon eyes
-              ctx.fillStyle = '#ffffff';
-              const eyeRadius = cellSize * 0.18;
-              let eye1X = px + cellSize * 0.32;
-              let eye1Y = py + cellSize * 0.32;
-              let eye2X = px + cellSize * 0.68;
-              let eye2Y = py + cellSize * 0.32;
-              let pupilDx = 0;
-              let pupilDy = 0;
-
-              if (dirRef.current === 'RIGHT') {
-                eye1X = px + cellSize * 0.7; eye1Y = py + cellSize * 0.3;
-                eye2X = px + cellSize * 0.7; eye2Y = py + cellSize * 0.7;
-                pupilDx = 1.5;
-              } else if (dirRef.current === 'LEFT') {
-                eye1X = px + cellSize * 0.3; eye1Y = py + cellSize * 0.3;
-                eye2X = px + cellSize * 0.3; eye2Y = py + cellSize * 0.7;
-                pupilDx = -1.5;
-              } else if (dirRef.current === 'UP') {
-                eye1X = px + cellSize * 0.3; eye1Y = py + cellSize * 0.3;
-                eye2X = px + cellSize * 0.7; eye2Y = py + cellSize * 0.3;
-                pupilDy = -1.5;
-              } else {
-                eye1X = px + cellSize * 0.3; eye1Y = py + cellSize * 0.7;
-                eye2X = px + cellSize * 0.7; eye2Y = py + cellSize * 0.7;
-                pupilDy = 1.5;
-              }
-
-              ctx.beginPath();
-              ctx.arc(eye1X, eye1Y, eyeRadius, 0, Math.PI * 2);
-              ctx.arc(eye2X, eye2Y, eyeRadius, 0, Math.PI * 2);
-              ctx.fill();
-
-              // Pupil
-              ctx.fillStyle = '#0f172a';
-              ctx.beginPath();
-              ctx.arc(eye1X + pupilDx, eye1Y + pupilDy, eyeRadius * 0.55, 0, Math.PI * 2);
-              ctx.arc(eye2X + pupilDx, eye2Y + pupilDy, eyeRadius * 0.55, 0, Math.PI * 2);
-              ctx.fill();
-
-              // Eye gleam
-              ctx.fillStyle = '#ffffff';
-              ctx.beginPath();
-              ctx.arc(eye1X + pupilDx - 0.8, eye1Y + pupilDy - 0.8, eyeRadius * 0.22, 0, Math.PI * 2);
-              ctx.arc(eye2X + pupilDx - 0.8, eye2Y + pupilDy - 0.8, eyeRadius * 0.22, 0, Math.PI * 2);
-              ctx.fill();
+            // Segment color interpolating smoothly along body
+            let segColor: string;
+            if (isGhost) {
+              segColor = `hsl(${320 + progress * 40}, 85%, ${60 - progress * 15}%)`;
             } else {
-              // Body segment with alternating friendly garden bands
-              const isEvenSeg = index % 2 === 0;
-              if (isGhost) {
-                ctx.fillStyle = isEvenSeg ? 'rgba(236, 72, 153, 0.75)' : 'rgba(244, 114, 182, 0.75)';
-              } else {
-                ctx.fillStyle = isEvenSeg ? '#2563eb' : '#3b82f6';
-              }
-
-              ctx.beginPath();
-              ctx.roundRect(px + pad, py + pad, cellSize - pad * 2, cellSize - pad * 2, index === snake.length - 1 ? 6 : 4);
-              ctx.fill();
-
-              // Cute belly scale stripe
-              ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
-              ctx.beginPath();
-              ctx.arc(px + cellSize / 2, py + cellSize / 2, cellSize * 0.16, 0, Math.PI * 2);
-              ctx.fill();
+              // Smooth gradient from emerald/cyan (#10b981) to lime (#84cc16)
+              segColor = `hsl(${155 - progress * 55}, 85%, ${48 + progress * 8}%)`;
             }
+
+            ctx.fillStyle = segColor;
+
+            // If not at head, connect smoothly to next segment (i-1) if adjacent
+            if (i > 0) {
+              const prev = snake[i - 1];
+              const ppx = prev.x * cellSize + cellSize / 2;
+              const ppy = prev.y * cellSize + cellSize / 2;
+
+              // Check if not wrapped across screen border
+              if (Math.abs(prev.x - part.x) <= 1 && Math.abs(prev.y - part.y) <= 1) {
+                const prevRadius = (cellSize * 0.46) * (1 - ((i - 1) / (snake.length - 1 || 1)) * 0.38);
+                ctx.strokeStyle = segColor;
+                ctx.lineWidth = (radius + prevRadius);
+                ctx.lineCap = 'round';
+                ctx.lineJoin = 'round';
+                ctx.beginPath();
+                ctx.moveTo(px, py);
+                ctx.lineTo(ppx, ppy);
+                ctx.stroke();
+              }
+            }
+
+            // Draw rounded segment body node
+            ctx.beginPath();
+            ctx.arc(px, py, radius, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Subtle 3D spine highlight
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.25)';
+            ctx.beginPath();
+            ctx.arc(px - radius * 0.25, py - radius * 0.25, radius * 0.35, 0, Math.PI * 2);
+            ctx.fill();
+
             ctx.restore();
-          });
+          }
+
+          // Pass 2: Draw Cute Head Details (eyes & tongue)
+          if (snake.length > 0) {
+            const head = snake[0];
+            const hx = head.x * cellSize + cellSize / 2;
+            const hy = head.y * cellSize + cellSize / 2;
+            const headRadius = cellSize * 0.46;
+
+            ctx.save();
+
+            // Big expressive cartoon eyes positioned based on direction
+            const eyeRadius = cellSize * 0.16;
+            let eye1X = hx - cellSize * 0.18;
+            let eye1Y = hy - cellSize * 0.18;
+            let eye2X = hx + cellSize * 0.18;
+            let eye2Y = hy - cellSize * 0.18;
+            let pDx = 0;
+            let pDy = 0;
+
+            if (dirRef.current === 'RIGHT') {
+              eye1X = hx + cellSize * 0.15; eye1Y = hy - cellSize * 0.18;
+              eye2X = hx + cellSize * 0.15; eye2Y = hy + cellSize * 0.18;
+              pDx = 1.2;
+            } else if (dirRef.current === 'LEFT') {
+              eye1X = hx - cellSize * 0.15; eye1Y = hy - cellSize * 0.18;
+              eye2X = hx - cellSize * 0.15; eye2Y = hy + cellSize * 0.18;
+              pDx = -1.2;
+            } else if (dirRef.current === 'UP') {
+              eye1X = hx - cellSize * 0.18; eye1Y = hy - cellSize * 0.15;
+              eye2X = hx + cellSize * 0.18; eye2Y = hy - cellSize * 0.15;
+              pDy = -1.2;
+            } else {
+              eye1X = hx - cellSize * 0.18; eye1Y = hy + cellSize * 0.15;
+              eye2X = hx + cellSize * 0.18; eye2Y = hy + cellSize * 0.15;
+              pDy = 1.2;
+            }
+
+            // Eye whites
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(eye1X, eye1Y, eyeRadius, 0, Math.PI * 2);
+            ctx.arc(eye2X, eye2Y, eyeRadius, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Eye pupils
+            ctx.fillStyle = '#0f172a';
+            ctx.beginPath();
+            ctx.arc(eye1X + pDx, eye1Y + pDy, eyeRadius * 0.58, 0, Math.PI * 2);
+            ctx.arc(eye2X + pDx, eye2Y + pDy, eyeRadius * 0.58, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Eye gleam highlights
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(eye1X + pDx - 0.7, eye1Y + pDy - 0.7, eyeRadius * 0.24, 0, Math.PI * 2);
+            ctx.arc(eye2X + pDx - 0.7, eye2Y + pDy - 0.7, eyeRadius * 0.24, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.restore();
+          }
 
           // Particles
           particlesRef.current.forEach((p, idx) => {

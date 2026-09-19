@@ -532,66 +532,74 @@ export default function DotsAndBoxesGame({ onBackToHub }: DotsAndBoxesProps) {
                             className="w-full h-full block"
                             viewBox={`-20 -20 ${(gridSize * 100) + 40} ${(gridSize * 100) + 40}`}
                         >
-                            {/* 1. Claimed Box Fills: Simply filled with owner's color, NO letters inside */}
+                            <defs>
+                                <filter id="glow-blue" x="-20%" y="-20%" width="140%" height="140%">
+                                    <feDropShadow dx="0" dy="0" stdDeviation="3" floodColor="#38bdf8" floodOpacity="0.8" />
+                                </filter>
+                                <filter id="glow-red" x="-20%" y="-20%" width="140%" height="140%">
+                                    <feDropShadow dx="0" dy="0" stdDeviation="3" floodColor="#f43f5e" floodOpacity="0.8" />
+                                </filter>
+                            </defs>
+
+                            {/* 1. Claimed Box Fills: Beautiful colored smooth box fills */}
                             {boxes.map((row, r) =>
                                 row.map((owner, c) => {
                                     if (!owner) return null;
                                     return (
                                         <rect
                                             key={`box-${r}-${c}`}
-                                            x={c * 100 + 4}
-                                            y={r * 100 + 4}
-                                            width={92}
-                                            height={92}
-                                            rx={8}
-                                            fill={owner === 'blue' ? 'rgba(14, 165, 233, 0.82)' : 'rgba(244, 63, 94, 0.82)'}
+                                            x={c * 100 + 6}
+                                            y={r * 100 + 6}
+                                            width={88}
+                                            height={88}
+                                            rx={10}
+                                            fill={owner === 'blue' ? 'rgba(14, 165, 233, 0.85)' : 'rgba(244, 63, 94, 0.85)'}
+                                            stroke={owner === 'blue' ? '#38bdf8' : '#fb7185'}
+                                            strokeWidth={1.5}
                                             className="transition-all duration-300 ease-out"
                                         />
                                     );
                                 })
                             )}
 
-                            {/* 2. Horizontal Lines: Blue for Player, Red for Bot */}
+                            {/* 2. Horizontal Lines */}
                             {hLines.map((row, r) =>
                                 row.map((lineOwner, c) => {
                                     const isDrawn = lineOwner !== null;
                                     return (
                                         <g key={`h-${r}-${c}`}>
-                                            {/* Hit target for touch & click */}
                                             <rect
                                                 x={c * 100}
                                                 y={r * 100 - 15}
                                                 width={100}
                                                 height={30}
                                                 fill="transparent"
-                                                className={`cursor-pointer ${!isDrawn ? 'group' : ''}`}
+                                                className={`cursor-pointer ${!isDrawn ? 'hover:opacity-80' : ''}`}
                                                 onClick={() => handleLineClick('h', r, c)}
                                             />
-                                            {/* Line Rendering */}
                                             <line
-                                                x1={c * 100 + 6}
+                                                x1={c * 100 + 7}
                                                 y1={r * 100}
-                                                x2={(c + 1) * 100 - 6}
+                                                x2={(c + 1) * 100 - 7}
                                                 y2={r * 100}
                                                 stroke={
                                                     lineOwner === 'blue'
                                                         ? '#38bdf8'
                                                         : lineOwner === 'red'
                                                         ? '#f43f5e'
-                                                        : 'rgba(255, 255, 255, 0.14)'
+                                                        : 'rgba(255, 255, 255, 0.12)'
                                                 }
-                                                strokeWidth={isDrawn ? 6.5 : 3.5}
+                                                strokeWidth={isDrawn ? 7 : 3.5}
                                                 strokeLinecap="round"
-                                                className={`pointer-events-none transition-all duration-200 ${
-                                                    !isDrawn ? 'hover:stroke-sky-400' : ''
-                                                }`}
+                                                filter={isDrawn ? (lineOwner === 'blue' ? 'url(#glow-blue)' : 'url(#glow-red)') : undefined}
+                                                className="pointer-events-none transition-all duration-200"
                                             />
                                         </g>
                                     );
                                 })
                             )}
 
-                            {/* 3. Vertical Lines: Blue for Player, Red for Bot */}
+                            {/* 3. Vertical Lines */}
                             {vLines.map((row, r) =>
                                 row.map((lineOwner, c) => {
                                     const isDrawn = lineOwner !== null;
@@ -603,26 +611,25 @@ export default function DotsAndBoxesGame({ onBackToHub }: DotsAndBoxesProps) {
                                                 width={30}
                                                 height={100}
                                                 fill="transparent"
-                                                className={`cursor-pointer ${!isDrawn ? 'group' : ''}`}
+                                                className={`cursor-pointer ${!isDrawn ? 'hover:opacity-80' : ''}`}
                                                 onClick={() => handleLineClick('v', r, c)}
                                             />
                                             <line
                                                 x1={c * 100}
-                                                y1={r * 100 + 6}
+                                                y1={r * 100 + 7}
                                                 x2={c * 100}
-                                                y2={(r + 1) * 100 - 6}
+                                                y2={(r + 1) * 100 - 7}
                                                 stroke={
                                                     lineOwner === 'blue'
                                                         ? '#38bdf8'
                                                         : lineOwner === 'red'
                                                         ? '#f43f5e'
-                                                        : 'rgba(255, 255, 255, 0.14)'
+                                                        : 'rgba(255, 255, 255, 0.12)'
                                                 }
-                                                strokeWidth={isDrawn ? 6.5 : 3.5}
+                                                strokeWidth={isDrawn ? 7 : 3.5}
                                                 strokeLinecap="round"
-                                                className={`pointer-events-none transition-all duration-200 ${
-                                                    !isDrawn ? 'hover:stroke-sky-400' : ''
-                                                }`}
+                                                filter={isDrawn ? (lineOwner === 'blue' ? 'url(#glow-blue)' : 'url(#glow-red)') : undefined}
+                                                className="pointer-events-none transition-all duration-200"
                                             />
                                         </g>
                                     );
@@ -638,9 +645,9 @@ export default function DotsAndBoxesGame({ onBackToHub }: DotsAndBoxesProps) {
                                         cy={r * 100}
                                         r={6.5}
                                         fill="#fbbf24"
-                                        stroke="#09090b"
+                                        stroke="#1e1e24"
                                         strokeWidth={2}
-                                        className="drop-shadow-md pointer-events-none"
+                                        className="pointer-events-none"
                                     />
                                 ))
                             )}
