@@ -29,6 +29,11 @@ export default function DotsAndBoxesGame({ onBackToHub }: DotsAndBoxesProps) {
     const [redScore, setRedScore] = useState(0);
     const [winner, setWinner] = useState<PlayerColor | 'tie' | null>(null);
 
+    // Auto-fill state
+    const [autoFillEnabled, setAutoFillEnabled] = useState(true);
+    const [isAutoFilling, setIsAutoFilling] = useState(false);
+    const autoFillTimerRef = useRef<NodeJS.Timeout | null>(null);
+
     // Dynamic auto-resizing
     const boardContainerRef = useRef<HTMLDivElement>(null);
     const [boardDim, setBoardDim] = useState<number>(360);
@@ -51,6 +56,12 @@ export default function DotsAndBoxesGame({ onBackToHub }: DotsAndBoxesProps) {
 
     // Initialize/reset board
     const initBoard = useCallback((size: number) => {
+        if (autoFillTimerRef.current) {
+            clearTimeout(autoFillTimerRef.current);
+            autoFillTimerRef.current = null;
+        }
+        setIsAutoFilling(false);
+
         const newH = Array(size + 1).fill(null).map(() => Array(size).fill(null));
         const newV = Array(size).fill(null).map(() => Array(size + 1).fill(null));
         const newB = Array(size).fill(null).map(() => Array(size).fill(null));
@@ -63,6 +74,12 @@ export default function DotsAndBoxesGame({ onBackToHub }: DotsAndBoxesProps) {
         setTurn('blue');
         setWinner(null);
         setIsBotThinking(false);
+    }, []);
+
+    useEffect(() => {
+        return () => {
+            if (autoFillTimerRef.current) clearTimeout(autoFillTimerRef.current);
+        };
     }, []);
 
     useEffect(() => {
@@ -80,6 +97,48 @@ export default function DotsAndBoxesGame({ onBackToHub }: DotsAndBoxesProps) {
         return count;
     };
 
+    // Check whether box (r, c) is orthogonally connected to at least one box already claimed by targetColor
+    const isConnectedToColor = (
+        r: number,
+        c: number,
+        b: (PlayerColor | null)[][],
+        targetColor: PlayerColor,
+        size: number
+    ): boolean => {
+        if (r > 0 && b[r - 1][c] === targetColor) return true;
+        if (r < size - 1 && b[r + 1][c] === targetColor) return true;
+        if (c > 0 && b[r][c - 1] === targetColor) return true;
+        if (c < size - 1 && b[r][c + 1] === targetColor) return true;
+        return false;
+    };
+
+    // Find the next smart line to auto-fill:
+    // 1. Box must NOT be filled yet
+    // 2. Box must have EXACTLY 3 sides completed (guarantees placing the line will fill the box)
+    // 3. Box MUST be connected to an already filled box of the SAME color
+    const findSmartAutoFillLine = (
+        h: (PlayerColor | null)[][],
+        v: (PlayerColor | null)[][],
+        b: (PlayerColor | null)[][],
+        targetColor: PlayerColor,
+        size: number
+    ): { type: 'h' | 'v'; r: number; c: number } | null => {
+        for (let r = 0; r < size; r++) {
+            for (let c = 0; c < size; c++) {
+                if (b[r][c] !== null) continue;
+                if (countBoxSides(r, c, h, v) !== 3) continue;
+                if (!isConnectedToColor(r, c, b, targetColor, size)) continue;
+
+                // Return the single missing line that completes this box
+                if (!h[r]?.[c]) return { type: 'h', r, c };
+                if (!h[r + 1]?.[c]) return { type: 'h', r: r + 1, c };
+                if (!v[r]?.[c]) return { type: 'v', r, c };
+                if (!v[r]?.[c + 1]) return { type: 'v', r, c: c + 1 };
+            }
+        }
+        return null;
+    };
+
     // Check which boxes were completed by drawing a line
     const checkNewlyCompletedBoxes = (
         type: 'h' | 'v',
@@ -92,7 +151,6 @@ export default function DotsAndBoxesGame({ onBackToHub }: DotsAndBoxesProps) {
         const completed: { r: number; c: number }[] = [];
 
         if (type === 'h') {
-            // Can affect box above (r - 1, c) and box below (r, c)
             if (r > 0 && !b[r - 1][c] && countBoxSides(r - 1, c, h, v) === 4) {
                 completed.push({ r: r - 1, c });
             }
@@ -100,7 +158,6 @@ export default function DotsAndBoxesGame({ onBackToHub }: DotsAndBoxesProps) {
                 completed.push({ r, c });
             }
         } else {
-            // Can affect box left (r, c - 1) and box right (r, c)
             if (c > 0 && !b[r][c - 1] && countBoxSides(r, c - 1, h, v) === 4) {
                 completed.push({ r, c: c - 1 });
             }
@@ -110,6 +167,95 @@ export default function DotsAndBoxesGame({ onBackToHub }: DotsAndBoxesProps) {
         }
 
         return completed;
+    };
+
+    // Auto-fill chain execution
+    const triggerAutoFillSequence = (
+        startH: (PlayerColor | null)[][],
+        startV: (PlayerColor | null)[][],
+        startB: (PlayerColor | null)[][],
+        curBlue: number,
+        curRed: number,
+        activeColor: PlayerColor
+    ) => {
+        setIsAutoFilling(true);
+
+        const step = (
+            cH: (PlayerColor | null)[][],
+            cV: (PlayerColor | null)[][],
+            cB: (PlayerColor | null)[][],
+            bScore: number,
+            rScore: number
+        ) => {
+            const nextCandidate = findSmartAutoFillLine(cH, cV, cB, activeColor, gridSize);
+            if (!nextCandidate) {
+                setIsAutoFilling(false);
+                const total = gridSize * gridSize;
+                if (bScore + rScore === total) {
+                    if (bScore > rScore) {
+                        setWinner('blue');
+                        audioService.playSound('mine_win');
+                    } else if (rScore > bScore) {
+                        setWinner('red');
+                        audioService.playSound(gameMode === 'bot' ? 'failure' : 'mine_win');
+                    } else {
+                        setWinner('tie');
+                    }
+                }
+                return;
+            }
+
+            const nH = cH.map(row => [...row]);
+            const nV = cV.map(row => [...row]);
+            const nB = cB.map(row => [...row]);
+
+            if (nextCandidate.type === 'h') nH[nextCandidate.r][nextCandidate.c] = activeColor;
+            else nV[nextCandidate.r][nextCandidate.c] = activeColor;
+
+            audioService.playSound('piece_drop');
+
+            const completed = checkNewlyCompletedBoxes(nextCandidate.type, nextCandidate.r, nextCandidate.c, nH, nV, nB);
+            let nb = bScore;
+            let nr = rScore;
+
+            if (completed.length > 0) {
+                audioService.playSound('powerup');
+                for (const box of completed) {
+                    nB[box.r][box.c] = activeColor;
+                    if (activeColor === 'blue') nb++;
+                    else nr++;
+                }
+            }
+
+            setHLines(nH);
+            setVLines(nV);
+            setBoxes(nB);
+            setBlueScore(nb);
+            setRedScore(nr);
+
+            const total = gridSize * gridSize;
+            if (nb + nr === total) {
+                setIsAutoFilling(false);
+                if (nb > nr) {
+                    setWinner('blue');
+                    audioService.playSound('mine_win');
+                } else if (nr > nb) {
+                    setWinner('red');
+                    audioService.playSound(gameMode === 'bot' ? 'failure' : 'mine_win');
+                } else {
+                    setWinner('tie');
+                }
+                return;
+            }
+
+            autoFillTimerRef.current = setTimeout(() => {
+                step(nH, nV, nB, nb, nr);
+            }, 120);
+        };
+
+        autoFillTimerRef.current = setTimeout(() => {
+            step(startH, startV, startB, curBlue, curRed);
+        }, 120);
     };
 
     // Make a move
@@ -162,11 +308,20 @@ export default function DotsAndBoxesGame({ onBackToHub }: DotsAndBoxesProps) {
             return;
         }
 
+        // Auto-fill logic for connected lines of boxes
+        if (completed.length > 0 && autoFillEnabled && (gameMode === 'pvp' || activeTurn === 'blue')) {
+            const hasAutoFillChain = findSmartAutoFillLine(nextH, nextV, nextB, activeTurn, gridSize);
+            if (hasAutoFillChain) {
+                triggerAutoFillSequence(nextH, nextV, nextB, newBlueScore, newRedScore, activeTurn);
+                return;
+            }
+        }
+
         // Turn logic: if a box was completed, player gets another turn!
         if (completed.length === 0) {
             setTurn(prev => (prev === 'blue' ? 'red' : 'blue'));
         }
-    }, [hLines, vLines, boxes, blueScore, redScore, gridSize, gameMode]);
+    }, [hLines, vLines, boxes, blueScore, redScore, gridSize, gameMode, autoFillEnabled]);
 
     // Bot AI move calculation (Bot plays Red)
     const makeBotMove = useCallback(() => {
@@ -271,7 +426,7 @@ export default function DotsAndBoxesGame({ onBackToHub }: DotsAndBoxesProps) {
     }, [turn, gameMode, winner, isBotThinking, makeBotMove]);
 
     const handleLineClick = (type: 'h' | 'v', r: number, c: number) => {
-        if (winner) return;
+        if (winner || isAutoFilling) return;
         if (gameMode === 'bot' && (turn === 'red' || isBotThinking)) return;
         makeMove(type, r, c, turn);
     };
@@ -309,15 +464,31 @@ export default function DotsAndBoxesGame({ onBackToHub }: DotsAndBoxesProps) {
                     ))}
                 </div>
 
-                {/* Mode Selector & Reset */}
-                <div className="flex items-center gap-2">
+                {/* Auto-Fill Toggle, Mode Selector & Reset */}
+                <div className="flex items-center gap-1.5 sm:gap-2">
+                    <button
+                        onClick={() => setAutoFillEnabled(prev => !prev)}
+                        className={`px-2 sm:px-3 py-1.5 rounded-xl border text-[10px] sm:text-xs font-bold transition-all flex items-center gap-1 shadow-sm ${
+                            autoFillEnabled
+                                ? 'bg-sky-500/20 border-sky-400/80 text-sky-300 shadow-[0_0_10px_rgba(56,189,248,0.25)]'
+                                : 'bg-neutral-900 hover:bg-neutral-800 border-neutral-700 text-neutral-400'
+                        }`}
+                        title="Automatically fill connected boxes in a chain"
+                    >
+                        <span>⚡</span>
+                        <span className="hidden md:inline">Auto-Fill:</span>
+                        <span className={autoFillEnabled ? 'text-sky-400 font-black' : 'text-neutral-500'}>
+                            {autoFillEnabled ? 'ON' : 'OFF'}
+                        </span>
+                    </button>
+
                     <button
                         onClick={() => {
                             const nextM = gameMode === 'bot' ? 'pvp' : 'bot';
                             setGameMode(nextM);
                             initBoard(gridSize);
                         }}
-                        className="px-2.5 sm:px-3 py-1.5 bg-neutral-900 hover:bg-neutral-800 border border-neutral-700 rounded-xl text-xs font-bold transition-transform active:scale-95"
+                        className="px-2 sm:px-3 py-1.5 bg-neutral-900 hover:bg-neutral-800 border border-neutral-700 rounded-xl text-[10px] sm:text-xs font-bold transition-transform active:scale-95"
                     >
                         {gameMode === 'bot' ? '🤖 vs Bot' : '👥 2-Player'}
                     </button>
@@ -348,6 +519,14 @@ export default function DotsAndBoxesGame({ onBackToHub }: DotsAndBoxesProps) {
                     </div>
 
                     <div className="hidden md:block text-neutral-600 font-bold text-xs uppercase tracking-widest text-center">VS</div>
+
+                    {/* Auto-Filling In Progress Indicator */}
+                    {isAutoFilling && (
+                        <div className="w-full text-center px-2 py-1 bg-sky-500/20 border border-sky-400/50 rounded-lg text-[10px] text-sky-300 font-bold animate-pulse flex items-center justify-center gap-1 shadow-sm">
+                            <span>⚡</span>
+                            <span>Auto-Filling Chain...</span>
+                        </div>
+                    )}
 
                     {/* Red Bot / Player 2 Card (Bot Lines) */}
                     <div className={`flex items-center gap-2.5 p-2 rounded-xl border transition-all flex-1 md:w-full ${turn === 'red' && !winner ? 'border-rose-500 bg-rose-500/15 shadow-md scale-[1.02]' : 'border-transparent'}`}>

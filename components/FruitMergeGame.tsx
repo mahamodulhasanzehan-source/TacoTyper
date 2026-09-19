@@ -29,17 +29,14 @@ export const FRUIT_TYPES: FruitDef[] = [
 export const FruitSVG: React.FC<{ tier: number; size?: number; className?: string }> = ({ tier, size, className = '' }) => {
     const fruit = FRUIT_TYPES[Math.min(tier, FRUIT_TYPES.length - 1)];
     const s = size || fruit.radius * 2;
-    const fontSize = Math.max(12, Math.round(s * 0.65));
+    const fontSize = Math.max(14, Math.round(s * 0.95));
 
     return (
         <div 
-            className={`relative rounded-full flex items-center justify-center shrink-0 select-none shadow-md ${className}`}
+            className={`relative flex items-center justify-center shrink-0 select-none ${className}`}
             style={{ 
                 width: `${s}px`, 
                 height: `${s}px`,
-                background: `radial-gradient(circle at 35% 35%, #ffffff 0%, ${fruit.color} 35%, ${fruit.accentColor} 100%)`,
-                border: '1.5px solid rgba(255,255,255,0.4)',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.35)'
             }}
         >
             <span 
@@ -415,29 +412,11 @@ export default function FruitMergeGame({ onBackToHub }: FruitMergeGameProps) {
                 ctx.restore();
             }
 
-            // 4. Draw Fruits
+            // 4. Draw Fruits (Invisible circular hitbox matching emoji visual size, no surrounding circle)
             for (const f of fruitsRef.current) {
-                const def = FRUIT_TYPES[f.tier];
                 ctx.save();
                 ctx.translate(f.x, f.y);
-
-                // Circular hitbox fill gradient
-                const grad = ctx.createRadialGradient(-f.r * 0.3, -f.r * 0.3, f.r * 0.1, 0, 0, f.r);
-                grad.addColorStop(0, '#ffffff');
-                grad.addColorStop(0.3, def.color);
-                grad.addColorStop(1, def.accentColor);
-
-                ctx.beginPath();
-                ctx.arc(0, 0, f.r, 0, Math.PI * 2);
-                ctx.fillStyle = grad;
-                ctx.fill();
-                ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
-                ctx.lineWidth = Math.max(1.5, f.r * 0.05);
-                ctx.stroke();
-
-                // Cute fruit face & characteristics
-                drawFruitFace(ctx, f.tier, f.r);
-
+                drawFruitEmoji(ctx, f.tier, f.r);
                 ctx.restore();
             }
 
@@ -446,21 +425,7 @@ export default function FruitMergeGame({ onBackToHub }: FruitMergeGameProps) {
                 const activeDef = FRUIT_TYPES[currentTier];
                 ctx.save();
                 ctx.translate(dropX, SPAWN_Y);
-
-                const grad = ctx.createRadialGradient(-activeDef.radius * 0.3, -activeDef.radius * 0.3, activeDef.radius * 0.1, 0, 0, activeDef.radius);
-                grad.addColorStop(0, '#ffffff');
-                grad.addColorStop(0.3, activeDef.color);
-                grad.addColorStop(1, activeDef.accentColor);
-
-                ctx.beginPath();
-                ctx.arc(0, 0, activeDef.radius, 0, Math.PI * 2);
-                ctx.fillStyle = grad;
-                ctx.fill();
-                ctx.strokeStyle = '#ffffff';
-                ctx.lineWidth = 2;
-                ctx.stroke();
-
-                drawFruitFace(ctx, currentTier, activeDef.radius);
+                drawFruitEmoji(ctx, currentTier, activeDef.radius);
                 ctx.restore();
             }
 
@@ -492,29 +457,21 @@ export default function FruitMergeGame({ onBackToHub }: FruitMergeGameProps) {
         return () => cancelAnimationFrame(animationFrameId);
     }, [currentTier, dropX]);
 
-    // Canvas fruit emoji rendering
-    const drawFruitFace = (ctx: CanvasRenderingContext2D, tier: number, r: number) => {
+    // Canvas fruit emoji rendering matching the invisible circular physics hitbox exactly
+    const drawFruitEmoji = (ctx: CanvasRenderingContext2D, tier: number, r: number) => {
         const def = FRUIT_TYPES[tier];
         if (!def) return;
 
-        // Soft top-left gloss shine
-        ctx.save();
-        ctx.beginPath();
-        ctx.ellipse(-r * 0.35, -r * 0.35, r * 0.28, r * 0.16, -Math.PI / 4, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.45)';
-        ctx.fill();
-        ctx.restore();
-
-        // Fruit emoji centered inside the circular hitbox
         ctx.save();
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        const fontSize = Math.max(14, Math.round(r * 1.25));
+        // Size emoji so its glyph boundary matches the physics circle (diameter 2*r) exactly
+        const fontSize = Math.max(16, Math.round(r * 2.05));
         ctx.font = `${fontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif`;
-        ctx.shadowColor = 'rgba(0, 0, 0, 0.25)';
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.22)';
         ctx.shadowBlur = 4;
-        ctx.shadowOffsetY = 2;
-        ctx.fillText(def.emoji, 0, r * 0.04);
+        ctx.shadowOffsetY = 1;
+        ctx.fillText(def.emoji, 0, 0);
         ctx.restore();
     };
 

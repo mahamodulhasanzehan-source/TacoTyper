@@ -8,6 +8,7 @@ export interface WordEntity {
   x: number;
   y: number;
   typed: string;
+  speed: number;
 }
 
 export type GameScreen = 
@@ -36,6 +37,8 @@ export interface LevelConfig {
   words: string[];
   traps: string[];
   emoji: string;
+  speed?: number;
+  spawnRate?: number;
 }
 
 export interface InfiniteConfig {
@@ -72,6 +75,22 @@ export interface LeaderboardEntry {
   accuracy?: number; // Specific for Speed Test
 }
 
+export type AppId = 
+  | 'taco'
+  | 'iq'
+  | 'mine'
+  | 'wordle'
+  | 'angle'
+  | 'more-less'
+  | 'spelling-bee'
+  | 'tic-tac-toe'
+  | 'connect-4'
+  | 'color-memory'
+  | 'particle-physics'
+  | 'fruit-merge'
+  | 'checkers'
+  | 'dots-and-boxes';
+
 export type ActiveApp = 
   | 'hub'
   | 'taco'
@@ -82,7 +101,6 @@ export type ActiveApp =
   | 'spelling-bee'
   | 'tic-tac-toe'
   | 'connect-4'
-  | 'gun-game'
   | 'color-memory'
   | 'particle-physics'
   | 'fruit-merge'
@@ -98,9 +116,9 @@ export interface GlobalGameStats {
   spelling_bee_plays: number;
   tic_tac_toe_plays: number;
   connect_4_plays: number;
-  gun_game_plays: number;
   color_memory_plays: number;
   particle_physics_plays: number;
+  gun_game_plays?: number;
   more_less_plays?: number;
   fruit_merge_plays?: number;
   checkers_plays?: number;

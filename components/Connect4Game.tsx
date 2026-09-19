@@ -368,11 +368,12 @@ export default function Connect4Game({ user, onBackToHub, username }: Connect4Ga
                 {/* Arcade Style Connect 4 Board */}
                 <div className="flex flex-col items-center justify-center z-10 max-w-full px-2">
                     <div 
-                        className="bg-gradient-to-b from-blue-600 to-blue-800 p-2 min-[400px]:p-3 sm:p-4 md:p-5 rounded-2xl sm:rounded-3xl flex flex-col gap-1 sm:gap-2 md:gap-2.5 shadow-[0_15px_35px_rgba(30,64,175,0.45)] border-2 sm:border-4 border-blue-400/40 relative max-w-full"
+                        className="bg-gradient-to-b from-blue-600 to-blue-800 p-2 min-[400px]:p-3 sm:p-4 md:p-5 rounded-2xl sm:rounded-3xl flex flex-col gap-1 sm:gap-2 md:gap-2.5 shadow-[0_15px_35px_rgba(30,64,175,0.45)] border-2 sm:border-4 border-blue-400/40 relative max-w-full overflow-hidden"
                         onMouseLeave={() => setHoveredCol(null)}
                     >
+                        {/* 1. Underlying Slots & Dropping Pieces Layer (z-10) */}
                         {board.map((row, rIdx) => (
-                            <div key={rIdx} className="flex gap-1 sm:gap-2 md:gap-2.5">
+                            <div key={rIdx} className="flex gap-1 sm:gap-2 md:gap-2.5 relative z-10">
                                 {row.map((cell, cIdx) => {
                                     const isDropTarget = lastDrop?.r === rIdx && lastDrop?.c === cIdx;
                                     const dropDistance = `calc(-${(rIdx + 1) * 115}% - ${(rIdx + 1) * 10}px)`;
@@ -387,7 +388,7 @@ export default function Connect4Game({ user, onBackToHub, username }: Connect4Ga
                                             {cell && (
                                                 <div 
                                                     style={isDropTarget ? { ['--drop-y' as any]: dropDistance } : undefined}
-                                                    className={`w-full h-full rounded-full shadow-[inset_0_-4px_6px_rgba(0,0,0,0.4),0_2px_8px_rgba(0,0,0,0.5)] ${
+                                                    className={`w-full h-full rounded-full shadow-[inset_0_-4px_6px_rgba(0,0,0,0.4),0_2px_8px_rgba(0,0,0,0.5)] z-10 ${
                                                         isDropTarget ? 'animate-drop' : ''
                                                     } ${
                                                         cell === 'R' 
@@ -401,6 +402,20 @@ export default function Connect4Game({ user, onBackToHub, username }: Connect4Ga
                                 })}
                             </div>
                         ))}
+
+                        {/* 2. Board Front Face Overlay with Higher z-index (z-20) so pieces fall behind the board */}
+                        <div className="absolute inset-0 p-2 min-[400px]:p-3 sm:p-4 md:p-5 flex flex-col gap-1 sm:gap-2 md:gap-2.5 pointer-events-none z-20">
+                            {board.map((row, rIdx) => (
+                                <div key={rIdx} className="flex gap-1 sm:gap-2 md:gap-2.5">
+                                    {row.map((_, cIdx) => (
+                                        <div 
+                                            key={cIdx}
+                                            className="w-[min(10.5vw,42px)] h-[min(10.5vw,42px)] min-w-[28px] min-h-[28px] sm:w-12 sm:h-12 md:w-16 md:h-16 rounded-full ring-[8px] sm:ring-[14px] md:ring-[18px] ring-blue-700 shadow-[inset_0_3px_6px_rgba(0,0,0,0.45)]"
+                                        />
+                                    ))}
+                                </div>
+                            ))}
+                        </div>
                     </div>
 
                     {gameOver && (

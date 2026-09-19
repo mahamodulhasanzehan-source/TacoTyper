@@ -5,24 +5,12 @@ import { User, getGlobalGameStats } from '../services/firebase';
 import { RandomReveal, RandomText } from './Visuals';
 import { SettingsModal as SharedSettingsModal, FriendsModal } from './Overlays'; 
 import { isMobileDevice } from '../utils/device';
-import { GlobalGameStats } from '../types';
+import { GlobalGameStats, AppId } from '../types';
+import { GAMES_REGISTRY } from './games.config';
 
 interface HubScreenProps {
     user: User;
-    onLaunchGame: () => void;
-    onLaunchIQ: () => void;
-    onLaunchMinesweeper: () => void;
-    onLaunchWordle: () => void;
-    onLaunchAngle: () => void;
-    onLaunchSpellingBee: () => void;
-    onLaunchTicTacToe: () => void;
-    onLaunchConnect4: () => void;
-    onLaunchGunGame: () => void;
-    onLaunchColorMemory: () => void;
-    onLaunchParticlePhysics: () => void;
-    onLaunchFruitMerge: () => void;
-    onLaunchCheckers: () => void;
-    onLaunchDotsAndBoxes: () => void;
+    onLaunchGame: (appId: AppId) => void;
     onLogout: () => void;
     username?: string | null;
     onUpdateUsername: (name: string) => void;
@@ -44,19 +32,6 @@ interface GameCard {
 const HubScreen: React.FC<HubScreenProps> = ({ 
     user, 
     onLaunchGame, 
-    onLaunchIQ, 
-    onLaunchMinesweeper, 
-    onLaunchWordle, 
-    onLaunchAngle, 
-    onLaunchSpellingBee, 
-    onLaunchTicTacToe, 
-    onLaunchConnect4, 
-    onLaunchGunGame, 
-    onLaunchColorMemory, 
-    onLaunchParticlePhysics, 
-    onLaunchFruitMerge,
-    onLaunchCheckers,
-    onLaunchDotsAndBoxes,
     onLogout, 
     username, 
     onUpdateUsername,
@@ -81,167 +56,21 @@ const HubScreen: React.FC<HubScreenProps> = ({
     }, []);
 
     useEffect(() => {
-        const games: GameCard[] = [
-            {
-                id: 'taco',
-                title: 'Taco Typer',
-                description: 'The Original Typing Challenge',
-                icon: '🌮',
-                color: '#ff9900',
-                accentGlow: 'rgba(255, 153, 0, 0.5)',
-                tag: 'TYPING',
-                plays: stats.taco_typer_plays,
-                action: onLaunchGame
-            },
-            {
-                id: 'iq',
-                title: 'IQ Test',
-                description: 'Logic & Patterns Assessment',
-                icon: '🧠',
-                color: '#00d0ff',
-                accentGlow: 'rgba(0, 208, 255, 0.5)',
-                tag: 'BRAIN',
-                plays: stats.iq_test_plays,
-                action: onLaunchIQ
-            },
-            {
-                id: 'mine',
-                title: 'Minesweeper',
-                description: 'Classic Strategic Survival',
-                icon: '💣',
-                color: '#00ff66',
-                accentGlow: 'rgba(0, 255, 102, 0.5)',
-                tag: 'SURVIVAL',
-                plays: stats.minesweeper_plays,
-                action: onLaunchMinesweeper
-            },
-            {
-                id: 'wordle',
-                title: 'Wordle',
-                description: 'Guess the Hidden Word',
-                icon: '📝',
-                color: '#bbf000',
-                accentGlow: 'rgba(187, 240, 0, 0.5)',
-                tag: 'WORD PUZZLE',
-                plays: stats.wordle_plays || 0,
-                action: onLaunchWordle
-            },
-            {
-                id: 'angle',
-                title: 'Angle',
-                description: 'Estimate the Angle',
-                icon: '📐',
-                color: '#ff1493',
-                accentGlow: 'rgba(255, 20, 147, 0.5)',
-                tag: 'GEOMETRY',
-                plays: stats.angle_plays || 0,
-                action: onLaunchAngle
-            },
-            {
-                id: 'spellingbee',
-                title: 'Spelling Bee',
-                description: 'Listen and Spell',
-                icon: '🐝',
-                color: '#ffd000',
-                accentGlow: 'rgba(255, 208, 0, 0.5)',
-                tag: 'VOCABULARY',
-                plays: stats.spelling_bee_plays || 0,
-                action: onLaunchSpellingBee
-            },
-            {
-                id: 'tictactoe',
-                title: 'Tic Tac Toe',
-                description: 'Classic 3x3 Strategy',
-                icon: '❌',
-                color: '#7b61ff',
-                accentGlow: 'rgba(123, 97, 255, 0.5)',
-                tag: 'CLASSIC',
-                plays: stats.tic_tac_toe_plays || 0,
-                action: onLaunchTicTacToe
-            },
-            {
-                id: 'connect4',
-                title: 'Connect 4',
-                description: 'Drop and Connect',
-                icon: '🔴',
-                color: '#ff2255',
-                accentGlow: 'rgba(255, 34, 85, 0.5)',
-                tag: 'STRATEGY',
-                plays: stats.connect_4_plays || 0,
-                action: onLaunchConnect4
-            },
-            {
-                id: 'gungame',
-                title: 'Gun Game',
-                description: '3D Target Practice',
-                icon: '🔫',
-                color: '#00f5d4',
-                accentGlow: 'rgba(0, 245, 212, 0.5)',
-                tag: '3D ACTION',
-                plays: stats.gun_game_plays || 0,
-                action: onLaunchGunGame
-            },
-            {
-                id: 'colormemory',
-                title: 'Color Memory',
-                description: 'Match the Target Color',
-                icon: '🎨',
-                color: '#d946ef',
-                accentGlow: 'rgba(217, 70, 239, 0.5)',
-                tag: 'MEMORY',
-                plays: stats.color_memory_plays || 0,
-                action: onLaunchColorMemory
-            },
-            {
-                id: 'particlephysics',
-                title: 'Particle Physics',
-                description: 'Flow & Collision Sim',
-                icon: '⚛️',
-                color: '#00f0ff',
-                accentGlow: 'rgba(0, 240, 255, 0.5)',
-                tag: 'SANDBOX',
-                plays: stats.particle_physics_plays || 0,
-                action: onLaunchParticlePhysics
-            },
-            {
-                id: 'fruitmerge',
-                title: 'Fruit Merge',
-                description: 'Suika Watermelon Evolution',
-                icon: '🍉',
-                color: '#10b981',
-                accentGlow: 'rgba(16, 185, 129, 0.5)',
-                tag: 'PHYSICS',
-                plays: stats.fruit_merge_plays || 0,
-                action: onLaunchFruitMerge
-            },
-            {
-                id: 'checkers',
-                title: 'Checkers',
-                description: 'Classic Strategy Draughts',
-                icon: '👑',
-                color: '#f43f5e',
-                accentGlow: 'rgba(244, 63, 94, 0.5)',
-                tag: 'BOARD',
-                plays: stats.checkers_plays || 0,
-                action: onLaunchCheckers
-            },
-            {
-                id: 'dotsandboxes',
-                title: 'Dots & Boxes',
-                description: 'Grid Line Capture Battle',
-                icon: '📦',
-                color: '#0ea5e9',
-                accentGlow: 'rgba(14, 165, 233, 0.5)',
-                tag: 'LOGIC',
-                plays: stats.dots_and_boxes_plays || 0,
-                action: onLaunchDotsAndBoxes
-            }
-        ];
+        const games: GameCard[] = GAMES_REGISTRY.map(game => ({
+            id: game.id,
+            title: game.title,
+            description: game.description,
+            icon: game.icon,
+            color: game.color,
+            accentGlow: game.accentGlow,
+            tag: game.tag,
+            plays: stats[game.statsKey] || 0,
+            action: () => onLaunchGame(game.id)
+        }));
 
         games.sort((a, b) => b.plays - a.plays);
         setSortedGames(games);
-
-    }, [stats, onLaunchGame, onLaunchIQ, onLaunchMinesweeper, onLaunchWordle, onLaunchAngle, onLaunchSpellingBee, onLaunchTicTacToe, onLaunchConnect4, onLaunchGunGame, onLaunchColorMemory, onLaunchParticlePhysics, onLaunchFruitMerge, onLaunchCheckers, onLaunchDotsAndBoxes, isMobile]);
+    }, [stats, onLaunchGame]);
 
     return (
         <div className="flex h-full w-full bg-[#000] text-white overflow-hidden relative font-['Press_Start_2P']">
@@ -338,7 +167,7 @@ const HubScreen: React.FC<HubScreenProps> = ({
                             key={`featured-${sortedGames[0].id}`} 
                             delay={0.25} 
                             distance={200}
-                            className="group relative w-full min-h-[86px] sm:min-h-[105px] text-white rounded-xl sm:rounded-2xl border-2 flex items-center p-2.5 sm:p-4.5 cursor-pointer transition-all duration-300 hover-scale shadow-2xl overflow-hidden backdrop-blur-md"
+                            className="group relative w-full min-h-[130px] sm:min-h-[160px] text-white rounded-xl sm:rounded-2xl border-2 flex items-center p-3.5 sm:p-6 cursor-pointer transition-all duration-300 hover-scale shadow-2xl overflow-hidden backdrop-blur-md"
                             style={{ 
                                 borderColor: sortedGames[0].color,
                                 background: `linear-gradient(135deg, ${sortedGames[0].color}25 0%, rgba(16, 16, 22, 0.88) 45%, rgba(0, 0, 0, 0.96) 100%)`,
@@ -361,7 +190,7 @@ const HubScreen: React.FC<HubScreenProps> = ({
 
                             {/* Crown / Top Badge */}
                             <div 
-                                className="absolute top-2 right-2.5 flex items-center gap-1 px-2 py-0.5 text-black text-[7px] sm:text-[8px] font-black rounded-full border border-black shadow-sm z-10"
+                                className="absolute top-2.5 right-3 flex items-center gap-1 px-2.5 py-0.5 text-black text-[8px] sm:text-[9px] font-black rounded-full border border-black shadow-sm z-10"
                                 style={{ backgroundColor: sortedGames[0].color }}
                             >
                                 <span>👑</span>
@@ -370,7 +199,7 @@ const HubScreen: React.FC<HubScreenProps> = ({
 
                             {/* Icon Frame */}
                             <div 
-                                className="w-11 h-11 sm:w-14 sm:h-14 md:w-16 md:h-16 rounded-xl border flex items-center justify-center text-2xl sm:text-4xl md:text-[40px] leading-none mr-2.5 sm:mr-4 group-hover:scale-105 transition-all duration-300 shrink-0 shadow-inner z-10"
+                                className="w-14 h-14 sm:w-18 sm:h-18 md:w-20 md:h-20 rounded-xl border flex items-center justify-center text-3xl sm:text-5xl md:text-[52px] leading-none mr-3 sm:mr-5 group-hover:scale-105 transition-all duration-300 shrink-0 shadow-inner z-10"
                                 style={{ 
                                     backgroundColor: `${sortedGames[0].color}28`,
                                     borderColor: sortedGames[0].color,
@@ -382,9 +211,9 @@ const HubScreen: React.FC<HubScreenProps> = ({
                             
                             {/* Middle Info */}
                             <div className="flex-1 flex flex-col justify-center min-w-0 z-10 pr-2">
-                                <div className="flex items-center gap-2 mb-0.5 sm:mb-1">
+                                <div className="flex items-center gap-2 mb-1 sm:mb-1.5">
                                     <span 
-                                        className="text-[7px] sm:text-[8px] font-black uppercase px-1.5 py-0.5 rounded border backdrop-blur-sm"
+                                        className="text-[7.5px] sm:text-[9px] font-black uppercase px-2 py-0.5 rounded border backdrop-blur-sm"
                                         style={{ 
                                             borderColor: sortedGames[0].color,
                                             backgroundColor: `${sortedGames[0].color}25`,
@@ -394,7 +223,7 @@ const HubScreen: React.FC<HubScreenProps> = ({
                                         {sortedGames[0].tag}
                                     </span>
                                     <div 
-                                        className="text-[7px] sm:text-[9px] font-bold flex items-center gap-1 font-mono"
+                                        className="text-[8px] sm:text-[10px] font-bold flex items-center gap-1 font-mono"
                                         style={{ color: sortedGames[0].color }}
                                     >
                                         <span 
@@ -405,19 +234,19 @@ const HubScreen: React.FC<HubScreenProps> = ({
                                     </div>
                                 </div>
                                 <h2 
-                                    className="text-xs sm:text-base md:text-lg text-white group-hover:text-[var(--accent-color)] transition-colors duration-300 leading-snug truncate font-black"
+                                    className="text-sm sm:text-lg md:text-xl text-white group-hover:text-[var(--accent-color)] transition-colors duration-300 leading-snug truncate font-black"
                                 >
                                     {sortedGames[0].title}
                                 </h2>
-                                <div className="text-[8px] sm:text-[10px] md:text-xs text-neutral-300 leading-tight font-sans font-medium line-clamp-1 mt-0.5">
+                                <div className="text-[9px] sm:text-xs text-neutral-300 leading-tight font-sans font-medium line-clamp-2 mt-1">
                                     {sortedGames[0].description}
                                 </div>
                             </div>
                             
                             {/* Play Action */}
-                            <div className="flex items-center shrink-0 z-10 pl-1">
+                            <div className="flex items-center shrink-0 z-10 pl-2">
                                 <span 
-                                    className="text-black font-black px-3 sm:px-4 py-1.5 sm:py-2 text-[9px] sm:text-xs rounded-lg sm:rounded-xl border shadow-md transition-all group-hover:scale-105 flex items-center gap-1"
+                                    className="text-black font-black px-3.5 sm:px-5 py-2 sm:py-2.5 text-[10px] sm:text-sm rounded-lg sm:rounded-xl border shadow-md transition-all group-hover:scale-105 flex items-center gap-1.5"
                                     style={{ 
                                         backgroundColor: sortedGames[0].color,
                                         borderColor: sortedGames[0].color,
@@ -425,7 +254,7 @@ const HubScreen: React.FC<HubScreenProps> = ({
                                     }}
                                 >
                                     <span>PLAY</span>
-                                    <span className="text-[8px] group-hover:translate-x-0.5 transition-transform">▶</span>
+                                    <span className="text-[9px] group-hover:translate-x-0.5 transition-transform">▶</span>
                                 </span>
                             </div>
                         </RandomReveal>
@@ -440,13 +269,13 @@ const HubScreen: React.FC<HubScreenProps> = ({
                             <span>ALL GAMES</span>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-2 sm:gap-3.5">
+                        <div className="grid grid-cols-2 gap-2.5 sm:gap-4">
                             {sortedGames.slice(1).map((game, index) => (
                                 <RandomReveal 
                                     key={game.id} 
                                     delay={0.3 + (index * 0.05)} 
                                     distance={200}
-                                    className="group relative w-full min-h-[76px] sm:min-h-[92px] text-white rounded-xl sm:rounded-2xl border-2 flex items-center p-2 sm:p-3.5 cursor-pointer transition-all duration-300 hover-scale shadow-lg overflow-hidden backdrop-blur-md"
+                                    className="group relative w-full min-h-[115px] sm:min-h-[140px] text-white rounded-xl sm:rounded-2xl border-2 flex items-center p-2.5 sm:p-4.5 cursor-pointer transition-all duration-300 hover-scale shadow-lg overflow-hidden backdrop-blur-md"
                                     style={{ 
                                         borderColor: `${game.color}99`,
                                         background: `linear-gradient(135deg, ${game.color}20 0%, rgba(12, 12, 16, 0.85) 45%, rgba(4, 4, 6, 0.96) 100%)`,
@@ -469,7 +298,7 @@ const HubScreen: React.FC<HubScreenProps> = ({
 
                                     {/* Left: Icon Frame */}
                                     <div 
-                                        className="w-8 h-8 sm:w-12 sm:h-12 md:w-13 md:h-13 rounded-lg sm:rounded-xl flex items-center justify-center border text-[20px] sm:text-[28px] md:text-[32px] leading-none mr-2 sm:mr-3 group-hover:scale-105 transition-transform duration-300 shadow-inner shrink-0 z-10"
+                                        className="w-11 h-11 sm:w-14 sm:h-14 md:w-16 md:h-16 rounded-lg sm:rounded-xl flex items-center justify-center border text-[24px] sm:text-[34px] md:text-[38px] leading-none mr-2 sm:mr-3.5 group-hover:scale-105 transition-transform duration-300 shadow-inner shrink-0 z-10"
                                         style={{ 
                                             backgroundColor: `${game.color}28`,
                                             borderColor: `${game.color}bb`,
@@ -481,9 +310,9 @@ const HubScreen: React.FC<HubScreenProps> = ({
 
                                     {/* Middle: Tag, Title, Description, Player Count */}
                                     <div className="flex-1 flex flex-col justify-center min-w-0 z-10 pr-1 sm:pr-2">
-                                        <div className="flex items-center gap-1 sm:gap-2 mb-0.5">
+                                        <div className="flex items-center gap-1 sm:gap-2 mb-0.5 sm:mb-1">
                                             <span 
-                                                className="text-[6.5px] sm:text-[8px] font-black tracking-wider uppercase px-1 sm:px-1.5 py-0.2 sm:py-0.5 rounded border backdrop-blur-sm truncate"
+                                                className="text-[7px] sm:text-[8px] font-black tracking-wider uppercase px-1.5 py-0.5 rounded border backdrop-blur-sm truncate"
                                                 style={{ 
                                                     borderColor: game.color,
                                                     backgroundColor: `${game.color}30`,
@@ -494,7 +323,7 @@ const HubScreen: React.FC<HubScreenProps> = ({
                                             </span>
 
                                             <div 
-                                                className="text-[6.5px] sm:text-[8px] font-bold flex items-center gap-0.5 sm:gap-1 font-mono shrink-0"
+                                                className="text-[7px] sm:text-[8.5px] font-bold flex items-center gap-0.5 sm:gap-1 font-mono shrink-0"
                                                 style={{ color: game.color }}
                                             >
                                                 <span 
@@ -506,12 +335,12 @@ const HubScreen: React.FC<HubScreenProps> = ({
                                         </div>
 
                                         <h2 
-                                            className="text-[9px] sm:text-sm md:text-base text-white group-hover:text-[var(--accent-color)] transition-colors duration-300 truncate leading-tight font-black"
+                                            className="text-[11px] sm:text-sm md:text-base text-white group-hover:text-[var(--accent-color)] transition-colors duration-300 truncate leading-tight font-black"
                                         >
                                             {game.title}
                                         </h2>
 
-                                        <div className="text-[7.5px] sm:text-[9px] md:text-[10px] text-neutral-300 line-clamp-1 leading-tight font-sans font-medium mt-0.5 hidden xs:block">
+                                        <div className="text-[8px] sm:text-[9.5px] md:text-[11px] text-neutral-300 line-clamp-2 leading-tight font-sans font-medium mt-0.5">
                                             {game.description}
                                         </div>
                                     </div>
@@ -519,7 +348,7 @@ const HubScreen: React.FC<HubScreenProps> = ({
                                     {/* Right: PLAY Action Button */}
                                     <div className="flex items-center shrink-0 z-10 pl-0.5 sm:pl-1">
                                         <span 
-                                            className="px-1.5 sm:px-3 py-1 sm:py-1.5 text-[7px] sm:text-[9px] font-black rounded-md sm:rounded-lg border shadow-sm transition-all group-hover:scale-105 flex items-center gap-1"
+                                            className="px-2 sm:px-3 py-1.5 sm:py-2 text-[8px] sm:text-[10px] font-black rounded-md sm:rounded-lg border shadow-sm transition-all group-hover:scale-105 flex items-center gap-1"
                                             style={{ 
                                                 backgroundColor: `${game.color}35`,
                                                 borderColor: game.color,
