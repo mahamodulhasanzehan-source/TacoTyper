@@ -89,7 +89,12 @@ export type AppId =
   | 'particle-physics'
   | 'fruit-merge'
   | 'checkers'
-  | 'dots-and-boxes';
+  | 'dots-and-boxes'
+  | 'snake'
+  | 'brick-breaker'
+  | 'flappy-flyer'
+  | 'game-2048'
+  | 'ultimate-tictactoe';
 
 export type ActiveApp = 
   | 'hub'
@@ -105,7 +110,12 @@ export type ActiveApp =
   | 'particle-physics'
   | 'fruit-merge'
   | 'checkers'
-  | 'dots-and-boxes';
+  | 'dots-and-boxes'
+  | 'snake'
+  | 'brick-breaker'
+  | 'flappy-flyer'
+  | 'game-2048'
+  | 'ultimate-tictactoe';
 
 export interface GlobalGameStats {
   taco_typer_plays: number;
@@ -123,4 +133,9 @@ export interface GlobalGameStats {
   fruit_merge_plays?: number;
   checkers_plays?: number;
   dots_and_boxes_plays?: number;
+  snake_plays?: number;
+  brick_breaker_plays?: number;
+  flappy_flyer_plays?: number;
+  game_2048_plays?: number;
+  ultimate_tictactoe_plays?: number;
 }

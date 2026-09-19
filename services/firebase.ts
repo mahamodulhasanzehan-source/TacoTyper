@@ -502,7 +502,7 @@ export const saveSpeedTestStats = async (user: User, wpm: number, accuracy: numb
 
 // --- Global Stats Tracking ---
 
-export const incrementGamePlays = async (gameKey: 'taco_typer' | 'iq_test' | 'minesweeper' | 'wordle' | 'angle' | 'spelling_bee' | 'tic_tac_toe' | 'connect_4' | 'gun_game' | 'color_memory' | 'particle_physics' | 'more_less' | 'fruit_merge' | 'checkers' | 'dots_and_boxes') => {
+export const incrementGamePlays = async (gameKey: 'taco_typer' | 'iq_test' | 'minesweeper' | 'wordle' | 'angle' | 'spelling_bee' | 'tic_tac_toe' | 'connect_4' | 'gun_game' | 'color_memory' | 'particle_physics' | 'more_less' | 'fruit_merge' | 'checkers' | 'dots_and_boxes' | 'snake' | 'brick_breaker' | 'flappy_flyer' | 'game_2048' | 'ultimate_tictactoe') => {
     const key = `play_count_${gameKey}`;
     const curr = parseInt(localStorage.getItem(key) || '0', 10);
     localStorage.setItem(key, String(curr + 1));
@@ -532,7 +532,12 @@ export const incrementGamePlays = async (gameKey: 'taco_typer' | 'iq_test' | 'mi
                  more_less_plays: gameKey === 'more_less' ? 1 : 0,
                  fruit_merge_plays: gameKey === 'fruit_merge' ? 1 : 0,
                  checkers_plays: gameKey === 'checkers' ? 1 : 0,
-                 dots_and_boxes_plays: gameKey === 'dots_and_boxes' ? 1 : 0
+                 dots_and_boxes_plays: gameKey === 'dots_and_boxes' ? 1 : 0,
+                 snake_plays: gameKey === 'snake' ? 1 : 0,
+                 brick_breaker_plays: gameKey === 'brick_breaker' ? 1 : 0,
+                 flappy_flyer_plays: gameKey === 'flappy_flyer' ? 1 : 0,
+                 game_2048_plays: gameKey === 'game_2048' ? 1 : 0,
+                 ultimate_tictactoe_plays: gameKey === 'ultimate_tictactoe' ? 1 : 0
              });
         }
     }
@@ -553,7 +558,12 @@ export const getGlobalGameStats = async (): Promise<GlobalGameStats> => {
         particle_physics_plays: parseInt(localStorage.getItem('play_count_particle_physics') || '0', 10),
         fruit_merge_plays: parseInt(localStorage.getItem('play_count_fruit_merge') || '0', 10),
         checkers_plays: parseInt(localStorage.getItem('play_count_checkers') || '0', 10),
-        dots_and_boxes_plays: parseInt(localStorage.getItem('play_count_dots_and_boxes') || '0', 10)
+        dots_and_boxes_plays: parseInt(localStorage.getItem('play_count_dots_and_boxes') || '0', 10),
+        snake_plays: parseInt(localStorage.getItem('play_count_snake') || '0', 10),
+        brick_breaker_plays: parseInt(localStorage.getItem('play_count_brick_breaker') || '0', 10),
+        flappy_flyer_plays: parseInt(localStorage.getItem('play_count_flappy_flyer') || '0', 10),
+        game_2048_plays: parseInt(localStorage.getItem('play_count_game_2048') || '0', 10),
+        ultimate_tictactoe_plays: parseInt(localStorage.getItem('play_count_ultimate_tictactoe') || '0', 10)
     };
     if (!dbExport) return fallback;
     try {

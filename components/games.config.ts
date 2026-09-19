@@ -141,5 +141,55 @@ export const GAMES_REGISTRY: GameMetadata[] = [
     accentGlow: 'rgba(14, 165, 233, 0.5)',
     tag: 'LOGIC',
     statsKey: 'dots_and_boxes_plays'
+  },
+  {
+    id: 'snake',
+    title: 'Neon Snake',
+    description: 'Classic Grid & Speed Surge',
+    icon: '🐍',
+    color: '#22c55e',
+    accentGlow: 'rgba(34, 197, 94, 0.5)',
+    tag: 'ARCADE',
+    statsKey: 'snake_plays'
+  },
+  {
+    id: 'brick-breaker',
+    title: 'Brick Breaker',
+    description: 'Paddle Physics & Laser Barrage',
+    icon: '🧱',
+    color: '#f59e0b',
+    accentGlow: 'rgba(245, 158, 11, 0.5)',
+    tag: 'ARCADE',
+    statsKey: 'brick_breaker_plays'
+  },
+  {
+    id: 'flappy-flyer',
+    title: 'Flappy Flyer',
+    description: 'One-Tap Physics Aerial Run',
+    icon: '🕊️',
+    color: '#06b6d4',
+    accentGlow: 'rgba(6, 182, 212, 0.5)',
+    tag: 'ACTION',
+    statsKey: 'flappy_flyer_plays'
+  },
+  {
+    id: 'game-2048',
+    title: '2048',
+    description: 'Tile Merger & Number Puzzle',
+    icon: '🔢',
+    color: '#eab308',
+    accentGlow: 'rgba(234, 179, 8, 0.5)',
+    tag: 'PUZZLE',
+    statsKey: 'game_2048_plays'
+  },
+  {
+    id: 'ultimate-tictactoe',
+    title: 'Ultimate Tic-Tac-Toe',
+    description: '9x9 Nested Strategic Battle',
+    icon: '⚔️',
+    color: '#8b5cf6',
+    accentGlow: 'rgba(139, 92, 246, 0.5)',
+    tag: 'STRATEGY',
+    statsKey: 'ultimate_tictactoe_plays'
   }
 ];
