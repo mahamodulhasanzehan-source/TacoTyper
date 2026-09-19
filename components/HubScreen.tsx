@@ -7,6 +7,7 @@ import { SettingsModal as SharedSettingsModal, FriendsModal } from './Overlays';
 import { isMobileDevice } from '../utils/device';
 import { GlobalGameStats, AppId } from '../types';
 import { GAMES_REGISTRY } from './games.config';
+import { MiniGameCard, GameCardItem } from './MiniGameCard';
 
 interface HubScreenProps {
     user: User;
@@ -15,18 +16,6 @@ interface HubScreenProps {
     username?: string | null;
     onUpdateUsername: (name: string) => void;
     onGoogleSignIn?: () => Promise<void>;
-}
-
-interface GameCard {
-    id: string;
-    title: string;
-    description: string;
-    icon: string;
-    color: string;
-    accentGlow: string;
-    tag: string;
-    plays: number;
-    action: () => void;
 }
 
 const HubScreen: React.FC<HubScreenProps> = ({ 
@@ -41,7 +30,7 @@ const HubScreen: React.FC<HubScreenProps> = ({
     const [showFriends, setShowFriends] = useState(false);
     const [isMobile, setIsMobile] = useState(false);
     const [stats, setStats] = useState<GlobalGameStats>({ taco_typer_plays: 0, iq_test_plays: 0, minesweeper_plays: 0, wordle_plays: 0, angle_plays: 0, spelling_bee_plays: 0, tic_tac_toe_plays: 0, connect_4_plays: 0, gun_game_plays: 0, color_memory_plays: 0, particle_physics_plays: 0, fruit_merge_plays: 0, checkers_plays: 0, dots_and_boxes_plays: 0 });
-    const [sortedGames, setSortedGames] = useState<GameCard[]>([]);
+    const [sortedGames, setSortedGames] = useState<GameCardItem[]>([]);
     
     const displayableName = username || user.displayName || 'Chef';
 
@@ -56,7 +45,7 @@ const HubScreen: React.FC<HubScreenProps> = ({
     }, []);
 
     useEffect(() => {
-        const games: GameCard[] = GAMES_REGISTRY.map(game => ({
+        const games: GameCardItem[] = GAMES_REGISTRY.map(game => ({
             id: game.id,
             title: game.title,
             description: game.description,
@@ -146,14 +135,14 @@ const HubScreen: React.FC<HubScreenProps> = ({
 
                 {/* Featured / Most Played Game at the Top */}
                 {sortedGames.length > 0 && (
-                    <div className="mb-4 sm:mb-5">
-                        <div className="flex items-center justify-between mb-2">
+                    <div className="mb-5 sm:mb-6">
+                        <div className="flex items-center justify-between mb-2 px-1">
                             <div 
-                                className="flex items-center gap-1.5 text-[10px] md:text-xs font-bold tracking-wider"
+                                className="flex items-center gap-1.5 text-[10px] md:text-xs font-black tracking-wider"
                                 style={{ color: sortedGames[0].color }}
                             >
                                 <span>🔥</span>
-                                <span>MOST PLAYED</span>
+                                <span>TOP PICK • MOST PLAYED</span>
                             </div>
                             <span 
                                 className="text-[10px] font-mono font-bold"
@@ -165,201 +154,33 @@ const HubScreen: React.FC<HubScreenProps> = ({
 
                         <RandomReveal 
                             key={`featured-${sortedGames[0].id}`} 
-                            delay={0.25} 
+                            delay={0.2} 
                             distance={200}
-                            className="group relative w-full min-h-[130px] sm:min-h-[160px] text-white rounded-xl sm:rounded-2xl border-2 flex items-center p-3.5 sm:p-6 cursor-pointer transition-all duration-300 hover-scale shadow-2xl overflow-hidden backdrop-blur-md"
-                            style={{ 
-                                borderColor: sortedGames[0].color,
-                                background: `linear-gradient(135deg, ${sortedGames[0].color}25 0%, rgba(16, 16, 22, 0.88) 45%, rgba(0, 0, 0, 0.96) 100%)`,
-                                boxShadow: `0 6px 30px ${sortedGames[0].accentGlow}, inset 0 0 20px ${sortedGames[0].color}20`,
-                                '--accent-color': sortedGames[0].color,
-                                '--accent-glow': sortedGames[0].accentGlow
-                            } as React.CSSProperties}
-                            onClick={sortedGames[0].action}
                         >
-                            {/* Radial Glow Highlight */}
-                            <div 
-                                className="absolute inset-0 pointer-events-none opacity-40 group-hover:opacity-90 transition-opacity duration-500"
-                                style={{ background: `radial-gradient(circle at 85% 50%, ${sortedGames[0].accentGlow} 0%, transparent 60%)` }}
-                            />
-
-                            {/* Watermark Icon */}
-                            <div className="absolute -right-2 -bottom-2 text-7xl sm:text-8xl opacity-10 group-hover:opacity-30 group-hover:scale-110 transition-all duration-500 pointer-events-none select-none">
-                                {sortedGames[0].icon}
-                            </div>
-
-                            {/* Crown / Top Badge */}
-                            <div 
-                                className="absolute top-2.5 right-3 flex items-center gap-1 px-2.5 py-0.5 text-black text-[8px] sm:text-[9px] font-black rounded-full border border-black shadow-sm z-10"
-                                style={{ backgroundColor: sortedGames[0].color }}
-                            >
-                                <span>👑</span>
-                                <span>#1 POPULAR</span>
-                            </div>
-
-                            {/* Icon Frame */}
-                            <div 
-                                className="w-14 h-14 sm:w-18 sm:h-18 md:w-20 md:h-20 rounded-xl border flex items-center justify-center text-3xl sm:text-5xl md:text-[52px] leading-none mr-3 sm:mr-5 group-hover:scale-105 transition-all duration-300 shrink-0 shadow-inner z-10"
-                                style={{ 
-                                    backgroundColor: `${sortedGames[0].color}28`,
-                                    borderColor: sortedGames[0].color,
-                                    boxShadow: `0 0 14px ${sortedGames[0].accentGlow}`
-                                }}
-                            >
-                                {sortedGames[0].icon}
-                            </div>
-                            
-                            {/* Middle Info */}
-                            <div className="flex-1 flex flex-col justify-center min-w-0 z-10 pr-2">
-                                <div className="flex items-center gap-2 mb-1 sm:mb-1.5">
-                                    <span 
-                                        className="text-[7.5px] sm:text-[9px] font-black uppercase px-2 py-0.5 rounded border backdrop-blur-sm"
-                                        style={{ 
-                                            borderColor: sortedGames[0].color,
-                                            backgroundColor: `${sortedGames[0].color}25`,
-                                            color: sortedGames[0].color 
-                                        }}
-                                    >
-                                        {sortedGames[0].tag}
-                                    </span>
-                                    <div 
-                                        className="text-[8px] sm:text-[10px] font-bold flex items-center gap-1 font-mono"
-                                        style={{ color: sortedGames[0].color }}
-                                    >
-                                        <span 
-                                            className="inline-block w-1.5 h-1.5 rounded-full animate-pulse"
-                                            style={{ backgroundColor: sortedGames[0].color }}
-                                        />
-                                        <span>{sortedGames[0].plays.toLocaleString()}</span>
-                                    </div>
-                                </div>
-                                <h2 
-                                    className="text-sm sm:text-lg md:text-xl text-white group-hover:text-[var(--accent-color)] transition-colors duration-300 leading-snug truncate font-black"
-                                >
-                                    {sortedGames[0].title}
-                                </h2>
-                                <div className="text-[9px] sm:text-xs text-neutral-300 leading-tight font-sans font-medium line-clamp-2 mt-1">
-                                    {sortedGames[0].description}
-                                </div>
-                            </div>
-                            
-                            {/* Play Action */}
-                            <div className="flex items-center shrink-0 z-10 pl-2">
-                                <span 
-                                    className="text-black font-black px-3.5 sm:px-5 py-2 sm:py-2.5 text-[10px] sm:text-sm rounded-lg sm:rounded-xl border shadow-md transition-all group-hover:scale-105 flex items-center gap-1.5"
-                                    style={{ 
-                                        backgroundColor: sortedGames[0].color,
-                                        borderColor: sortedGames[0].color,
-                                        boxShadow: `0 0 12px ${sortedGames[0].accentGlow}`
-                                    }}
-                                >
-                                    <span>PLAY</span>
-                                    <span className="text-[9px] group-hover:translate-x-0.5 transition-transform">▶</span>
-                                </span>
-                            </div>
+                            <MiniGameCard game={sortedGames[0]} featured={true} />
                         </RandomReveal>
                     </div>
                 )}
 
-                {/* 2-Column Game Grid for Remaining Games (2 Columns even on mobile phones) */}
+                {/* 2 Player Games Style Game Grid */}
                 {sortedGames.length > 1 && (
-                    <div className="flex flex-col gap-2.5 sm:gap-3 pb-10">
-                        <div className="flex items-center gap-2 text-[#aaa] text-[10px] md:text-xs mb-1">
-                            <span>🎮</span>
-                            <span>ALL GAMES</span>
+                    <div className="flex flex-col gap-3 pb-12">
+                        <div className="flex items-center justify-between text-[#aaa] text-[10px] md:text-xs mb-1 px-1">
+                            <div className="flex items-center gap-2">
+                                <span>🎮</span>
+                                <span className="font-bold text-neutral-300">MINI GAMES COLLECTION</span>
+                            </div>
+                            <span className="font-mono text-[10px] text-neutral-500">{sortedGames.length} GAMES</span>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-2.5 sm:gap-4">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4.5">
                             {sortedGames.slice(1).map((game, index) => (
                                 <RandomReveal 
                                     key={game.id} 
-                                    delay={0.3 + (index * 0.05)} 
+                                    delay={0.25 + (Math.min(index, 8) * 0.04)} 
                                     distance={200}
-                                    className="group relative w-full min-h-[115px] sm:min-h-[140px] text-white rounded-xl sm:rounded-2xl border-2 flex items-center p-2.5 sm:p-4.5 cursor-pointer transition-all duration-300 hover-scale shadow-lg overflow-hidden backdrop-blur-md"
-                                    style={{ 
-                                        borderColor: `${game.color}99`,
-                                        background: `linear-gradient(135deg, ${game.color}20 0%, rgba(12, 12, 16, 0.85) 45%, rgba(4, 4, 6, 0.96) 100%)`,
-                                        boxShadow: `0 4px 20px ${game.accentGlow}, inset 0 0 15px ${game.color}15`,
-                                        '--accent-color': game.color,
-                                        '--accent-glow': game.accentGlow 
-                                    } as React.CSSProperties}
-                                    onClick={game.action}
                                 >
-                                    {/* Radial Glow on Hover */}
-                                    <div 
-                                        className="absolute inset-0 pointer-events-none opacity-30 group-hover:opacity-90 transition-opacity duration-500"
-                                        style={{ background: `radial-gradient(circle at 90% 50%, ${game.accentGlow} 0%, transparent 65%)` }}
-                                    />
-
-                                    {/* Subtle Watermark Icon */}
-                                    <div className="absolute -right-2 -bottom-2 text-5xl sm:text-7xl opacity-10 group-hover:opacity-30 group-hover:scale-110 transition-all duration-500 pointer-events-none select-none">
-                                        {game.icon}
-                                    </div>
-
-                                    {/* Left: Icon Frame */}
-                                    <div 
-                                        className="w-11 h-11 sm:w-14 sm:h-14 md:w-16 md:h-16 rounded-lg sm:rounded-xl flex items-center justify-center border text-[24px] sm:text-[34px] md:text-[38px] leading-none mr-2 sm:mr-3.5 group-hover:scale-105 transition-transform duration-300 shadow-inner shrink-0 z-10"
-                                        style={{ 
-                                            backgroundColor: `${game.color}28`,
-                                            borderColor: `${game.color}bb`,
-                                            boxShadow: `0 0 10px ${game.accentGlow}`
-                                        }}
-                                    >
-                                        {game.icon}
-                                    </div>
-
-                                    {/* Middle: Tag, Title, Description, Player Count */}
-                                    <div className="flex-1 flex flex-col justify-center min-w-0 z-10 pr-1 sm:pr-2">
-                                        <div className="flex items-center gap-1 sm:gap-2 mb-0.5 sm:mb-1">
-                                            <span 
-                                                className="text-[7px] sm:text-[8px] font-black tracking-wider uppercase px-1.5 py-0.5 rounded border backdrop-blur-sm truncate"
-                                                style={{ 
-                                                    borderColor: game.color,
-                                                    backgroundColor: `${game.color}30`,
-                                                    color: game.color 
-                                                }}
-                                            >
-                                                {game.tag}
-                                            </span>
-
-                                            <div 
-                                                className="text-[7px] sm:text-[8.5px] font-bold flex items-center gap-0.5 sm:gap-1 font-mono shrink-0"
-                                                style={{ color: game.color }}
-                                            >
-                                                <span 
-                                                    className="w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full animate-pulse"
-                                                    style={{ backgroundColor: game.color }}
-                                                />
-                                                <span>{game.plays.toLocaleString()}</span>
-                                            </div>
-                                        </div>
-
-                                        <h2 
-                                            className="text-[11px] sm:text-sm md:text-base text-white group-hover:text-[var(--accent-color)] transition-colors duration-300 truncate leading-tight font-black"
-                                        >
-                                            {game.title}
-                                        </h2>
-
-                                        <div className="text-[8px] sm:text-[9.5px] md:text-[11px] text-neutral-300 line-clamp-2 leading-tight font-sans font-medium mt-0.5">
-                                            {game.description}
-                                        </div>
-                                    </div>
-
-                                    {/* Right: PLAY Action Button */}
-                                    <div className="flex items-center shrink-0 z-10 pl-0.5 sm:pl-1">
-                                        <span 
-                                            className="px-2 sm:px-3 py-1.5 sm:py-2 text-[8px] sm:text-[10px] font-black rounded-md sm:rounded-lg border shadow-sm transition-all group-hover:scale-105 flex items-center gap-1"
-                                            style={{ 
-                                                backgroundColor: `${game.color}35`,
-                                                borderColor: game.color,
-                                                color: '#fff',
-                                                boxShadow: `0 0 8px ${game.accentGlow}`
-                                            }}
-                                        >
-                                            <span className="hidden sm:inline">PLAY</span>
-                                            <span className="text-[7px] sm:text-[8px] group-hover:translate-x-0.5 transition-transform">▶</span>
-                                        </span>
-                                    </div>
+                                    <MiniGameCard game={game} />
                                 </RandomReveal>
                             ))}
                         </div>

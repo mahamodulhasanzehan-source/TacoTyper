@@ -200,15 +200,33 @@ export default function UltimateTicTacToeGame({ onBackToHub }: UltimateTicTacToe
       return legalMoves[Math.floor(Math.random() * legalMoves.length)];
     }
 
-    // Helper: evaluate sub-board state
+    // Helper: evaluate sub-board threat & control
     const evaluateSubBoardThreat = (b: CellValue[][], p: Player): number => {
       let score = 0;
       for (const line of WIN_LINES) {
         const vals = [b[line[0][0]][line[0][1]], b[line[1][0]][line[1][1]], b[line[2][0]][line[2][1]]];
         const pC = vals.filter(v => v === p).length;
         const oC = vals.filter(v => v !== null && v !== p).length;
-        if (pC === 2 && oC === 0) score += 20;
-        if (oC === 2 && pC === 0) score -= 25;
+        if (pC === 2 && oC === 0) score += 35;
+        if (pC === 1 && oC === 0) score += 8;
+        if (oC === 2 && pC === 0) score -= 45;
+      }
+      return score;
+    };
+
+    // Helper: evaluate macro board (subWinners) strategic value
+    const evaluateMacroBoard = (subW: SubBoardWinner[][], p: Player): number => {
+      let score = 0;
+      const opp: Player = p === 'O' ? 'X' : 'O';
+      for (const line of WIN_LINES) {
+        const vals = [subW[line[0][0]][line[0][1]], subW[line[1][0]][line[1][1]], subW[line[2][0]][line[2][1]]];
+        const pC = vals.filter(v => v === p).length;
+        const oC = vals.filter(v => v === opp).length;
+        const drawC = vals.filter(v => v === 'TIE').length;
+        if (drawC > 0) continue;
+        if (pC === 2 && oC === 0) score += 400; // Winning macro 2-in-a-row
+        if (pC === 1 && oC === 0) score += 60;
+        if (oC === 2 && pC === 0) score -= 600; // Opponent macro 2-in-a-row threat!
       }
       return score;
     };
@@ -223,17 +241,19 @@ export default function UltimateTicTacToeGame({ onBackToHub }: UltimateTicTacToe
       const winsSmall = check3x3Winner(testSmall) === 'O';
 
       if (winsSmall) {
-        score += 250;
+        score += 350;
         // Check if winning this small board wins the whole game
         const testMain = currentSubWinners.map(r => [...r]);
         testMain[mr][mc] = 'O';
         if (checkMainWinner(testMain) === 'O') {
-          score += 10000; // Immediate decisive win!
+          score += 50000; // Immediate decisive win!
           return score;
         }
         // Strategic macro position
-        if (mr === 1 && mc === 1) score += 120; // Center board
-        else if ((mr === 0 || mr === 2) && (mc === 0 || mc === 2)) score += 80; // Corner boards
+        if (mr === 1 && mc === 1) score += 200; // Center board is crucial
+        else if ((mr === 0 || mr === 2) && (mc === 0 || mc === 2)) score += 120; // Corner boards
+        // Evaluate macro board improvements
+        score += evaluateMacroBoard(testMain, 'O');
       }
 
       // 2. Check if this blocks opponent 'X' from winning the small board
@@ -241,35 +261,38 @@ export default function UltimateTicTacToeGame({ onBackToHub }: UltimateTicTacToe
       blockSmall[sr][sc] = 'X';
       const opponentWinsSmall = check3x3Winner(blockSmall) === 'X';
       if (opponentWinsSmall) {
-        score += 180;
+        score += 260;
         // Check if opponent winning this would have won them the game
         const testMainX = currentSubWinners.map(r => [...r]);
         testMainX[mr][mc] = 'X';
         if (checkMainWinner(testMainX) === 'X') {
-          score += 5000; // Critical block!
+          score += 25000; // Crucial game-saving block!
+        } else {
+          score += Math.abs(evaluateMacroBoard(testMainX, 'X'));
         }
       }
 
       // 3. Positional values inside the sub-board
-      if (sr === 1 && sc === 1) score += 25; // center cell
-      else if ((sr === 0 || sr === 2) && (sc === 0 || sc === 2)) score += 15; // corner cell
-      else score += 5;
+      if (sr === 1 && sc === 1) score += 30; // center cell
+      else if ((sr === 0 || sr === 2) && (sc === 0 || sc === 2)) score += 18; // corner cell
+      else score += 6;
 
       // 4. Create internal 2-in-a-row threat
       score += evaluateSubBoardThreat(testSmall, 'O');
 
       // 5. Destination evaluation: Where are we sending the opponent?
-      const targetMainWonOrFull = currentSubWinners[sr][sc] !== null || 
+      const targetSubWonOrFull = currentSubWinners[sr][sc] !== null || 
         currentBoards[sr][sc].every(row => row.every(cell => cell !== null));
 
-      if (targetMainWonOrFull) {
+      if (targetSubWonOrFull) {
         // Opponent gets a FREE MOVE anywhere!
-        // Highly dangerous unless we are in a winning position
-        score -= 220;
+        // Highly dangerous unless we are already capturing a critical board or winning
+        score -= 450;
       } else {
         // Target board is (sr, sc). Check if opponent can immediately win that board!
         const targetBoard = currentBoards[sr][sc];
         let opponentCanWinTarget = false;
+        let opponentThreatCount = 0;
         for (let tr = 0; tr < 3; tr++) {
           for (let tc = 0; tc < 3; tc++) {
             if (targetBoard[tr][tc] === null) {
@@ -277,25 +300,29 @@ export default function UltimateTicTacToeGame({ onBackToHub }: UltimateTicTacToe
               testT[tr][tc] = 'X';
               if (check3x3Winner(testT) === 'X') {
                 opponentCanWinTarget = true;
-                break;
+                opponentThreatCount++;
               }
             }
           }
-          if (opponentCanWinTarget) break;
         }
 
         if (opponentCanWinTarget) {
-          score -= 190; // Don't give opponent an easy sub-board win!
+          // Check if that win would win the game for opponent
+          const testOppMain = currentSubWinners.map(r => [...r]);
+          testOppMain[sr][sc] = 'X';
+          if (checkMainWinner(testOppMain) === 'X') {
+            score -= 20000; // NEVER send them to win the entire game!
+          } else {
+            score -= (280 + opponentThreatCount * 40); // Giving opponent a sub-board win
+          }
         }
 
         // Sending opponent to center board (1,1) is risky if it's uncaptured
         if (sr === 1 && sc === 1 && currentSubWinners[1][1] === null) {
-          score -= 35;
+          score -= 60;
         }
       }
 
-      // Small jitter for variability in non-critical situations
-      score += Math.random() * 2;
       return score;
     };
 
@@ -303,7 +330,7 @@ export default function UltimateTicTacToeGame({ onBackToHub }: UltimateTicTacToe
       let bestScore = -Infinity;
       let bestMove = legalMoves[0];
       for (const mv of legalMoves) {
-        const sc = rateMove(mv);
+        const sc = rateMove(mv) + Math.random() * 4;
         if (sc > bestScore) {
           bestScore = sc;
           bestMove = mv;
@@ -313,16 +340,15 @@ export default function UltimateTicTacToeGame({ onBackToHub }: UltimateTicTacToe
     }
 
     // For 'hard' and 'master': 2-ply lookahead
-    // Rate all moves, take top 4 candidates and simulate opponent's best response
     const scoredMoves = legalMoves.map(mv => ({ mv, score: rateMove(mv) }));
     scoredMoves.sort((a, b) => b.score - a.score);
 
-    if (diff === 'hard' || scoredMoves[0].score >= 5000) {
+    if (diff === 'hard' || scoredMoves[0].score >= 20000) {
       return scoredMoves[0].mv;
     }
 
-    // MASTER: Minimax 2-ply simulation on top candidates
-    const candidates = scoredMoves.slice(0, Math.min(6, scoredMoves.length));
+    // MASTER: Deep lookahead across the top candidate moves
+    const candidates = scoredMoves.slice(0, Math.min(10, scoredMoves.length));
     let masterBestMove = candidates[0].mv;
     let masterBestScore = -Infinity;
 
@@ -334,6 +360,11 @@ export default function UltimateTicTacToeGame({ onBackToHub }: UltimateTicTacToe
       const simSubWinners = currentSubWinners.map(r => [...r]);
       const simSubWin = check3x3Winner(simBoards[mr][mc]);
       if (simSubWin) simSubWinners[mr][mc] = simSubWin;
+
+      // Check if this move directly won the game for bot
+      if (checkMainWinner(simSubWinners) === 'O') {
+        return cand.mv; // Instant win
+      }
 
       // Opponent target board
       const simNextFree = simSubWinners[sr][sc] !== null || 
@@ -354,11 +385,19 @@ export default function UltimateTicTacToeGame({ onBackToHub }: UltimateTicTacToe
                 testX[osr][osc] = 'X';
                 let opScore = 0;
                 if (check3x3Winner(testX) === 'X') {
-                  opScore += 300;
+                  opScore += 350;
                   const testM = simSubWinners.map(r => [...r]);
                   testM[omr][omc] = 'X';
-                  if (checkMainWinner(testM) === 'X') opScore += 10000;
+                  if (checkMainWinner(testM) === 'X') opScore += 30000;
+                  else opScore += evaluateMacroBoard(testM, 'X');
                 }
+                // Check if opponent send bot to a closed board (giving bot free move)
+                const botTargetClosed = simSubWinners[osr][osc] !== null ||
+                  simBoards[osr][osc].every(row => row.every(cell => cell !== null));
+                if (botTargetClosed) {
+                  opScore -= 100; // Disadvantage to opponent to give bot free move
+                }
+
                 if (opScore > opponentBestCounterScore) {
                   opponentBestCounterScore = opScore;
                 }
@@ -369,7 +408,7 @@ export default function UltimateTicTacToeGame({ onBackToHub }: UltimateTicTacToe
       }
 
       if (opponentBestCounterScore === -Infinity) opponentBestCounterScore = 0;
-      const combinedScore = cand.score - (opponentBestCounterScore * 0.85);
+      const combinedScore = cand.score - (opponentBestCounterScore * 0.9);
       if (combinedScore > masterBestScore) {
         masterBestScore = combinedScore;
         masterBestMove = cand.mv;
