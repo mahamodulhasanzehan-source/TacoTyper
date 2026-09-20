@@ -61,9 +61,9 @@ const generate5x5Combos = (): number[][] => {
 const COMBOS_5X5_MATCH_4 = generate5x5Combos();
 
 export default function TicTacToeGame({ user, onBackToHub, username }: TicTacToeGameProps) {
-    const [difficulty, setDifficulty] = useState<0 | 1 | 2>(2); // 0: Easy (3x3), 1: Medium (3x3), 2: Hard (5x5 match 4)
+    const [difficulty, setDifficulty] = useState<0 | 1 | 2>(1); // 0: Easy (3x3), 1: Medium (3x3), 2: Hard (5x5 match 4)
     const is5x5 = difficulty === 2;
-    const [board, setBoard] = useState<Player[]>(Array(25).fill(null));
+    const [board, setBoard] = useState<Player[]>(Array(9).fill(null));
     const [isPlayerTurn, setIsPlayerTurn] = useState(true);
     const [gameOver, setGameOver] = useState(false);
     const [winner, setWinner] = useState<Player | 'Draw'>(null);

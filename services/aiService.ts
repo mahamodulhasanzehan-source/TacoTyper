@@ -106,31 +106,148 @@ class AIService {
     }
   }
 
-  async generateSpellingBeeWordsBatch(count: number, difficulty: number): Promise<{ word: string, meaning: string, sentence: string }[]> {
-    const fallbacks = [
-      { word: "restaurant", meaning: "A place where people pay to sit and eat meals that are cooked and served on the premises.", sentence: "We had dinner at a nice Italian restaurant." },
-      { word: "ingredient", meaning: "Any of the foods or substances that are combined to make a particular dish.", sentence: "Pork is an important ingredient in many Chinese dishes." },
-      { word: "delicious", meaning: "Highly pleasant to the taste.", sentence: "The cake was absolutely delicious." },
-      { word: "kitchen", meaning: "A room or area where food is prepared and cooked.", sentence: "The chef is in the kitchen." },
-      { word: "recipe", meaning: "A set of instructions for preparing a particular dish.", sentence: "I followed the recipe exactly." },
-      { word: "avocado", meaning: "A pear-shaped fruit with a rough green skin and oily edible flesh.", sentence: "Fresh avocado makes the best guacamole." },
-      { word: "seasoning", meaning: "Salt, herbs, or spices added to food to enhance the flavor.", sentence: "Taste the soup and adjust the seasoning." }
-    ];
+  private spellingBeeUsedWords: Set<string> = new Set();
 
+  private SPELLING_BEE_TIERED_DICTIONARY: Record<number, { word: string, meaning: string, sentence: string }[]> = {
+    1: [
+      { word: "galaxy", meaning: "A system of millions or billions of stars, together with gas and dust, held together by gravitational attraction.", sentence: "Our solar system resides in the Milky Way galaxy." },
+      { word: "meadow", meaning: "A piece of grassland, especially one used for hay or pasture.", sentence: "Wildflowers bloomed across the sunlit meadow." },
+      { word: "whisper", meaning: "Speak very softly using one's breath without vibrating the vocal cords.", sentence: "She leaned in close to whisper a secret." },
+      { word: "journey", meaning: "An act of traveling from one place to another.", sentence: "The explorers set off on a perilous mountain journey." },
+      { word: "crystal", meaning: "A piece of a homogeneous solid substance having a natural geometrically regular form.", sentence: "The cave walls sparkled with quartz crystal." },
+      { word: "lantern", meaning: "A lamp with a transparent case protecting the flame or electric bulb.", sentence: "They lit a brass lantern to guide their way through the fog." },
+      { word: "breeze", meaning: "A gentle, refreshing wind.", sentence: "A cool coastal breeze rustled through the palm trees." },
+      { word: "dolphin", meaning: "A highly intelligent aquatic mammal with a beak-like snout and a curved dorsal fin.", sentence: "A friendly dolphin leaped alongside the boat." },
+      { word: "glacier", meaning: "A slowly moving mass or river of ice formed by the accumulation of snow.", sentence: "Hikers marveled at the immense blue glacier." },
+      { word: "treasure", meaning: "A quantity of precious metals, gems, or other valuable objects.", sentence: "The divers discovered a sunken treasure chest." },
+      { word: "volcano", meaning: "A mountain or hill having a crater through which lava and gas erupt.", sentence: "Ash puffed gently from the active volcano." },
+      { word: "feather", meaning: "One of the flat, light structures forming the plumage of birds.", sentence: "The eagle lost a pristine white feather during flight." },
+      { word: "compass", meaning: "An instrument containing a magnetized pointer that shows magnetic north.", sentence: "Always check your compass before hiking into the wilderness." },
+      { word: "castle", meaning: "A large fortified building typical of medieval times.", sentence: "A stone castle stood proudly atop the rocky cliff." },
+      { word: "fossil", meaning: "The preserved remains or traces of a prehistoric organism.", sentence: "The museum displayed a remarkably intact dinosaur fossil." },
+      { word: "harvest", meaning: "The process or period of gathering crops.", sentence: "Farmers worked long hours during the autumn apple harvest." },
+      { word: "island", meaning: "A piece of land entirely surrounded by water.", sentence: "They sailed to a secluded tropical island." },
+      { word: "shadow", meaning: "A dark area or shape produced by a body coming between rays of light and a surface.", sentence: "The tall oak cast a long shadow across the lawn." },
+      { word: "velvet", meaning: "A closely woven fabric of silk, cotton, or nylon, that has a thick short pile.", sentence: "The theater curtains were made of deep crimson velvet." },
+      { word: "blossom", meaning: "A flower or mass of flowers on a tree or bush.", sentence: "Cherry blossom petals drifted on the spring breeze." }
+    ],
+    2: [
+      { word: "umbrella", meaning: "A device consisting of a circular canopy of cloth on a folding metal frame supported by a central rod.", sentence: "Never forget your umbrella on a cloudy afternoon." },
+      { word: "telescope", meaning: "An optical instrument designed to make distant objects appear nearer.", sentence: "We gazed at Saturn's rings through the high-powered telescope." },
+      { word: "pyramid", meaning: "A monumental structure with a square base and sloping sides that meet in a point at the top.", sentence: "The Great Pyramid of Giza is an ancient architectural marvel." },
+      { word: "avalanche", meaning: "A mass of snow, ice, and rocks falling rapidly down a mountainside.", sentence: "Loud warnings sounded to alert skiers of a potential avalanche." },
+      { word: "sanctuary", meaning: "A place of safety, refuge, or nature protection.", sentence: "The wildlife sanctuary provides a haven for endangered tigers." },
+      { word: "pendulum", meaning: "A weight hung from a fixed point so that it can swing freely backward and forward.", sentence: "The antique clock ticked steadily as its brass pendulum swung." },
+      { word: "symphony", meaning: "An elaborate musical composition for a full orchestra.", sentence: "Beethoven composed his famous ninth symphony in complete deafness." },
+      { word: "cinnamon", meaning: "An aromatic spice made from the peeled, dried, and rolled bark of a tree.", sentence: "She sprinkled ground cinnamon over the warm oatmeal." },
+      { word: "orchestra", meaning: "A large ensemble of musicians playing string, woodwind, brass, and percussion instruments.", sentence: "The symphony orchestra received a standing ovation." },
+      { word: "monastery", meaning: "A building or buildings occupied by a community of monks living under religious vows.", sentence: "The tranquil stone monastery overlooked the misty valley." },
+      { word: "labyrinth", meaning: "A complicated irregular network of passages or paths in which it is difficult to find one's way.", sentence: "The minotaur guarded the winding corridors of the ancient labyrinth." },
+      { word: "chameleon", meaning: "A small slow-moving Old World lizard with physical camouflage capabilities.", sentence: "The chameleon changed its skin from emerald green to mottled brown." }
+    ],
+    3: [
+      { word: "kaleidoscope", meaning: "A toy consisting of a tube containing mirrors and pieces of colored glass producing changing patterns.", sentence: "Looking through the kaleidoscope revealed dazzling geometric symmetries." },
+      { word: "silhouette", meaning: "The dark shape and outline of someone or something visible against a lighter background.", sentence: "The horse stood in sharp silhouette against the setting sun." },
+      { word: "hieroglyph", meaning: "A picture of an object representing a word, syllable, or sound, as found in ancient Egyptian writing.", sentence: "Scholars decoded the carved hieroglyph on the tomb wall." },
+      { word: "archipelago", meaning: "A group or chain of many islands.", sentence: "Indonesia is the world's largest equatorial archipelago." },
+      { word: "boulevard", meaning: "A wide street in a town or city, typically one lined with trees.", sentence: "They strolled leisurely down the Parisian boulevard." },
+      { word: "meteorite", meaning: "A piece of rock or metal that has fallen to the earth's surface from outer space.", sentence: "The crater was formed thousands of years ago by an iron meteorite." },
+      { word: "cappuccino", meaning: "An Italian coffee drink prepared with espresso, steamed milk, and a thick foam layer.", sentence: "He ordered a hot cappuccino with extra dusted cocoa." },
+      { word: "camouflage", meaning: "The disguising of military personnel, equipment, or animals by blending into the environment.", sentence: "The snow leopard's spotted coat is ideal camouflage in rocky peaks." }
+    ],
+    4: [
+      { word: "serendipity", meaning: "The occurrence and development of events by chance in a happy or beneficial way.", sentence: "Finding my dream job while waiting for a train was pure serendipity." },
+      { word: "ephemeral", meaning: "Lasting for a very short time; fleeting.", sentence: "The morning mist over the lake created an ephemeral beauty." },
+      { word: "ubiquitous", meaning: "Present, appearing, or found everywhere.", sentence: "Smartphones have become ubiquitous across modern society." },
+      { word: "cacophony", meaning: "A harsh, discordant mixture of loud sounds.", sentence: "A cacophony of car horns and construction echoed through the city." },
+      { word: "magnanimous", meaning: "Very generous or forgiving, especially toward a rival or someone less powerful.", sentence: "The champion was magnanimous in victory, praising his opponent's courage." },
+      { word: "soliloquy", meaning: "An act of speaking one's thoughts aloud when by oneself in a play.", sentence: "Hamlet's famous soliloquy begins with the words 'To be, or not to be'." },
+      { word: "juxtaposition", meaning: "The fact of two things being seen or placed close together with contrasting effect.", sentence: "The juxtaposition of the ancient temple beside gleaming skyscrapers was striking." },
+      { word: "mellifluous", meaning: "A sound that is sweet, smooth, and pleasing to hear.", sentence: "The jazz singer possessed a rich, mellifluous voice." }
+    ],
+    5: [
+      { word: "quintessential", meaning: "Representing the most perfect or typical example of a quality or class.", sentence: "Afternoon tea with scones is the quintessential British tradition." },
+      { word: "idiosyncrasy", meaning: "A mode of behavior or way of thought peculiar to an individual.", sentence: "One of his quirky idiosyncrasies was wearing mismatched socks." },
+      { word: "clandestine", meaning: "Kept secret or done secretively, especially because illicit.", sentence: "The detectives uncovered a clandestine meeting in the warehouse." },
+      { word: "perspicacious", meaning: "Having a ready insight into and understanding of things.", sentence: "Her perspicacious analysis solved the legal dilemma instantly." },
+      { word: "superfluous", meaning: "Unnecessary, especially through being more than enough.", sentence: "Avoid adding superfluous adjectives when writing concise reports." },
+      { word: "grandiloquent", meaning: "Pompous or extravagant in language, style, or manner.", sentence: "The orator delivered a grandiloquent speech laden with archaic prose." },
+      { word: "surreptitious", meaning: "Kept secret, especially because it would not be approved of.", sentence: "She cast a surreptitious glance at the clock during the lecture." },
+      { word: "resplendent", meaning: "Attractive and impressive through being richly colorful or shining.", sentence: "The ballroom looked resplendent in shimmering golden chandelier lights." }
+    ],
+    6: [
+      { word: "bourgeoisie", meaning: "The middle class, typically with reference to its perceived materialistic values.", sentence: "Sociologists studied the rising economic influence of the urban bourgeoisie." },
+      { word: "paraphernalia", meaning: "Miscellaneous articles, especially the equipment needed for a particular activity.", sentence: "The artist's studio was cluttered with brushes, canvases, and painting paraphernalia." },
+      { word: "chrysanthemum", meaning: "A popular plant of the daisy family, having brightly colored decorative flowers.", sentence: "Autumn gardens were adorned with golden chrysanthemum blooms." },
+      { word: "reconnaissance", meaning: "Military observation of a region to locate an enemy or ascertain strategic features.", sentence: "The drone completed an aerial reconnaissance mission over the valley." },
+      { word: "onomatopoeia", meaning: "The formation of a word from a sound associated with what is named (e.g., sizzle, buzz).", sentence: "Comic books frequently use onomatopoeia like 'zap' and 'boom'." },
+      { word: "connoisseur", meaning: "An expert judge in matters of taste and fine arts.", sentence: "As a seasoned coffee connoisseur, she could identify the origin of any bean." },
+      { word: "sovereignty", meaning: "Supreme power, supreme authority, or the authority of a state to govern itself.", sentence: "The newly independent nation celebrated its full territorial sovereignty." },
+      { word: "anachronism", meaning: "A thing belonging or appropriate to a period other than that in which it exists.", sentence: "Seeing a wristwatch on a gladiator in the movie was a glaring anachronism." }
+    ],
+    7: [
+      { word: "sesquipedalian", meaning: "Characterized by long words; long-winded.", sentence: "The professor had an amusingly sesquipedalian lecturing style." },
+      { word: "effervescent", meaning: "Giving off bubbles; fizzy, or vivacious and enthusiastic.", sentence: "Her effervescent personality brightened every room she entered." },
+      { word: "acquiesce", meaning: "Accept something reluctantly but without protest.", sentence: "The council chose to acquiesce to the residents' zoning demands." },
+      { word: "hemorrhage", meaning: "An escape of blood from a ruptured blood vessel, or a rapid uncontrollable loss.", sentence: "Emergency medics worked swiftly to control the severe hemorrhage." },
+      { word: "misdemeanor", meaning: "A minor wrongdoing or non-indictable offense.", sentence: "Jaywalking across a quiet side street is classified as a minor misdemeanor." },
+      { word: "millennium", meaning: "A period of a thousand years, especially when calculated from the traditional date of the birth of Christ.", sentence: "Cities worldwide celebrated the dawn of the new millennium." },
+      { word: "renaissance", meaning: "A revival of or renewed interest in something, especially art or culture.", sentence: "The historic downtown district is undergoing a remarkable cultural renaissance." },
+      { word: "surveillance", meaning: "Close observation, especially of a suspected spy or criminal.", sentence: "High-definition surveillance cameras were positioned throughout the bank vault." }
+    ],
+    8: [
+      { word: "antidisestablishmentarianism", meaning: "Opposition to the withdrawal of state support or recognition from an established church.", sentence: "Antidisestablishmentarianism is famous for being one of the longest words in English." },
+      { word: "floccinaucinihilipilification", meaning: "The action or habit of estimating something as worthless.", sentence: "His casual floccinaucinihilipilification of classical art baffled museum curators." },
+      { word: "honorificabilitudinitatibus", meaning: "The state of being able to achieve honors.", sentence: "Shakespeare incorporated the Latinate word honorificabilitudinitatibus in Love's Labour's Lost." },
+      { word: "counterrevolutionaries", meaning: "Those who take part in or support an effort to reverse a political revolution.", sentence: "The royalist counterrevolutionaries organized secret resistance units." },
+      { word: "incomprehensibilities", meaning: "Things that are impossible or extremely difficult to understand.", sentence: "Quantum mechanics presents baffling incomprehensibilities to lay observers." },
+      { word: "psychoneuroimmunology", meaning: "The study of the effect of the mind on health and the immune system.", sentence: "Medical researchers in psychoneuroimmunology examined the biological impacts of stress." }
+    ]
+  };
+
+  private getFallbackSpellingBeeBatch(count: number, difficulty: number): { word: string, meaning: string, sentence: string }[] {
+    const tier = Math.min(8, Math.max(1, Math.round(difficulty * 0.8)));
+    const pool = this.SPELLING_BEE_TIERED_DICTIONARY[tier] || this.SPELLING_BEE_TIERED_DICTIONARY[1];
+    
+    // Filter out recently used words if possible
+    let available = pool.filter(item => !this.spellingBeeUsedWords.has(item.word.toLowerCase()));
+    if (available.length < count) {
+      // If pool is exhausted, reset used words for this tier
+      pool.forEach(item => this.spellingBeeUsedWords.delete(item.word.toLowerCase()));
+      available = [...pool];
+    }
+
+    // Shuffle
+    const shuffled = [...available].sort(() => Math.random() - 0.5);
+    const selected = shuffled.slice(0, count);
+    selected.forEach(item => this.spellingBeeUsedWords.add(item.word.toLowerCase()));
+    return selected;
+  }
+
+  async generateSpellingBeeWordsBatch(count: number, difficulty: number): Promise<{ word: string, meaning: string, sentence: string }[]> {
     const ai = this.getClient();
     if (!ai) {
-      return fallbacks.slice(0, count);
+      return this.getFallbackSpellingBeeBatch(count, difficulty);
     }
 
     try {
-      const randomTopics = ["science", "nature", "history", "technology", "art", "literature", "geography", "music", "food", "space", "animals", "emotions", "architecture", "sports", "philosophy", "medicine", "botany", "astronomy", "mythology", "oceanography"];
+      const randomTopics = ["astronomy", "geology", "botany", "mythology", "architecture", "musicology", "oceanography", "linguistics", "chemistry", "medieval", "meteorology", "archaeology", "philosophy", "culinary", "zoology", "literature"];
       const randomTopic = randomTopics[Math.floor(Math.random() * randomTopics.length)];
-      const randomSeed = Math.floor(Math.random() * 10000);
+      const randomSeed = Math.floor(Math.random() * 1000000);
+      const usedArray = Array.from(this.spellingBeeUsedWords).slice(-20);
 
       const response = await ai.models.generateContent({
         model: 'gemini-3.8-flash',
-        contents: `Generate a list of exactly ${count} unique spelling bee words for difficulty level ${difficulty} (1 is easy, 10 is very hard). To ensure variety, focus on words related to the topic of "${randomTopic}" or use random seed ${randomSeed}. The words MUST NOT be the same common words you always pick. For each word, return the word, its meaning, and an example sentence. Return ONLY a JSON array of objects.`,
+        contents: `Generate exactly ${count} spelling bee words for difficulty level ${difficulty}/10. 
+        Topic theme: "${randomTopic}". Seed: ${randomSeed}.
+        CRITICAL RULES:
+        - Words MUST NOT be simple common words like 'restaurant', 'ingredient', 'recipe', 'kitchen', 'avocado', 'seasoning'.
+        - Do NOT include any of these recently used words: [${usedArray.join(', ')}].
+        - Match difficulty ${difficulty}: level 1-2 (elementary), 3-4 (middle school), 5-6 (high school), 7-8 (national bee), 9-10 (championship).
+        - For each word, include a concise definition and a complete example sentence using the word.
+        - Return ONLY a JSON array.`,
         config: {
+          temperature: 0.9,
           responseMimeType: "application/json",
           responseSchema: {
             type: Type.ARRAY,
@@ -151,17 +268,22 @@ class AIService {
       if (jsonStr) {
         const data = JSON.parse(jsonStr);
         if (Array.isArray(data) && data.length > 0) {
-          return data.map((d: any) => ({ 
+          const formatted = data.map((d: any) => ({ 
             word: String(d.word).toLowerCase().trim(), 
             meaning: String(d.meaning), 
             sentence: String(d.sentence) 
-          }));
+          })).filter(item => item.word.length >= 3 && /^[a-z]+$/.test(item.word));
+
+          if (formatted.length > 0) {
+            formatted.forEach(item => this.spellingBeeUsedWords.add(item.word));
+            return formatted.slice(0, count);
+          }
         }
       }
-      return fallbacks.slice(0, count);
+      return this.getFallbackSpellingBeeBatch(count, difficulty);
     } catch (e) {
       console.warn("AI Spelling Bee fallback activated:", e);
-      return fallbacks.slice(0, count);
+      return this.getFallbackSpellingBeeBatch(count, difficulty);
     }
   }
 

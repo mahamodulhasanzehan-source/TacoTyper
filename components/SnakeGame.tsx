@@ -283,53 +283,65 @@ export default function SnakeGame({ onBackToHub }: SnakeGameProps) {
           const h = canvas.height;
           const cellSize = w / GRID_SIZE;
 
-          // Grassy Meadow Background: Alternating lush lawn checkerboard pattern
-          const grassLight = '#a7d948';
-          const grassDark = '#8ec338';
-          const soilBorder = '#5d8a23';
+          // High-Contrast Dark Gaming Arena Grid
+          const cellDarkA = '#0a0e1a';
+          const cellDarkB = '#0f172a';
+          const gridLineColor = '#1e293b';
 
           for (let r = 0; r < GRID_SIZE; r++) {
             for (let c = 0; c < GRID_SIZE; c++) {
-              ctx.fillStyle = (r + c) % 2 === 0 ? grassLight : grassDark;
+              ctx.fillStyle = (r + c) % 2 === 0 ? cellDarkA : cellDarkB;
               ctx.fillRect(c * cellSize, r * cellSize, cellSize, cellSize);
             }
           }
 
-          // Subtle grass blade details along outer soil border
-          ctx.strokeStyle = soilBorder;
-          ctx.lineWidth = 2;
+          // Subtle grid cell borders
+          ctx.strokeStyle = gridLineColor;
+          ctx.lineWidth = 0.5;
+          for (let i = 0; i <= GRID_SIZE; i++) {
+            ctx.beginPath();
+            ctx.moveTo(i * cellSize, 0);
+            ctx.lineTo(i * cellSize, h);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(0, i * cellSize);
+            ctx.lineTo(w, i * cellSize);
+            ctx.stroke();
+          }
+
+          // Outer arena perimeter glow
+          ctx.strokeStyle = '#10b981';
+          ctx.lineWidth = 2.5;
           ctx.strokeRect(1, 1, w - 2, h - 2);
 
           // Snacks
           const drawSnack = (snack: Snack) => {
             const sx = snack.x * cellSize + cellSize / 2;
             const sy = snack.y * cellSize + cellSize / 2;
-            const radius = cellSize * 0.42;
+            const radius = cellSize * 0.44;
 
             ctx.save();
             if (snack.type === 'apple') {
-              // Juicy Red Apple with Leaf & Stem
-              // Shadow underneath
-              ctx.fillStyle = 'rgba(0, 0, 0, 0.18)';
-              ctx.beginPath();
-              ctx.ellipse(sx, sy + radius * 0.7, radius * 0.8, radius * 0.35, 0, 0, Math.PI * 2);
-              ctx.fill();
+              // Juicy Neon Red Apple with Stem & Leaf
+              ctx.shadowColor = 'rgba(244, 63, 94, 0.7)';
+              ctx.shadowBlur = 10;
 
               // Apple body
-              ctx.fillStyle = '#e11d48';
+              ctx.fillStyle = '#f43f5e';
               ctx.beginPath();
-              ctx.arc(sx - radius * 0.25, sy, radius * 0.72, 0, Math.PI * 2);
-              ctx.arc(sx + radius * 0.25, sy, radius * 0.72, 0, Math.PI * 2);
+              ctx.arc(sx - radius * 0.25, sy, radius * 0.75, 0, Math.PI * 2);
+              ctx.arc(sx + radius * 0.25, sy, radius * 0.75, 0, Math.PI * 2);
               ctx.fill();
 
               // Apple shine highlight
-              ctx.fillStyle = 'rgba(255, 255, 255, 0.45)';
+              ctx.shadowBlur = 0;
+              ctx.fillStyle = 'rgba(255, 255, 255, 0.65)';
               ctx.beginPath();
-              ctx.arc(sx - radius * 0.3, sy - radius * 0.3, radius * 0.25, 0, Math.PI * 2);
+              ctx.arc(sx - radius * 0.3, sy - radius * 0.3, radius * 0.28, 0, Math.PI * 2);
               ctx.fill();
 
               // Stem
-              ctx.strokeStyle = '#78350f';
+              ctx.strokeStyle = '#d97706';
               ctx.lineWidth = 2;
               ctx.beginPath();
               ctx.moveTo(sx, sy - radius * 0.5);
@@ -337,66 +349,57 @@ export default function SnakeGame({ onBackToHub }: SnakeGameProps) {
               ctx.stroke();
 
               // Little Green Leaf
-              ctx.fillStyle = '#22c55e';
+              ctx.fillStyle = '#4ade80';
               ctx.beginPath();
               ctx.ellipse(sx + 4, sy - radius * 0.85, 4, 2, Math.PI / 4, 0, Math.PI * 2);
               ctx.fill();
             } else if (snack.type === 'speed') {
-              // Speed Golden Berry
-              ctx.fillStyle = 'rgba(0, 0, 0, 0.18)';
-              ctx.beginPath();
-              ctx.ellipse(sx, sy + radius * 0.7, radius * 0.8, radius * 0.35, 0, 0, Math.PI * 2);
-              ctx.fill();
-
+              ctx.shadowColor = 'rgba(56, 189, 248, 0.8)';
+              ctx.shadowBlur = 12;
               ctx.fillStyle = '#0284c7';
               ctx.beginPath();
               ctx.arc(sx, sy, radius, 0, Math.PI * 2);
               ctx.fill();
+              ctx.shadowBlur = 0;
               ctx.fillStyle = '#ffffff';
               ctx.font = `${Math.floor(cellSize * 0.6)}px sans-serif`;
               ctx.textAlign = 'center';
               ctx.textBaseline = 'middle';
               ctx.fillText('⚡', sx, sy);
             } else if (snack.type === 'slow') {
-              ctx.fillStyle = 'rgba(0, 0, 0, 0.18)';
-              ctx.beginPath();
-              ctx.ellipse(sx, sy + radius * 0.7, radius * 0.8, radius * 0.35, 0, 0, Math.PI * 2);
-              ctx.fill();
-
+              ctx.shadowColor = 'rgba(168, 85, 247, 0.8)';
+              ctx.shadowBlur = 12;
               ctx.fillStyle = '#9333ea';
               ctx.beginPath();
               ctx.arc(sx, sy, radius, 0, Math.PI * 2);
               ctx.fill();
+              ctx.shadowBlur = 0;
               ctx.fillStyle = '#ffffff';
               ctx.font = `${Math.floor(cellSize * 0.6)}px sans-serif`;
               ctx.textAlign = 'center';
               ctx.textBaseline = 'middle';
               ctx.fillText('⏱️', sx, sy);
             } else if (snack.type === 'star') {
-              ctx.fillStyle = 'rgba(0, 0, 0, 0.18)';
-              ctx.beginPath();
-              ctx.ellipse(sx, sy + radius * 0.7, radius * 0.8, radius * 0.35, 0, 0, Math.PI * 2);
-              ctx.fill();
-
+              ctx.shadowColor = 'rgba(250, 204, 21, 0.9)';
+              ctx.shadowBlur = 14;
               ctx.fillStyle = '#eab308';
               ctx.beginPath();
               ctx.arc(sx, sy, radius, 0, Math.PI * 2);
               ctx.fill();
+              ctx.shadowBlur = 0;
               ctx.fillStyle = '#ffffff';
               ctx.font = `${Math.floor(cellSize * 0.6)}px sans-serif`;
               ctx.textAlign = 'center';
               ctx.textBaseline = 'middle';
               ctx.fillText('⭐', sx, sy);
             } else if (snack.type === 'ghost') {
-              ctx.fillStyle = 'rgba(0, 0, 0, 0.18)';
-              ctx.beginPath();
-              ctx.ellipse(sx, sy + radius * 0.7, radius * 0.8, radius * 0.35, 0, 0, Math.PI * 2);
-              ctx.fill();
-
+              ctx.shadowColor = 'rgba(236, 72, 153, 0.9)';
+              ctx.shadowBlur = 14;
               ctx.fillStyle = '#ec4899';
               ctx.beginPath();
               ctx.arc(sx, sy, radius, 0, Math.PI * 2);
               ctx.fill();
+              ctx.shadowBlur = 0;
               ctx.fillStyle = '#ffffff';
               ctx.font = `${Math.floor(cellSize * 0.6)}px sans-serif`;
               ctx.textAlign = 'center';
@@ -409,7 +412,7 @@ export default function SnakeGame({ onBackToHub }: SnakeGameProps) {
           drawSnack(snackRef.current);
           if (bonusSnackRef.current) drawSnack(bonusSnackRef.current);
 
-          // Snake Body - Smooth Gradient Thick-to-Thin Body
+          // Snake Body - High-Contrast Vivid Emerald-to-Teal Glowing Body
           const isGhost = Date.now() < ghostUntilRef.current;
           const snake = snakeRef.current;
 
@@ -419,19 +422,19 @@ export default function SnakeGame({ onBackToHub }: SnakeGameProps) {
             const px = part.x * cellSize + cellSize / 2;
             const py = part.y * cellSize + cellSize / 2;
 
-            // Progressive taper ratio: 1.0 at head down to 0.62 at tail
+            // Progressive taper ratio: 1.0 at head down to 0.65 at tail
             const progress = snake.length > 1 ? i / (snake.length - 1) : 0;
-            const radius = (cellSize * 0.46) * (1 - progress * 0.38);
+            const radius = (cellSize * 0.46) * (1 - progress * 0.35);
 
             ctx.save();
 
             // Segment color interpolating smoothly along body
             let segColor: string;
             if (isGhost) {
-              segColor = `hsl(${320 + progress * 40}, 85%, ${60 - progress * 15}%)`;
+              segColor = `hsl(${320 + progress * 40}, 95%, ${65 - progress * 15}%)`;
             } else {
-              // Smooth gradient from emerald/cyan (#10b981) to lime (#84cc16)
-              segColor = `hsl(${155 - progress * 55}, 85%, ${48 + progress * 8}%)`;
+              // Vibrant Electric Emerald to Cyan
+              segColor = `hsl(${160 - progress * 40}, 100%, ${50 + progress * 8}%)`;
             }
 
             ctx.fillStyle = segColor;
@@ -444,7 +447,7 @@ export default function SnakeGame({ onBackToHub }: SnakeGameProps) {
 
               // Check if not wrapped across screen border
               if (Math.abs(prev.x - part.x) <= 1 && Math.abs(prev.y - part.y) <= 1) {
-                const prevRadius = (cellSize * 0.46) * (1 - ((i - 1) / (snake.length - 1 || 1)) * 0.38);
+                const prevRadius = (cellSize * 0.46) * (1 - ((i - 1) / (snake.length - 1 || 1)) * 0.35);
                 ctx.strokeStyle = segColor;
                 ctx.lineWidth = (radius + prevRadius);
                 ctx.lineCap = 'round';
@@ -456,15 +459,19 @@ export default function SnakeGame({ onBackToHub }: SnakeGameProps) {
               }
             }
 
-            // Draw rounded segment body node
+            // Draw rounded segment body node with subtle crisp border
             ctx.beginPath();
             ctx.arc(px, py, radius, 0, Math.PI * 2);
             ctx.fill();
 
-            // Subtle 3D spine highlight
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.25)';
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+
+            // Bright 3D spine highlight
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.55)';
             ctx.beginPath();
-            ctx.arc(px - radius * 0.25, py - radius * 0.25, radius * 0.35, 0, Math.PI * 2);
+            ctx.arc(px - radius * 0.25, py - radius * 0.25, radius * 0.32, 0, Math.PI * 2);
             ctx.fill();
 
             ctx.restore();
@@ -592,23 +599,29 @@ export default function SnakeGame({ onBackToHub }: SnakeGameProps) {
     touchStartRef.current = { x: touch.clientX, y: touch.clientY };
   };
 
-  const handleTouchEnd = (e: React.TouchEvent) => {
+  const handleTouchMove = (e: React.TouchEvent) => {
     if (!touchStartRef.current) return;
-    const touch = e.changedTouches[0];
+    const touch = e.touches[0];
     const dx = touch.clientX - touchStartRef.current.x;
     const dy = touch.clientY - touchStartRef.current.y;
-    touchStartRef.current = null;
 
-    if (Math.abs(dx) < 20 && Math.abs(dy) < 20) return;
-
-    const current = dirRef.current;
-    if (Math.abs(dx) > Math.abs(dy)) {
-      if (dx > 0 && current !== 'LEFT') nextDirRef.current = 'RIGHT';
-      else if (dx < 0 && current !== 'RIGHT') nextDirRef.current = 'LEFT';
-    } else {
-      if (dy > 0 && current !== 'UP') nextDirRef.current = 'DOWN';
-      else if (dy < 0 && current !== 'DOWN') nextDirRef.current = 'UP';
+    const threshold = 12; // Ultra responsive threshold
+    if (Math.abs(dx) >= threshold || Math.abs(dy) >= threshold) {
+      const current = dirRef.current;
+      if (Math.abs(dx) > Math.abs(dy)) {
+        if (dx > 0 && current !== 'LEFT') nextDirRef.current = 'RIGHT';
+        else if (dx < 0 && current !== 'RIGHT') nextDirRef.current = 'LEFT';
+      } else {
+        if (dy > 0 && current !== 'UP') nextDirRef.current = 'DOWN';
+        else if (dy < 0 && current !== 'DOWN') nextDirRef.current = 'UP';
+      }
+      // Re-anchor touch start to enable smooth continuous steering without finger lifting
+      touchStartRef.current = { x: touch.clientX, y: touch.clientY };
     }
+  };
+
+  const handleTouchEnd = () => {
+    touchStartRef.current = null;
   };
 
   const handleDpad = (dir: Direction) => {
@@ -684,8 +697,9 @@ export default function SnakeGame({ onBackToHub }: SnakeGameProps) {
         {/* Canvas Game Frame */}
         <div 
           onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
-          className="relative rounded-2xl overflow-hidden shadow-2xl border-4 border-[#5d8a23] bg-[#8ec338] flex items-center justify-center touch-none ring-2 ring-emerald-950/40"
+          className="relative rounded-2xl overflow-hidden shadow-2xl border-4 border-emerald-800/80 bg-[#070a13] flex items-center justify-center touch-none ring-2 ring-emerald-500/30"
         >
           <canvas
             ref={canvasRef}
@@ -725,30 +739,30 @@ export default function SnakeGame({ onBackToHub }: SnakeGameProps) {
           )}
         </div>
 
-        {/* Mobile On-Screen D-Pad */}
-        <div className="mt-4 flex flex-col items-center gap-1.5 sm:hidden">
+        {/* Mobile On-Screen D-Pad with Zero-Latency Pointer Events */}
+        <div className="mt-4 flex flex-col items-center gap-1.5 sm:hidden touch-manipulation">
           <button
-            onClick={() => handleDpad('UP')}
-            className="w-14 h-12 bg-neutral-800 active:bg-emerald-600 rounded-xl text-lg font-bold flex items-center justify-center shadow border border-neutral-700 active:scale-95"
+            onPointerDown={(e) => { e.preventDefault(); handleDpad('UP'); }}
+            className="w-14 h-12 bg-neutral-800 active:bg-emerald-600 rounded-xl text-lg font-bold flex items-center justify-center shadow border border-neutral-700 active:scale-95 touch-none"
           >
             ▲
           </button>
           <div className="flex gap-4">
             <button
-              onClick={() => handleDpad('LEFT')}
-              className="w-14 h-12 bg-neutral-800 active:bg-emerald-600 rounded-xl text-lg font-bold flex items-center justify-center shadow border border-neutral-700 active:scale-95"
+              onPointerDown={(e) => { e.preventDefault(); handleDpad('LEFT'); }}
+              className="w-14 h-12 bg-neutral-800 active:bg-emerald-600 rounded-xl text-lg font-bold flex items-center justify-center shadow border border-neutral-700 active:scale-95 touch-none"
             >
               ◀
             </button>
             <button
-              onClick={() => handleDpad('DOWN')}
-              className="w-14 h-12 bg-neutral-800 active:bg-emerald-600 rounded-xl text-lg font-bold flex items-center justify-center shadow border border-neutral-700 active:scale-95"
+              onPointerDown={(e) => { e.preventDefault(); handleDpad('DOWN'); }}
+              className="w-14 h-12 bg-neutral-800 active:bg-emerald-600 rounded-xl text-lg font-bold flex items-center justify-center shadow border border-neutral-700 active:scale-95 touch-none"
             >
               ▼
             </button>
             <button
-              onClick={() => handleDpad('RIGHT')}
-              className="w-14 h-12 bg-neutral-800 active:bg-emerald-600 rounded-xl text-lg font-bold flex items-center justify-center shadow border border-neutral-700 active:scale-95"
+              onPointerDown={(e) => { e.preventDefault(); handleDpad('RIGHT'); }}
+              className="w-14 h-12 bg-neutral-800 active:bg-emerald-600 rounded-xl text-lg font-bold flex items-center justify-center shadow border border-neutral-700 active:scale-95 touch-none"
             >
               ▶
             </button>

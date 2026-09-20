@@ -529,33 +529,25 @@ export default function DotsAndBoxesGame({ onBackToHub }: DotsAndBoxesProps) {
                         className="aspect-square w-full max-w-[min(100%,calc(100vh-140px),540px)] max-h-[min(100%,calc(100vh-140px),540px)] relative flex items-center justify-center p-2 sm:p-4 bg-neutral-900 border-2 sm:border-4 border-neutral-800 rounded-2xl shadow-2xl overflow-hidden"
                     >
                         <svg
-                            className="w-full h-full block"
+                            className="w-full h-full block select-none touch-manipulation"
                             viewBox={`-20 -20 ${(gridSize * 100) + 40} ${(gridSize * 100) + 40}`}
                         >
-                            <defs>
-                                <filter id="glow-blue" x="-20%" y="-20%" width="140%" height="140%">
-                                    <feDropShadow dx="0" dy="0" stdDeviation="3" floodColor="#38bdf8" floodOpacity="0.8" />
-                                </filter>
-                                <filter id="glow-red" x="-20%" y="-20%" width="140%" height="140%">
-                                    <feDropShadow dx="0" dy="0" stdDeviation="3" floodColor="#f43f5e" floodOpacity="0.8" />
-                                </filter>
-                            </defs>
-
-                            {/* 1. Claimed Box Fills: Beautiful colored smooth box fills */}
+                            {/* 1. Claimed Box Fills: Smooth colored rounded tiles */}
                             {boxes.map((row, r) =>
                                 row.map((owner, c) => {
                                     if (!owner) return null;
                                     return (
                                         <rect
                                             key={`box-${r}-${c}`}
-                                            x={c * 100 + 6}
-                                            y={r * 100 + 6}
-                                            width={88}
-                                            height={88}
-                                            rx={10}
-                                            fill={owner === 'blue' ? 'rgba(14, 165, 233, 0.85)' : 'rgba(244, 63, 94, 0.85)'}
+                                            x={c * 100 + 7}
+                                            y={r * 100 + 7}
+                                            width={86}
+                                            height={86}
+                                            rx={12}
+                                            fill={owner === 'blue' ? '#0284c7' : '#e11d48'}
+                                            fillOpacity={0.88}
                                             stroke={owner === 'blue' ? '#38bdf8' : '#fb7185'}
-                                            strokeWidth={1.5}
+                                            strokeWidth={2}
                                             className="transition-all duration-300 ease-out"
                                         />
                                     );
@@ -568,31 +560,40 @@ export default function DotsAndBoxesGame({ onBackToHub }: DotsAndBoxesProps) {
                                     const isDrawn = lineOwner !== null;
                                     return (
                                         <g key={`h-${r}-${c}`}>
-                                            <rect
-                                                x={c * 100}
-                                                y={r * 100 - 15}
-                                                width={100}
-                                                height={30}
-                                                fill="transparent"
-                                                className={`cursor-pointer ${!isDrawn ? 'hover:opacity-80' : ''}`}
-                                                onClick={() => handleLineClick('h', r, c)}
-                                            />
+                                            {/* Visible Line */}
                                             <line
-                                                x1={c * 100 + 7}
+                                                x1={c * 100 + 8}
                                                 y1={r * 100}
-                                                x2={(c + 1) * 100 - 7}
+                                                x2={(c + 1) * 100 - 8}
                                                 y2={r * 100}
                                                 stroke={
                                                     lineOwner === 'blue'
                                                         ? '#38bdf8'
                                                         : lineOwner === 'red'
                                                         ? '#f43f5e'
-                                                        : 'rgba(255, 255, 255, 0.12)'
+                                                        : 'rgba(255, 255, 255, 0.16)'
                                                 }
-                                                strokeWidth={isDrawn ? 7 : 3.5}
+                                                strokeWidth={isDrawn ? 7.5 : 3.5}
                                                 strokeLinecap="round"
-                                                filter={isDrawn ? (lineOwner === 'blue' ? 'url(#glow-blue)' : 'url(#glow-red)') : undefined}
-                                                className="pointer-events-none transition-all duration-200"
+                                                className="pointer-events-none transition-all duration-150"
+                                            />
+                                            {/* Large Transparent Hit Area for Touch & Mouse */}
+                                            <rect
+                                                x={c * 100}
+                                                y={r * 100 - 20}
+                                                width={100}
+                                                height={40}
+                                                fill="transparent"
+                                                className={`cursor-pointer ${!isDrawn ? 'hover:opacity-75 active:opacity-50' : ''}`}
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleLineClick('h', r, c);
+                                                }}
+                                                onTouchEnd={(e) => {
+                                                    e.preventDefault();
+                                                    e.stopPropagation();
+                                                    handleLineClick('h', r, c);
+                                                }}
                                             />
                                         </g>
                                     );
@@ -605,38 +606,47 @@ export default function DotsAndBoxesGame({ onBackToHub }: DotsAndBoxesProps) {
                                     const isDrawn = lineOwner !== null;
                                     return (
                                         <g key={`v-${r}-${c}`}>
-                                            <rect
-                                                x={c * 100 - 15}
-                                                y={r * 100}
-                                                width={30}
-                                                height={100}
-                                                fill="transparent"
-                                                className={`cursor-pointer ${!isDrawn ? 'hover:opacity-80' : ''}`}
-                                                onClick={() => handleLineClick('v', r, c)}
-                                            />
+                                            {/* Visible Line */}
                                             <line
                                                 x1={c * 100}
-                                                y1={r * 100 + 7}
+                                                y1={r * 100 + 8}
                                                 x2={c * 100}
-                                                y2={(r + 1) * 100 - 7}
+                                                y2={(r + 1) * 100 - 8}
                                                 stroke={
                                                     lineOwner === 'blue'
                                                         ? '#38bdf8'
                                                         : lineOwner === 'red'
                                                         ? '#f43f5e'
-                                                        : 'rgba(255, 255, 255, 0.12)'
+                                                        : 'rgba(255, 255, 255, 0.16)'
                                                 }
-                                                strokeWidth={isDrawn ? 7 : 3.5}
+                                                strokeWidth={isDrawn ? 7.5 : 3.5}
                                                 strokeLinecap="round"
-                                                filter={isDrawn ? (lineOwner === 'blue' ? 'url(#glow-blue)' : 'url(#glow-red)') : undefined}
-                                                className="pointer-events-none transition-all duration-200"
+                                                className="pointer-events-none transition-all duration-150"
+                                            />
+                                            {/* Large Transparent Hit Area for Touch & Mouse */}
+                                            <rect
+                                                x={c * 100 - 20}
+                                                y={r * 100}
+                                                width={40}
+                                                height={100}
+                                                fill="transparent"
+                                                className={`cursor-pointer ${!isDrawn ? 'hover:opacity-75 active:opacity-50' : ''}`}
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleLineClick('v', r, c);
+                                                }}
+                                                onTouchEnd={(e) => {
+                                                    e.preventDefault();
+                                                    e.stopPropagation();
+                                                    handleLineClick('v', r, c);
+                                                }}
                                             />
                                         </g>
                                     );
                                 })
                             )}
 
-                            {/* 4. Dots Matrix (N + 1) x (N + 1) */}
+                            {/* 4. Grid Intersection Dots */}
                             {Array.from({ length: gridSize + 1 }).map((_, r) =>
                                 Array.from({ length: gridSize + 1 }).map((_, c) => (
                                     <circle
@@ -645,8 +655,8 @@ export default function DotsAndBoxesGame({ onBackToHub }: DotsAndBoxesProps) {
                                         cy={r * 100}
                                         r={6.5}
                                         fill="#fbbf24"
-                                        stroke="#1e1e24"
-                                        strokeWidth={2}
+                                        stroke="#0f172a"
+                                        strokeWidth={2.5}
                                         className="pointer-events-none"
                                     />
                                 ))
