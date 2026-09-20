@@ -191,5 +191,95 @@ export const GAMES_REGISTRY: GameMetadata[] = [
     accentGlow: 'rgba(239, 68, 68, 0.5)',
     tag: 'MEMORY',
     statsKey: 'simon_plays'
+  },
+  {
+    id: 'quick-draw',
+    title: 'Quick Draw',
+    description: 'Reaction Standoff vs Bot',
+    icon: '🤠',
+    color: '#f97316',
+    accentGlow: 'rgba(249, 115, 22, 0.5)',
+    tag: 'REACTION',
+    statsKey: 'quick_draw_plays'
+  },
+  {
+    id: 'finger-sumo',
+    title: 'Finger Sumo',
+    description: 'Tug of War Button Smasher',
+    icon: '🤼',
+    color: '#e11d48',
+    accentGlow: 'rgba(225, 29, 72, 0.5)',
+    tag: 'TAP DUEL',
+    statsKey: 'finger_sumo_plays'
+  },
+  {
+    id: 'pong',
+    title: 'Pong',
+    description: 'Classic 2D Table Tennis',
+    icon: '🏓',
+    color: '#06b6d4',
+    accentGlow: 'rgba(6, 182, 212, 0.5)',
+    tag: 'RETRO ARCADE',
+    statsKey: 'pong_plays'
+  },
+  {
+    id: 'knife-flip',
+    title: 'Knife Flip',
+    description: 'Target Dart & Blade Precision',
+    icon: '🎯',
+    color: '#ec4899',
+    accentGlow: 'rgba(236, 72, 153, 0.5)',
+    tag: 'PRECISION',
+    statsKey: 'knife_flip_plays'
+  },
+  {
+    id: 'reversi',
+    title: 'Reversi / Othello',
+    description: '8x8 Flanking Strategy',
+    icon: '⚪',
+    color: '#10b981',
+    accentGlow: 'rgba(16, 185, 129, 0.5)',
+    tag: 'STRATEGY',
+    statsKey: 'reversi_plays'
+  },
+  {
+    id: 'battleship',
+    title: 'Battleship',
+    description: 'Naval Radar & Fleet Combat',
+    icon: '🚢',
+    color: '#3b82f6',
+    accentGlow: 'rgba(59, 130, 246, 0.5)',
+    tag: 'TACTICAL',
+    statsKey: 'battleship_plays'
+  },
+  {
+    id: 'nim',
+    title: 'Nim Matchstick',
+    description: 'Mathematical Logic Duel',
+    icon: '🥢',
+    color: '#eab308',
+    accentGlow: 'rgba(234, 179, 8, 0.5)',
+    tag: 'MATH DUEL',
+    statsKey: 'nim_plays'
+  },
+  {
+    id: 'tower-stacker',
+    title: 'Tower Stacker',
+    description: 'Floor Slice & Timing',
+    icon: '🏗️',
+    color: '#8b5cf6',
+    accentGlow: 'rgba(139, 92, 246, 0.5)',
+    tag: 'TIMING',
+    statsKey: 'tower_stacker_plays'
+  },
+  {
+    id: 'tetris',
+    title: 'Tetris',
+    description: '7-Bag Matrix Falling Blocks',
+    icon: '🧱',
+    color: '#a855f7',
+    accentGlow: 'rgba(168, 85, 247, 0.5)',
+    tag: 'CLASSIC',
+    statsKey: 'tetris_plays'
   }
 ];

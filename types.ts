@@ -94,7 +94,16 @@ export type AppId =
   | 'brick-breaker'
   | 'game-2048'
   | 'ultimate-tictactoe'
-  | 'simon';
+  | 'simon'
+  | 'quick-draw'
+  | 'finger-sumo'
+  | 'pong'
+  | 'knife-flip'
+  | 'reversi'
+  | 'battleship'
+  | 'nim'
+  | 'tower-stacker'
+  | 'tetris';
 
 export type ActiveApp = 
   | 'hub'
@@ -115,7 +124,16 @@ export type ActiveApp =
   | 'brick-breaker'
   | 'game-2048'
   | 'ultimate-tictactoe'
-  | 'simon';
+  | 'simon'
+  | 'quick-draw'
+  | 'finger-sumo'
+  | 'pong'
+  | 'knife-flip'
+  | 'reversi'
+  | 'battleship'
+  | 'nim'
+  | 'tower-stacker'
+  | 'tetris';
 
 export interface GlobalGameStats {
   taco_typer_plays: number;
@@ -138,4 +156,13 @@ export interface GlobalGameStats {
   game_2048_plays?: number;
   ultimate_tictactoe_plays?: number;
   simon_plays?: number;
+  quick_draw_plays?: number;
+  finger_sumo_plays?: number;
+  pong_plays?: number;
+  knife_flip_plays?: number;
+  reversi_plays?: number;
+  battleship_plays?: number;
+  nim_plays?: number;
+  tower_stacker_plays?: number;
+  tetris_plays?: number;
 }

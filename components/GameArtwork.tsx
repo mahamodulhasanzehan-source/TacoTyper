@@ -332,6 +332,208 @@ export const GameArtwork: React.FC<GameArtworkProps> = ({ id, color }) => {
         </svg>
       );
 
+    case 'quick-draw':
+      return (
+        <svg viewBox="0 0 100 100" className="w-full h-full p-2">
+          {/* Desert horizon glow */}
+          <circle cx="50" cy="50" r="38" fill="#431407" />
+          <circle cx="50" cy="50" r="28" fill="#7c2d12" />
+          {/* Standoff Revolver */}
+          <rect x="25" y="44" width="38" height="10" rx="2" fill="#cbd5e1" />
+          <rect x="34" y="38" width="18" height="6" rx="1" fill="#94a3b8" />
+          <path d="M 25 50 L 16 68 Q 14 74 22 75 L 30 73 L 34 54 Z" fill="#b45309" />
+          {/* Muzzle Flash */}
+          <polygon points="65,49 82,39 74,49 88,49 76,55 84,62 67,53" fill="#facc15" />
+          <polygon points="65,49 76,44 71,49 80,49 72,52 77,57 66,51" fill="#ef4444" />
+        </svg>
+      );
+
+    case 'finger-sumo':
+      return (
+        <svg viewBox="0 0 100 100" className="w-full h-full p-2">
+          {/* Tension meter arc */}
+          <rect x="12" y="46" width="76" height="8" rx="4" fill="#1e293b" />
+          <rect x="36" y="46" width="28" height="8" rx="4" fill="#e11d48" />
+          {/* Central golden marker */}
+          <circle cx="50" cy="50" r="8" fill="#fbbf24" stroke="#f59e0b" strokeWidth="2" />
+          {/* Left Sumo Fist pushing right */}
+          <path d="M 12 40 L 28 40 Q 34 40 34 50 Q 34 60 28 60 L 12 60 Z" fill="#38bdf8" />
+          <line x1="28" y1="44" x2="38" y2="44" stroke="#38bdf8" strokeWidth="3" strokeLinecap="round" />
+          {/* Right Sumo Fist pushing left */}
+          <path d="M 88 40 L 72 40 Q 66 40 66 50 Q 66 60 72 60 L 88 60 Z" fill="#f43f5e" />
+          <line x1="72" y1="44" x2="62" y2="44" stroke="#f43f5e" strokeWidth="3" strokeLinecap="round" />
+          {/* Sparks */}
+          <polygon points="50,30 52,38 58,40 52,42 50,50 48,42 42,40 48,38" fill="#fde047" />
+        </svg>
+      );
+
+    case 'pong':
+      return (
+        <svg viewBox="0 0 100 100" className="w-full h-full p-2">
+          {/* Dark retro court */}
+          <rect x="8" y="8" width="84" height="84" rx="8" fill="#020617" stroke="#1e293b" strokeWidth="2" />
+          {/* Dashed Center line */}
+          <line x1="50" y1="12" x2="50" y2="88" stroke="#334155" strokeWidth="2" strokeDasharray="6,6" />
+          {/* Left Player Paddle */}
+          <rect x="16" y="32" width="5" height="28" rx="2.5" fill="#38bdf8" />
+          {/* Right Bot Paddle */}
+          <rect x="79" y="44" width="5" height="28" rx="2.5" fill="#f43f5e" />
+          {/* Ball & Motion Trail */}
+          <line x1="30" y1="56" x2="48" y2="44" stroke="#38bdf8" strokeWidth="2" strokeDasharray="3,3" opacity="0.6" />
+          <rect x="46" y="42" width="6" height="6" fill="#f8fafc" />
+        </svg>
+      );
+
+    case 'knife-flip':
+      return (
+        <svg viewBox="0 0 100 100" className="w-full h-full p-2">
+          {/* Wooden target log */}
+          <circle cx="50" cy="45" r="26" fill="#78350f" stroke="#451a03" strokeWidth="3" />
+          <circle cx="50" cy="45" r="18" fill="#92400e" />
+          <circle cx="50" cy="45" r="10" fill="#b45309" />
+          {/* Embedded knives radiating */}
+          <rect x="48" y="10" width="4" height="16" fill="#94a3b8" />
+          <rect x="46" y="6" width="8" height="4" rx="1" fill="#ec4899" />
+          <g transform="rotate(75 50 45)">
+            <rect x="48" y="10" width="4" height="16" fill="#94a3b8" />
+            <rect x="46" y="6" width="8" height="4" rx="1" fill="#ec4899" />
+          </g>
+          <g transform="rotate(160 50 45)">
+            <rect x="48" y="10" width="4" height="16" fill="#94a3b8" />
+            <rect x="46" y="6" width="8" height="4" rx="1" fill="#ec4899" />
+          </g>
+          {/* Incoming blade flying up */}
+          <polygon points="50,72 47,82 53,82" fill="#e2e8f0" />
+          <rect x="48" y="82" width="4" height="10" fill="#cbd5e1" />
+          <rect x="46" y="92" width="8" height="4" rx="1" fill="#ec4899" />
+        </svg>
+      );
+
+    case 'reversi':
+      return (
+        <svg viewBox="0 0 100 100" className="w-full h-full p-2">
+          {/* Green felt board */}
+          <rect x="10" y="10" width="80" height="80" rx="6" fill="#065f46" stroke="#047857" strokeWidth="2" />
+          {/* 4x4 inner grid lines */}
+          <line x1="30" y1="10" x2="30" y2="90" stroke="#047857" strokeWidth="1.5" />
+          <line x1="50" y1="10" x2="50" y2="90" stroke="#047857" strokeWidth="1.5" />
+          <line x1="70" y1="10" x2="70" y2="90" stroke="#047857" strokeWidth="1.5" />
+          <line x1="10" y1="30" x2="90" y2="30" stroke="#047857" strokeWidth="1.5" />
+          <line x1="10" y1="50" x2="90" y2="50" stroke="#047857" strokeWidth="1.5" />
+          <line x1="10" y1="70" x2="90" y2="70" stroke="#047857" strokeWidth="1.5" />
+          {/* Center Discs: Dark & Light */}
+          <circle cx="40" cy="40" r="7" fill="#0f172a" stroke="#334155" strokeWidth="1.5" />
+          <circle cx="60" cy="40" r="7" fill="#f8fafc" stroke="#cbd5e1" strokeWidth="1.5" />
+          <circle cx="40" cy="60" r="7" fill="#f8fafc" stroke="#cbd5e1" strokeWidth="1.5" />
+          <circle cx="60" cy="60" r="7" fill="#0f172a" stroke="#334155" strokeWidth="1.5" />
+        </svg>
+      );
+
+    case 'battleship':
+      return (
+        <svg viewBox="0 0 100 100" className="w-full h-full p-2">
+          {/* Naval Radar Grid */}
+          <circle cx="50" cy="50" r="38" fill="#082f49" stroke="#0284c7" strokeWidth="2" />
+          <circle cx="50" cy="50" r="26" fill="none" stroke="#0284c7" strokeWidth="1" strokeDasharray="3,3" />
+          <circle cx="50" cy="50" r="14" fill="none" stroke="#0284c7" strokeWidth="1" />
+          <line x1="12" y1="50" x2="88" y2="50" stroke="#0284c7" strokeWidth="1" />
+          <line x1="50" y1="12" x2="50" y2="88" stroke="#0284c7" strokeWidth="1" />
+          {/* Radar sweep beam */}
+          <path d="M 50 50 L 78 26 A 38 38 0 0 0 50 12 Z" fill="#38bdf8" opacity="0.3" />
+          {/* Battleship Silhouette */}
+          <path d="M 28 55 L 34 48 L 66 48 L 74 55 L 68 59 L 32 59 Z" fill="#e2e8f0" />
+          <rect x="42" y="42" width="16" height="6" fill="#cbd5e1" />
+          <rect x="46" y="38" width="6" height="4" fill="#94a3b8" />
+          {/* Red Hit Marker */}
+          <circle cx="54" cy="51" r="3.5" fill="#ef4444" />
+          <circle cx="54" cy="51" r="6" fill="none" stroke="#ef4444" strokeWidth="1.5" opacity="0.7" />
+        </svg>
+      );
+
+    case 'nim':
+      return (
+        <svg viewBox="0 0 100 100" className="w-full h-full p-2">
+          {/* Row 1: 3 sticks */}
+          <g>
+            <rect x="36" y="16" width="4" height="20" rx="1" fill="#fde047" />
+            <circle cx="38" cy="15" r="3" fill="#ef4444" />
+            <rect x="48" y="16" width="4" height="20" rx="1" fill="#fde047" />
+            <circle cx="50" cy="15" r="3" fill="#ef4444" />
+            <rect x="60" y="16" width="4" height="20" rx="1" fill="#fde047" />
+            <circle cx="62" cy="15" r="3" fill="#ef4444" />
+          </g>
+          {/* Row 2: 5 sticks */}
+          <g>
+            <rect x="24" y="44" width="4" height="20" rx="1" fill="#fde047" />
+            <circle cx="26" cy="43" r="3" fill="#ef4444" />
+            <rect x="36" y="44" width="4" height="20" rx="1" fill="#fde047" />
+            <circle cx="38" cy="43" r="3" fill="#ef4444" />
+            <rect x="48" y="44" width="4" height="20" rx="1" fill="#fde047" />
+            <circle cx="50" cy="43" r="3" fill="#ef4444" />
+            <rect x="60" y="44" width="4" height="20" rx="1" fill="#fde047" />
+            <circle cx="62" cy="43" r="3" fill="#ef4444" />
+            <rect x="72" y="44" width="4" height="20" rx="1" fill="#fde047" />
+            <circle cx="74" cy="43" r="3" fill="#ef4444" />
+          </g>
+          {/* Row 3: 7 sticks preview */}
+          <g>
+            <rect x="18" y="72" width="4" height="18" rx="1" fill="#fde047" />
+            <circle cx="20" cy="71" r="3" fill="#ef4444" />
+            <rect x="28" y="72" width="4" height="18" rx="1" fill="#fde047" />
+            <circle cx="30" cy="71" r="3" fill="#ef4444" />
+            <rect x="38" y="72" width="4" height="18" rx="1" fill="#fde047" />
+            <circle cx="40" cy="71" r="3" fill="#ef4444" />
+            <rect x="48" y="72" width="4" height="18" rx="1" fill="#fde047" />
+            <circle cx="50" cy="71" r="3" fill="#ef4444" />
+            <rect x="58" y="72" width="4" height="18" rx="1" fill="#fde047" />
+            <circle cx="60" cy="71" r="3" fill="#ef4444" />
+            <rect x="68" y="72" width="4" height="18" rx="1" fill="#fde047" />
+            <circle cx="70" cy="71" r="3" fill="#ef4444" />
+            <rect x="78" y="72" width="4" height="18" rx="1" fill="#fde047" />
+            <circle cx="80" cy="71" r="3" fill="#ef4444" />
+          </g>
+        </svg>
+      );
+
+    case 'tower-stacker':
+      return (
+        <svg viewBox="0 0 100 100" className="w-full h-full p-2">
+          {/* Stacked floors */}
+          <rect x="18" y="76" width="64" height="14" rx="3" fill="#475569" stroke="#64748b" strokeWidth="1" />
+          <rect x="24" y="60" width="52" height="14" rx="3" fill="#06b6d4" stroke="#22d3ee" strokeWidth="1" />
+          <rect x="30" y="44" width="40" height="14" rx="3" fill="#8b5cf6" stroke="#a78bfa" strokeWidth="1" />
+          <rect x="34" y="28" width="32" height="14" rx="3" fill="#f59e0b" stroke="#fbbf24" strokeWidth="1" />
+          {/* Sliding active floor */}
+          <rect x="42" y="12" width="32" height="12" rx="3" fill="#ec4899" stroke="#f472b6" strokeWidth="1" />
+          {/* Slice off fragment falling */}
+          <rect x="76" y="20" width="8" height="12" rx="2" fill="#ec4899" opacity="0.6" transform="rotate(18 80 26)" />
+        </svg>
+      );
+
+    case 'tetris':
+      return (
+        <svg viewBox="0 0 100 100" className="w-full h-full p-2">
+          {/* Grid background */}
+          <rect x="12" y="10" width="76" height="80" rx="6" fill="#0f172a" stroke="#1e293b" strokeWidth="2" />
+          {/* Placed bottom blocks */}
+          {/* I Piece (cyan) bottom */}
+          <rect x="18" y="74" width="14" height="12" rx="2" fill="#06b6d4" />
+          <rect x="33" y="74" width="14" height="12" rx="2" fill="#06b6d4" />
+          <rect x="48" y="74" width="14" height="12" rx="2" fill="#06b6d4" />
+          <rect x="63" y="74" width="14" height="12" rx="2" fill="#06b6d4" />
+          {/* O Piece (yellow) */}
+          <rect x="18" y="61" width="14" height="12" rx="2" fill="#eab308" />
+          <rect x="33" y="61" width="14" height="12" rx="2" fill="#eab308" />
+          <rect x="18" y="48" width="14" height="12" rx="2" fill="#eab308" />
+          <rect x="33" y="48" width="14" height="12" rx="2" fill="#eab308" />
+          {/* T Piece (purple) falling */}
+          <rect x="48" y="22" width="14" height="12" rx="2" fill="#a855f7" />
+          <rect x="33" y="35" width="14" height="12" rx="2" fill="#a855f7" />
+          <rect x="48" y="35" width="14" height="12" rx="2" fill="#a855f7" />
+          <rect x="63" y="35" width="14" height="12" rx="2" fill="#a855f7" />
+        </svg>
+      );
+
     case 'iq':
     default:
       return (

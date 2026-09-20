@@ -23,6 +23,15 @@ import BrickBreakerGame from './BrickBreakerGame';
 import Game2048 from './Game2048';
 import UltimateTicTacToeGame from './UltimateTicTacToeGame';
 import SimonGame from './SimonGame';
+import QuickDrawGame from './QuickDrawGame';
+import FingerSumoGame from './FingerSumoGame';
+import PongGame from './PongGame';
+import KnifeFlipGame from './KnifeFlipGame';
+import ReversiGame from './ReversiGame';
+import BattleshipGame from './BattleshipGame';
+import NimGame from './NimGame';
+import TowerStackerGame from './TowerStackerGame';
+import TetrisGame from './TetrisGame';
 
 interface GameProps {
   user: User;
@@ -36,7 +45,8 @@ const VALID_APPS: AppId[] = [
   'taco', 'iq', 'mine', 'wordle', 'angle', 'more-less', 
   'spelling-bee', 'tic-tac-toe', 'connect-4', 'color-memory', 
   'particle-physics', 'fruit-merge', 'checkers', 'dots-and-boxes',
-  'snake', 'brick-breaker', 'game-2048', 'ultimate-tictactoe', 'simon'
+  'snake', 'brick-breaker', 'game-2048', 'ultimate-tictactoe', 'simon',
+  'quick-draw', 'finger-sumo', 'pong', 'knife-flip', 'reversi', 'battleship', 'nim', 'tower-stacker', 'tetris'
 ];
 
 export default function Game({ 
@@ -324,6 +334,78 @@ export default function Game({
     case 'simon':
       return (
         <SimonGame 
+          onBackToHub={handleBackToHub}
+          user={user}
+          username={customUsername}
+        />
+      );
+    case 'quick-draw':
+      return (
+        <QuickDrawGame 
+          onBackToHub={handleBackToHub}
+          user={user}
+          username={customUsername}
+        />
+      );
+    case 'finger-sumo':
+      return (
+        <FingerSumoGame 
+          onBackToHub={handleBackToHub}
+          user={user}
+          username={customUsername}
+        />
+      );
+    case 'pong':
+      return (
+        <PongGame 
+          onBackToHub={handleBackToHub}
+          user={user}
+          username={customUsername}
+        />
+      );
+    case 'knife-flip':
+      return (
+        <KnifeFlipGame 
+          onBackToHub={handleBackToHub}
+          user={user}
+          username={customUsername}
+        />
+      );
+    case 'reversi':
+      return (
+        <ReversiGame 
+          onBackToHub={handleBackToHub}
+          user={user}
+          username={customUsername}
+        />
+      );
+    case 'battleship':
+      return (
+        <BattleshipGame 
+          onBackToHub={handleBackToHub}
+          user={user}
+          username={customUsername}
+        />
+      );
+    case 'nim':
+      return (
+        <NimGame 
+          onBackToHub={handleBackToHub}
+          user={user}
+          username={customUsername}
+        />
+      );
+    case 'tower-stacker':
+      return (
+        <TowerStackerGame 
+          onBackToHub={handleBackToHub}
+          user={user}
+          username={customUsername}
+        />
+      );
+    case 'tetris':
+      return (
+        <TetrisGame 
           onBackToHub={handleBackToHub}
           user={user}
           username={customUsername}

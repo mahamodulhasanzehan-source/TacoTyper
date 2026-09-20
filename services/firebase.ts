@@ -502,7 +502,7 @@ export const saveSpeedTestStats = async (user: User, wpm: number, accuracy: numb
 
 // --- Global Stats Tracking ---
 
-export const incrementGamePlays = async (gameKey: 'taco_typer' | 'iq_test' | 'minesweeper' | 'wordle' | 'angle' | 'spelling_bee' | 'tic_tac_toe' | 'connect_4' | 'gun_game' | 'color_memory' | 'particle_physics' | 'more_less' | 'fruit_merge' | 'checkers' | 'dots_and_boxes' | 'snake' | 'brick_breaker' | 'flappy_flyer' | 'game_2048' | 'ultimate_tictactoe' | 'simon') => {
+export const incrementGamePlays = async (gameKey: 'taco_typer' | 'iq_test' | 'minesweeper' | 'wordle' | 'angle' | 'spelling_bee' | 'tic_tac_toe' | 'connect_4' | 'gun_game' | 'color_memory' | 'particle_physics' | 'more_less' | 'fruit_merge' | 'checkers' | 'dots_and_boxes' | 'snake' | 'brick_breaker' | 'flappy_flyer' | 'game_2048' | 'ultimate_tictactoe' | 'simon' | 'quick_draw' | 'finger_sumo' | 'pong' | 'knife_flip' | 'reversi' | 'battleship' | 'nim' | 'tower_stacker' | 'tetris' | string) => {
     const key = `play_count_${gameKey}`;
     const curr = parseInt(localStorage.getItem(key) || '0', 10);
     localStorage.setItem(key, String(curr + 1));
@@ -518,28 +518,8 @@ export const incrementGamePlays = async (gameKey: 'taco_typer' | 'iq_test' | 'mi
     } catch (e: any) {
         if (e.code === 'not-found') {
              await setDoc(statsRef, {
-                 taco_typer_plays: gameKey === 'taco_typer' ? 1 : 0,
-                 iq_test_plays: gameKey === 'iq_test' ? 1 : 0,
-                 minesweeper_plays: gameKey === 'minesweeper' ? 1 : 0,
-                 wordle_plays: gameKey === 'wordle' ? 1 : 0,
-                 angle_plays: gameKey === 'angle' ? 1 : 0,
-                 spelling_bee_plays: gameKey === 'spelling_bee' ? 1 : 0,
-                 tic_tac_toe_plays: gameKey === 'tic_tac_toe' ? 1 : 0,
-                 connect_4_plays: gameKey === 'connect_4' ? 1 : 0,
-                 gun_game_plays: gameKey === 'gun_game' ? 1 : 0,
-                 color_memory_plays: gameKey === 'color_memory' ? 1 : 0,
-                 particle_physics_plays: gameKey === 'particle_physics' ? 1 : 0,
-                 more_less_plays: gameKey === 'more_less' ? 1 : 0,
-                 fruit_merge_plays: gameKey === 'fruit_merge' ? 1 : 0,
-                 checkers_plays: gameKey === 'checkers' ? 1 : 0,
-                 dots_and_boxes_plays: gameKey === 'dots_and_boxes' ? 1 : 0,
-                 snake_plays: gameKey === 'snake' ? 1 : 0,
-                 brick_breaker_plays: gameKey === 'brick_breaker' ? 1 : 0,
-                 flappy_flyer_plays: gameKey === 'flappy_flyer' ? 1 : 0,
-                 game_2048_plays: gameKey === 'game_2048' ? 1 : 0,
-                 ultimate_tictactoe_plays: gameKey === 'ultimate_tictactoe' ? 1 : 0,
-                 simon_plays: gameKey === 'simon' ? 1 : 0
-             });
+                 [field]: 1
+             }, { merge: true });
         }
     }
 };
@@ -564,7 +544,16 @@ export const getGlobalGameStats = async (): Promise<GlobalGameStats> => {
         brick_breaker_plays: parseInt(localStorage.getItem('play_count_brick_breaker') || '0', 10),
         game_2048_plays: parseInt(localStorage.getItem('play_count_game_2048') || '0', 10),
         ultimate_tictactoe_plays: parseInt(localStorage.getItem('play_count_ultimate_tictactoe') || '0', 10),
-        simon_plays: parseInt(localStorage.getItem('play_count_simon') || '0', 10)
+        simon_plays: parseInt(localStorage.getItem('play_count_simon') || '0', 10),
+        quick_draw_plays: parseInt(localStorage.getItem('play_count_quick_draw') || '0', 10),
+        finger_sumo_plays: parseInt(localStorage.getItem('play_count_finger_sumo') || '0', 10),
+        pong_plays: parseInt(localStorage.getItem('play_count_pong') || '0', 10),
+        knife_flip_plays: parseInt(localStorage.getItem('play_count_knife_flip') || '0', 10),
+        reversi_plays: parseInt(localStorage.getItem('play_count_reversi') || '0', 10),
+        battleship_plays: parseInt(localStorage.getItem('play_count_battleship') || '0', 10),
+        nim_plays: parseInt(localStorage.getItem('play_count_nim') || '0', 10),
+        tower_stacker_plays: parseInt(localStorage.getItem('play_count_tower_stacker') || '0', 10),
+        tetris_plays: parseInt(localStorage.getItem('play_count_tetris') || '0', 10)
     };
     if (!dbExport) return fallback;
     try {
