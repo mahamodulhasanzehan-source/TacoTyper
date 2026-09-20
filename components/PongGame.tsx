@@ -21,16 +21,16 @@ export default function PongGame({ onBackToHub }: PongGameProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const animIdRef = useRef<number | null>(null);
 
-  // Physics state stored in refs for 60fps canvas loop
-  const pY = useRef(200);
+  // Physics state stored in refs
+  const pY = useRef(250);
   const pVel = useRef(0);
-  const bY = useRef(200);
+  const bY = useRef(250);
   const ball = useRef({
     x: 400,
     y: 250,
-    vx: -5,
-    vy: 2,
-    speed: 5,
+    vx: -2.8,
+    vy: 1.2,
+    speed: 3.0, // gentler, comfortable initial speed
     radius: 7
   });
 
@@ -45,8 +45,8 @@ export default function PongGame({ onBackToHub }: PongGameProps) {
     const canvas = canvasRef.current;
     const w = canvas?.width || 800;
     const h = canvas?.height || 500;
-    const initialSpeed = 5.5;
-    const angle = (Math.random() * 0.8 - 0.4); // slightly randomized launch angle
+    const initialSpeed = 3.2; // comfortable, slow initial speed
+    const angle = (Math.random() * 0.7 - 0.35); // shallow launch angle
 
     ball.current = {
       x: w / 2,
@@ -68,7 +68,7 @@ export default function PongGame({ onBackToHub }: PongGameProps) {
 
   // Wall rebound vector prediction for Hard Bot
   const predictBallLanding = useCallback((bX: number, bYPos: number, bVx: number, bVy: number, targetX: number, courtH: number) => {
-    if (bVx <= 0) return courtH / 2; // ball moving away, return to center
+    if (bVx <= 0) return courtH / 2;
     let simX = bX;
     let simY = bYPos;
     let simVy = bVy;
@@ -102,40 +102,36 @@ export default function PongGame({ onBackToHub }: PongGameProps) {
 
       const w = canvas.width;
       const h = canvas.height;
-      const paddleH = 75;
+      const paddleH = Math.max(64, h * 0.22);
       const paddleW = 12;
 
       if (isPlaying && !matchWinner) {
-        // --- 1. Player Movement ---
-        let desiredVel = 0;
-        if (keysPressed.current['KeyW'] || keysPressed.current['ArrowUp']) desiredVel = -400;
-        if (keysPressed.current['KeyS'] || keysPressed.current['ArrowDown']) desiredVel = 400;
-
-        if (desiredVel !== 0) {
-          pVel.current = desiredVel;
-          pY.current += desiredVel * dt;
+        // Keyboard controls
+        const speed = 480;
+        if (keysPressed.current['ArrowUp'] || keysPressed.current['KeyW']) {
+          pVel.current = -speed;
+        } else if (keysPressed.current['ArrowDown'] || keysPressed.current['KeyS']) {
+          pVel.current = speed;
         } else if (!isDragging.current) {
-          pVel.current *= 0.85; // spin decay
+          pVel.current *= 0.8;
         }
+
+        pY.current += pVel.current * dt;
         pY.current = Math.max(paddleH / 2, Math.min(h - paddleH / 2, pY.current));
 
-        // --- 2. Bot Movement ---
-        let targetY = h / 2;
-        let botSpeed = 250;
+        // Bot AI
+        let botSpeed = 240;
+        let targetY = ball.current.y;
 
         if (difficulty === 'easy') {
           botSpeed = 190;
-          // intentional positional error margin (+/- 45px)
-          targetY = ball.current.y + Math.sin(now * 0.003) * 45;
+          targetY = ball.current.y + (Math.sin(now / 300) * 40);
         } else if (difficulty === 'medium') {
-          botSpeed = 340;
-          // tracks ball directly with tiny reaction lag
+          botSpeed = 270;
           targetY = ball.current.y;
         } else {
-          // hard: predicts wall rebound vectors and positions ahead
-          botSpeed = 480;
-          const predicted = predictBallLanding(ball.current.x, ball.current.y, ball.current.vx, ball.current.vy, w - 30, h);
-          targetY = predicted;
+          botSpeed = 360;
+          targetY = predictBallLanding(ball.current.x, ball.current.y, ball.current.vx, ball.current.vy, w - 30, h);
         }
 
         const diff = targetY - bY.current;
@@ -144,7 +140,7 @@ export default function PongGame({ onBackToHub }: PongGameProps) {
         }
         bY.current = Math.max(paddleH / 2, Math.min(h - paddleH / 2, bY.current));
 
-        // --- 3. Ball Physics ---
+        // Ball movement
         ball.current.x += ball.current.vx;
         ball.current.y += ball.current.vy;
 
@@ -159,11 +155,11 @@ export default function PongGame({ onBackToHub }: PongGameProps) {
           audioService.playSound('tile_click');
         }
 
-        // --- 4. Paddle Collisions ---
+        // Paddle collisions
         const playerPaddleX = 25;
         const botPaddleX = w - 25 - paddleW;
 
-        // Player Paddle Deflection
+        // Player Deflection
         if (
           ball.current.vx < 0 &&
           ball.current.x - ball.current.radius <= playerPaddleX + paddleW &&
@@ -171,24 +167,43 @@ export default function PongGame({ onBackToHub }: PongGameProps) {
           ball.current.y >= pY.current - paddleH / 2 &&
           ball.current.y <= pY.current + paddleH / 2
         ) {
-          const contactOffset = (ball.current.y - pY.current) / (paddleH / 2); // -1 (top) to +1 (bottom)
-          const maxAngle = (Math.PI / 180) * 60; // +/- 60 deg
-          const bounceAngle = contactOffset * maxAngle;
+          const contactOffset = (ball.current.y - pY.current) / (paddleH / 2);
+          const maxAngle = (Math.PI / 180) * 58;
+          let bounceAngle = contactOffset * maxAngle;
 
-          // Increase speed by 5% per paddle hit, capped at 16
-          const newSpeed = Math.min(16, ball.current.speed * 1.05);
+          // Relative paddle vs ball vertical direction:
+          // Moving same direction -> faster, moving opposite -> slower
+          let speedMultiplier = 1.035; // base gentle volley increment
+          const paddleMoving = Math.abs(pVel.current) > 30;
+          const sameDirection = paddleMoving && Math.sign(pVel.current) === Math.sign(ball.current.vy);
+          const oppositeDirection = paddleMoving && Math.sign(pVel.current) === -Math.sign(ball.current.vy);
+
+          if (sameDirection) {
+            speedMultiplier = 1.14;
+          } else if (oppositeDirection) {
+            speedMultiplier = 0.86;
+          }
+
+          let newSpeed = ball.current.speed * speedMultiplier;
+          newSpeed = Math.max(3.8, Math.min(10.5, newSpeed));
           ball.current.speed = newSpeed;
 
-          // Apply paddle spin
-          const spinEffect = (pVel.current / 400) * 1.5;
+          // Non-looping & spin dynamics:
+          // Prevent strictly horizontal ping-pong trapping
+          if (Math.abs(bounceAngle) < 0.08 && !paddleMoving) {
+            bounceAngle = (Math.random() > 0.5 ? 1 : -1) * 0.15;
+          }
+          // Subtle micro-variation to avoid exact repeating trajectories
+          bounceAngle += (Math.random() - 0.5) * 0.04;
 
+          const spinEffect = (pVel.current / 450) * 1.2;
           ball.current.vx = Math.abs(newSpeed * Math.cos(bounceAngle));
           ball.current.vy = newSpeed * Math.sin(bounceAngle) + spinEffect;
           ball.current.x = playerPaddleX + paddleW + ball.current.radius;
           audioService.playSound('piece_drop');
         }
 
-        // Bot Paddle Deflection
+        // Bot Deflection
         if (
           ball.current.vx > 0 &&
           ball.current.x + ball.current.radius >= botPaddleX &&
@@ -197,10 +212,16 @@ export default function PongGame({ onBackToHub }: PongGameProps) {
           ball.current.y <= bY.current + paddleH / 2
         ) {
           const contactOffset = (ball.current.y - bY.current) / (paddleH / 2);
-          const maxAngle = (Math.PI / 180) * 60;
-          const bounceAngle = contactOffset * maxAngle;
+          const maxAngle = (Math.PI / 180) * 58;
+          let bounceAngle = contactOffset * maxAngle;
 
-          const newSpeed = Math.min(16, ball.current.speed * 1.05);
+          // Non-looping anti-lock
+          if (Math.abs(bounceAngle) < 0.08) {
+            bounceAngle = (Math.random() > 0.5 ? 1 : -1) * 0.15;
+          }
+          bounceAngle += (Math.random() - 0.5) * 0.04;
+
+          const newSpeed = Math.min(10.0, Math.max(3.8, ball.current.speed * 1.035));
           ball.current.speed = newSpeed;
 
           ball.current.vx = -Math.abs(newSpeed * Math.cos(bounceAngle));
@@ -209,70 +230,73 @@ export default function PongGame({ onBackToHub }: PongGameProps) {
           audioService.playSound('piece_land');
         }
 
-        // --- 5. Scoring ---
+        // Scoring
         if (ball.current.x < 0) {
-          // Bot scores
           audioService.playSound('failure');
           setBotScore(b => {
             const next = b + 1;
-            if (next >= 7) {
-              setMatchWinner('bot');
-            } else {
-              resetBall(true);
-            }
+            if (next >= 7) setMatchWinner('bot');
+            else resetBall(true);
             return next;
           });
         } else if (ball.current.x > w) {
-          // Player scores
           audioService.playSound('success');
           setPlayerScore(p => {
             const next = p + 1;
-            if (next >= 7) {
-              setMatchWinner('player');
-            } else {
-              resetBall(false);
-            }
+            if (next >= 7) setMatchWinner('player');
+            else resetBall(false);
             return next;
           });
         }
       }
 
-      // --- 6. Render Frame ---
+      // Render Court
       ctx.fillStyle = '#05070d';
       ctx.fillRect(0, 0, w, h);
 
-      // Court boundaries & center line
+      // Court boundary
       ctx.strokeStyle = '#1e293b';
       ctx.lineWidth = 3;
-      ctx.strokeRect(10, 10, w - 20, h - 20);
+      ctx.strokeRect(8, 8, w - 16, h - 16);
 
+      // Center divider line
       ctx.setLineDash([8, 8]);
       ctx.beginPath();
-      ctx.moveTo(w / 2, 10);
-      ctx.lineTo(w / 2, h - 10);
+      ctx.moveTo(w / 2, 8);
+      ctx.lineTo(w / 2, h - 8);
+      ctx.strokeStyle = '#334155';
+      ctx.lineWidth = 2;
       ctx.stroke();
       ctx.setLineDash([]);
 
-      // Draw Paddles
-      // Player (Cyan)
+      // Scores watermark
+      ctx.font = 'bold 64px monospace';
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
+      ctx.textAlign = 'center';
+      ctx.fillText(String(playerScore), w / 4, h / 2 + 20);
+      ctx.fillText(String(botScore), (3 * w) / 4, h / 2 + 20);
+
+      // Player Paddle (Cyan)
       ctx.fillStyle = '#06b6d4';
       ctx.shadowColor = 'rgba(6, 182, 212, 0.6)';
       ctx.shadowBlur = 12;
       ctx.beginPath();
-      ctx.roundRect(25, pY.current - paddleH / 2, paddleW, paddleH, 5);
+      ctx.roundRect(25, pY.current - paddleH / 2, paddleW, paddleH, 4);
       ctx.fill();
 
-      // Bot (Rose)
+      // Bot Paddle (Rose)
       ctx.fillStyle = '#f43f5e';
       ctx.shadowColor = 'rgba(244, 63, 94, 0.6)';
+      ctx.shadowBlur = 12;
       ctx.beginPath();
-      ctx.roundRect(w - 25 - paddleW, bY.current - paddleH / 2, paddleW, paddleH, 5);
+      ctx.roundRect(w - 25 - paddleW, bY.current - paddleH / 2, paddleW, paddleH, 4);
       ctx.fill();
+      ctx.shadowBlur = 0;
 
-      // Draw Ball (White with motion glow)
-      ctx.shadowColor = '#ffffff';
-      ctx.shadowBlur = 14;
+      // Ball
       ctx.fillStyle = '#ffffff';
+      ctx.shadowColor = '#38bdf8';
+      ctx.shadowBlur = 10;
       ctx.beginPath();
       ctx.arc(ball.current.x, ball.current.y, ball.current.radius, 0, Math.PI * 2);
       ctx.fill();
@@ -285,18 +309,17 @@ export default function PongGame({ onBackToHub }: PongGameProps) {
     return () => {
       if (animIdRef.current) cancelAnimationFrame(animIdRef.current);
     };
-  }, [isPlaying, matchWinner, difficulty, predictBallLanding, resetBall]);
+  }, [isPlaying, matchWinner, difficulty, resetBall, playerScore, botScore, predictBallLanding]);
 
-  // Handle Canvas Resize
+  // Responsive Canvas resizing
   useEffect(() => {
     const handleResize = () => {
-      const container = containerRef.current;
       const canvas = canvasRef.current;
-      if (!container || !canvas) return;
+      const container = containerRef.current;
+      if (!canvas || !container) return;
 
-      const rect = container.getBoundingClientRect();
-      const targetW = Math.min(800, Math.floor(rect.width));
-      const targetH = Math.min(500, Math.floor(rect.height));
+      const targetW = container.clientWidth;
+      const targetH = container.clientHeight;
 
       if (canvas.width !== targetW || canvas.height !== targetH) {
         canvas.width = targetW;
@@ -310,7 +333,7 @@ export default function PongGame({ onBackToHub }: PongGameProps) {
     return () => observer.disconnect();
   }, []);
 
-  // Keyboard bindings
+  // Keyboard controls
   useEffect(() => {
     const onDown = (e: KeyboardEvent) => {
       if (['KeyW', 'KeyS', 'ArrowUp', 'ArrowDown'].includes(e.code)) {
@@ -331,9 +354,10 @@ export default function PongGame({ onBackToHub }: PongGameProps) {
     };
   }, []);
 
-  // Touch / Pointer drag handlers
+  // Dedicated Mobile & Desktop Touch Handlers
   const handlePointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
     isDragging.current = true;
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
     updatePaddleFromPointer(e);
   };
 
@@ -343,8 +367,11 @@ export default function PongGame({ onBackToHub }: PongGameProps) {
     }
   };
 
-  const handlePointerUp = () => {
+  const handlePointerUp = (e: React.PointerEvent<HTMLCanvasElement>) => {
     isDragging.current = false;
+    try {
+      (e.target as HTMLElement).releasePointerCapture(e.pointerId);
+    } catch {}
   };
 
   const updatePaddleFromPointer = (e: React.PointerEvent<HTMLCanvasElement>) => {
@@ -352,34 +379,34 @@ export default function PongGame({ onBackToHub }: PongGameProps) {
     if (!canvas) return;
     const rect = canvas.getBoundingClientRect();
     const touchY = ((e.clientY - rect.top) / rect.height) * canvas.height;
-    pVel.current = (touchY - pY.current) * 10;
+    pVel.current = (touchY - pY.current) * 8;
     pY.current = touchY;
   };
 
   return (
-    <div className="w-full h-screen flex flex-col bg-[#08090d] text-white select-none overflow-hidden font-sans">
-      <header className="flex items-center justify-between px-4 py-3 bg-neutral-900/90 border-b border-neutral-800 z-20">
-        <div className="flex items-center gap-3">
+    <div className="w-full h-screen flex flex-col bg-[#05070d] text-white select-none overflow-hidden font-sans">
+      <header className="flex items-center justify-between px-3 py-2 bg-neutral-900/90 border-b border-neutral-800 z-20 shrink-0">
+        <div className="flex items-center gap-2">
           <button
             onClick={onBackToHub}
-            className="px-3 py-1.5 bg-neutral-800 hover:bg-neutral-700 text-xs font-bold rounded-lg border border-neutral-700 text-neutral-300"
+            className="px-2.5 py-1 bg-neutral-800 hover:bg-neutral-700 text-xs font-bold rounded-lg border border-neutral-700 text-neutral-300"
           >
             ← Hub
           </button>
           <div>
-            <h1 className="text-base font-black tracking-wide text-cyan-400">PONG 2D</h1>
-            <span className="text-[10px] text-neutral-400 font-mono">FIRST TO 7 • TABLE TENNIS</span>
+            <h1 className="text-sm sm:text-base font-black tracking-wide text-cyan-400">PONG 2D</h1>
+            <span className="text-[9px] text-neutral-400 font-mono hidden sm:inline">FIRST TO 7 • TABLE TENNIS</span>
           </div>
         </div>
 
         <div className="flex items-center gap-2">
-          <div className="flex bg-neutral-950 p-1 rounded-lg border border-neutral-800">
+          <div className="flex bg-neutral-950 p-0.5 rounded-lg border border-neutral-800">
             {(['easy', 'medium', 'hard'] as Difficulty[]).map(d => (
               <button
                 key={d}
                 disabled={isPlaying}
                 onClick={() => setDifficulty(d)}
-                className={`px-2.5 py-1 text-xs font-bold rounded capitalize transition-all ${
+                className={`px-2 py-0.5 text-[10px] sm:text-xs font-bold rounded capitalize transition-all ${
                   difficulty === d
                     ? 'bg-cyan-500 text-black shadow font-bold'
                     : 'text-neutral-400 hover:text-white disabled:opacity-50'
@@ -392,63 +419,94 @@ export default function PongGame({ onBackToHub }: PongGameProps) {
 
           <button
             onClick={startMatch}
-            className="px-3 py-1.5 bg-neutral-800 hover:bg-neutral-700 text-xs font-bold rounded-lg border border-neutral-700 text-neutral-300"
+            className="px-2.5 py-1 bg-neutral-800 hover:bg-neutral-700 text-xs font-bold rounded-lg border border-neutral-700 text-neutral-300"
           >
             {isPlaying ? 'Restart' : 'Play'}
           </button>
         </div>
       </header>
 
-      {/* Score Header */}
-      <div className="flex items-center justify-center gap-12 py-2 bg-neutral-950/60 border-b border-neutral-900 font-mono">
-        <div className="text-center">
-          <span className="text-[11px] text-cyan-400 font-bold block">YOU</span>
-          <span className="text-3xl font-black text-white">{playerScore}</span>
+      {/* Score Header Bar */}
+      <div className="flex items-center justify-between px-6 py-1.5 bg-neutral-950/80 border-b border-neutral-900 text-xs font-mono shrink-0">
+        <div className="flex items-center gap-2">
+          <span className="w-2.5 h-2.5 rounded-full bg-cyan-400" />
+          <span className="text-cyan-400 font-bold">YOU: {playerScore}</span>
         </div>
-        <div className="text-neutral-600 text-2xl font-black">:</div>
-        <div className="text-center">
-          <span className="text-[11px] text-rose-400 font-bold block">BOT ({difficulty.toUpperCase()})</span>
-          <span className="text-3xl font-black text-white">{botScore}</span>
+        <div className="text-[11px] text-neutral-400">
+          Target: 7 Points
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-rose-400 font-bold">BOT: {botScore}</span>
+          <span className="w-2.5 h-2.5 rounded-full bg-rose-400" />
         </div>
       </div>
 
-      {/* Canvas Court Container */}
-      <div ref={containerRef} className="flex-1 w-full flex items-center justify-center p-3 relative">
+      {/* Main Canvas Area */}
+      <div ref={containerRef} className="flex-1 w-full relative overflow-hidden flex items-center justify-center touch-none">
         <canvas
           ref={canvasRef}
-          width={800}
-          height={500}
           onPointerDown={handlePointerDown}
           onPointerMove={handlePointerMove}
           onPointerUp={handlePointerUp}
           onPointerCancel={handlePointerUp}
-          className="rounded-xl shadow-2xl border border-neutral-800 max-w-full max-h-full touch-none cursor-ns-resize"
+          className="w-full h-full block cursor-ns-resize touch-none"
         />
 
-        {/* Start / Game Over Modal Overlay */}
-        {(!isPlaying || matchWinner) && (
-          <div className="absolute inset-0 flex items-center justify-center bg-black/70 backdrop-blur-sm z-30 p-4">
-            <div className="bg-neutral-900 border border-neutral-800 p-6 sm:p-8 rounded-2xl max-w-sm w-full text-center shadow-2xl">
-              <div className="text-4xl mb-2">{matchWinner === 'player' ? '🏆' : matchWinner === 'bot' ? '💀' : '🏓'}</div>
-              <h2 className="text-xl font-black text-cyan-400 mb-2">
-                {matchWinner === 'player' ? 'VICTORY! (7 POINTS)' : matchWinner === 'bot' ? 'DEFEAT! BOT REACHED 7' : 'Table Tennis Pong'}
-              </h2>
-              <p className="text-xs text-neutral-400 mb-6 leading-relaxed">
-                Use <strong>W / S</strong> or <strong>Up / Down</strong> keys, or drag vertically on touch screen. Center hits bounce straight, edge hits deflect at sharp angles up to 60°!
+        {/* Start Game Overlay */}
+        {!isPlaying && (
+          <div className="absolute inset-0 flex items-center justify-center bg-black/60 backdrop-blur-sm z-20">
+            <div className="bg-neutral-900 border border-neutral-800 p-6 rounded-2xl max-w-sm w-full text-center shadow-2xl">
+              <div className="text-4xl mb-2">🏓</div>
+              <h2 className="text-2xl font-black text-cyan-400 mb-2">PONG SHOWDOWN</h2>
+              <p className="text-xs text-neutral-400 mb-6">
+                Drag on the screen or use W/S / Arrow keys to slide your paddle.
               </p>
               <button
                 onClick={startMatch}
                 className="w-full py-3 bg-cyan-500 hover:bg-cyan-400 text-black font-black text-sm tracking-wider uppercase rounded-xl transition-all shadow-lg active:scale-95"
               >
-                {matchWinner ? 'Play Again' : 'Start Game'}
+                Start Match
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Match Finished Modal */}
+        {matchWinner && (
+          <div className="absolute inset-0 flex items-center justify-center bg-black/85 backdrop-blur-sm z-30 p-4">
+            <div className="bg-neutral-900 border border-neutral-800 p-6 sm:p-8 rounded-2xl max-w-sm w-full text-center shadow-2xl">
+              <div className="text-4xl mb-2">{matchWinner === 'player' ? '🏆' : '💀'}</div>
+              <h2 className={`text-2xl font-black mb-1 ${matchWinner === 'player' ? 'text-cyan-400' : 'text-rose-500'}`}>
+                {matchWinner === 'player' ? 'VICTORY!' : 'DEFEATED!'}
+              </h2>
+              <p className="text-sm text-neutral-400 mb-4">
+                {matchWinner === 'player'
+                  ? `You outmatched the ${difficulty.toUpperCase()} AI bot!`
+                  : `The ${difficulty.toUpperCase()} bot scored 7 points.`}
+              </p>
+              <div className="bg-neutral-950 p-4 rounded-xl border border-neutral-800 mb-6 flex justify-around font-mono">
+                <div>
+                  <span className="text-xs text-neutral-400 uppercase font-semibold block">You</span>
+                  <span className="text-2xl font-black text-cyan-400">{playerScore}</span>
+                </div>
+                <div>
+                  <span className="text-xs text-neutral-400 uppercase font-semibold block">Bot</span>
+                  <span className="text-2xl font-black text-rose-500">{botScore}</span>
+                </div>
+              </div>
+              <button
+                onClick={startMatch}
+                className="w-full py-3 bg-cyan-500 hover:bg-cyan-400 text-black font-black text-sm tracking-wider uppercase rounded-xl transition-all shadow-lg active:scale-95"
+              >
+                Play Again
               </button>
             </div>
           </div>
         )}
       </div>
 
-      <footer className="p-2.5 text-center text-xs text-neutral-500 border-t border-neutral-900 bg-neutral-950/40">
-        Controls: W / S keys, Up / Down Arrows, or Touch & Drag vertically • Ball speed accelerates 5% with each paddle hit!
+      <footer className="py-1 px-2 text-center text-[10px] text-neutral-500 border-t border-neutral-900 bg-neutral-950/60 shrink-0">
+        Controls: Drag vertically anywhere on screen • W/S or Arrow Keys
       </footer>
     </div>
   );

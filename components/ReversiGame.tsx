@@ -20,11 +20,12 @@ type Difficulty = 'easy' | 'medium' | 'hard';
 export default function ReversiGame({ onBackToHub }: ReversiGameProps) {
   const [board, setBoard] = useState<Board>(getInitialBoard);
   const [difficulty, setDifficulty] = useState<Difficulty>('medium');
-  const [playerColor] = useState<'B' | 'W'>('B'); // Player is Dark (B)
+  const [playerColor] = useState<'B' | 'W'>('B');
   const [turn, setTurn] = useState<'B' | 'W'>('B');
   const [isBotThinking, setIsBotThinking] = useState(false);
   const [statusMessage, setStatusMessage] = useState('');
   const [gameOver, setGameOver] = useState(false);
+  const [recentlyFlipped, setRecentlyFlipped] = useState<Set<number>>(new Set());
 
   const botColor: 'B' | 'W' = playerColor === 'B' ? 'W' : 'B';
 
@@ -38,6 +39,7 @@ export default function ReversiGame({ onBackToHub }: ReversiGameProps) {
     setIsBotThinking(false);
     setStatusMessage('');
     setGameOver(false);
+    setRecentlyFlipped(new Set());
   }, []);
 
   // Compute counts
@@ -57,6 +59,18 @@ export default function ReversiGame({ onBackToHub }: ReversiGameProps) {
     return getLegalMoves(board, turn);
   }, [board, turn, gameOver]);
 
+  // Trigger cascade flipping sound effect with subtle pitch variations
+  const playFlipCascadeSound = (flipsCount: number) => {
+    audioService.playSound('tictac_move');
+    // Staggered subtle click sounds for individual pieces flipping
+    const count = Math.min(flipsCount, 5);
+    for (let i = 1; i <= count; i++) {
+      setTimeout(() => {
+        audioService.playSound('tile_click');
+      }, i * 65);
+    }
+  };
+
   // Handle Player Turn
   const handleCellClick = useCallback((idx: number) => {
     if (turn !== playerColor || isBotThinking || gameOver) return;
@@ -64,9 +78,16 @@ export default function ReversiGame({ onBackToHub }: ReversiGameProps) {
     const move = legalMoves.find(m => m.idx === idx);
     if (!move) return;
 
-    audioService.playSound('tictac_move');
+    playFlipCascadeSound(move.flips.length);
+    setRecentlyFlipped(new Set(move.flips));
+
     const nextBoard = applyMove(board, move.idx, move.flips, playerColor);
     setBoard(nextBoard);
+
+    // Clear recently flipped animation tag after 500ms
+    setTimeout(() => {
+      setRecentlyFlipped(new Set());
+    }, 500);
 
     // Switch turn
     const nextTurn = botColor;
@@ -83,7 +104,6 @@ export default function ReversiGame({ onBackToHub }: ReversiGameProps) {
         audioService.playSound('word_valid');
         setTurn(playerColor);
       } else {
-        // Neither player can move -> Game Over
         setGameOver(true);
       }
     }
@@ -100,9 +120,15 @@ export default function ReversiGame({ onBackToHub }: ReversiGameProps) {
       if (chosenIdx !== null) {
         const move = getLegalMoves(board, botColor).find(m => m.idx === chosenIdx);
         if (move) {
-          audioService.playSound('piece_drop');
+          playFlipCascadeSound(move.flips.length);
+          setRecentlyFlipped(new Set(move.flips));
+
           const nextBoard = applyMove(board, move.idx, move.flips, botColor);
           setBoard(nextBoard);
+
+          setTimeout(() => {
+            setRecentlyFlipped(new Set());
+          }, 500);
 
           // Check if player has moves
           const playerMoves = getLegalMoves(nextBoard, playerColor);
@@ -122,7 +148,6 @@ export default function ReversiGame({ onBackToHub }: ReversiGameProps) {
           }
         }
       } else {
-        // Bot has no moves, pass back to player
         const playerMoves = getLegalMoves(board, playerColor);
         if (playerMoves.length > 0) {
           setStatusMessage('Bot passes!');
@@ -148,31 +173,33 @@ export default function ReversiGame({ onBackToHub }: ReversiGameProps) {
   }, [gameOver, playerColor, botColor, darkCount, lightCount]);
 
   return (
-    <div className="w-full h-screen flex flex-col bg-[#08090d] text-white select-none overflow-hidden font-sans">
-      <header className="flex items-center justify-between px-4 py-3 bg-neutral-900/90 border-b border-neutral-800 z-20">
-        <div className="flex items-center gap-3">
+    <div className="w-full h-screen flex flex-col bg-[#06080e] text-white select-none overflow-hidden font-sans">
+      <header className="flex items-center justify-between px-3 py-2 bg-neutral-900/90 border-b border-neutral-800 z-20 shrink-0">
+        <div className="flex items-center gap-2">
           <button
             onClick={onBackToHub}
-            className="px-3 py-1.5 bg-neutral-800 hover:bg-neutral-700 text-xs font-bold rounded-lg border border-neutral-700 text-neutral-300"
+            className="px-2.5 py-1 bg-neutral-800 hover:bg-neutral-700 text-xs font-bold rounded-lg border border-neutral-700 text-neutral-300"
           >
             ← Hub
           </button>
           <div>
-            <h1 className="text-base font-black tracking-wide text-emerald-400">REVERSI / OTHELLO</h1>
-            <span className="text-[10px] text-neutral-400 font-mono">8X8 FLANKING STRATEGY</span>
+            <h1 className="text-sm sm:text-base font-black tracking-wide text-emerald-400">REVERSI</h1>
+            <span className="text-[9px] text-neutral-400 font-mono hidden sm:inline">8X8 OTHELLO STRATEGY</span>
           </div>
         </div>
 
         <div className="flex items-center gap-2">
-          <div className="flex bg-neutral-950 p-1 rounded-lg border border-neutral-800">
+          {/* Difficulty Picker */}
+          <div className="flex bg-neutral-950 p-0.5 rounded-lg border border-neutral-800">
             {(['easy', 'medium', 'hard'] as Difficulty[]).map(d => (
               <button
                 key={d}
-                onClick={() => { setDifficulty(d); resetGame(); }}
-                className={`px-2.5 py-1 text-xs font-bold rounded capitalize transition-all ${
+                disabled={isBotThinking || gameOver}
+                onClick={() => setDifficulty(d)}
+                className={`px-2 py-0.5 text-[10px] sm:text-xs font-bold rounded capitalize transition-all ${
                   difficulty === d
-                    ? 'bg-emerald-500 text-black shadow'
-                    : 'text-neutral-400 hover:text-white'
+                    ? 'bg-emerald-500 text-black shadow font-bold'
+                    : 'text-neutral-400 hover:text-white disabled:opacity-50'
                 }`}
               >
                 {d}
@@ -182,7 +209,7 @@ export default function ReversiGame({ onBackToHub }: ReversiGameProps) {
 
           <button
             onClick={resetGame}
-            className="px-3 py-1.5 bg-neutral-800 hover:bg-neutral-700 text-xs font-bold rounded-lg border border-neutral-700 text-neutral-300"
+            className="px-2.5 py-1 bg-neutral-800 hover:bg-neutral-700 text-xs font-bold rounded-lg border border-neutral-700 text-neutral-300"
           >
             Reset
           </button>
@@ -190,17 +217,17 @@ export default function ReversiGame({ onBackToHub }: ReversiGameProps) {
       </header>
 
       {/* Discs Score & Turn Bar */}
-      <div className="flex items-center justify-around py-3 bg-neutral-950/70 border-b border-neutral-900 px-4">
+      <div className="flex items-center justify-between py-2 bg-neutral-950/90 border-b border-neutral-900 px-4 shrink-0">
         {/* Dark (Player) */}
-        <div className={`flex items-center gap-3 px-4 py-1.5 rounded-xl border transition-all ${
-          turn === 'B' ? 'border-amber-400 bg-neutral-900 shadow-md' : 'border-transparent'
+        <div className={`flex items-center gap-2 px-3 py-1 rounded-xl border transition-all ${
+          turn === 'B' ? 'border-emerald-400 bg-neutral-900 shadow-md' : 'border-transparent'
         }`}>
-          <div className="w-6 h-6 rounded-full bg-neutral-900 border-2 border-neutral-700 shadow-inner flex items-center justify-center text-xs">
+          <div className="w-5 h-5 rounded-full bg-neutral-950 border-2 border-neutral-600 shadow-inner flex items-center justify-center text-[10px]">
             ⚫
           </div>
           <div>
-            <div className="text-[10px] text-neutral-400 font-semibold uppercase">You (Dark)</div>
-            <div className="text-lg font-black font-mono text-white">{darkCount}</div>
+            <div className="text-[9px] text-neutral-400 font-semibold uppercase">You</div>
+            <div className="text-base font-black font-mono text-white leading-none">{darkCount}</div>
           </div>
         </div>
 
@@ -211,32 +238,39 @@ export default function ReversiGame({ onBackToHub }: ReversiGameProps) {
           ) : isBotThinking ? (
             <span className="text-neutral-400">Bot thinking...</span>
           ) : turn === playerColor ? (
-            <span className="text-emerald-400">Your Turn (Select dot)</span>
+            <span className="text-emerald-400">Your Turn (Pick dot)</span>
           ) : (
             <span className="text-neutral-400">Bot's Turn</span>
           )}
         </div>
 
         {/* Light (Bot) */}
-        <div className={`flex items-center gap-3 px-4 py-1.5 rounded-xl border transition-all ${
-          turn === 'W' ? 'border-amber-400 bg-neutral-900 shadow-md' : 'border-transparent'
+        <div className={`flex items-center gap-2 px-3 py-1 rounded-xl border transition-all ${
+          turn === 'W' ? 'border-emerald-400 bg-neutral-900 shadow-md' : 'border-transparent'
         }`}>
           <div>
-            <div className="text-[10px] text-neutral-400 font-semibold uppercase text-right">Bot (Light)</div>
-            <div className="text-lg font-black font-mono text-white text-right">{lightCount}</div>
+            <div className="text-[9px] text-neutral-400 font-semibold uppercase text-right">Bot</div>
+            <div className="text-base font-black font-mono text-white text-right leading-none">{lightCount}</div>
           </div>
-          <div className="w-6 h-6 rounded-full bg-neutral-100 border-2 border-neutral-300 shadow flex items-center justify-center text-xs">
+          <div className="w-5 h-5 rounded-full bg-slate-100 border-2 border-slate-300 shadow flex items-center justify-center text-[10px]">
             ⚪
           </div>
         </div>
       </div>
 
-      {/* 8x8 Reversi Board */}
-      <div className="flex-1 flex flex-col items-center justify-center p-3 sm:p-6 relative">
-        <div className="aspect-square w-full max-w-[min(90vw,480px,calc(100vh-210px))] p-2.5 sm:p-3.5 bg-neutral-950 rounded-2xl border-4 border-[#064e3b] shadow-2xl">
-          <div className="w-full h-full grid grid-cols-8 grid-rows-8 gap-1 bg-[#064e3b] p-1 rounded-xl">
+      {/* Reversi Board - Dynamic responsive scaling taking maximum available container space */}
+      <div className="flex-1 flex flex-col items-center justify-center p-2 sm:p-4 relative overflow-hidden">
+        <div
+          className="aspect-square p-2 bg-[#022c22] rounded-2xl border-4 border-[#065f46] shadow-2xl flex items-center justify-center"
+          style={{
+            width: 'min(92vw, calc(100vh - 150px), 520px)',
+            height: 'min(92vw, calc(100vh - 150px), 520px)'
+          }}
+        >
+          <div className="w-full h-full grid grid-cols-8 grid-rows-8 gap-1 sm:gap-1.5 bg-[#064e3b] p-1.5 rounded-xl">
             {board.map((cell, idx) => {
               const isLegal = legalMoves.some(m => m.idx === idx) && turn === playerColor;
+              const isFlipped = recentlyFlipped.has(idx);
 
               return (
                 <button
@@ -246,17 +280,25 @@ export default function ReversiGame({ onBackToHub }: ReversiGameProps) {
                   className="w-full h-full bg-[#047857] hover:bg-[#059669] rounded flex items-center justify-center relative cursor-pointer disabled:cursor-default transition-colors p-0.5 outline-none"
                   aria-label={`Cell ${idx}`}
                 >
-                  {/* Discs */}
+                  {/* Discs with realistic 3D flipping animation */}
                   {cell === 'B' && (
-                    <div className="w-full h-full rounded-full bg-gradient-to-br from-neutral-800 to-black border border-neutral-700 shadow-[0_3px_6px_rgba(0,0,0,0.8)] flex items-center justify-center transform transition-transform duration-200" />
+                    <div
+                      className={`w-[88%] h-[88%] rounded-full bg-gradient-to-br from-neutral-800 to-black border-2 border-neutral-600 shadow-[0_3px_6px_rgba(0,0,0,0.8)] transition-transform duration-500 ${
+                        isFlipped ? 'scale-110 [transform:rotateY(180deg)]' : '[transform:rotateY(0deg)]'
+                      }`}
+                    />
                   )}
                   {cell === 'W' && (
-                    <div className="w-full h-full rounded-full bg-gradient-to-br from-white to-neutral-300 border border-neutral-200 shadow-[0_3px_6px_rgba(0,0,0,0.4)] flex items-center justify-center transform transition-transform duration-200" />
+                    <div
+                      className={`w-[88%] h-[88%] rounded-full bg-gradient-to-br from-white to-slate-200 border-2 border-slate-300 shadow-[0_3px_6px_rgba(0,0,0,0.4)] transition-transform duration-500 ${
+                        isFlipped ? 'scale-110 [transform:rotateY(180deg)]' : '[transform:rotateY(0deg)]'
+                      }`}
+                    />
                   )}
 
-                  {/* Valid move indicator dot */}
+                  {/* Legal move indicator dot */}
                   {isLegal && !cell && (
-                    <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-emerald-300/60 shadow-sm animate-pulse pointer-events-none" />
+                    <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-emerald-300/60 border border-emerald-200 animate-pulse shadow-sm" />
                   )}
                 </button>
               );
@@ -266,13 +308,22 @@ export default function ReversiGame({ onBackToHub }: ReversiGameProps) {
 
         {/* Game Over Modal */}
         {gameOver && (
-          <div className="absolute inset-0 flex items-center justify-center bg-black/75 backdrop-blur-sm z-30 p-4">
-            <div className="bg-neutral-900 border border-neutral-800 p-8 rounded-2xl max-w-sm w-full text-center shadow-2xl">
-              <div className="text-4xl mb-2">🏆</div>
-              <h2 className="text-2xl font-black text-emerald-400 mb-1">{winnerText}</h2>
-              <p className="text-sm text-neutral-400 mb-6 font-mono">
-                Dark {darkCount} - Light {lightCount}
+          <div className="absolute inset-0 flex items-center justify-center bg-black/80 backdrop-blur-sm z-30 p-4">
+            <div className="bg-neutral-900 border border-neutral-800 p-6 sm:p-8 rounded-2xl max-w-sm w-full text-center shadow-2xl">
+              <h2 className="text-2xl font-black text-emerald-400 mb-2">{winnerText}</h2>
+              <p className="text-sm text-neutral-400 mb-4">
+                No more legal moves available for either player.
               </p>
+              <div className="bg-neutral-950 p-4 rounded-xl border border-neutral-800 mb-6 flex justify-around">
+                <div>
+                  <span className="text-xs text-neutral-400 uppercase font-semibold block">You (Dark)</span>
+                  <span className="text-2xl font-black text-white">{darkCount}</span>
+                </div>
+                <div>
+                  <span className="text-xs text-neutral-400 uppercase font-semibold block">Bot (Light)</span>
+                  <span className="text-2xl font-black text-neutral-300">{lightCount}</span>
+                </div>
+              </div>
               <button
                 onClick={resetGame}
                 className="w-full py-3 bg-emerald-500 hover:bg-emerald-400 text-black font-black text-sm tracking-wider uppercase rounded-xl transition-all shadow-lg active:scale-95"
@@ -284,8 +335,8 @@ export default function ReversiGame({ onBackToHub }: ReversiGameProps) {
         )}
       </div>
 
-      <footer className="p-2.5 text-center text-xs text-neutral-500 border-t border-neutral-900 bg-neutral-950/40">
-        Trap opponent discs in a straight line to flip them • Bot algorithms: Easy (Random), Medium (Greedy), Hard (Minimax + Positional Corners)
+      <footer className="py-1 px-2 text-center text-[10px] text-neutral-500 border-t border-neutral-900 bg-neutral-950/60 shrink-0">
+        Sandwich your opponent's discs to flip them to your color!
       </footer>
     </div>
   );

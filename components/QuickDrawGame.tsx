@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { incrementGamePlays } from '../services/firebase';
 import { audioService } from '../services/audioService';
+import { GunslingerCharacter } from './quickdraw/GunslingerCharacter';
 
 interface QuickDrawProps {
   onBackToHub: () => void;
@@ -17,7 +18,7 @@ export default function QuickDrawGame({ onBackToHub }: QuickDrawProps) {
   const [playerScore, setPlayerScore] = useState(0);
   const [botScore, setBotScore] = useState(0);
   const [roundWinner, setRoundWinner] = useState<'player' | 'bot' | 'foul' | null>(null);
-  const [roundMessage, setRoundMessage] = useState('');
+  const [roundMessage, setRoundMessage] = useState('Step into the street and tap DRAW to face the Outlaw.');
   const [playerReaction, setPlayerReaction] = useState<number | null>(null);
   const [botReaction, setBotReaction] = useState<number | null>(null);
   const [flash, setFlash] = useState(false);
@@ -60,24 +61,26 @@ export default function QuickDrawGame({ onBackToHub }: QuickDrawProps) {
     setRoundWinner(null);
     setPlayerReaction(null);
     setBotReaction(null);
-    setRoundMessage('');
+    setRoundMessage('Hands by your holsters...');
     setState('ready');
     audioService.playSound('tile_click');
 
     const t1 = setTimeout(() => {
       setState('steady');
       audioService.playSound('tile_click');
+      setRoundMessage('Wait for the FIRE signal...');
 
-      const delay = 2000 + Math.random() * 3500;
+      const delay = 2000 + Math.random() * 3200;
       const botConfig = getBotReactionTime(difficulty);
 
+      // Chance for bot false start on easy
       if (botConfig.falseStart) {
         const falseStartTime = Math.max(800, delay - (150 + Math.random() * 350));
         const tBotFoul = setTimeout(() => {
           if (fireTimestampRef.current !== null || playerFiredRef.current) return;
           botFiredRef.current = true;
           setRoundWinner('player');
-          setRoundMessage('BOT DRAWN TOO EARLY! False start foul.');
+          setRoundMessage('FOUL! Outlaw drew too early and forfeited the round!');
           audioService.playSound('success');
           setPlayerScore(p => {
             const next = p + 1;
@@ -95,7 +98,7 @@ export default function QuickDrawGame({ onBackToHub }: QuickDrawProps) {
         setState('fire');
         setFlash(true);
         audioService.playSound('mine_explode');
-        setTimeout(() => setFlash(false), 200);
+        setTimeout(() => setFlash(false), 220);
 
         const botLatency = botConfig.time;
         const tBot = setTimeout(() => {
@@ -103,7 +106,7 @@ export default function QuickDrawGame({ onBackToHub }: QuickDrawProps) {
           botFiredRef.current = true;
           setBotReaction(botLatency);
           setRoundWinner('bot');
-          setRoundMessage(`Outdrawn! Bot shot in ${botLatency}ms.`);
+          setRoundMessage(`OUTDRAWN! The Outlaw fired in ${botLatency}ms.`);
           audioService.playSound('failure');
           setBotScore(b => {
             const next = b + 1;
@@ -128,7 +131,7 @@ export default function QuickDrawGame({ onBackToHub }: QuickDrawProps) {
       clearAllTimeouts();
       playerFiredRef.current = true;
       setRoundWinner('foul');
-      setRoundMessage('MISFIRE! Drawn before FIRE signal. Foul forfeited.');
+      setRoundMessage('FALSE START! You drew before the signal. Round lost!');
       audioService.playSound('wrong_answer');
       setBotScore(b => {
         const next = b + 1;
@@ -152,7 +155,7 @@ export default function QuickDrawGame({ onBackToHub }: QuickDrawProps) {
 
       if (elapsed < botTarget) {
         setRoundWinner('player');
-        setRoundMessage(`Bullseye! Quickest draw (${elapsed}ms vs ${botTarget}ms).`);
+        setRoundMessage(`BULLSEYE! You drew first in ${elapsed}ms (Bot: ${botTarget}ms)!`);
         audioService.playSound('success');
         setPlayerScore(p => {
           const next = p + 1;
@@ -162,7 +165,7 @@ export default function QuickDrawGame({ onBackToHub }: QuickDrawProps) {
         });
       } else {
         setRoundWinner('bot');
-        setRoundMessage(`Outdrawn! (${elapsed}ms vs Bot ${botTarget}ms).`);
+        setRoundMessage(`OUTDRAWN! You drew in ${elapsed}ms, but bot was ${botTarget}ms.`);
         audioService.playSound('failure');
         setBotScore(b => {
           const next = b + 1;
@@ -174,59 +177,63 @@ export default function QuickDrawGame({ onBackToHub }: QuickDrawProps) {
     }
   }, [state, difficulty, getBotReactionTime]);
 
+  // Spacebar controls
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
+    const handleKey = (e: KeyboardEvent) => {
       if (e.code === 'Space') {
         e.preventDefault();
-        handleShoot();
+        if (state === 'idle' || state === 'round_over') startRound();
+        else handleShoot();
       }
     };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleShoot]);
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, [state, startRound, handleShoot]);
 
   const resetMatch = () => {
     clearAllTimeouts();
     setPlayerScore(0);
     setBotScore(0);
     setRoundWinner(null);
-    setPlayerReaction(null);
-    setBotReaction(null);
-    setRoundMessage('');
     setState('idle');
+    setRoundMessage('Step into the street and tap START DUEL.');
   };
 
   return (
     <div
-      className={`w-full h-screen flex flex-col bg-[#0b0c10] text-white select-none overflow-hidden font-sans transition-colors duration-100 ${
-        flash ? 'bg-amber-100 text-black' : ''
+      onClick={handleShoot}
+      className={`w-full h-screen flex flex-col bg-[#120a05] text-white select-none overflow-hidden font-sans transition-colors duration-150 ${
+        flash ? 'bg-amber-100' : ''
       }`}
-      onPointerDown={handleShoot}
     >
-      <header className="flex items-center justify-between px-4 py-3 bg-neutral-900/90 border-b border-neutral-800 z-20">
-        <div className="flex items-center gap-3">
+      <header
+        className="flex items-center justify-between px-3 py-2 bg-neutral-900/90 border-b border-neutral-800 z-20 shrink-0"
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="flex items-center gap-2">
           <button
-            onClick={(e) => { e.stopPropagation(); onBackToHub(); }}
-            className="px-3 py-1.5 bg-neutral-800 hover:bg-neutral-700 text-xs font-bold rounded-lg border border-neutral-700 text-neutral-300"
+            onClick={onBackToHub}
+            className="px-2.5 py-1 bg-neutral-800 hover:bg-neutral-700 text-xs font-bold rounded-lg border border-neutral-700 text-neutral-300"
           >
             ← Hub
           </button>
           <div>
-            <h1 className="text-base font-black tracking-wide text-amber-400">QUICK DRAW</h1>
-            <span className="text-[10px] text-neutral-400 font-mono">STANDOFF DUEL (FIRST TO 3)</span>
+            <h1 className="text-sm sm:text-base font-black tracking-wide text-amber-500">QUICK DRAW</h1>
+            <span className="text-[9px] text-neutral-400 font-mono hidden sm:inline">WESTERN REACTION STANDOFF</span>
           </div>
         </div>
 
-        <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-          <div className="flex bg-neutral-950 p-1 rounded-lg border border-neutral-800">
+        <div className="flex items-center gap-2">
+          <div className="flex bg-neutral-950 p-0.5 rounded-lg border border-neutral-800">
             {(['easy', 'medium', 'hard'] as Difficulty[]).map(d => (
               <button
                 key={d}
-                onClick={() => { setDifficulty(d); resetMatch(); }}
-                className={`px-2.5 py-1 text-xs font-bold rounded capitalize transition-all ${
+                disabled={state === 'ready' || state === 'steady' || state === 'fire'}
+                onClick={() => setDifficulty(d)}
+                className={`px-2 py-0.5 text-[10px] sm:text-xs font-bold rounded capitalize transition-all ${
                   difficulty === d
-                    ? 'bg-amber-500 text-black shadow'
-                    : 'text-neutral-400 hover:text-white'
+                    ? 'bg-amber-500 text-black shadow font-bold'
+                    : 'text-neutral-400 hover:text-white disabled:opacity-50'
                 }`}
               >
                 {d}
@@ -236,104 +243,138 @@ export default function QuickDrawGame({ onBackToHub }: QuickDrawProps) {
 
           <button
             onClick={resetMatch}
-            className="px-3 py-1.5 bg-neutral-800 hover:bg-neutral-700 text-xs font-bold rounded-lg border border-neutral-700 text-neutral-300"
+            className="px-2.5 py-1 bg-neutral-800 hover:bg-neutral-700 text-xs font-bold rounded-lg border border-neutral-700 text-neutral-300"
           >
             Reset
           </button>
         </div>
       </header>
 
-      {/* Duel Scoreboard */}
-      <div className="flex items-center justify-around py-4 bg-neutral-950/60 border-b border-neutral-900 px-4">
-        <div className="text-center">
-          <div className="text-xs text-amber-400 font-bold uppercase tracking-wider">You (Cowboy)</div>
-          <div className="text-3xl font-black font-mono text-white mt-1">{playerScore}</div>
-          <div className="text-[11px] text-neutral-400 mt-0.5">
-            {playerReaction !== null ? `${playerReaction}ms` : '—'}
-          </div>
+      {/* Duel Rounds Bar */}
+      <div className="flex items-center justify-between px-4 py-1.5 bg-neutral-950/90 border-b border-neutral-900 text-xs font-mono shrink-0">
+        <div className="flex items-center gap-2">
+          <span className="w-2.5 h-2.5 rounded-full bg-sky-400" />
+          <span className="text-sky-400 font-bold">YOU: {playerScore} / 3</span>
         </div>
-
-        <div className="px-3 py-1 rounded-full bg-neutral-900 border border-neutral-800 text-xs font-mono text-amber-400 font-bold">
-          Rounds: {playerScore} - {botScore}
+        <div className="text-[10px] sm:text-xs text-amber-400 font-bold tracking-wide">
+          {state === 'ready' && 'READY...'}
+          {state === 'steady' && 'STEADY...'}
+          {state === 'fire' && '⚡ FIRE! ⚡'}
+          {state === 'idle' && 'STANDBY'}
+          {state === 'round_over' && 'ROUND OVER'}
         </div>
-
-        <div className="text-center">
-          <div className="text-xs text-red-400 font-bold uppercase tracking-wider">Sheriff Bot ({difficulty})</div>
-          <div className="text-3xl font-black font-mono text-white mt-1">{botScore}</div>
-          <div className="text-[11px] text-neutral-400 mt-0.5">
-            {botReaction !== null ? `${botReaction}ms` : '—'}
-          </div>
+        <div className="flex items-center gap-2">
+          <span className="text-rose-400 font-bold">OUTLAW: {botScore} / 3</span>
+          <span className="w-2.5 h-2.5 rounded-full bg-rose-400" />
         </div>
       </div>
 
-      {/* Main Arena */}
-      <div className="flex-1 flex flex-col items-center justify-center p-6 text-center relative">
-        {state === 'idle' && (
-          <div className="max-w-md bg-neutral-900/90 border border-neutral-800 p-8 rounded-2xl shadow-2xl" onClick={e => e.stopPropagation()}>
-            <div className="text-5xl mb-4">🤠⚡🤖</div>
-            <h2 className="text-2xl font-black text-amber-400 mb-2">High Noon Standoff</h2>
-            <p className="text-sm text-neutral-300 mb-6 leading-relaxed">
-              Wait for the <strong>READY...</strong> and <strong>STEADY...</strong> countdown.<br />
-              When <strong className="text-red-400">FIRE!</strong> flashes, tap or press <kbd className="px-2 py-0.5 bg-neutral-800 border border-neutral-700 rounded text-amber-300 font-mono">SPACE</kbd> immediately.<br />
-              <span className="text-red-400 text-xs font-semibold block mt-2">⚠️ Drawing before FIRE is an immediate false start foul!</span>
-            </p>
-            <button
-              onClick={startRound}
-              className="w-full py-3 bg-amber-500 hover:bg-amber-400 text-black font-black rounded-xl text-base tracking-wider uppercase shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all"
-            >
-              Draw Your Weapon
-            </button>
-          </div>
-        )}
+      {/* Duel Scene Viewport */}
+      <div className="flex-1 flex flex-col items-center justify-between p-4 sm:p-6 relative overflow-hidden bg-gradient-to-b from-[#2a1306] via-[#1c0c04] to-[#0d0502]">
+        {/* Western Saloon & Desert Background Silhouette */}
+        <div className="absolute inset-x-0 bottom-16 sm:bottom-20 h-28 pointer-events-none opacity-20 flex justify-between items-end px-8">
+          <span className="text-5xl sm:text-6xl">🌵</span>
+          <span className="text-7xl sm:text-8xl">🏠</span>
+          <span className="text-5xl sm:text-6xl">🌵</span>
+        </div>
 
-        {(state === 'ready' || state === 'steady') && (
-          <div className="flex flex-col items-center gap-4 animate-pulse">
-            <div className="text-6xl font-black font-mono tracking-widest text-neutral-400">
-              {state === 'ready' ? 'READY...' : 'STEADY...'}
-            </div>
-            <p className="text-sm text-neutral-500 font-semibold tracking-wider uppercase">
-              Keep your finger on the holster... Don't flinch!
-            </p>
-          </div>
-        )}
-
-        {state === 'fire' && (
-          <div className="flex flex-col items-center gap-4 animate-bounce">
-            <div className="text-7xl sm:text-9xl font-black font-mono tracking-tighter text-red-500 drop-shadow-[0_0_35px_rgba(239,68,68,0.9)]">
+        {/* Center Signal Announcement */}
+        <div className="text-center z-10 my-2">
+          {state === 'fire' ? (
+            <div className="text-5xl sm:text-7xl font-black text-amber-400 tracking-widest animate-bounce drop-shadow-[0_0_25px_rgba(251,191,36,0.9)]">
               FIRE!
             </div>
-            <div className="text-base text-amber-400 font-bold uppercase tracking-widest">
-              TAP SCREEN OR HIT SPACE!
-            </div>
-          </div>
-        )}
-
-        {(state === 'round_over' || state === 'match_over') && (
-          <div className="max-w-md bg-neutral-900/95 border border-neutral-800 p-8 rounded-2xl shadow-2xl z-30" onClick={e => e.stopPropagation()}>
-            <div className="text-4xl mb-3">
-              {roundWinner === 'player' ? '🏆' : roundWinner === 'foul' ? '⚠️' : '💀'}
-            </div>
-            <h2 className={`text-2xl font-black mb-2 ${roundWinner === 'player' ? 'text-emerald-400' : 'text-red-400'}`}>
-              {state === 'match_over'
-                ? (playerScore >= 3 ? 'MATCH VICTORY!' : 'MATCH DEFEAT')
-                : (roundWinner === 'player' ? 'ROUND WON' : 'ROUND LOST')}
-            </h2>
-            <p className="text-sm text-neutral-300 font-medium mb-6">
+          ) : (
+            <div className="text-xs sm:text-sm font-mono text-neutral-300 max-w-md bg-black/40 px-3 py-1.5 rounded-full border border-neutral-800">
               {roundMessage}
-            </p>
+            </div>
+          )}
+        </div>
 
+        {/* Gunslingers Standoff Stage */}
+        <div className="w-full max-w-2xl flex items-center justify-around sm:justify-between px-2 sm:px-12 my-auto z-10">
+          {/* Player Gunslinger (Left) */}
+          <GunslingerCharacter
+            isPlayer={true}
+            state={state}
+            winner={roundWinner}
+            reactionTime={playerReaction}
+          />
+
+          {/* VS Badge */}
+          <div className="flex flex-col items-center">
+            <span className="text-2xl sm:text-3xl font-black text-amber-500 font-mono opacity-60">
+              VS
+            </span>
+          </div>
+
+          {/* Outlaw Bot Gunslinger (Right) */}
+          <GunslingerCharacter
+            isPlayer={false}
+            state={state}
+            winner={roundWinner}
+            reactionTime={botReaction}
+          />
+        </div>
+
+        {/* Primary Interactive Action Button */}
+        <div className="w-full max-w-sm flex justify-center z-20 mb-2">
+          {state === 'idle' || state === 'round_over' ? (
             <button
-              onClick={state === 'match_over' ? resetMatch : startRound}
-              className="w-full py-3 bg-amber-500 hover:bg-amber-400 text-black font-black rounded-xl text-base tracking-wider uppercase shadow-lg transition-all"
+              onClick={(e) => {
+                e.stopPropagation();
+                startRound();
+              }}
+              className="w-full py-4 bg-amber-500 hover:bg-amber-400 active:bg-amber-600 text-black font-black text-base uppercase tracking-widest rounded-2xl shadow-[0_4px_20px_rgba(245,158,11,0.5)] active:scale-95 transition-all cursor-pointer"
             >
-              {state === 'match_over' ? 'New Match' : 'Next Round'}
+              {state === 'round_over' ? 'Next Duel Round' : 'Start Standoff'}
             </button>
+          ) : (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                handleShoot();
+              }}
+              className={`w-full py-4 font-black text-base uppercase tracking-widest rounded-2xl shadow-xl active:scale-95 transition-all cursor-pointer ${
+                state === 'fire'
+                  ? 'bg-red-600 hover:bg-red-500 text-white animate-pulse shadow-[0_0_30px_rgba(220,38,38,0.8)]'
+                  : 'bg-neutral-800 hover:bg-neutral-700 text-neutral-300 border border-neutral-700'
+              }`}
+            >
+              {state === 'fire' ? '💥 DRAW & FIRE!' : 'POISE HAND (TAP ON FIRE)'}
+            </button>
+          )}
+        </div>
+
+        {/* Match Finished Modal */}
+        {state === 'match_over' && (
+          <div
+            className="absolute inset-0 flex items-center justify-center bg-black/85 backdrop-blur-sm z-30 p-4"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="bg-neutral-900 border border-neutral-800 p-6 sm:p-8 rounded-2xl max-w-sm w-full text-center shadow-2xl">
+              <div className="text-4xl mb-2">{playerScore >= 3 ? '🏆' : '💀'}</div>
+              <h2 className={`text-2xl font-black mb-1 ${playerScore >= 3 ? 'text-amber-400' : 'text-rose-500'}`}>
+                {playerScore >= 3 ? 'FASTEST GUN IN THE WEST!' : 'OUTGUNNED!'}
+              </h2>
+              <p className="text-sm text-neutral-400 mb-6">
+                {playerScore >= 3
+                  ? `You won 3 rounds on ${difficulty.toUpperCase()} difficulty!`
+                  : `Outlaw Black-Bart defeated you 3 to ${playerScore}.`}
+              </p>
+              <button
+                onClick={resetMatch}
+                className="w-full py-3 bg-amber-500 hover:bg-amber-400 text-black font-black text-sm tracking-wider uppercase rounded-xl transition-all shadow-lg active:scale-95"
+              >
+                Play New Match
+              </button>
+            </div>
           </div>
         )}
       </div>
 
-      <footer className="p-3 text-center text-xs text-neutral-500 border-t border-neutral-900 bg-neutral-950/40">
-        Controls: Spacebar, Left Click, or Screen Tap • Difficulty: Easy (360-450ms), Medium (250-310ms), Hard (170-210ms)
+      <footer className="py-1 px-2 text-center text-[10px] text-neutral-500 border-t border-neutral-900 bg-neutral-950/60 shrink-0">
+        Spacebar, Left Click, or Screen Tap to shoot • False start fouls trigger round loss
       </footer>
     </div>
   );

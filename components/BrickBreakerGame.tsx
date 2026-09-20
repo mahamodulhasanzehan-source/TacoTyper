@@ -70,6 +70,8 @@ export default function BrickBreakerGame({ onBackToHub }: BrickBreakerProps) {
   // State in refs for high frame-rate precision
   const paddleRef = useRef({
     x: CANVAS_WIDTH / 2 - 50,
+    prevX: CANVAS_WIDTH / 2 - 50,
+    vx: 0,
     y: CANVAS_HEIGHT - 28,
     w: 100,
     h: 12,
@@ -428,6 +430,10 @@ export default function BrickBreakerGame({ onBackToHub }: BrickBreakerProps) {
         paddle.x = Math.min(CANVAS_WIDTH - paddle.w, paddle.x + moveSpeed);
       }
 
+      // Track paddle horizontal velocity
+      paddle.vx = paddle.x - paddle.prevX;
+      paddle.prevX = paddle.x;
+
       // Laser Auto-firing if enabled
       if (paddle.hasLaser && gameState === 'playing' && now - lastLaserShotRef.current > 400) {
         lasersRef.current.push(
@@ -517,12 +523,54 @@ export default function BrickBreakerGame({ onBackToHub }: BrickBreakerProps) {
               ball.stuckToPaddle = true;
               ball.stuckOffsetX = ball.x - (paddle.x + paddle.w / 2);
             } else {
-              const hitOffset = (ball.x - (paddle.x + paddle.w / 2)) / (paddle.w / 2);
-              const maxAngle = Math.PI / 3;
-              const angle = hitOffset * maxAngle;
-              const speed = Math.hypot(ball.vx, ball.vy);
-              ball.vx = speed * Math.sin(angle);
-              ball.vy = -Math.abs(speed * Math.cos(angle));
+              // Position ball cleanly on paddle surface to prevent multiple triggers
+              ball.y = paddle.y - ball.radius;
+
+              // Normalized contact offset from -1 (far left) to +1 (far right)
+              const hitOffset = Math.max(-1, Math.min(1, (ball.x - (paddle.x + paddle.w / 2)) / (paddle.w / 2)));
+
+              // Physical reflection: maintain incoming horizontal direction plus surface curvature
+              let newVx = ball.vx + (hitOffset * 1.5);
+
+              // Relative velocity interactions:
+              // - Moving in the SAME direction as ball: speed up!
+              // - Moving in the OPPOSITE direction: slow down!
+              let speedMultiplier = 1.0;
+              const movingSameDir = (paddle.vx > 0.3 && ball.vx > 0) || (paddle.vx < -0.3 && ball.vx < 0);
+              const movingOpposite = (paddle.vx > 0.3 && ball.vx < 0) || (paddle.vx < -0.3 && ball.vx > 0);
+
+              if (movingSameDir) {
+                speedMultiplier = 1.16;
+                newVx += paddle.vx * 0.22;
+              } else if (movingOpposite) {
+                speedMultiplier = 0.86;
+                // Strong counter-slices impart reverse momentum
+                newVx += paddle.vx * 0.38;
+              } else if (Math.abs(paddle.vx) > 0.4) {
+                newVx += paddle.vx * 0.25;
+              }
+
+              // Apply speed multiplier to overall velocity magnitude
+              let currentSpeed = Math.hypot(newVx, ball.vy) * speedMultiplier;
+              currentSpeed = Math.max(3.2, Math.min(7.6, currentSpeed));
+
+              // Anti-looping dynamics:
+              // 1. Prevent vertical trapped bounces
+              if (Math.abs(newVx) < 0.4) {
+                newVx = (hitOffset !== 0 ? Math.sign(hitOffset) : (Math.random() > 0.5 ? 1 : -1)) * 0.8;
+              }
+
+              // 2. Prevent horizontal trapped loops (bound angle to 70 deg max from vertical)
+              const maxAngle = (Math.PI / 180) * 70;
+              let bounceAngle = Math.atan2(newVx, Math.abs(ball.vy));
+              bounceAngle = Math.max(-maxAngle, Math.min(maxAngle, bounceAngle));
+
+              // 3. Subtle micro-variation to avoid strictly repetitive loops
+              bounceAngle += (Math.random() - 0.5) * 0.04;
+
+              ball.vx = currentSpeed * Math.sin(bounceAngle);
+              ball.vy = -Math.abs(currentSpeed * Math.cos(bounceAngle));
+
               audioService.playSound('tictac_move');
               addParticles(ball.x, paddle.y, '#38bdf8', 6);
             }

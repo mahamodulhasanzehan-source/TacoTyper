@@ -4,7 +4,8 @@ export type SoundType =
   | 'mine_click' | 'mine_flag' | 'mine_explode' | 'mine_win'
   | 'tile_click' | 'piece_drop' | 'piece_land' | 'tictac_move'
   | 'success' | 'failure' | 'button_click' | 'word_valid' | 'word_invalid'
-  | 'correct_answer' | 'wrong_answer';
+  | 'correct_answer' | 'wrong_answer'
+  | 'knife_hit' | 'knife_deflect';
 
 class AudioService {
   private audioCtx: AudioContext | null = null;
@@ -190,6 +191,44 @@ class AudioService {
         gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
         osc.connect(gain); gain.connect(this.audioCtx.destination);
         osc.start(now); osc.stop(now + 0.15);
+    } else if (type === 'knife_hit') {
+        // Meaty wooden chop / thud sound
+        const snap = this.audioCtx.createOscillator();
+        const snapGain = this.audioCtx.createGain();
+        snap.type = 'triangle';
+        snap.frequency.setValueAtTime(800, now);
+        snap.frequency.exponentialRampToValueAtTime(120, now + 0.05);
+        snapGain.gain.setValueAtTime(0.18, now);
+        snapGain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+        snap.connect(snapGain);
+        snapGain.connect(this.audioCtx.destination);
+        snap.start(now);
+        snap.stop(now + 0.05);
+
+        // Low wooden resonance body
+        playThump(220, 0.12, 0.22);
+    } else if (type === 'knife_deflect') {
+        // Metallic ricochet blade clash & ringing resonance
+        const ping1 = this.audioCtx.createOscillator();
+        const ping2 = this.audioCtx.createOscillator();
+        const metalGain = this.audioCtx.createGain();
+        
+        ping1.type = 'sine';
+        ping2.type = 'triangle';
+        ping1.frequency.setValueAtTime(2400, now);
+        ping2.frequency.setValueAtTime(3600, now);
+        
+        metalGain.gain.setValueAtTime(0.2, now);
+        metalGain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+        
+        ping1.connect(metalGain);
+        ping2.connect(metalGain);
+        metalGain.connect(this.audioCtx.destination);
+        
+        ping1.start(now);
+        ping2.start(now);
+        ping1.stop(now + 0.35);
+        ping2.stop(now + 0.35);
     }
   }
 }

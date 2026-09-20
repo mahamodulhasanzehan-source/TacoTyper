@@ -18,6 +18,10 @@ interface HubScreenProps {
     onGoogleSignIn?: () => Promise<void>;
 }
 
+const HUB_ORDER_KEY = 'taco_hub_layout_order_v2';
+const HUB_TIME_KEY = 'taco_hub_layout_time_v2';
+const TEN_MINUTES_MS = 10 * 60 * 1000;
+
 const HubScreen: React.FC<HubScreenProps> = ({ 
     user, 
     onLaunchGame, 
@@ -29,7 +33,7 @@ const HubScreen: React.FC<HubScreenProps> = ({
     const [showSettings, setShowSettings] = useState(false);
     const [showFriends, setShowFriends] = useState(false);
     const [isMobile, setIsMobile] = useState(false);
-    const [stats, setStats] = useState<GlobalGameStats>({ taco_typer_plays: 0, iq_test_plays: 0, minesweeper_plays: 0, wordle_plays: 0, angle_plays: 0, spelling_bee_plays: 0, tic_tac_toe_plays: 0, connect_4_plays: 0, gun_game_plays: 0, color_memory_plays: 0, particle_physics_plays: 0, fruit_merge_plays: 0, checkers_plays: 0, dots_and_boxes_plays: 0 });
+    const [stats, setStats] = useState<GlobalGameStats | null>(null);
     const [sortedGames, setSortedGames] = useState<GameCardItem[]>([]);
     
     const displayableName = username || user.displayName || 'Chef';
@@ -45,6 +49,8 @@ const HubScreen: React.FC<HubScreenProps> = ({
     }, []);
 
     useEffect(() => {
+        if (!stats) return;
+
         const games: GameCardItem[] = GAMES_REGISTRY.map(game => ({
             id: game.id,
             title: game.title,
@@ -57,8 +63,55 @@ const HubScreen: React.FC<HubScreenProps> = ({
             action: () => onLaunchGame(game.id)
         }));
 
-        games.sort((a, b) => b.plays - a.plays);
-        setSortedGames(games);
+        // Always sort by plays descending (most to least played)
+        const sortedByPlays = [...games].sort((a, b) => b.plays - a.plays);
+
+        // Keep hub layout order consistent for 10-minute intervals
+        const savedTimeStr = localStorage.getItem(HUB_TIME_KEY);
+        const savedTime = savedTimeStr ? parseInt(savedTimeStr, 10) : 0;
+        const now = Date.now();
+        const isCacheValid = savedTime > 0 && now - savedTime < TEN_MINUTES_MS;
+
+        let orderedList: GameCardItem[];
+
+        if (isCacheValid) {
+            try {
+                const cachedOrder: string[] = JSON.parse(localStorage.getItem(HUB_ORDER_KEY) || '[]');
+                const gameMap = new Map<string, GameCardItem>(games.map(g => [g.id, g]));
+                
+                const ordered: GameCardItem[] = [];
+                cachedOrder.forEach(id => {
+                    const g = gameMap.get(id);
+                    if (g) {
+                        ordered.push(g);
+                        gameMap.delete(id);
+                    }
+                });
+                // Append any newly registered games not present in cache
+                gameMap.forEach(g => ordered.push(g));
+
+                // Verification check: if the cached order had 0 plays across all games or is invalid, re-sort
+                const totalPlaysInOrder = ordered.reduce((sum, g) => sum + g.plays, 0);
+                if (ordered.length === games.length && totalPlaysInOrder > 0) {
+                    orderedList = ordered;
+                } else {
+                    orderedList = sortedByPlays;
+                    localStorage.setItem(HUB_ORDER_KEY, JSON.stringify(sortedByPlays.map(g => g.id)));
+                    localStorage.setItem(HUB_TIME_KEY, now.toString());
+                }
+            } catch {
+                orderedList = sortedByPlays;
+                localStorage.setItem(HUB_ORDER_KEY, JSON.stringify(sortedByPlays.map(g => g.id)));
+                localStorage.setItem(HUB_TIME_KEY, now.toString());
+            }
+        } else {
+            // 10 minutes elapsed or first load: compute layout strictly by most to least played
+            orderedList = sortedByPlays;
+            localStorage.setItem(HUB_ORDER_KEY, JSON.stringify(sortedByPlays.map(g => g.id)));
+            localStorage.setItem(HUB_TIME_KEY, now.toString());
+        }
+
+        setSortedGames(orderedList);
     }, [stats, onLaunchGame]);
 
     return (

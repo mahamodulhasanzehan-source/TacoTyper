@@ -224,7 +224,7 @@ export const GAMES_REGISTRY: GameMetadata[] = [
   },
   {
     id: 'knife-flip',
-    title: 'Knife Flip',
+    title: 'Knife Throw',
     description: 'Target Dart & Blade Precision',
     icon: '🎯',
     color: '#ec4899',
