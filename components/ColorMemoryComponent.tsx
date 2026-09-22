@@ -1,20 +1,44 @@
-import React, { useEffect, useState } from 'react';
-import { incrementGamePlays } from '../services/firebase';
+import React, { useEffect } from 'react';
+import { incrementGamePlays, saveLeaderboardScore, User } from '../services/firebase';
 
 interface ColorMemoryProps {
     onBackToHub: () => void;
+    user?: User;
+    username?: string | null;
 }
 
-export default function ColorMemoryComponent({ onBackToHub }: ColorMemoryProps) {
+export default function ColorMemoryComponent({ onBackToHub, user, username }: ColorMemoryProps) {
     useEffect(() => {
         incrementGamePlays('color_memory');
     }, []);
 
+    useEffect(() => {
+        const handleMessage = (e: MessageEvent) => {
+            if (e.data && e.data.type === 'COLOR_MEMORY_SCORE' && typeof e.data.score === 'number') {
+                if (user) {
+                    const accuracy = Math.round(e.data.score * 10);
+                    saveLeaderboardScore(
+                        user,
+                        username || user.displayName || 'Color Virtuoso',
+                        Math.round(e.data.score * 100),
+                        'Color Master',
+                        { mistakes: 0, timeTaken: 0, ingredientsMissed: 0, rottenWordsTyped: 0, totalScore: Math.round(e.data.score * 100), levelReached: 1 },
+                        'color_memory',
+                        { accuracy }
+                    );
+                }
+            }
+        };
+
+        window.addEventListener('message', handleMessage);
+        return () => window.removeEventListener('message', handleMessage);
+    }, [user, username]);
+
     return (
-        <div className="fixed inset-0 w-full h-full bg-black z-50 overflow-hidden">
+        <div className="w-full h-full bg-black relative overflow-hidden">
             <button 
                 onClick={onBackToHub}
-                className="absolute top-2.5 left-2.5 sm:top-4 sm:left-4 z-[60] text-lg sm:text-2xl hover:scale-110 active:scale-95 transition-transform bg-neutral-900/90 hover:bg-neutral-800 p-1.5 sm:p-2.5 rounded-full border border-neutral-700 backdrop-blur-md shadow-lg cursor-pointer flex items-center justify-center"
+                className="absolute top-2.5 left-2.5 sm:top-4 sm:left-4 z-[60] text-lg sm:text-2xl hover:scale-110 active:scale-95 transition-transform bg-neutral-900/90 hover:bg-neutral-800 p-1.5 sm:p-2.5 rounded-full border border-neutral-700 backdrop-blur-md shadow-lg cursor-pointer flex items-center justify-center text-white"
                 title="Back to Hub"
             >
                 🏠

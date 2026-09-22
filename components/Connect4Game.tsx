@@ -26,6 +26,7 @@ export default function Connect4Game({ user, onBackToHub, username }: Connect4Ga
     const [hoveredCol, setHoveredCol] = useState<number | null>(null);
     const [isMobile, setIsMobile] = useState(false);
     const [lastDrop, setLastDrop] = useState<{ r: number, c: number } | null>(null);
+    const [streak, setStreak] = useState(0);
     const elapsedTimeRef = useRef(0);
 
     useEffect(() => {
@@ -280,16 +281,32 @@ export default function Connect4Game({ user, onBackToHub, username }: Connect4Ga
         if (result === 'R') {
             audioService.playSound('correct_answer');
             const finalTime = elapsedTimeRef.current;
-            await saveLeaderboardScore(
-                user, 
-                username || user.displayName || 'Chef', 
-                finalTime, 
-                'Connect 4 Master', 
-                { mistakes: 0, timeTaken: finalTime, ingredientsMissed: 0, rottenWordsTyped: 0, totalScore: finalTime, levelReached: 1 }, 
-                'connect_4'
-            );
+            const newStreak = streak + 1;
+            setStreak(newStreak);
+
+            if (user) {
+                // Save fastest time
+                await saveLeaderboardScore(
+                    user, 
+                    username || user.displayName || 'Chef', 
+                    finalTime, 
+                    'Connect 4 Speed', 
+                    { mistakes: 0, timeTaken: finalTime, ingredientsMissed: 0, rottenWordsTyped: 0, totalScore: finalTime, levelReached: 1 }, 
+                    'connect_4-time'
+                );
+                // Save streak
+                await saveLeaderboardScore(
+                    user, 
+                    username || user.displayName || 'Chef', 
+                    newStreak, 
+                    'Connect 4 Streak', 
+                    { mistakes: 0, timeTaken: finalTime, ingredientsMissed: 0, rottenWordsTyped: 0, totalScore: newStreak, levelReached: 1 }, 
+                    'connect_4-streak'
+                );
+            }
         } else if (result === 'Y') {
             audioService.playSound('wrong_answer');
+            setStreak(0);
         }
     };
 

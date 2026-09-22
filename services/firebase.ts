@@ -597,6 +597,19 @@ export const resetGlobalGameStats = async () => {
 
 // --- Leaderboard ---
 
+export const isModeTimeBased = (mode: string) => {
+    return (
+        mode === 'competitive' ||
+        mode.startsWith('minesweeper-') ||
+        mode.startsWith('ultimate_ttt-') ||
+        mode.startsWith('reversi-') ||
+        mode.startsWith('checkers-') ||
+        mode === 'connect_4' ||
+        mode === 'connect_4-time' ||
+        mode.endsWith('-time')
+    );
+};
+
 export const saveLeaderboardScore = async (
     user: User, 
     username: string, 
@@ -606,15 +619,13 @@ export const saveLeaderboardScore = async (
     mode: string,
     extra?: { accuracy?: number }
 ) => {
+    const isTime = isModeTimeBased(mode);
     let sortValue = score;
-    const isTimeBased = mode === 'competitive' || mode.includes('minesweeper') || mode === 'connect_4';
     
-    if (isTimeBased) {
-         sortValue = score; 
-    } else if (mode === 'iq-test' || mode === 'tic_tac_toe') {
-         sortValue = score;
-    } else if (mode !== 'speed-test') {
-         sortValue = (stats.levelReached * 1000) + score; 
+    if (mode === 'universal') {
+        sortValue = (stats.levelReached * 1000) + score;
+    } else {
+        sortValue = score;
     }
 
     try {
@@ -622,7 +633,7 @@ export const saveLeaderboardScore = async (
         localLB.push({
             id: 'local_' + Date.now(),
             uid: user.uid,
-            username: username,
+            username: username || user.displayName || 'Chef',
             score: score,
             title: title,
             stats: stats,
@@ -631,7 +642,7 @@ export const saveLeaderboardScore = async (
             sortValue: sortValue,
             accuracy: extra?.accuracy || null
         });
-        localLB.sort((a: any, b: any) => isTimeBased ? a.sortValue - b.sortValue : b.sortValue - a.sortValue);
+        localLB.sort((a: any, b: any) => isTime ? a.sortValue - b.sortValue : b.sortValue - a.sortValue);
         localStorage.setItem(`lb_${mode}`, JSON.stringify(localLB.slice(0, 10)));
     } catch {}
 
@@ -640,7 +651,7 @@ export const saveLeaderboardScore = async (
     try {
         await addDoc(collection(dbExport, "leaderboard"), {
             uid: user.uid,
-            username: username,
+            username: username || user.displayName || 'Chef',
             score: score,
             title: title,
             stats: stats,
@@ -656,7 +667,7 @@ export const saveLeaderboardScore = async (
             lbRef,
             where("uid", "==", user.uid),
             where("mode", "==", mode),
-            orderBy("sortValue", isTimeBased ? "asc" : "desc")
+            orderBy("sortValue", isTime ? "asc" : "desc")
         );
         const snapshot = await getDocs(q);
         
@@ -680,9 +691,12 @@ export const deleteLeaderboardEntry = async (id: string) => {
 };
 
 export const getLeaderboard = async (mode: string = 'competitive'): Promise<LeaderboardEntry[]> => {
+    const isTime = isModeTimeBased(mode);
     const getLocal = (): LeaderboardEntry[] => {
         try {
-            return JSON.parse(localStorage.getItem(`lb_${mode}`) || '[]');
+            const local = JSON.parse(localStorage.getItem(`lb_${mode}`) || '[]');
+            local.sort((a: any, b: any) => isTime ? a.sortValue - b.sortValue : b.sortValue - a.sortValue);
+            return local;
         } catch {
             return [];
         }
@@ -692,23 +706,12 @@ export const getLeaderboard = async (mode: string = 'competitive'): Promise<Lead
 
     try {
         const lbRef = collection(dbExport, "leaderboard");
-        let q;
-        
-        if (mode === 'competitive' || mode.includes('minesweeper') || mode === 'connect_4') {
-            q = query(
-                lbRef, 
-                where("mode", "==", mode),
-                orderBy("sortValue", "asc"),
-                limit(20)
-            );
-        } else {
-            q = query(
-                lbRef, 
-                where("mode", "==", mode),
-                orderBy("sortValue", "desc"),
-                limit(20)
-            );
-        }
+        const q = query(
+            lbRef, 
+            where("mode", "==", mode),
+            orderBy("sortValue", isTime ? "asc" : "desc"),
+            limit(20)
+        );
 
         const snapshot = await getDocs(q);
         const entries: LeaderboardEntry[] = [];

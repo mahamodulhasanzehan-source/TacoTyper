@@ -85,6 +85,7 @@ export default function TacoGame({
   const [infoModalText, setInfoModalText] = useState('');
   const [customUsername, setCustomUsername] = useState<string | null>(initialUsername || null);
   const [showExitConfirm, setShowExitConfirm] = useState(false);
+  const [showLeaderboard, setShowLeaderboard] = useState(true);
 
   const [gameDimensions, setGameDimensions] = useState({ width: window.innerWidth, height: window.innerHeight });
   const [isMobile, setIsMobile] = useState(false);
@@ -940,9 +941,24 @@ export default function TacoGame({
             )}
 
             {!isMobile && (screen === 'start' || screen === 'game-over') && (
-                <div className="absolute top-0 right-0 h-full w-[300px] z-[120] border-l-4 border-white bg-[#0a0a0a]">
-                    <LeaderboardWidget className="h-full border-none" allowedModes={['competitive', 'universal', 'speed']} defaultMode={gameMode === 'speed-test' ? 'speed' : 'competitive'} />
-                </div>
+                <>
+                    <button
+                        onClick={() => {
+                            audioService.playSound('button_click');
+                            setShowLeaderboard(prev => !prev);
+                        }}
+                        className="absolute top-3 right-3 z-[130] px-3 py-1.5 rounded-full bg-neutral-900/90 hover:bg-neutral-800 text-white border border-neutral-700 text-[10px] font-bold shadow-lg transition-all flex items-center gap-1.5 cursor-pointer"
+                        title={showLeaderboard ? "Hide Leaderboard" : "Show Leaderboard"}
+                    >
+                        <span>🏆</span>
+                        <span>{showLeaderboard ? "Hide Ranks" : "Leaderboard"}</span>
+                    </button>
+                    {showLeaderboard && (
+                        <div className="absolute top-0 right-0 h-full w-[290px] lg:w-[310px] z-[120] border-l-4 border-white bg-[#0a0a0a] shadow-[-10px_0_30px_rgba(0,0,0,0.8)] animate-fade-in">
+                            <LeaderboardWidget className="h-full border-none" allowedModes={['competitive', 'universal', 'speed']} defaultMode={gameMode === 'speed-test' ? 'speed' : 'competitive'} />
+                        </div>
+                    )}
+                </>
             )}
 
             {screen === 'playing' && (

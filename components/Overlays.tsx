@@ -175,40 +175,117 @@ export const LeaderboardWidget: React.FC<LeaderboardWidgetProps> = ({ className 
     };
 
     const formatScore = (entry: LeaderboardEntry) => {
-        if (mode === 'competitive' || mode.includes('minesweeper') || mode === 'connect_4') {
+        if (
+            mode === 'competitive' || 
+            mode.startsWith('minesweeper-') || 
+            mode.startsWith('ultimate_ttt-') || 
+            mode.startsWith('reversi-') || 
+            mode.startsWith('checkers-') || 
+            mode === 'connect_4' || 
+            mode === 'connect_4-time'
+        ) {
             const mins = Math.floor(entry.score / 60);
             const secs = Math.floor(entry.score % 60);
             return `${mins}:${secs.toString().padStart(2, '0')}`;
         }
-        return entry.score;
+        if (mode.endsWith('-time') && mode.startsWith('quickdraw')) {
+            return `${entry.score}ms`;
+        }
+        if (mode.startsWith('fingersumo-')) {
+            const val = typeof entry.score === 'number' ? entry.score.toFixed(1) : entry.score;
+            return `${val} CPS`;
+        }
+        if (mode === 'color_memory') {
+            return `${(entry.score / 100).toFixed(1)}`;
+        }
+        if (mode === 'snake') {
+            return `${entry.score}`;
+        }
+        return typeof entry.score === 'number' ? entry.score.toLocaleString() : entry.score;
     };
 
     const getScoreLabel = () => {
         if (mode === 'iq-test') return 'IQ';
-        if (mode.includes('minesweeper') || mode === 'connect_4') return 'TIME';
-        if (mode === 'tic_tac_toe') return 'STREAK';
-        return mode === 'competitive' ? 'TIME' : 'PTS';
+        if (
+            mode === 'competitive' || 
+            mode.startsWith('minesweeper-') || 
+            mode.startsWith('ultimate_ttt-') || 
+            mode.startsWith('reversi-') || 
+            mode.startsWith('checkers-') || 
+            mode === 'connect_4' || 
+            mode === 'connect_4-time' ||
+            mode.endsWith('-time')
+        ) return 'TIME';
+        if (
+            mode.endsWith('-streak') || 
+            mode.startsWith('tic_tac_toe') || 
+            mode.startsWith('wordle') || 
+            mode === 'angle' || 
+            mode.startsWith('dots_boxes') || 
+            mode === 'nim' || 
+            mode.startsWith('pong')
+        ) return 'STREAK';
+        if (mode.startsWith('fingersumo')) return '';
+        if (mode === 'snake') return 'LEN';
+        if (mode === 'tower_stacker') return 'FLOORS';
+        if (mode === 'knife_flip') return 'BLADES';
+        if (mode === 'simon') return 'ROUNDS';
+        if (mode === 'speed') return 'WPM';
+        if (mode === 'color_memory') return '/ 10';
+        return 'PTS';
     };
 
     const getTitle = () => {
         if (isAdmin) return 'ADMIN MODE';
-        if (mode === 'iq-test') return 'Top Minds';
-        if (mode.includes('minesweeper')) return 'Top Defusers';
+        if (mode === 'iq-test') return 'Top Minds (IQ)';
+        if (mode.startsWith('minesweeper')) return 'Minesweeper Times';
+        if (mode.startsWith('tic_tac_toe')) return 'Tic Tac Toe Streaks';
+        if (mode.startsWith('wordle')) return 'Wordle Streaks';
+        if (mode === 'angle') return 'Angle Snipers';
+        if (mode.startsWith('dots_boxes')) return 'Dots & Boxes Streaks';
+        if (mode === 'nim') return 'Nim Duelists';
+        if (mode.startsWith('pong')) return 'Pong Champions';
+        if (mode.startsWith('ultimate_ttt')) return 'Ultimate Tic-Tac-Toe';
+        if (mode.startsWith('reversi')) return 'Reversi Masters';
+        if (mode.startsWith('checkers')) return 'Checkers Speed';
+        if (mode === 'knife_flip') return 'Knife Flip Masters';
+        if (mode === 'snake') return 'Longest Snakes';
+        if (mode === 'brick_breaker') return 'Brick Breaker Scores';
+        if (mode === 'color_memory') return 'Color Memory Highs';
+        if (mode === 'fruit_merge') return 'Fruit Merge Scores';
+        if (mode === 'simon') return 'Simon Memory Records';
+        if (mode === 'tower_stacker') return 'Tower Stacker Heights';
+        if (mode === 'tetris') return 'Tetris High Scores';
+        if (mode.startsWith('2048')) return '2048 High Scores';
+        if (mode.startsWith('connect_4')) return 'Connect 4 Records';
+        if (mode.startsWith('quickdraw')) return 'Quick Draw Gunslingers';
+        if (mode.startsWith('fingersumo')) return 'Finger Sumo CPS';
         if (mode === 'speed') return 'Fastest Hands';
-        if (mode === 'tic_tac_toe') return 'Top Strategists';
-        if (mode === 'connect_4') return 'Fastest Connectors';
-        return 'Top Chefs';
-    }
+        return 'Top Scores';
+    };
 
     const getTabLabel = (m: string) => {
         if (m === 'competitive') return 'COMP';
         if (m === 'universal') return 'UNIV';
         if (m === 'speed') return 'SPEED';
-        if (m === 'tic_tac_toe') return 'TICTAC';
-        if (m === 'connect_4') return 'CONN4';
-        if (m.startsWith('minesweeper-')) return m.replace('minesweeper-', '').substring(0, 4).toUpperCase();
-        return m.substring(0, 4).toUpperCase();
-    }
+        if (m.startsWith('tic_tac_toe-')) return m.replace('tic_tac_toe-', '').toUpperCase();
+        if (m.startsWith('wordle-')) return m.replace('wordle-', '') + ' LTR';
+        if (m.startsWith('dots_boxes-')) return m.replace('dots_boxes-', '');
+        if (m.startsWith('pong-')) return m.replace('pong-', '').toUpperCase();
+        if (m.startsWith('minesweeper-')) return m.replace('minesweeper-', '').substring(0, 3).toUpperCase();
+        if (m.startsWith('ultimate_ttt-')) return m.replace('ultimate_ttt-', '').substring(0, 3).toUpperCase();
+        if (m.startsWith('reversi-')) return m.replace('reversi-', '').toUpperCase();
+        if (m.startsWith('checkers-')) return m.replace('checkers-', '').toUpperCase();
+        if (m.startsWith('2048-')) return m.replace('2048-', '');
+        if (m.startsWith('fingersumo-')) return m.replace('fingersumo-', '').toUpperCase();
+        if (m === 'connect_4-time') return 'SPEED';
+        if (m === 'connect_4-streak') return 'STREAK';
+        if (m.startsWith('quickdraw-')) {
+            const parts = m.replace('quickdraw-', '').split('-');
+            return `${parts[0].substring(0, 3).toUpperCase()} ${parts[1] === 'time' ? 'TIME' : 'STRK'}`;
+        }
+        return m.substring(0, 6).toUpperCase();
+    };
 
     const activeIndex = modes.indexOf(mode);
 

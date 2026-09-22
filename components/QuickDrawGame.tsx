@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { incrementGamePlays } from '../services/firebase';
+import { incrementGamePlays, saveLeaderboardScore } from '../services/firebase';
 import { audioService } from '../services/audioService';
 import { GunslingerCharacter } from './quickdraw/GunslingerCharacter';
 
@@ -12,7 +12,7 @@ interface QuickDrawProps {
 type Difficulty = 'easy' | 'medium' | 'hard';
 type DuelState = 'idle' | 'ready' | 'steady' | 'fire' | 'round_over' | 'match_over';
 
-export default function QuickDrawGame({ onBackToHub }: QuickDrawProps) {
+export default function QuickDrawGame({ onBackToHub, user, username }: QuickDrawProps) {
   const [difficulty, setDifficulty] = useState<Difficulty>('medium');
   const [state, setState] = useState<DuelState>('idle');
   const [playerScore, setPlayerScore] = useState(0);
@@ -22,6 +22,7 @@ export default function QuickDrawGame({ onBackToHub }: QuickDrawProps) {
   const [playerReaction, setPlayerReaction] = useState<number | null>(null);
   const [botReaction, setBotReaction] = useState<number | null>(null);
   const [flash, setFlash] = useState(false);
+  const [streak, setStreak] = useState(0);
 
   const fireTimestampRef = useRef<number | null>(null);
   const timeoutsRef = useRef<NodeJS.Timeout[]>([]);
@@ -40,14 +41,14 @@ export default function QuickDrawGame({ onBackToHub }: QuickDrawProps) {
 
   const getBotReactionTime = useCallback((diff: Difficulty): { time: number; falseStart: boolean } => {
     if (diff === 'easy') {
-      const falseStart = Math.random() < 0.18;
-      const time = Math.floor(360 + Math.random() * 90);
+      const falseStart = Math.random() < 0.22;
+      const time = Math.floor(410 + Math.random() * 100);
       return { time, falseStart };
     } else if (diff === 'medium') {
-      const time = Math.floor(250 + Math.random() * 60);
+      const time = Math.floor(295 + Math.random() * 65);
       return { time, falseStart: false };
     } else {
-      const time = Math.floor(170 + Math.random() * 40);
+      const time = Math.floor(215 + Math.random() * 45);
       return { time, falseStart: false };
     }
   }, []);
@@ -157,10 +158,39 @@ export default function QuickDrawGame({ onBackToHub }: QuickDrawProps) {
         setRoundWinner('player');
         setRoundMessage(`BULLSEYE! You drew first in ${elapsed}ms (Bot: ${botTarget}ms)!`);
         audioService.playSound('success');
+
+        if (user && (difficulty === 'medium' || difficulty === 'hard')) {
+          saveLeaderboardScore(
+            user,
+            username || user.displayName || 'Gunslinger',
+            elapsed,
+            'Fastest Draw',
+            { mistakes: 0, timeTaken: elapsed, ingredientsMissed: 0, rottenWordsTyped: 0, totalScore: elapsed, levelReached: 1 },
+            `quickdraw-${difficulty}-time`
+          );
+        }
+
         setPlayerScore(p => {
           const next = p + 1;
-          if (next >= 3) setState('match_over');
-          else setState('round_over');
+          if (next >= 3) {
+            setState('match_over');
+            if (difficulty === 'medium' || difficulty === 'hard') {
+              const nextStreak = streak + 1;
+              setStreak(nextStreak);
+              if (user) {
+                saveLeaderboardScore(
+                  user,
+                  username || user.displayName || 'Gunslinger',
+                  nextStreak,
+                  'Quick Draw Streak',
+                  { mistakes: 0, timeTaken: 0, ingredientsMissed: 0, rottenWordsTyped: 0, totalScore: nextStreak, levelReached: 1 },
+                  `quickdraw-${difficulty}-streak`
+                );
+              }
+            }
+          } else {
+            setState('round_over');
+          }
           return next;
         });
       } else {
@@ -169,13 +199,17 @@ export default function QuickDrawGame({ onBackToHub }: QuickDrawProps) {
         audioService.playSound('failure');
         setBotScore(b => {
           const next = b + 1;
-          if (next >= 3) setState('match_over');
-          else setState('round_over');
+          if (next >= 3) {
+            setState('match_over');
+            setStreak(0);
+          } else {
+            setState('round_over');
+          }
           return next;
         });
       }
     }
-  }, [state, difficulty, getBotReactionTime]);
+  }, [state, difficulty, getBotReactionTime, user, username, streak]);
 
   // Spacebar controls
   useEffect(() => {
@@ -229,7 +263,10 @@ export default function QuickDrawGame({ onBackToHub }: QuickDrawProps) {
               <button
                 key={d}
                 disabled={state === 'ready' || state === 'steady' || state === 'fire'}
-                onClick={() => setDifficulty(d)}
+                onClick={() => {
+                  setDifficulty(d);
+                  setStreak(0);
+                }}
                 className={`px-2 py-0.5 text-[10px] sm:text-xs font-bold rounded capitalize transition-all ${
                   difficulty === d
                     ? 'bg-amber-500 text-black shadow font-bold'

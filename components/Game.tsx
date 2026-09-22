@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { AppId, GameScreen } from '../types';
 import { getUserProfile, saveUsername } from '../services/firebase';
 import type { User } from '../services/firebase';
+import { GameLeaderboardShell } from './GameLeaderboardShell';
 
 import HubScreen from './HubScreen';
 import TacoGame from './TacoGame';
@@ -185,43 +186,51 @@ export default function Game({
   switch (activeApp) {
     case 'iq':
       return (
-        <IQGame 
-          user={user}
-          onBackToHub={handleBackToHub}
-          username={customUsername}
-          onUpdateUsername={handleUpdateUsername}
-          onLogout={onLogout}
-        />
+        <GameLeaderboardShell appId="iq">
+          <IQGame 
+            user={user}
+            onBackToHub={handleBackToHub}
+            username={customUsername}
+            onUpdateUsername={handleUpdateUsername}
+            onLogout={onLogout}
+          />
+        </GameLeaderboardShell>
       );
     case 'mine':
       return (
-        <MinesweeperGame 
-          user={user}
-          onBackToHub={handleBackToHub}
-          username={customUsername}
-          onUpdateUsername={handleUpdateUsername}
-          onLogout={onLogout}
-        />
+        <GameLeaderboardShell appId="mine">
+          <MinesweeperGame 
+            user={user}
+            onBackToHub={handleBackToHub}
+            username={customUsername}
+            onUpdateUsername={handleUpdateUsername}
+            onLogout={onLogout}
+          />
+        </GameLeaderboardShell>
       );
     case 'wordle':
       return (
-        <WordleGame 
-          user={user}
-          onBackToHub={handleBackToHub}
-          username={customUsername}
-          onUpdateUsername={handleUpdateUsername}
-          onLogout={onLogout}
-        />
+        <GameLeaderboardShell appId="wordle">
+          <WordleGame 
+            user={user}
+            onBackToHub={handleBackToHub}
+            username={customUsername}
+            onUpdateUsername={handleUpdateUsername}
+            onLogout={onLogout}
+          />
+        </GameLeaderboardShell>
       );
     case 'angle':
       return (
-        <AngleGame 
-          user={user}
-          onBackToHub={handleBackToHub}
-          username={customUsername}
-          onUpdateUsername={handleUpdateUsername}
-          onLogout={onLogout}
-        />
+        <GameLeaderboardShell appId="angle">
+          <AngleGame 
+            user={user}
+            onBackToHub={handleBackToHub}
+            username={customUsername}
+            onUpdateUsername={handleUpdateUsername}
+            onLogout={onLogout}
+          />
+        </GameLeaderboardShell>
       );
     case 'more-less':
       return (
@@ -245,29 +254,37 @@ export default function Game({
       );
     case 'tic-tac-toe':
       return (
-        <TicTacToeGame 
-          user={user}
-          onBackToHub={handleBackToHub}
-          username={customUsername}
-          onUpdateUsername={handleUpdateUsername}
-          onLogout={onLogout}
-        />
+        <GameLeaderboardShell appId="tic-tac-toe">
+          <TicTacToeGame 
+            user={user}
+            onBackToHub={handleBackToHub}
+            username={customUsername}
+            onUpdateUsername={handleUpdateUsername}
+            onLogout={onLogout}
+          />
+        </GameLeaderboardShell>
       );
     case 'connect-4':
       return (
-        <Connect4Game 
-          user={user}
-          onBackToHub={handleBackToHub}
-          username={customUsername}
-          onUpdateUsername={handleUpdateUsername}
-          onLogout={onLogout}
-        />
+        <GameLeaderboardShell appId="connect-4">
+          <Connect4Game 
+            user={user}
+            onBackToHub={handleBackToHub}
+            username={customUsername}
+            onUpdateUsername={handleUpdateUsername}
+            onLogout={onLogout}
+          />
+        </GameLeaderboardShell>
       );
     case 'color-memory':
       return (
-        <ColorMemoryComponent 
-          onBackToHub={handleBackToHub}
-        />
+        <GameLeaderboardShell appId="color-memory">
+          <ColorMemoryComponent 
+            onBackToHub={handleBackToHub}
+            user={user}
+            username={customUsername}
+          />
+        </GameLeaderboardShell>
       );
     case 'particle-physics':
       return (
@@ -277,107 +294,133 @@ export default function Game({
       );
     case 'fruit-merge':
       return (
-        <FruitMergeGame 
-          onBackToHub={handleBackToHub}
-          user={user}
-          username={customUsername}
-        />
+        <GameLeaderboardShell appId="fruit-merge">
+          <FruitMergeGame 
+            onBackToHub={handleBackToHub}
+            user={user}
+            username={customUsername}
+          />
+        </GameLeaderboardShell>
       );
     case 'checkers':
       return (
-        <CheckersGame 
-          onBackToHub={handleBackToHub}
-          user={user}
-          username={customUsername}
-        />
+        <GameLeaderboardShell appId="checkers">
+          <CheckersGame 
+            onBackToHub={handleBackToHub}
+            user={user}
+            username={customUsername}
+          />
+        </GameLeaderboardShell>
       );
     case 'dots-and-boxes':
       return (
-        <DotsAndBoxesGame 
-          onBackToHub={handleBackToHub}
-          user={user}
-          username={customUsername}
-        />
+        <GameLeaderboardShell appId="dots-and-boxes">
+          <DotsAndBoxesGame 
+            onBackToHub={handleBackToHub}
+            user={user}
+            username={customUsername}
+          />
+        </GameLeaderboardShell>
       );
     case 'snake':
       return (
-        <SnakeGame 
-          onBackToHub={handleBackToHub}
-          user={user}
-          username={customUsername}
-        />
+        <GameLeaderboardShell appId="snake">
+          <SnakeGame 
+            onBackToHub={handleBackToHub}
+            user={user}
+            username={customUsername}
+          />
+        </GameLeaderboardShell>
       );
     case 'brick-breaker':
       return (
-        <BrickBreakerGame 
-          onBackToHub={handleBackToHub}
-          user={user}
-          username={customUsername}
-        />
+        <GameLeaderboardShell appId="brick-breaker">
+          <BrickBreakerGame 
+            onBackToHub={handleBackToHub}
+            user={user}
+            username={customUsername}
+          />
+        </GameLeaderboardShell>
       );
     case 'game-2048':
       return (
-        <Game2048 
-          onBackToHub={handleBackToHub}
-          user={user}
-          username={customUsername}
-        />
+        <GameLeaderboardShell appId="game-2048">
+          <Game2048 
+            onBackToHub={handleBackToHub}
+            user={user}
+            username={customUsername}
+          />
+        </GameLeaderboardShell>
       );
     case 'ultimate-tictactoe':
       return (
-        <UltimateTicTacToeGame 
-          onBackToHub={handleBackToHub}
-          user={user}
-          username={customUsername}
-        />
+        <GameLeaderboardShell appId="ultimate-tictactoe">
+          <UltimateTicTacToeGame 
+            onBackToHub={handleBackToHub}
+            user={user}
+            username={customUsername}
+          />
+        </GameLeaderboardShell>
       );
     case 'simon':
       return (
-        <SimonGame 
-          onBackToHub={handleBackToHub}
-          user={user}
-          username={customUsername}
-        />
+        <GameLeaderboardShell appId="simon">
+          <SimonGame 
+            onBackToHub={handleBackToHub}
+            user={user}
+            username={customUsername}
+          />
+        </GameLeaderboardShell>
       );
     case 'quick-draw':
       return (
-        <QuickDrawGame 
-          onBackToHub={handleBackToHub}
-          user={user}
-          username={customUsername}
-        />
+        <GameLeaderboardShell appId="quick-draw">
+          <QuickDrawGame 
+            onBackToHub={handleBackToHub}
+            user={user}
+            username={customUsername}
+          />
+        </GameLeaderboardShell>
       );
     case 'finger-sumo':
       return (
-        <FingerSumoGame 
-          onBackToHub={handleBackToHub}
-          user={user}
-          username={customUsername}
-        />
+        <GameLeaderboardShell appId="finger-sumo">
+          <FingerSumoGame 
+            onBackToHub={handleBackToHub}
+            user={user}
+            username={customUsername}
+          />
+        </GameLeaderboardShell>
       );
     case 'pong':
       return (
-        <PongGame 
-          onBackToHub={handleBackToHub}
-          user={user}
-          username={customUsername}
-        />
+        <GameLeaderboardShell appId="pong">
+          <PongGame 
+            onBackToHub={handleBackToHub}
+            user={user}
+            username={customUsername}
+          />
+        </GameLeaderboardShell>
       );
     case 'knife-flip':
       return (
-        <KnifeFlipGame 
-          onBackToHub={handleBackToHub}
-          user={user}
-          username={customUsername}
-        />
+        <GameLeaderboardShell appId="knife-flip">
+          <KnifeFlipGame 
+            onBackToHub={handleBackToHub}
+            user={user}
+            username={customUsername}
+          />
+        </GameLeaderboardShell>
       );
     case 'reversi':
       return (
-        <ReversiGame 
-          onBackToHub={handleBackToHub}
-          user={user}
-          username={customUsername}
-        />
+        <GameLeaderboardShell appId="reversi">
+          <ReversiGame 
+            onBackToHub={handleBackToHub}
+            user={user}
+            username={customUsername}
+          />
+        </GameLeaderboardShell>
       );
     case 'battleship':
       return (
@@ -389,27 +432,33 @@ export default function Game({
       );
     case 'nim':
       return (
-        <NimGame 
-          onBackToHub={handleBackToHub}
-          user={user}
-          username={customUsername}
-        />
+        <GameLeaderboardShell appId="nim">
+          <NimGame 
+            onBackToHub={handleBackToHub}
+            user={user}
+            username={customUsername}
+          />
+        </GameLeaderboardShell>
       );
     case 'tower-stacker':
       return (
-        <TowerStackerGame 
-          onBackToHub={handleBackToHub}
-          user={user}
-          username={customUsername}
-        />
+        <GameLeaderboardShell appId="tower-stacker">
+          <TowerStackerGame 
+            onBackToHub={handleBackToHub}
+            user={user}
+            username={customUsername}
+          />
+        </GameLeaderboardShell>
       );
     case 'tetris':
       return (
-        <TetrisGame 
-          onBackToHub={handleBackToHub}
-          user={user}
-          username={customUsername}
-        />
+        <GameLeaderboardShell appId="tetris">
+          <TetrisGame 
+            onBackToHub={handleBackToHub}
+            user={user}
+            username={customUsername}
+          />
+        </GameLeaderboardShell>
       );
     default:
       return (

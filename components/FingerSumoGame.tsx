@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { incrementGamePlays } from '../services/firebase';
+import { incrementGamePlays, saveLeaderboardScore } from '../services/firebase';
 import { audioService } from '../services/audioService';
 
 interface FingerSumoProps {
@@ -10,9 +10,9 @@ interface FingerSumoProps {
 
 type Difficulty = 'easy' | 'medium' | 'hard';
 
-export default function FingerSumoGame({ onBackToHub }: FingerSumoProps) {
+export default function FingerSumoGame({ onBackToHub, user, username }: FingerSumoProps) {
   const [difficulty, setDifficulty] = useState<Difficulty>('medium');
-  const [isMatchActive, setIsMatchActive] = useState(true);
+  const [isMatchActive, setIsMatchActive] = useState(false);
   const [position, setPosition] = useState(0); // -100 (Bot Ringout) to +100 (Player Ringout)
   const [playerScore, setPlayerScore] = useState(0);
   const [botScore, setBotScore] = useState(0);
@@ -20,8 +20,8 @@ export default function FingerSumoGame({ onBackToHub }: FingerSumoProps) {
   const [matchWinner, setMatchWinner] = useState<'player' | 'bot' | null>(null);
   const [playerTapsCount, setPlayerTapsCount] = useState(0);
 
-  const posRef = useRef(position);
-  posRef.current = position;
+  const matchStartTimeRef = useRef(Date.now());
+  const totalMatchTapsRef = useRef(0);
   const isMatchActiveRef = useRef(isMatchActive);
   isMatchActiveRef.current = isMatchActive;
 
@@ -41,10 +41,16 @@ export default function FingerSumoGame({ onBackToHub }: FingerSumoProps) {
     setPlayerScore(0);
     setBotScore(0);
     setMatchWinner(null);
-    resetRound();
-  }, [resetRound]);
+    setPosition(0);
+    setRoundWinner(null);
+    setIsMatchActive(false);
+    isMatchActiveRef.current = false;
+    setPlayerTapsCount(0);
+    matchStartTimeRef.current = Date.now();
+    totalMatchTapsRef.current = 0;
+  }, []);
 
-  // Player tap handler - starts match instantly on tap if paused
+  // Player tap handler
   const handlePlayerTap = useCallback(() => {
     if (matchWinner) return;
 
@@ -53,15 +59,21 @@ export default function FingerSumoGame({ onBackToHub }: FingerSumoProps) {
         resetRound();
         return;
       }
+      // Start match on first tap
       setIsMatchActive(true);
       isMatchActiveRef.current = true;
+      if (playerScore === 0 && botScore === 0) {
+        matchStartTimeRef.current = Date.now();
+        totalMatchTapsRef.current = 0;
+      }
     }
 
     audioService.playSound('tile_click');
     setPlayerTapsCount(c => c + 1);
+    totalMatchTapsRef.current += 1;
 
     // Player pushes towards bot side (- direction)
-    const pushForce = 3.6;
+    const pushForce = 3.8;
     setPosition(p => {
       const next = p - pushForce;
       if (next <= -95) {
@@ -72,14 +84,28 @@ export default function FingerSumoGame({ onBackToHub }: FingerSumoProps) {
         setRoundWinner('player');
         setPlayerScore(ps => {
           const nextScore = ps + 1;
-          if (nextScore >= 3) setMatchWinner('player');
+          if (nextScore >= 3) {
+            setMatchWinner('player');
+            const durationSec = Math.max(1, (Date.now() - matchStartTimeRef.current) / 1000);
+            const avgCPS = parseFloat((totalMatchTapsRef.current / durationSec).toFixed(1));
+            if (user && (difficulty === 'medium' || difficulty === 'hard')) {
+              saveLeaderboardScore(
+                user,
+                username || user.displayName || 'Sumo Champion',
+                avgCPS,
+                'Sumo CPS Master',
+                { mistakes: 0, timeTaken: Math.round(durationSec), ingredientsMissed: 0, rottenWordsTyped: 0, totalScore: avgCPS, levelReached: 1 },
+                `fingersumo-${difficulty}`
+              );
+            }
+          }
           return nextScore;
         });
         return -100;
       }
       return next;
     });
-  }, [matchWinner, roundWinner, resetRound]);
+  }, [matchWinner, roundWinner, resetRound, playerScore, botScore, difficulty, user, username]);
 
   // Spacebar controls
   useEffect(() => {
@@ -93,20 +119,39 @@ export default function FingerSumoGame({ onBackToHub }: FingerSumoProps) {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [handlePlayerTap]);
 
-  // Bot Auto-Tapping Loop
+  // Bot Auto-Tapping Loop (Realistic human-like pacing)
   useEffect(() => {
     if (!isMatchActive) return;
 
-    let botIntervalMs = 175; // medium ~5.7 taps/sec
-    if (difficulty === 'easy') botIntervalMs = 240; // ~4.1 taps/sec
-    else if (difficulty === 'hard') botIntervalMs = 135; // ~7.4 taps/sec
+    // Realistic bot intervals and forces:
+    // Easy: ~2.4 taps/sec, gentle force
+    // Medium: ~3.4 taps/sec with human fatigue micro-pauses (easily beatable with normal single-finger tapping)
+    // Hard: ~5.0 taps/sec, brisk competitor
+    let botIntervalMs = 290;
+    let pushForceBase = 2.8;
 
+    if (difficulty === 'easy') {
+      botIntervalMs = 420;
+      pushForceBase = 2.4;
+    } else if (difficulty === 'hard') {
+      botIntervalMs = 195;
+      pushForceBase = 3.3;
+    }
+
+    let botTapCounter = 0;
     const interval = setInterval(() => {
       if (!isMatchActiveRef.current) return;
+      botTapCounter++;
 
-      // Jitter
-      const jitter = (Math.random() - 0.5) * 25;
-      const botPushForce = 3.4 + (Math.random() * 0.6);
+      // Natural human micro-pauses
+      if (difficulty === 'medium' && botTapCounter % 10 === 0 && Math.random() < 0.5) {
+        return;
+      }
+      if (difficulty === 'easy' && Math.random() < 0.3) {
+        return;
+      }
+
+      const botPushForce = pushForceBase + (Math.random() * 0.4 - 0.2);
 
       setPosition(p => {
         const next = p + botPushForce;
@@ -114,6 +159,7 @@ export default function FingerSumoGame({ onBackToHub }: FingerSumoProps) {
           // Bot pushed player out of ring!
           audioService.playSound('failure');
           setIsMatchActive(false);
+          isMatchActiveRef.current = false;
           setRoundWinner('bot');
           setBotScore(bs => {
             const nextScore = bs + 1;
@@ -146,6 +192,7 @@ export default function FingerSumoGame({ onBackToHub }: FingerSumoProps) {
         </div>
 
         <div className="flex items-center gap-2">
+          {/* Difficulty Switcher */}
           <div className="flex bg-neutral-950 p-0.5 rounded-lg border border-neutral-800">
             {(['easy', 'medium', 'hard'] as Difficulty[]).map(d => (
               <button
@@ -155,7 +202,7 @@ export default function FingerSumoGame({ onBackToHub }: FingerSumoProps) {
                 className={`px-2 py-0.5 text-[10px] sm:text-xs font-bold rounded capitalize transition-all ${
                   difficulty === d
                     ? 'bg-amber-500 text-black shadow font-bold'
-                    : 'text-neutral-400 hover:text-white disabled:opacity-50'
+                    : 'text-neutral-400 hover:text-white disabled:opacity-40'
                 }`}
               >
                 {d}
@@ -179,7 +226,11 @@ export default function FingerSumoGame({ onBackToHub }: FingerSumoProps) {
           <span className="text-cyan-400 font-bold">YOU: {playerScore} / 3</span>
         </div>
         <div className="text-[10px] sm:text-xs text-neutral-400 font-bold uppercase tracking-wider">
-          {isMatchActive ? 'TAP RAPIDLY TO PUSH' : 'ROUND FINISHED'}
+          {!isMatchActive && !roundWinner && !matchWinner
+            ? 'CHOOSE DIFFICULTY & START'
+            : isMatchActive
+            ? 'TAP RAPIDLY TO PUSH'
+            : 'ROUND FINISHED'}
         </div>
         <div className="flex items-center gap-2">
           <span className="text-rose-400 font-bold">BOT: {botScore} / 3</span>
@@ -197,7 +248,9 @@ export default function FingerSumoGame({ onBackToHub }: FingerSumoProps) {
             </div>
             <div>
               <div className="text-xs font-bold text-rose-400 uppercase tracking-wide">Grand Yokozuna Bot</div>
-              <div className="text-[10px] text-neutral-400 font-mono capitalize">Level: {difficulty} AI</div>
+              <div className="text-[10px] text-neutral-400 font-mono capitalize">
+                Level: <span className="text-amber-400 font-bold">{difficulty}</span> AI
+              </div>
             </div>
           </div>
           <div className="text-right font-mono">
@@ -222,7 +275,6 @@ export default function FingerSumoGame({ onBackToHub }: FingerSumoProps) {
             <div
               className="absolute flex items-center justify-center transition-all duration-75 text-3xl sm:text-4xl"
               style={{
-                // Position maps -100 to +100 to ring boundary
                 transform: `translateX(${position * 0.9}px)`
               }}
             >
@@ -257,6 +309,35 @@ export default function FingerSumoGame({ onBackToHub }: FingerSumoProps) {
           </div>
         </div>
 
+        {/* Pre-Match Difficulty Selector Overlay / Banner when match hasn't started */}
+        {!isMatchActive && playerScore === 0 && botScore === 0 && !roundWinner && !matchWinner && (
+          <div className="w-full bg-neutral-900/95 border border-neutral-800 p-4 rounded-2xl mb-3 flex flex-col items-center text-center">
+            <span className="text-[10px] font-mono text-neutral-400 uppercase tracking-widest mb-2 font-bold">
+              Select Difficulty Before Entering Dohyo:
+            </span>
+            <div className="grid grid-cols-3 gap-2 w-full max-w-xs mb-3">
+              {(['easy', 'medium', 'hard'] as Difficulty[]).map(d => (
+                <button
+                  key={d}
+                  onClick={() => setDifficulty(d)}
+                  className={`py-2 px-1 text-xs font-black rounded-xl uppercase transition-all ${
+                    difficulty === d
+                      ? 'bg-amber-500 text-black shadow-lg shadow-amber-500/20 scale-105'
+                      : 'bg-neutral-800 text-neutral-400 hover:text-white hover:bg-neutral-700'
+                  }`}
+                >
+                  {d}
+                </button>
+              ))}
+            </div>
+            <span className="text-[11px] text-neutral-400">
+              {difficulty === 'easy' && 'Casual pace (~2.4 taps/s) • Relaxed match'}
+              {difficulty === 'medium' && 'Realistic human pace (~3.4 taps/s) • Win with a steady single finger!'}
+              {difficulty === 'hard' && 'Brisk tournament master (~5.0 taps/s) • Fast twitch challenge!'}
+            </span>
+          </div>
+        )}
+
         {/* Player Tap Area (Giant responsive push button) */}
         <div className="w-full flex flex-col items-center">
           <button
@@ -267,9 +348,13 @@ export default function FingerSumoGame({ onBackToHub }: FingerSumoProps) {
             disabled={!!matchWinner}
             className="w-full py-6 sm:py-8 bg-gradient-to-b from-cyan-500 to-cyan-700 hover:from-cyan-400 hover:to-cyan-600 active:from-cyan-600 active:to-cyan-800 disabled:opacity-40 text-black font-black text-lg sm:text-xl tracking-widest uppercase rounded-2xl shadow-[0_8px_25px_rgba(6,182,212,0.4)] active:scale-[0.98] transition-all flex flex-col items-center justify-center gap-1 cursor-pointer touch-manipulation"
           >
-            <span>{isMatchActive ? '💥 PUSH!' : roundWinner ? '👉 NEXT ROUND' : '💥 START PUSHING!'}</span>
+            <span>{isMatchActive ? '💥 PUSH!' : roundWinner ? '👉 NEXT ROUND' : '💥 START MATCH'}</span>
             <span className="text-[10px] font-mono tracking-normal text-cyan-950 font-bold">
-              {isMatchActive ? `TAP RAPIDLY • ${playerTapsCount} TAPS (OR PRESS SPACE)` : 'TAP TO START ROUND'}
+              {isMatchActive
+                ? `TAP RAPIDLY • ${playerTapsCount} TAPS (OR PRESS SPACE)`
+                : roundWinner
+                ? 'TAP TO START NEXT ROUND'
+                : 'TAP HERE OR PRESS SPACE TO BEGIN'}
             </span>
           </button>
         </div>

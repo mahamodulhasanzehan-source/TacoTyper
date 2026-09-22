@@ -129,8 +129,9 @@ export default function KnifeFlipGame({ onBackToHub }: KnifeThrowProps) {
   const embeddedKnives = useRef<EmbeddedKnife[]>([]);
   const logPunch = useRef(0); // Subtle recoil on knife impact
 
-  // Knife in flight & refs for event loops
+  // Knife in flight & input buffer for rapid tapping
   const flyingKnife = useRef<FlyingKnife | null>(null);
+  const throwBuffered = useRef(false);
   const knivesLeftRef = useRef(knivesLeft);
   knivesLeftRef.current = knivesLeft;
   const isGameOverRef = useRef(isGameOver);
@@ -154,16 +155,16 @@ export default function KnifeFlipGame({ onBackToHub }: KnifeThrowProps) {
     setIsGameOver(false);
     isGameOverRef.current = false;
     flyingKnife.current = null;
+    throwBuffered.current = false;
     particles.current = [];
     logPunch.current = 0;
 
-    // Generate pre-embedded obstacle knives (ensuring 6 o'clock path is clear at start)
+    // Generate pre-embedded obstacle knives
     const obstacles: EmbeddedKnife[] = [];
     const obstacleCount = Math.min(4, Math.floor((stg - 1) / 2));
     for (let i = 0; i < obstacleCount; i++) {
       let ang = (360 / Math.max(1, obstacleCount)) * i + (Math.random() * 20 - 10);
       ang = (ang % 360 + 360) % 360;
-      // Guarantee clear launch lane at start
       if (Math.min(ang, 360 - ang) < 22) {
         ang = (ang + 35) % 360;
       }
@@ -171,7 +172,6 @@ export default function KnifeFlipGame({ onBackToHub }: KnifeThrowProps) {
     }
     embeddedKnives.current = obstacles;
 
-    // Stage speed: smooth, controllable, never spinning out of control
     const baseDir = stg % 2 === 0 ? -1 : 1;
     const baseRate = 1.3 + Math.min(stg * 0.1, 1.1);
     desiredSpeed.current = baseDir * baseRate;
@@ -189,8 +189,9 @@ export default function KnifeFlipGame({ onBackToHub }: KnifeThrowProps) {
     initStage(1);
   };
 
-  const handleThrow = useCallback(() => {
-    if (isGameOverRef.current || stageClearedRef.current || flyingKnife.current !== null) return;
+  // Immediate launch action
+  const launchKnife = useCallback(() => {
+    if (isGameOverRef.current || stageClearedRef.current) return;
     if (knivesLeftRef.current <= 0) return;
 
     const canvas = canvasRef.current;
@@ -201,12 +202,23 @@ export default function KnifeFlipGame({ onBackToHub }: KnifeThrowProps) {
     knivesLeftRef.current = Math.max(0, knivesLeftRef.current - 1);
     setKnivesLeft(knivesLeftRef.current);
 
-    // Launch knife straight upward from bottom launcher platform
+    // Responsive layout calibration: consistent travel distance across phone and desktop
+    const targetRadius = Math.min(65, w * 0.18);
+    const playDistance = Math.min(300, Math.max(220, h * 0.46));
+    const targetCenterY = Math.max(120, (h - playDistance) * 0.42);
+    const readyY = targetCenterY + playDistance;
+    const woodSurfaceY = targetCenterY + targetRadius - KNIFE.embedDepth;
+    const travelDist = readyY - woodSurfaceY;
+
+    // Fixed, lightning-fast flight time (95ms) for identical speed & reaction on phone & desktop
+    const FLIGHT_TIME = 0.095;
+    const vy = -travelDist / FLIGHT_TIME;
+
     flyingKnife.current = {
       x: w / 2,
-      y: h - 90, // Tip of blade starts here
+      y: readyY,
       vx: 0,
-      vy: -1600, // Fast, responsive upward velocity
+      vy,
       rotation: 0,
       rotSpeed: 0,
       isDeflecting: false
@@ -214,6 +226,20 @@ export default function KnifeFlipGame({ onBackToHub }: KnifeThrowProps) {
 
     audioService.playSound('piece_drop');
   }, []);
+
+  // Rapid-response tap handler with input buffering
+  const handleThrow = useCallback(() => {
+    if (isGameOverRef.current || stageClearedRef.current) return;
+    if (knivesLeftRef.current <= 0) return;
+
+    // If a knife is currently in flight, buffer this tap so it launches immediately on impact
+    if (flyingKnife.current !== null && !flyingKnife.current.isDeflecting) {
+      throwBuffered.current = true;
+      return;
+    }
+
+    launchKnife();
+  }, [launchKnife]);
 
   // Main 60FPS Game Loop
   useEffect(() => {
@@ -231,12 +257,15 @@ export default function KnifeFlipGame({ onBackToHub }: KnifeThrowProps) {
       const w = canvas.width;
       const h = canvas.height;
       const targetRadius = Math.min(65, w * 0.18);
-      // Log center with subtle impact punch recoil
-      const baseY = Math.min(180, h * 0.3);
+
+      // Calibrated play distance and target center
+      const playDistance = Math.min(300, Math.max(220, h * 0.46));
+      const baseY = Math.max(120, (h - playDistance) * 0.42);
       if (logPunch.current > 0) {
         logPunch.current = Math.max(0, logPunch.current - dt * 25);
       }
       const targetCenter = { x: w / 2, y: baseY - logPunch.current };
+      const readyY = baseY + playDistance;
 
       // Smooth log rotation & speed modulation
       speedTimer.current += dt;
@@ -246,7 +275,6 @@ export default function KnifeFlipGame({ onBackToHub }: KnifeThrowProps) {
         const speedMagnitude = 1.2 + Math.random() * 1.2;
         desiredSpeed.current = dir * speedMagnitude;
       }
-      // Gentle lerp between current and desired speed (no jerky flipping)
       currentSpeed.current += (desiredSpeed.current - currentSpeed.current) * Math.min(1, dt * 3.0);
       targetAngle.current = (targetAngle.current + currentSpeed.current * (dt * 60)) % 360;
 
@@ -256,18 +284,15 @@ export default function KnifeFlipGame({ onBackToHub }: KnifeThrowProps) {
         if (!k.isDeflecting) {
           k.y += k.vy * dt;
 
-          // Check collision with existing embedded knives along 6 o'clock path
-          // Pommels stick out to targetRadius + TOTAL_KNIFE_LENGTH - embedDepth
           const pommelContactY = targetCenter.y + targetRadius + (TOTAL_KNIFE_LENGTH - KNIFE.embedDepth - 14);
           const woodSurfaceY = targetCenter.y + targetRadius - KNIFE.embedDepth;
 
-          // Check if knife tip has reached existing knife handle/pommel height
+          // Check collision with existing embedded knives along 6 o'clock path
           if (k.y <= pommelContactY) {
             let hitObstacle = false;
             let obstacleDiff = 0;
 
             for (const ek of embeddedKnives.current) {
-              // World angle of the embedded knife right now (0 deg = pointing straight down at 6 o'clock)
               const worldAngle = ((targetAngle.current + ek.angle) % 360 + 360) % 360;
               const diff = Math.min(worldAngle, 360 - worldAngle);
 
@@ -281,18 +306,16 @@ export default function KnifeFlipGame({ onBackToHub }: KnifeThrowProps) {
             if (hitObstacle) {
               // CLASH! Blade tip strikes metal handle of stuck knife!
               k.isDeflecting = true;
-              k.y = pommelContactY; // Snap exactly to contact point
-              // Deflect away from obstacle knife angle
+              throwBuffered.current = false; // Cancel buffered throw on loss
+              k.y = pommelContactY;
               const bounceDir = obstacleDiff >= 0 ? 1 : -1;
               k.vx = bounceDir * (220 + Math.random() * 120);
-              k.vy = 400 + Math.random() * 100; // Bounce downward
+              k.vy = 400 + Math.random() * 100;
               k.rotSpeed = bounceDir * (14 + Math.random() * 6);
 
-              // Metal clang ricochet sound
               audioService.playSound('knife_deflect');
               isGameOverRef.current = true;
 
-              // Spawn vibrant golden metal sparks from exact contact point
               for (let i = 0; i < 20; i++) {
                 const angle = Math.random() * Math.PI * 2;
                 const speed = 120 + Math.random() * 300;
@@ -308,15 +331,12 @@ export default function KnifeFlipGame({ onBackToHub }: KnifeThrowProps) {
                 });
               }
 
-              // Reveal game over modal after deflection animation starts
               setTimeout(() => {
                 setIsGameOver(true);
               }, 700);
             } else if (k.y <= woodSurfaceY) {
               // EMBEDDED! Knife cleanly penetrates the wooden log!
               k.y = woodSurfaceY;
-              // Compute exact angle on the rotating log:
-              // At 6 o'clock, world angle is 0. Since totalAngle = (targetAngle + knifeAngle) = 0 mod 360:
               const impactAngle = (360 - (targetAngle.current % 360)) % 360;
               embeddedKnives.current.push({
                 id: Math.random(),
@@ -324,11 +344,9 @@ export default function KnifeFlipGame({ onBackToHub }: KnifeThrowProps) {
               });
               flyingKnife.current = null;
 
-              // Solid wooden chop sound effect
               audioService.playSound('knife_hit');
-              logPunch.current = 3.5; // Visual recoil punch
+              logPunch.current = 3.5;
 
-              // Oak wood splinters bursting from bark penetration
               for (let i = 0; i < 12; i++) {
                 particles.current.push({
                   x: targetCenter.x,
@@ -359,16 +377,21 @@ export default function KnifeFlipGame({ onBackToHub }: KnifeThrowProps) {
               if (knivesLeftRef.current <= 0) {
                 setStageCleared(true);
                 stageClearedRef.current = true;
+                throwBuffered.current = false;
                 audioService.playSound('success');
                 setTimeout(() => {
                   setStage(s => s + 1);
                 }, 1000);
+              } else if (throwBuffered.current) {
+                // If user buffered a tap while knife was travelling, fire it instantly!
+                throwBuffered.current = false;
+                launchKnife();
               }
             }
           }
         } else {
           // Deflecting knife tumbling under gravity
-          k.vy += 950 * dt; // Gravity
+          k.vy += 950 * dt;
           k.x += k.vx * dt;
           k.y += k.vy * dt;
           k.rotation += k.rotSpeed * dt;
@@ -380,7 +403,7 @@ export default function KnifeFlipGame({ onBackToHub }: KnifeThrowProps) {
         const p = particles.current[i];
         p.x += p.vx * dt;
         p.y += p.vy * dt;
-        p.vy += 400 * dt; // Particle gravity
+        p.vy += 400 * dt;
         p.life -= dt;
         if (p.life <= 0) particles.current.splice(i, 1);
       }
@@ -400,11 +423,9 @@ export default function KnifeFlipGame({ onBackToHub }: KnifeThrowProps) {
       ctx.translate(targetCenter.x, targetCenter.y);
       ctx.rotate((targetAngle.current * Math.PI) / 180);
 
-      // Embedded Knives rotating perfectly with log
       embeddedKnives.current.forEach(knife => {
         ctx.save();
         ctx.rotate((knife.angle * Math.PI) / 180);
-        // Translate to bark radius minus embed depth so tip sits embedded in wood
         ctx.translate(0, targetRadius - KNIFE.embedDepth);
         drawKnifeShape(ctx);
         ctx.restore();
@@ -453,14 +474,12 @@ export default function KnifeFlipGame({ onBackToHub }: KnifeThrowProps) {
         ctx.rotate(k.rotation);
 
         if (k.isDeflecting) {
-          // Rotate tumbling knife around its center of gravity
           ctx.translate(0, -TOTAL_KNIFE_LENGTH / 2);
         }
         drawKnifeShape(ctx);
         ctx.restore();
       } else if (knivesLeft > 0 && !isGameOver && !stageCleared) {
-        // Ready knife on launcher platform
-        const readyY = h - 90;
+        // Ready knife on launcher platform (positioned at calibrated readyY)
         ctx.save();
         ctx.translate(targetCenter.x, readyY);
         drawKnifeShape(ctx);
@@ -486,7 +505,7 @@ export default function KnifeFlipGame({ onBackToHub }: KnifeThrowProps) {
     return () => {
       if (animRef.current) cancelAnimationFrame(animRef.current);
     };
-  }, []);
+  }, [launchKnife, knivesLeft, isGameOver, stageCleared]);
 
   // Dynamic canvas sizing
   useEffect(() => {
@@ -516,12 +535,15 @@ export default function KnifeFlipGame({ onBackToHub }: KnifeThrowProps) {
 
   return (
     <div
-      className="w-full h-screen flex flex-col bg-[#06080e] text-white select-none overflow-hidden font-sans"
-      onPointerDown={handleThrow}
+      className="w-full h-screen flex flex-col bg-[#06080e] text-white select-none overflow-hidden font-sans touch-none"
+      onPointerDown={(e) => {
+        if (e.button === 0) handleThrow();
+      }}
     >
       {/* Header */}
       <header
         className="flex items-center justify-between px-3 py-2 bg-neutral-900/90 border-b border-neutral-800 z-20 shrink-0"
+        onPointerDown={e => e.stopPropagation()}
         onClick={e => e.stopPropagation()}
       >
         <div className="flex items-center gap-2">
@@ -560,10 +582,20 @@ export default function KnifeFlipGame({ onBackToHub }: KnifeThrowProps) {
       </header>
 
       {/* Main Canvas Area */}
-      <div ref={containerRef} className="flex-1 w-full relative overflow-hidden flex items-center justify-center cursor-pointer">
+      <div
+        ref={containerRef}
+        className="flex-1 w-full relative overflow-hidden flex items-center justify-center cursor-pointer touch-none"
+        onMouseDown={(e) => {
+          if (e.button === 0) {
+            e.preventDefault();
+            handleThrow();
+          }
+        }}
+      >
         <canvas
           ref={canvasRef}
           onPointerDown={(e) => {
+            e.preventDefault();
             e.stopPropagation();
             handleThrow();
           }}
@@ -595,6 +627,7 @@ export default function KnifeFlipGame({ onBackToHub }: KnifeThrowProps) {
         {isGameOver && (
           <div
             className="absolute inset-0 flex items-center justify-center bg-black/85 backdrop-blur-sm z-30 p-4 animate-fade-in"
+            onPointerDown={e => e.stopPropagation()}
             onClick={e => e.stopPropagation()}
           >
             <div className="bg-neutral-900 border border-neutral-800 p-6 sm:p-8 rounded-2xl max-w-sm w-full text-center shadow-2xl">
@@ -625,7 +658,7 @@ export default function KnifeFlipGame({ onBackToHub }: KnifeThrowProps) {
       </div>
 
       <footer className="py-1 px-2 text-center text-[10px] text-neutral-500 border-t border-neutral-900 bg-neutral-950/60 shrink-0">
-        Tap screen or press Spacebar to throw knife • Don't hit existing knives!
+        Tap screen, click mouse, or press Spacebar to throw • Don't hit existing knives!
       </footer>
     </div>
   );
