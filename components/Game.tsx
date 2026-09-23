@@ -33,7 +33,6 @@ import NimGame from './NimGame';
 import TowerStackerGame from './TowerStackerGame';
 import TetrisGame from './TetrisGame';
 import ChessGame from './ChessGame';
-import { GameLeaderboard } from './GameLeaderboard';
 
 interface GameProps {
   user: User;
@@ -184,279 +183,253 @@ export default function Game({
     );
   }
 
-  if (screen === 'hub') {
-    return (
-      <HubScreen 
-        user={user} 
-        onLaunchGame={handleLaunchGame}
-        onLogout={onLogout}
-        username={customUsername}
-        onUpdateUsername={handleUpdateUsername}
-        onGoogleSignIn={onGoogleSignIn}
-      />
-    );
+  switch (activeApp) {
+    case 'iq':
+      return (
+        <IQGame 
+          user={user}
+          onBackToHub={handleBackToHub}
+          username={customUsername}
+          onUpdateUsername={handleUpdateUsername}
+          onLogout={onLogout}
+        />
+      );
+    case 'mine':
+      return (
+        <MinesweeperGame 
+          user={user}
+          onBackToHub={handleBackToHub}
+          username={customUsername}
+          onUpdateUsername={handleUpdateUsername}
+          onLogout={onLogout}
+        />
+      );
+    case 'wordle':
+      return (
+        <WordleGame 
+          user={user}
+          onBackToHub={handleBackToHub}
+          username={customUsername}
+          onUpdateUsername={handleUpdateUsername}
+          onLogout={onLogout}
+        />
+      );
+    case 'angle':
+      return (
+        <AngleGame 
+          user={user}
+          onBackToHub={handleBackToHub}
+          username={customUsername}
+          onUpdateUsername={handleUpdateUsername}
+          onLogout={onLogout}
+        />
+      );
+    case 'more-less':
+      return (
+        <MoreLessGame 
+          user={user}
+          onBackToHub={handleBackToHub}
+          username={customUsername}
+          onUpdateUsername={handleUpdateUsername}
+          onLogout={onLogout}
+        />
+      );
+    case 'spelling-bee':
+      return (
+        <SpellingBeeGame 
+          user={user}
+          onBackToHub={handleBackToHub}
+          username={customUsername}
+          onUpdateUsername={handleUpdateUsername}
+          onLogout={onLogout}
+        />
+      );
+    case 'tic-tac-toe':
+      return (
+        <TicTacToeGame 
+          user={user}
+          onBackToHub={handleBackToHub}
+          username={customUsername}
+          onUpdateUsername={handleUpdateUsername}
+          onLogout={onLogout}
+        />
+      );
+    case 'connect-4':
+      return (
+        <Connect4Game 
+          user={user}
+          onBackToHub={handleBackToHub}
+          username={customUsername}
+          onUpdateUsername={handleUpdateUsername}
+          onLogout={onLogout}
+        />
+      );
+    case 'color-memory':
+      return (
+        <ColorMemoryComponent 
+          onBackToHub={handleBackToHub}
+        />
+      );
+    case 'particle-physics':
+      return (
+        <ParticlePhysicsComponent 
+          onBackToHub={handleBackToHub}
+        />
+      );
+    case 'fruit-merge':
+      return (
+        <FruitMergeGame 
+          onBackToHub={handleBackToHub}
+          user={user}
+          username={customUsername}
+        />
+      );
+    case 'checkers':
+      return (
+        <CheckersGame 
+          onBackToHub={handleBackToHub}
+          user={user}
+          username={customUsername}
+        />
+      );
+    case 'dots-and-boxes':
+      return (
+        <DotsAndBoxesGame 
+          onBackToHub={handleBackToHub}
+          user={user}
+          username={customUsername}
+        />
+      );
+    case 'snake':
+      return (
+        <SnakeGame 
+          onBackToHub={handleBackToHub}
+          user={user}
+          username={customUsername}
+        />
+      );
+    case 'brick-breaker':
+      return (
+        <BrickBreakerGame 
+          onBackToHub={handleBackToHub}
+          user={user}
+          username={customUsername}
+        />
+      );
+    case 'game-2048':
+      return (
+        <Game2048 
+          onBackToHub={handleBackToHub}
+          user={user}
+          username={customUsername}
+        />
+      );
+    case 'ultimate-tictactoe':
+      return (
+        <UltimateTicTacToeGame 
+          onBackToHub={handleBackToHub}
+          user={user}
+          username={customUsername}
+        />
+      );
+    case 'simon':
+      return (
+        <SimonGame 
+          onBackToHub={handleBackToHub}
+          user={user}
+          username={customUsername}
+        />
+      );
+    case 'quick-draw':
+      return (
+        <QuickDrawGame 
+          onBackToHub={handleBackToHub}
+          user={user}
+          username={customUsername}
+        />
+      );
+    case 'finger-sumo':
+      return (
+        <FingerSumoGame 
+          onBackToHub={handleBackToHub}
+          user={user}
+          username={customUsername}
+        />
+      );
+    case 'pong':
+      return (
+        <PongGame 
+          onBackToHub={handleBackToHub}
+          user={user}
+          username={customUsername}
+        />
+      );
+    case 'knife-flip':
+      return (
+        <KnifeFlipGame 
+          onBackToHub={handleBackToHub}
+          user={user}
+          username={customUsername}
+        />
+      );
+    case 'reversi':
+      return (
+        <ReversiGame 
+          onBackToHub={handleBackToHub}
+          user={user}
+          username={customUsername}
+        />
+      );
+    case 'battleship':
+      return (
+        <BattleshipGame 
+          onBackToHub={handleBackToHub}
+          user={user}
+          username={customUsername}
+        />
+      );
+    case 'nim':
+      return (
+        <NimGame 
+          onBackToHub={handleBackToHub}
+          user={user}
+          username={customUsername}
+        />
+      );
+    case 'tower-stacker':
+      return (
+        <TowerStackerGame 
+          onBackToHub={handleBackToHub}
+          user={user}
+          username={customUsername}
+        />
+      );
+    case 'tetris':
+      return (
+        <TetrisGame 
+          onBackToHub={handleBackToHub}
+          user={user}
+          username={customUsername}
+        />
+      );
+    case 'chess':
+      return (
+        <ChessGame 
+          onBackToHub={handleBackToHub}
+          user={user}
+          username={customUsername}
+        />
+      );
+    default:
+      return (
+        <HubScreen 
+          user={user} 
+          onLaunchGame={handleLaunchGame}
+          onLogout={onLogout}
+          username={customUsername}
+          onUpdateUsername={handleUpdateUsername}
+          onGoogleSignIn={onGoogleSignIn}
+        />
+      );
   }
-
-  const renderMinigame = (appId: AppId) => {
-    switch (appId) {
-      case 'iq':
-        return (
-          <IQGame 
-            user={user}
-            onBackToHub={handleBackToHub}
-            username={customUsername}
-            onUpdateUsername={handleUpdateUsername}
-            onLogout={onLogout}
-          />
-        );
-      case 'mine':
-        return (
-          <MinesweeperGame 
-            user={user}
-            onBackToHub={handleBackToHub}
-            username={customUsername}
-            onUpdateUsername={handleUpdateUsername}
-            onLogout={onLogout}
-          />
-        );
-      case 'wordle':
-        return (
-          <WordleGame 
-            user={user}
-            onBackToHub={handleBackToHub}
-            username={customUsername}
-            onUpdateUsername={handleUpdateUsername}
-            onLogout={onLogout}
-          />
-        );
-      case 'angle':
-        return (
-          <AngleGame 
-            user={user}
-            onBackToHub={handleBackToHub}
-            username={customUsername}
-            onUpdateUsername={handleUpdateUsername}
-            onLogout={onLogout}
-          />
-        );
-      case 'more-less':
-        return (
-          <MoreLessGame 
-            user={user}
-            onBackToHub={handleBackToHub}
-            username={customUsername}
-            onUpdateUsername={handleUpdateUsername}
-            onLogout={onLogout}
-          />
-        );
-      case 'spelling-bee':
-        return (
-          <SpellingBeeGame 
-            user={user}
-            onBackToHub={handleBackToHub}
-            username={customUsername}
-            onUpdateUsername={handleUpdateUsername}
-            onLogout={onLogout}
-          />
-        );
-      case 'tic-tac-toe':
-        return (
-          <TicTacToeGame 
-            user={user}
-            onBackToHub={handleBackToHub}
-            username={customUsername}
-            onUpdateUsername={handleUpdateUsername}
-            onLogout={onLogout}
-          />
-        );
-      case 'connect-4':
-        return (
-          <Connect4Game 
-            user={user}
-            onBackToHub={handleBackToHub}
-            username={customUsername}
-            onUpdateUsername={handleUpdateUsername}
-            onLogout={onLogout}
-          />
-        );
-      case 'color-memory':
-        return (
-          <ColorMemoryComponent 
-            onBackToHub={handleBackToHub}
-            user={user}
-            username={customUsername}
-          />
-        );
-      case 'particle-physics':
-        return (
-          <ParticlePhysicsComponent 
-            onBackToHub={handleBackToHub}
-          />
-        );
-      case 'fruit-merge':
-        return (
-          <FruitMergeGame 
-            onBackToHub={handleBackToHub}
-            user={user}
-            username={customUsername}
-          />
-        );
-      case 'checkers':
-        return (
-          <CheckersGame 
-            onBackToHub={handleBackToHub}
-            user={user}
-            username={customUsername}
-          />
-        );
-      case 'dots-and-boxes':
-        return (
-          <DotsAndBoxesGame 
-            onBackToHub={handleBackToHub}
-            user={user}
-            username={customUsername}
-          />
-        );
-      case 'snake':
-        return (
-          <SnakeGame 
-            onBackToHub={handleBackToHub}
-            user={user}
-            username={customUsername}
-          />
-        );
-      case 'brick-breaker':
-        return (
-          <BrickBreakerGame 
-            onBackToHub={handleBackToHub}
-            user={user}
-            username={customUsername}
-          />
-        );
-      case 'game-2048':
-        return (
-          <Game2048 
-            onBackToHub={handleBackToHub}
-            user={user}
-            username={customUsername}
-          />
-        );
-      case 'ultimate-tictactoe':
-        return (
-          <UltimateTicTacToeGame 
-            onBackToHub={handleBackToHub}
-            user={user}
-            username={customUsername}
-          />
-        );
-      case 'simon':
-        return (
-          <SimonGame 
-            onBackToHub={handleBackToHub}
-            user={user}
-            username={customUsername}
-          />
-        );
-      case 'quick-draw':
-        return (
-          <QuickDrawGame 
-            onBackToHub={handleBackToHub}
-            user={user}
-            username={customUsername}
-          />
-        );
-      case 'finger-sumo':
-        return (
-          <FingerSumoGame 
-            onBackToHub={handleBackToHub}
-            user={user}
-            username={customUsername}
-          />
-        );
-      case 'pong':
-        return (
-          <PongGame 
-            onBackToHub={handleBackToHub}
-            user={user}
-            username={customUsername}
-          />
-        );
-      case 'knife-flip':
-        return (
-          <KnifeFlipGame 
-            onBackToHub={handleBackToHub}
-            user={user}
-            username={customUsername}
-          />
-        );
-      case 'reversi':
-        return (
-          <ReversiGame 
-            onBackToHub={handleBackToHub}
-            user={user}
-            username={customUsername}
-          />
-        );
-      case 'battleship':
-        return (
-          <BattleshipGame 
-            onBackToHub={handleBackToHub}
-            user={user}
-            username={customUsername}
-          />
-        );
-      case 'nim':
-        return (
-          <NimGame 
-            onBackToHub={handleBackToHub}
-            user={user}
-            username={customUsername}
-          />
-        );
-      case 'tower-stacker':
-        return (
-          <TowerStackerGame 
-            onBackToHub={handleBackToHub}
-            user={user}
-            username={customUsername}
-          />
-        );
-      case 'tetris':
-        return (
-          <TetrisGame 
-            onBackToHub={handleBackToHub}
-            user={user}
-            username={customUsername}
-          />
-        );
-      case 'chess':
-        return (
-          <ChessGame 
-            onBackToHub={handleBackToHub}
-            user={user}
-            username={customUsername}
-          />
-        );
-      default:
-        return (
-          <HubScreen 
-            user={user} 
-            onLaunchGame={handleLaunchGame}
-            onLogout={onLogout}
-            username={customUsername}
-            onUpdateUsername={handleUpdateUsername}
-            onGoogleSignIn={onGoogleSignIn}
-          />
-        );
-    }
-  };
-
-  return (
-    <div className="w-screen h-screen flex overflow-hidden bg-black select-none font-sans relative">
-      <div className="flex-1 h-full min-w-0 overflow-hidden relative">
-        {renderMinigame(activeApp)}
-      </div>
-      <GameLeaderboard appId={activeApp} />
-    </div>
-  );
 }

@@ -597,19 +597,6 @@ export const resetGlobalGameStats = async () => {
 
 // --- Leaderboard ---
 
-export const isAscendingMetric = (mode: string): boolean => {
-    return (
-        mode === 'competitive' ||
-        mode.startsWith('minesweeper') ||
-        mode.startsWith('ultimate_tictactoe') ||
-        mode.startsWith('reversi') ||
-        mode.startsWith('checkers') ||
-        mode === 'connect_4-time' ||
-        mode === 'connect_4' ||
-        (mode.startsWith('quick_draw') && mode.endsWith('-time'))
-    );
-};
-
 export const saveLeaderboardScore = async (
     user: User, 
     username: string, 
@@ -619,15 +606,15 @@ export const saveLeaderboardScore = async (
     mode: string,
     extra?: { accuracy?: number }
 ) => {
-    const isTimeBased = isAscendingMetric(mode);
     let sortValue = score;
+    const isTimeBased = mode === 'competitive' || mode.includes('minesweeper') || mode === 'connect_4';
     
     if (isTimeBased) {
-        sortValue = score; 
-    } else if (mode === 'standard' || mode === 'infinite' || mode === 'universal') {
-        sortValue = ((stats.levelReached || 1) * 1000) + score; 
-    } else {
-        sortValue = score;
+         sortValue = score; 
+    } else if (mode === 'iq-test' || mode === 'tic_tac_toe') {
+         sortValue = score;
+    } else if (mode !== 'speed-test') {
+         sortValue = (stats.levelReached * 1000) + score; 
     }
 
     try {
@@ -693,12 +680,9 @@ export const deleteLeaderboardEntry = async (id: string) => {
 };
 
 export const getLeaderboard = async (mode: string = 'competitive'): Promise<LeaderboardEntry[]> => {
-    const isTimeBased = isAscendingMetric(mode);
     const getLocal = (): LeaderboardEntry[] => {
         try {
-            const list = JSON.parse(localStorage.getItem(`lb_${mode}`) || '[]');
-            list.sort((a: any, b: any) => isTimeBased ? a.sortValue - b.sortValue : b.sortValue - a.sortValue);
-            return list.slice(0, 10);
+            return JSON.parse(localStorage.getItem(`lb_${mode}`) || '[]');
         } catch {
             return [];
         }
@@ -708,12 +692,23 @@ export const getLeaderboard = async (mode: string = 'competitive'): Promise<Lead
 
     try {
         const lbRef = collection(dbExport, "leaderboard");
-        const q = query(
-            lbRef, 
-            where("mode", "==", mode),
-            orderBy("sortValue", isTimeBased ? "asc" : "desc"),
-            limit(20)
-        );
+        let q;
+        
+        if (mode === 'competitive' || mode.includes('minesweeper') || mode === 'connect_4') {
+            q = query(
+                lbRef, 
+                where("mode", "==", mode),
+                orderBy("sortValue", "asc"),
+                limit(20)
+            );
+        } else {
+            q = query(
+                lbRef, 
+                where("mode", "==", mode),
+                orderBy("sortValue", "desc"),
+                limit(20)
+            );
+        }
 
         const snapshot = await getDocs(q);
         const entries: LeaderboardEntry[] = [];

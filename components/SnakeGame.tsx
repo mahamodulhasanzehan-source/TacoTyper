@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { audioService } from '../services/audioService';
-import { incrementGamePlays, saveLeaderboardScore } from '../services/firebase';
+import { incrementGamePlays } from '../services/firebase';
 
 interface SnakeGameProps {
   onBackToHub: () => void;
@@ -36,7 +36,7 @@ interface Particle {
 
 const GRID_SIZE = 22;
 
-export default function SnakeGame({ onBackToHub, user, username }: SnakeGameProps) {
+export default function SnakeGame({ onBackToHub }: SnakeGameProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   
   const [score, setScore] = useState(0);
@@ -63,22 +63,6 @@ export default function SnakeGame({ onBackToHub, user, username }: SnakeGameProp
   const ghostUntilRef = useRef<number>(0);
   const speedMultRef = useRef<number>(1);
   const particlesRef = useRef<Particle[]>([]);
-  const maxLengthRef = useRef<number>(3);
-
-  useEffect(() => {
-    if (!gameOver) return;
-    const finalLength = maxLengthRef.current;
-    if (finalLength > 3) {
-      saveLeaderboardScore(
-        user,
-        username || user?.displayName || 'Snake Charmer',
-        finalLength,
-        'Length Master',
-        { mistakes: 0, timeTaken: 0, ingredientsMissed: 0, rottenWordsTyped: 0, totalScore: finalLength, levelReached: speedLevel },
-        'snake'
-      );
-    }
-  }, [gameOver, speedLevel, user, username]);
   const lastTickRef = useRef<number>(0);
   const animFrameRef = useRef<number | null>(null);
   const scoreRef = useRef(0);
@@ -131,7 +115,6 @@ export default function SnakeGame({ onBackToHub, user, username }: SnakeGameProp
     speedMultRef.current = 1;
     particlesRef.current = [];
     scoreRef.current = 0;
-    maxLengthRef.current = 3;
     setScore(0);
     setGameOver(false);
     setIsPaused(false);
@@ -275,9 +258,6 @@ export default function SnakeGame({ onBackToHub, user, username }: SnakeGameProp
     }
 
     snakeRef.current = newSnake;
-    if (newSnake.length > maxLengthRef.current) {
-      maxLengthRef.current = newSnake.length;
-    }
   }, [gameOver, isPaused, wallWrap, spawnSnack, highScore]);
 
   // Main Loop

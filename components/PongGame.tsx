@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { incrementGamePlays, saveLeaderboardScore } from '../services/firebase';
+import { incrementGamePlays } from '../services/firebase';
 import { audioService } from '../services/audioService';
 
 interface PongGameProps {
@@ -10,36 +10,12 @@ interface PongGameProps {
 
 type Difficulty = 'easy' | 'medium' | 'hard';
 
-export default function PongGame({ onBackToHub, user, username }: PongGameProps) {
+export default function PongGame({ onBackToHub }: PongGameProps) {
   const [difficulty, setDifficulty] = useState<Difficulty>('medium');
   const [playerScore, setPlayerScore] = useState(0);
   const [botScore, setBotScore] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [matchWinner, setMatchWinner] = useState<'player' | 'bot' | null>(null);
-  const [streak, setStreak] = useState(0);
-
-  const handleMatchEnd = useCallback((winner: 'player' | 'bot') => {
-    setMatchWinner(winner);
-    setIsPlaying(false);
-    if (winner === 'player') {
-      if (difficulty === 'medium' || difficulty === 'hard') {
-        setStreak(prev => {
-          const next = prev + 1;
-          saveLeaderboardScore(
-            user,
-            username || user?.displayName || 'Pong Ace',
-            next,
-            'Pong Master',
-            { mistakes: 0, timeTaken: 0, ingredientsMissed: 0, rottenWordsTyped: 0, totalScore: next, levelReached: next },
-            `pong-${difficulty}`
-          );
-          return next;
-        });
-      }
-    } else {
-      setStreak(0);
-    }
-  }, [difficulty, user, username]);
 
   const containerRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -259,7 +235,7 @@ export default function PongGame({ onBackToHub, user, username }: PongGameProps)
           audioService.playSound('failure');
           setBotScore(b => {
             const next = b + 1;
-            if (next >= 7) handleMatchEnd('bot');
+            if (next >= 7) setMatchWinner('bot');
             else resetBall(true);
             return next;
           });
@@ -267,7 +243,7 @@ export default function PongGame({ onBackToHub, user, username }: PongGameProps)
           audioService.playSound('success');
           setPlayerScore(p => {
             const next = p + 1;
-            if (next >= 7) handleMatchEnd('player');
+            if (next >= 7) setMatchWinner('player');
             else resetBall(false);
             return next;
           });
@@ -429,10 +405,7 @@ export default function PongGame({ onBackToHub, user, username }: PongGameProps)
               <button
                 key={d}
                 disabled={isPlaying}
-                onClick={() => {
-                  if (d !== difficulty) setStreak(0);
-                  setDifficulty(d);
-                }}
+                onClick={() => setDifficulty(d)}
                 className={`px-2 py-0.5 text-[10px] sm:text-xs font-bold rounded capitalize transition-all ${
                   difficulty === d
                     ? 'bg-cyan-500 text-black shadow font-bold'

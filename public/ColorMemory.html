@@ -762,13 +762,6 @@
                 if (score > stats.best) stats.best = score;
                 if (score >= 8.0) stats.streak++; else stats.streak = 0;
                 
-                try {
-                    window.parent.postMessage({ 
-                        type: 'COLOR_MEMORY_SCORE', 
-                        score: Math.round(score * 100) 
-                    }, '*');
-                } catch(e) {}
-                
                 updateStatsUI();
                 addHistoryItem(score, targetRGB, userRGB);
 

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { audioService } from '../services/audioService';
-import { incrementGamePlays, saveLeaderboardScore } from '../services/firebase';
+import { incrementGamePlays } from '../services/firebase';
 
 export type PlayerColor = 'blue' | 'red'; // Blue = Player (You), Red = Bot / Player 2
 
@@ -10,13 +10,12 @@ interface DotsAndBoxesProps {
     username?: string | null;
 }
 
-export default function DotsAndBoxesGame({ onBackToHub, user, username }: DotsAndBoxesProps) {
+export default function DotsAndBoxesGame({ onBackToHub }: DotsAndBoxesProps) {
     // Grid size N = 6 (6x6 boxes = 7x7 dots)
     const [gridSize, setGridSize] = useState<number>(6);
     const [gameMode, setGameMode] = useState<'bot' | 'pvp'>('bot');
     const [turn, setTurn] = useState<PlayerColor>('blue'); // Blue = Player 1, Red = Bot/Player 2
     const [isBotThinking, setIsBotThinking] = useState(false);
-    const [streak, setStreak] = useState(0);
 
     // Board structures:
     // Horizontal lines: (N + 1) rows, N cols, stores who drew it ('blue' | 'red' | null)
@@ -29,34 +28,6 @@ export default function DotsAndBoxesGame({ onBackToHub, user, username }: DotsAn
     const [blueScore, setBlueScore] = useState(0);
     const [redScore, setRedScore] = useState(0);
     const [winner, setWinner] = useState<PlayerColor | 'tie' | null>(null);
-
-    const handleGameFinish = useCallback((finalWinner: PlayerColor | 'tie') => {
-        setWinner(finalWinner);
-        if (gameMode === 'bot') {
-            if (finalWinner === 'blue') {
-                audioService.playSound('mine_win');
-                setStreak(prev => {
-                    const next = prev + 1;
-                    saveLeaderboardScore(
-                        user,
-                        username || user?.displayName || 'Box Master',
-                        next,
-                        'Box Dominator',
-                        { mistakes: 0, timeTaken: 0, ingredientsMissed: 0, rottenWordsTyped: 0, totalScore: next, levelReached: gridSize },
-                        `dots_and_boxes-${gridSize}`
-                    );
-                    return next;
-                });
-            } else if (finalWinner === 'red') {
-                audioService.playSound('failure');
-                setStreak(0);
-            }
-        } else {
-            if (finalWinner === 'blue' || finalWinner === 'red') {
-                audioService.playSound('mine_win');
-            }
-        }
-    }, [gameMode, user, username, gridSize]);
 
     // Auto-fill state
     const [autoFillEnabled, setAutoFillEnabled] = useState(true);
@@ -201,7 +172,15 @@ export default function DotsAndBoxesGame({ onBackToHub, user, username }: DotsAn
                 setIsAutoFilling(false);
                 const total = gridSize * gridSize;
                 if (bScore + rScore === total) {
-                    handleGameFinish(bScore > rScore ? 'blue' : rScore > bScore ? 'red' : 'tie');
+                    if (bScore > rScore) {
+                        setWinner('blue');
+                        audioService.playSound('mine_win');
+                    } else if (rScore > bScore) {
+                        setWinner('red');
+                        audioService.playSound(gameMode === 'bot' ? 'failure' : 'mine_win');
+                    } else {
+                        setWinner('tie');
+                    }
                 }
                 return;
             }
@@ -237,7 +216,15 @@ export default function DotsAndBoxesGame({ onBackToHub, user, username }: DotsAn
             const total = gridSize * gridSize;
             if (nb + nr === total) {
                 setIsAutoFilling(false);
-                handleGameFinish(nb > nr ? 'blue' : nr > nb ? 'red' : 'tie');
+                if (nb > nr) {
+                    setWinner('blue');
+                    audioService.playSound('mine_win');
+                } else if (nr > nb) {
+                    setWinner('red');
+                    audioService.playSound(gameMode === 'bot' ? 'failure' : 'mine_win');
+                } else {
+                    setWinner('tie');
+                }
                 return;
             }
 
@@ -289,7 +276,15 @@ export default function DotsAndBoxesGame({ onBackToHub, user, username }: DotsAn
         // Check if game is completed
         const totalBoxes = gridSize * gridSize;
         if (newBlueScore + newRedScore === totalBoxes) {
-            handleGameFinish(newBlueScore > newRedScore ? 'blue' : newRedScore > newBlueScore ? 'red' : 'tie');
+            if (newBlueScore > newRedScore) {
+                setWinner('blue');
+                audioService.playSound('mine_win');
+            } else if (newRedScore > newBlueScore) {
+                setWinner('red');
+                audioService.playSound(gameMode === 'bot' ? 'failure' : 'mine_win');
+            } else {
+                setWinner('tie');
+            }
             return;
         }
 
@@ -435,9 +430,6 @@ export default function DotsAndBoxesGame({ onBackToHub, user, username }: DotsAn
                         <button
                             key={size}
                             onClick={() => {
-                                if (size !== gridSize) {
-                                    setStreak(0);
-                                }
                                 setGridSize(size);
                                 initBoard(size);
                             }}

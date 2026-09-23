@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { audioService } from '../services/audioService';
-import { incrementGamePlays, saveLeaderboardScore } from '../services/firebase';
+import { incrementGamePlays } from '../services/firebase';
 
 interface BrickBreakerProps {
   onBackToHub: () => void;
@@ -55,7 +55,7 @@ interface Particle {
 const CANVAS_WIDTH = 640;
 const CANVAS_HEIGHT = 480;
 
-export default function BrickBreakerGame({ onBackToHub, user, username }: BrickBreakerProps) {
+export default function BrickBreakerGame({ onBackToHub }: BrickBreakerProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   const [score, setScore] = useState(0);
@@ -66,19 +66,6 @@ export default function BrickBreakerGame({ onBackToHub, user, username }: BrickB
   const [lives, setLives] = useState(3);
   const [gameState, setGameState] = useState<'ready' | 'playing' | 'gameover' | 'levelwin'>('ready');
   const [activeBuffs, setActiveBuffs] = useState<string[]>([]);
-
-  useEffect(() => {
-    if (gameState === 'gameover' && scoreRef.current > 0) {
-      saveLeaderboardScore(
-        user,
-        username || user?.displayName || 'Brick Breaker',
-        scoreRef.current,
-        'Brick Master',
-        { mistakes: 0, timeTaken: 0, ingredientsMissed: 0, rottenWordsTyped: 0, totalScore: scoreRef.current, levelReached: level },
-        'brick_breaker'
-      );
-    }
-  }, [gameState, level, user, username]);
 
   // State in refs for high frame-rate precision
   const paddleRef = useRef({
@@ -372,8 +359,6 @@ export default function BrickBreakerGame({ onBackToHub, user, username }: BrickB
 
   const applyPowerUp = (type: PowerUp['type']) => {
     audioService.playSound('powerup');
-    scoreRef.current += 50;
-    setScore(scoreRef.current);
     const paddle = paddleRef.current;
     const now = Date.now();
 
@@ -472,8 +457,7 @@ export default function BrickBreakerGame({ onBackToHub, user, username }: BrickB
                 b.hp -= 1;
                 addParticles(laser.x, laser.y, '#f43f5e', 4);
                 if (b.hp <= 0) {
-                  const earned = (b.type === 'powerup' ? 30 : b.type === 'tnt' ? 40 : 15) * level;
-                  scoreRef.current += earned;
+                  scoreRef.current += 15;
                   setScore(scoreRef.current);
                   if (b.type === 'tnt') triggerTNTExplosion(bIdx);
                 }
@@ -628,7 +612,7 @@ export default function BrickBreakerGame({ onBackToHub, user, username }: BrickB
               addParticles(ball.x, ball.y, brick.color, 7);
 
               if (brick.hp <= 0) {
-                const earned = (brick.type === 'powerup' ? 30 : brick.type === 'tnt' ? 40 : 15) * level;
+                const earned = brick.type === 'powerup' ? 25 : 10 * level;
                 scoreRef.current += earned;
                 setScore(scoreRef.current);
                 if (scoreRef.current > highScore) {
