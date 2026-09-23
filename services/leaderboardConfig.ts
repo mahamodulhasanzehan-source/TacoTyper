@@ -215,5 +215,37 @@ export const GAME_LEADERBOARD_CONFIGS: Partial<Record<AppId, GameLeaderboardConf
     scoreLabel: 'PTS',
     defaultMode: 'competitive',
     isDesktopOnly: true
+  },
+  'chess': {
+    title: 'Chess Grandmasters',
+    modes: ['chess-easy', 'chess-medium', 'chess-hard'],
+    labels: { 'chess-easy': 'EASY', 'chess-medium': 'MED', 'chess-hard': 'HARD' },
+    metricType: 'streak',
+    scoreLabel: 'STREAK',
+    defaultMode: 'chess-medium'
+  },
+  'battleship': {
+    title: 'Naval Admirals',
+    modes: ['battleship-easy', 'battleship-medium', 'battleship-hard'],
+    labels: { 'battleship-easy': 'EASY', 'battleship-medium': 'MED', 'battleship-hard': 'HARD' },
+    metricType: 'streak',
+    scoreLabel: 'STREAK',
+    defaultMode: 'battleship-medium'
+  },
+  'more-less': {
+    title: 'Higher Lower Streaks',
+    modes: ['more_less'],
+    labels: { 'more_less': 'STREAK' },
+    metricType: 'streak',
+    scoreLabel: 'STREAK',
+    defaultMode: 'more_less'
+  },
+  'spelling-bee': {
+    title: 'Spelling Bee Champions',
+    modes: ['spelling_bee'],
+    labels: { 'spelling_bee': 'WORDS' },
+    metricType: 'score',
+    scoreLabel: 'WORDS',
+    defaultMode: 'spelling_bee'
   }
 };
