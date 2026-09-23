@@ -762,6 +762,13 @@
                 if (score > stats.best) stats.best = score;
                 if (score >= 8.0) stats.streak++; else stats.streak = 0;
                 
+                try {
+                    window.parent.postMessage({ 
+                        type: 'COLOR_MEMORY_SCORE', 
+                        score: Math.round(score * 100) 
+                    }, '*');
+                } catch(e) {}
+                
                 updateStatsUI();
                 addHistoryItem(score, targetRGB, userRGB);
 
@@ -785,10 +792,6 @@
                 dom.resultDisplay.classList.add('show');
                 
                 dom.btnStart.innerText = "AGAIN";
-
-                try {
-                    window.parent.postMessage({ type: 'COLOR_MEMORY_SCORE', score: parseFloat(score.toFixed(2)) }, '*');
-                } catch(e) {}
             };
 
             dom.btnStart.addEventListener('click', () => { AudioEngine.click(); startPhase1(); });

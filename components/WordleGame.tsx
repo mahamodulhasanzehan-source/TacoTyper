@@ -137,11 +137,11 @@ export default function WordleGame({ user, username, onBackToHub }: WordleGamePr
 
                 await saveLeaderboardScore(
                     user,
-                    username || user.displayName || 'Wordler',
+                    username || user?.displayName || 'Wordler',
                     newStreak,
                     wordLength >= 7 ? 'Wordle Grandmaster' : 'Wordle Virtuoso',
                     { mistakes: 0, timeTaken: 0, ingredientsMissed: 0, rottenWordsTyped: 0, totalScore: newStreak, levelReached: wordLength },
-                    'wordle'
+                    `wordle-${wordLength}`
                 );
             } else if (newGuesses.length >= ROWS) {
                 audioService.playSound('wrong_answer');
@@ -247,6 +247,9 @@ export default function WordleGame({ user, username, onBackToHub }: WordleGamePr
                                 key={len}
                                 onClick={() => {
                                     audioService.playSound('button_click');
+                                    if (len !== wordLength) {
+                                        setStreak(0);
+                                    }
                                     setWordLength(len);
                                 }}
                                 className={`w-8 h-7 text-xs font-bold rounded-lg flex items-center justify-center transition-all ${

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { incrementGamePlays, saveLeaderboardScore } from '../services/firebase';
+import { incrementGamePlays } from '../services/firebase';
 import { audioService } from '../services/audioService';
 
 interface FingerSumoProps {
@@ -10,7 +10,7 @@ interface FingerSumoProps {
 
 type Difficulty = 'easy' | 'medium' | 'hard';
 
-export default function FingerSumoGame({ onBackToHub, user, username }: FingerSumoProps) {
+export default function FingerSumoGame({ onBackToHub }: FingerSumoProps) {
   const [difficulty, setDifficulty] = useState<Difficulty>('medium');
   const [isMatchActive, setIsMatchActive] = useState(false);
   const [position, setPosition] = useState(0); // -100 (Bot Ringout) to +100 (Player Ringout)
@@ -20,8 +20,6 @@ export default function FingerSumoGame({ onBackToHub, user, username }: FingerSu
   const [matchWinner, setMatchWinner] = useState<'player' | 'bot' | null>(null);
   const [playerTapsCount, setPlayerTapsCount] = useState(0);
 
-  const matchStartTimeRef = useRef(Date.now());
-  const totalMatchTapsRef = useRef(0);
   const isMatchActiveRef = useRef(isMatchActive);
   isMatchActiveRef.current = isMatchActive;
 
@@ -46,8 +44,6 @@ export default function FingerSumoGame({ onBackToHub, user, username }: FingerSu
     setIsMatchActive(false);
     isMatchActiveRef.current = false;
     setPlayerTapsCount(0);
-    matchStartTimeRef.current = Date.now();
-    totalMatchTapsRef.current = 0;
   }, []);
 
   // Player tap handler
@@ -62,15 +58,10 @@ export default function FingerSumoGame({ onBackToHub, user, username }: FingerSu
       // Start match on first tap
       setIsMatchActive(true);
       isMatchActiveRef.current = true;
-      if (playerScore === 0 && botScore === 0) {
-        matchStartTimeRef.current = Date.now();
-        totalMatchTapsRef.current = 0;
-      }
     }
 
     audioService.playSound('tile_click');
     setPlayerTapsCount(c => c + 1);
-    totalMatchTapsRef.current += 1;
 
     // Player pushes towards bot side (- direction)
     const pushForce = 3.8;
@@ -84,28 +75,14 @@ export default function FingerSumoGame({ onBackToHub, user, username }: FingerSu
         setRoundWinner('player');
         setPlayerScore(ps => {
           const nextScore = ps + 1;
-          if (nextScore >= 3) {
-            setMatchWinner('player');
-            const durationSec = Math.max(1, (Date.now() - matchStartTimeRef.current) / 1000);
-            const avgCPS = parseFloat((totalMatchTapsRef.current / durationSec).toFixed(1));
-            if (user && (difficulty === 'medium' || difficulty === 'hard')) {
-              saveLeaderboardScore(
-                user,
-                username || user.displayName || 'Sumo Champion',
-                avgCPS,
-                'Sumo CPS Master',
-                { mistakes: 0, timeTaken: Math.round(durationSec), ingredientsMissed: 0, rottenWordsTyped: 0, totalScore: avgCPS, levelReached: 1 },
-                `fingersumo-${difficulty}`
-              );
-            }
-          }
+          if (nextScore >= 3) setMatchWinner('player');
           return nextScore;
         });
         return -100;
       }
       return next;
     });
-  }, [matchWinner, roundWinner, resetRound, playerScore, botScore, difficulty, user, username]);
+  }, [matchWinner, roundWinner, resetRound]);
 
   // Spacebar controls
   useEffect(() => {

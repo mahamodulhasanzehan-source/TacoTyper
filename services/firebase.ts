@@ -597,16 +597,16 @@ export const resetGlobalGameStats = async () => {
 
 // --- Leaderboard ---
 
-export const isModeTimeBased = (mode: string) => {
+export const isAscendingMetric = (mode: string): boolean => {
     return (
         mode === 'competitive' ||
-        mode.startsWith('minesweeper-') ||
-        mode.startsWith('ultimate_ttt-') ||
-        mode.startsWith('reversi-') ||
-        mode.startsWith('checkers-') ||
-        mode === 'connect_4' ||
+        mode.startsWith('minesweeper') ||
+        mode.startsWith('ultimate_tictactoe') ||
+        mode.startsWith('reversi') ||
+        mode.startsWith('checkers') ||
         mode === 'connect_4-time' ||
-        mode.endsWith('-time')
+        mode === 'connect_4' ||
+        (mode.startsWith('quick_draw') && mode.endsWith('-time'))
     );
 };
 
@@ -619,11 +619,13 @@ export const saveLeaderboardScore = async (
     mode: string,
     extra?: { accuracy?: number }
 ) => {
-    const isTime = isModeTimeBased(mode);
+    const isTimeBased = isAscendingMetric(mode);
     let sortValue = score;
     
-    if (mode === 'universal') {
-        sortValue = (stats.levelReached * 1000) + score;
+    if (isTimeBased) {
+        sortValue = score; 
+    } else if (mode === 'standard' || mode === 'infinite' || mode === 'universal') {
+        sortValue = ((stats.levelReached || 1) * 1000) + score; 
     } else {
         sortValue = score;
     }
@@ -633,7 +635,7 @@ export const saveLeaderboardScore = async (
         localLB.push({
             id: 'local_' + Date.now(),
             uid: user.uid,
-            username: username || user.displayName || 'Chef',
+            username: username,
             score: score,
             title: title,
             stats: stats,
@@ -642,7 +644,7 @@ export const saveLeaderboardScore = async (
             sortValue: sortValue,
             accuracy: extra?.accuracy || null
         });
-        localLB.sort((a: any, b: any) => isTime ? a.sortValue - b.sortValue : b.sortValue - a.sortValue);
+        localLB.sort((a: any, b: any) => isTimeBased ? a.sortValue - b.sortValue : b.sortValue - a.sortValue);
         localStorage.setItem(`lb_${mode}`, JSON.stringify(localLB.slice(0, 10)));
     } catch {}
 
@@ -651,7 +653,7 @@ export const saveLeaderboardScore = async (
     try {
         await addDoc(collection(dbExport, "leaderboard"), {
             uid: user.uid,
-            username: username || user.displayName || 'Chef',
+            username: username,
             score: score,
             title: title,
             stats: stats,
@@ -667,7 +669,7 @@ export const saveLeaderboardScore = async (
             lbRef,
             where("uid", "==", user.uid),
             where("mode", "==", mode),
-            orderBy("sortValue", isTime ? "asc" : "desc")
+            orderBy("sortValue", isTimeBased ? "asc" : "desc")
         );
         const snapshot = await getDocs(q);
         
@@ -691,12 +693,12 @@ export const deleteLeaderboardEntry = async (id: string) => {
 };
 
 export const getLeaderboard = async (mode: string = 'competitive'): Promise<LeaderboardEntry[]> => {
-    const isTime = isModeTimeBased(mode);
+    const isTimeBased = isAscendingMetric(mode);
     const getLocal = (): LeaderboardEntry[] => {
         try {
-            const local = JSON.parse(localStorage.getItem(`lb_${mode}`) || '[]');
-            local.sort((a: any, b: any) => isTime ? a.sortValue - b.sortValue : b.sortValue - a.sortValue);
-            return local;
+            const list = JSON.parse(localStorage.getItem(`lb_${mode}`) || '[]');
+            list.sort((a: any, b: any) => isTimeBased ? a.sortValue - b.sortValue : b.sortValue - a.sortValue);
+            return list.slice(0, 10);
         } catch {
             return [];
         }
@@ -709,7 +711,7 @@ export const getLeaderboard = async (mode: string = 'competitive'): Promise<Lead
         const q = query(
             lbRef, 
             where("mode", "==", mode),
-            orderBy("sortValue", isTime ? "asc" : "desc"),
+            orderBy("sortValue", isTimeBased ? "asc" : "desc"),
             limit(20)
         );
 

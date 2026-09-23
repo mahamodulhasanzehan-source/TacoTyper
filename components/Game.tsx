@@ -2,7 +2,6 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { AppId, GameScreen } from '../types';
 import { getUserProfile, saveUsername } from '../services/firebase';
 import type { User } from '../services/firebase';
-import { GameLeaderboardShell } from './GameLeaderboardShell';
 
 import HubScreen from './HubScreen';
 import TacoGame from './TacoGame';
@@ -33,6 +32,7 @@ import BattleshipGame from './BattleshipGame';
 import NimGame from './NimGame';
 import TowerStackerGame from './TowerStackerGame';
 import TetrisGame from './TetrisGame';
+import ChessGame from './ChessGame';
 
 interface GameProps {
   user: User;
@@ -47,7 +47,7 @@ const VALID_APPS: AppId[] = [
   'spelling-bee', 'tic-tac-toe', 'connect-4', 'color-memory', 
   'particle-physics', 'fruit-merge', 'checkers', 'dots-and-boxes',
   'snake', 'brick-breaker', 'game-2048', 'ultimate-tictactoe', 'simon',
-  'quick-draw', 'finger-sumo', 'pong', 'knife-flip', 'reversi', 'battleship', 'nim', 'tower-stacker', 'tetris'
+  'quick-draw', 'finger-sumo', 'pong', 'knife-flip', 'reversi', 'battleship', 'nim', 'tower-stacker', 'tetris', 'chess'
 ];
 
 export default function Game({ 
@@ -186,51 +186,43 @@ export default function Game({
   switch (activeApp) {
     case 'iq':
       return (
-        <GameLeaderboardShell appId="iq">
-          <IQGame 
-            user={user}
-            onBackToHub={handleBackToHub}
-            username={customUsername}
-            onUpdateUsername={handleUpdateUsername}
-            onLogout={onLogout}
-          />
-        </GameLeaderboardShell>
+        <IQGame 
+          user={user}
+          onBackToHub={handleBackToHub}
+          username={customUsername}
+          onUpdateUsername={handleUpdateUsername}
+          onLogout={onLogout}
+        />
       );
     case 'mine':
       return (
-        <GameLeaderboardShell appId="mine">
-          <MinesweeperGame 
-            user={user}
-            onBackToHub={handleBackToHub}
-            username={customUsername}
-            onUpdateUsername={handleUpdateUsername}
-            onLogout={onLogout}
-          />
-        </GameLeaderboardShell>
+        <MinesweeperGame 
+          user={user}
+          onBackToHub={handleBackToHub}
+          username={customUsername}
+          onUpdateUsername={handleUpdateUsername}
+          onLogout={onLogout}
+        />
       );
     case 'wordle':
       return (
-        <GameLeaderboardShell appId="wordle">
-          <WordleGame 
-            user={user}
-            onBackToHub={handleBackToHub}
-            username={customUsername}
-            onUpdateUsername={handleUpdateUsername}
-            onLogout={onLogout}
-          />
-        </GameLeaderboardShell>
+        <WordleGame 
+          user={user}
+          onBackToHub={handleBackToHub}
+          username={customUsername}
+          onUpdateUsername={handleUpdateUsername}
+          onLogout={onLogout}
+        />
       );
     case 'angle':
       return (
-        <GameLeaderboardShell appId="angle">
-          <AngleGame 
-            user={user}
-            onBackToHub={handleBackToHub}
-            username={customUsername}
-            onUpdateUsername={handleUpdateUsername}
-            onLogout={onLogout}
-          />
-        </GameLeaderboardShell>
+        <AngleGame 
+          user={user}
+          onBackToHub={handleBackToHub}
+          username={customUsername}
+          onUpdateUsername={handleUpdateUsername}
+          onLogout={onLogout}
+        />
       );
     case 'more-less':
       return (
@@ -254,37 +246,29 @@ export default function Game({
       );
     case 'tic-tac-toe':
       return (
-        <GameLeaderboardShell appId="tic-tac-toe">
-          <TicTacToeGame 
-            user={user}
-            onBackToHub={handleBackToHub}
-            username={customUsername}
-            onUpdateUsername={handleUpdateUsername}
-            onLogout={onLogout}
-          />
-        </GameLeaderboardShell>
+        <TicTacToeGame 
+          user={user}
+          onBackToHub={handleBackToHub}
+          username={customUsername}
+          onUpdateUsername={handleUpdateUsername}
+          onLogout={onLogout}
+        />
       );
     case 'connect-4':
       return (
-        <GameLeaderboardShell appId="connect-4">
-          <Connect4Game 
-            user={user}
-            onBackToHub={handleBackToHub}
-            username={customUsername}
-            onUpdateUsername={handleUpdateUsername}
-            onLogout={onLogout}
-          />
-        </GameLeaderboardShell>
+        <Connect4Game 
+          user={user}
+          onBackToHub={handleBackToHub}
+          username={customUsername}
+          onUpdateUsername={handleUpdateUsername}
+          onLogout={onLogout}
+        />
       );
     case 'color-memory':
       return (
-        <GameLeaderboardShell appId="color-memory">
-          <ColorMemoryComponent 
-            onBackToHub={handleBackToHub}
-            user={user}
-            username={customUsername}
-          />
-        </GameLeaderboardShell>
+        <ColorMemoryComponent 
+          onBackToHub={handleBackToHub}
+        />
       );
     case 'particle-physics':
       return (
@@ -294,133 +278,107 @@ export default function Game({
       );
     case 'fruit-merge':
       return (
-        <GameLeaderboardShell appId="fruit-merge">
-          <FruitMergeGame 
-            onBackToHub={handleBackToHub}
-            user={user}
-            username={customUsername}
-          />
-        </GameLeaderboardShell>
+        <FruitMergeGame 
+          onBackToHub={handleBackToHub}
+          user={user}
+          username={customUsername}
+        />
       );
     case 'checkers':
       return (
-        <GameLeaderboardShell appId="checkers">
-          <CheckersGame 
-            onBackToHub={handleBackToHub}
-            user={user}
-            username={customUsername}
-          />
-        </GameLeaderboardShell>
+        <CheckersGame 
+          onBackToHub={handleBackToHub}
+          user={user}
+          username={customUsername}
+        />
       );
     case 'dots-and-boxes':
       return (
-        <GameLeaderboardShell appId="dots-and-boxes">
-          <DotsAndBoxesGame 
-            onBackToHub={handleBackToHub}
-            user={user}
-            username={customUsername}
-          />
-        </GameLeaderboardShell>
+        <DotsAndBoxesGame 
+          onBackToHub={handleBackToHub}
+          user={user}
+          username={customUsername}
+        />
       );
     case 'snake':
       return (
-        <GameLeaderboardShell appId="snake">
-          <SnakeGame 
-            onBackToHub={handleBackToHub}
-            user={user}
-            username={customUsername}
-          />
-        </GameLeaderboardShell>
+        <SnakeGame 
+          onBackToHub={handleBackToHub}
+          user={user}
+          username={customUsername}
+        />
       );
     case 'brick-breaker':
       return (
-        <GameLeaderboardShell appId="brick-breaker">
-          <BrickBreakerGame 
-            onBackToHub={handleBackToHub}
-            user={user}
-            username={customUsername}
-          />
-        </GameLeaderboardShell>
+        <BrickBreakerGame 
+          onBackToHub={handleBackToHub}
+          user={user}
+          username={customUsername}
+        />
       );
     case 'game-2048':
       return (
-        <GameLeaderboardShell appId="game-2048">
-          <Game2048 
-            onBackToHub={handleBackToHub}
-            user={user}
-            username={customUsername}
-          />
-        </GameLeaderboardShell>
+        <Game2048 
+          onBackToHub={handleBackToHub}
+          user={user}
+          username={customUsername}
+        />
       );
     case 'ultimate-tictactoe':
       return (
-        <GameLeaderboardShell appId="ultimate-tictactoe">
-          <UltimateTicTacToeGame 
-            onBackToHub={handleBackToHub}
-            user={user}
-            username={customUsername}
-          />
-        </GameLeaderboardShell>
+        <UltimateTicTacToeGame 
+          onBackToHub={handleBackToHub}
+          user={user}
+          username={customUsername}
+        />
       );
     case 'simon':
       return (
-        <GameLeaderboardShell appId="simon">
-          <SimonGame 
-            onBackToHub={handleBackToHub}
-            user={user}
-            username={customUsername}
-          />
-        </GameLeaderboardShell>
+        <SimonGame 
+          onBackToHub={handleBackToHub}
+          user={user}
+          username={customUsername}
+        />
       );
     case 'quick-draw':
       return (
-        <GameLeaderboardShell appId="quick-draw">
-          <QuickDrawGame 
-            onBackToHub={handleBackToHub}
-            user={user}
-            username={customUsername}
-          />
-        </GameLeaderboardShell>
+        <QuickDrawGame 
+          onBackToHub={handleBackToHub}
+          user={user}
+          username={customUsername}
+        />
       );
     case 'finger-sumo':
       return (
-        <GameLeaderboardShell appId="finger-sumo">
-          <FingerSumoGame 
-            onBackToHub={handleBackToHub}
-            user={user}
-            username={customUsername}
-          />
-        </GameLeaderboardShell>
+        <FingerSumoGame 
+          onBackToHub={handleBackToHub}
+          user={user}
+          username={customUsername}
+        />
       );
     case 'pong':
       return (
-        <GameLeaderboardShell appId="pong">
-          <PongGame 
-            onBackToHub={handleBackToHub}
-            user={user}
-            username={customUsername}
-          />
-        </GameLeaderboardShell>
+        <PongGame 
+          onBackToHub={handleBackToHub}
+          user={user}
+          username={customUsername}
+        />
       );
     case 'knife-flip':
       return (
-        <GameLeaderboardShell appId="knife-flip">
-          <KnifeFlipGame 
-            onBackToHub={handleBackToHub}
-            user={user}
-            username={customUsername}
-          />
-        </GameLeaderboardShell>
+        <KnifeFlipGame 
+          onBackToHub={handleBackToHub}
+          user={user}
+          username={customUsername}
+        />
       );
     case 'reversi':
       return (
-        <GameLeaderboardShell appId="reversi">
-          <ReversiGame 
-            onBackToHub={handleBackToHub}
-            user={user}
-            username={customUsername}
-          />
-        </GameLeaderboardShell>
+        <ReversiGame 
+          onBackToHub={handleBackToHub}
+          user={user}
+          username={customUsername}
+        />
       );
     case 'battleship':
       return (
@@ -432,33 +390,35 @@ export default function Game({
       );
     case 'nim':
       return (
-        <GameLeaderboardShell appId="nim">
-          <NimGame 
-            onBackToHub={handleBackToHub}
-            user={user}
-            username={customUsername}
-          />
-        </GameLeaderboardShell>
+        <NimGame 
+          onBackToHub={handleBackToHub}
+          user={user}
+          username={customUsername}
+        />
       );
     case 'tower-stacker':
       return (
-        <GameLeaderboardShell appId="tower-stacker">
-          <TowerStackerGame 
-            onBackToHub={handleBackToHub}
-            user={user}
-            username={customUsername}
-          />
-        </GameLeaderboardShell>
+        <TowerStackerGame 
+          onBackToHub={handleBackToHub}
+          user={user}
+          username={customUsername}
+        />
       );
     case 'tetris':
       return (
-        <GameLeaderboardShell appId="tetris">
-          <TetrisGame 
-            onBackToHub={handleBackToHub}
-            user={user}
-            username={customUsername}
-          />
-        </GameLeaderboardShell>
+        <TetrisGame 
+          onBackToHub={handleBackToHub}
+          user={user}
+          username={customUsername}
+        />
+      );
+    case 'chess':
+      return (
+        <ChessGame 
+          onBackToHub={handleBackToHub}
+          user={user}
+          username={customUsername}
+        />
       );
     default:
       return (

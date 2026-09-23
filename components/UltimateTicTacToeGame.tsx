@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { audioService } from '../services/audioService';
-import { incrementGamePlays } from '../services/firebase';
+import { incrementGamePlays, saveLeaderboardScore } from '../services/firebase';
 
 interface UltimateTicTacToeProps {
   onBackToHub: () => void;
@@ -35,7 +35,8 @@ const WIN_LINES = [
   [[0, 2], [1, 1], [2, 0]]
 ];
 
-export default function UltimateTicTacToeGame({ onBackToHub }: UltimateTicTacToeProps) {
+export default function UltimateTicTacToeGame({ onBackToHub, user, username }: UltimateTicTacToeProps) {
+  const startTimeRef = useRef<number>(Date.now());
   // 3x3 array of 3x3 boards: boards[mainR][mainC][subR][subC]
   const [boards, setBoards] = useState<CellValue[][][][]>(() => createInitialBoards());
   const [subWinners, setSubWinners] = useState<SubBoardWinner[][]>(() => createInitialSubWinners());
@@ -71,6 +72,7 @@ export default function UltimateTicTacToeGame({ onBackToHub }: UltimateTicTacToe
   }
 
   const resetGame = useCallback(() => {
+    startTimeRef.current = Date.now();
     setBoards(createInitialBoards());
     setSubWinners(createInitialSubWinners());
     setActiveBoard(null);
@@ -154,6 +156,17 @@ export default function UltimateTicTacToeGame({ onBackToHub }: UltimateTicTacToe
         audioService.playSound('button_click');
       } else {
         audioService.playSound('mine_win');
+        if (mWinner === 'X' && gameMode === 'bot' && botDifficulty !== 'easy') {
+          const elapsed = Date.now() - startTimeRef.current;
+          saveLeaderboardScore(
+            user,
+            username || user?.displayName || 'Ultimate Grandmaster',
+            elapsed,
+            `${botDifficulty.toUpperCase()} Speedrun`,
+            { mistakes: 0, timeTaken: Math.round(elapsed / 1000), ingredientsMissed: 0, rottenWordsTyped: 0, totalScore: elapsed, levelReached: 1 },
+            `ultimate_tictactoe-${botDifficulty}`
+          );
+        }
       }
       return;
     }

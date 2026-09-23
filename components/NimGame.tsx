@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { incrementGamePlays } from '../services/firebase';
+import { incrementGamePlays, saveLeaderboardScore } from '../services/firebase';
 import { audioService } from '../services/audioService';
 
 interface NimProps {
@@ -10,7 +10,7 @@ interface NimProps {
 
 type Difficulty = 'easy' | 'medium' | 'hard';
 
-export default function NimGame({ onBackToHub }: NimProps) {
+export default function NimGame({ onBackToHub, user, username }: NimProps) {
   const [difficulty, setDifficulty] = useState<Difficulty>('medium');
   const [isMisere, setIsMisere] = useState(true); // Last to take loses
   // Standard 4-row pyramid layout: 1 (top), 3, 5, 7 (bottom)
@@ -22,6 +22,30 @@ export default function NimGame({ onBackToHub }: NimProps) {
   const [gameOver, setGameOver] = useState(false);
   const [lastAction, setLastAction] = useState('Your turn! Select a row and take matchsticks.');
   const [winner, setWinner] = useState<'player' | 'bot' | null>(null);
+  const [streak, setStreak] = useState(0);
+
+  const handleGameEnd = useCallback((gameWinner: 'player' | 'bot') => {
+    setWinner(gameWinner);
+    setGameOver(true);
+    if (gameWinner === 'player') {
+      audioService.playSound('success');
+      setStreak(prev => {
+        const next = prev + 1;
+        saveLeaderboardScore(
+          user,
+          username || user?.displayName || 'Nim Duelist',
+          next,
+          'Nim Grandmaster',
+          { mistakes: 0, timeTaken: 0, ingredientsMissed: 0, rottenWordsTyped: 0, totalScore: next, levelReached: next },
+          'nim'
+        );
+        return next;
+      });
+    } else {
+      audioService.playSound('failure');
+      setStreak(0);
+    }
+  }, [user, username]);
 
   useEffect(() => {
     incrementGamePlays('nim');
@@ -102,14 +126,7 @@ export default function NimGame({ onBackToHub }: NimProps) {
 
     const remaining = nextPiles.reduce((a, b) => a + b, 0);
     if (remaining === 0) {
-      setGameOver(true);
-      if (isMisere) {
-        setWinner('bot');
-        audioService.playSound('failure');
-      } else {
-        setWinner('player');
-        audioService.playSound('success');
-      }
+      handleGameEnd(isMisere ? 'bot' : 'player');
       return;
     }
 
@@ -160,14 +177,7 @@ export default function NimGame({ onBackToHub }: NimProps) {
 
       const remaining = nextPiles.reduce((a, b) => a + b, 0);
       if (remaining === 0) {
-        setGameOver(true);
-        if (isMisere) {
-          setWinner('player');
-          audioService.playSound('success');
-        } else {
-          setWinner('bot');
-          audioService.playSound('failure');
-        }
+        handleGameEnd(isMisere ? 'player' : 'bot');
       } else {
         setIsPlayerTurn(true);
       }

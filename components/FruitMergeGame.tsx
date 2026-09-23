@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { audioService } from '../services/audioService';
-import { incrementGamePlays } from '../services/firebase';
+import { incrementGamePlays, saveLeaderboardScore } from '../services/firebase';
 
 export interface FruitDef {
     id: number;
@@ -76,7 +76,7 @@ interface FruitMergeGameProps {
     username?: string | null;
 }
 
-export default function FruitMergeGame({ onBackToHub }: FruitMergeGameProps) {
+export default function FruitMergeGame({ onBackToHub, user, username }: FruitMergeGameProps) {
     const canvasRef = useRef<HTMLCanvasElement | null>(null);
     const containerRef = useRef<HTMLDivElement | null>(null);
 
@@ -92,6 +92,20 @@ export default function FruitMergeGame({ onBackToHub }: FruitMergeGameProps) {
     const [gameOver, setGameOver] = useState(false);
     const [dangerTimer, setDangerTimer] = useState(0); // in ms
     const [isPointerDown, setIsPointerDown] = useState(false);
+
+    useEffect(() => {
+        if (!gameOver) return;
+        if (scoreRef.current > 0) {
+            saveLeaderboardScore(
+                user,
+                username || user?.displayName || 'Fruit Master',
+                scoreRef.current,
+                'Suika Legend',
+                { mistakes: 0, timeTaken: 0, ingredientsMissed: 0, rottenWordsTyped: 0, totalScore: scoreRef.current, levelReached: 1 },
+                'fruit_merge'
+            );
+        }
+    }, [gameOver, user, username]);
 
     // Physics constants (Logical canvas coordinates 440 x 640)
     const LOGICAL_WIDTH = 440;

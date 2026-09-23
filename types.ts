@@ -103,7 +103,8 @@ export type AppId =
   | 'battleship'
   | 'nim'
   | 'tower-stacker'
-  | 'tetris';
+  | 'tetris'
+  | 'chess';
 
 export type ActiveApp = 
   | 'hub'
@@ -133,7 +134,8 @@ export type ActiveApp =
   | 'battleship'
   | 'nim'
   | 'tower-stacker'
-  | 'tetris';
+  | 'tetris'
+  | 'chess';
 
 export interface GlobalGameStats {
   taco_typer_plays: number;
@@ -165,4 +167,5 @@ export interface GlobalGameStats {
   nim_plays?: number;
   tower_stacker_plays?: number;
   tetris_plays?: number;
+  chess_plays?: number;
 }

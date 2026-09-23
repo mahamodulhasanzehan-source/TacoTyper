@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { COLORS, LEVEL_CONFIGS } from '../constants';
 import type { User, FriendRequest } from '../services/firebase';
 import { LeaderboardEntry } from '../types';
-import { getLeaderboard, deleteLeaderboardEntry, fetchActiveUsers, sendFriendRequest, getFriendRequests, acceptFriendRequest, resetGlobalGameStats } from '../services/firebase';
+import { getLeaderboard, deleteLeaderboardEntry, fetchActiveUsers, sendFriendRequest, getFriendRequests, acceptFriendRequest, resetGlobalGameStats, isAscendingMetric } from '../services/firebase';
 import { RandomReveal, RandomText } from './Visuals';
 import { useSettings } from '../contexts/SettingsContext';
 import { LoadingScreen } from './LoadingScreen';
@@ -138,9 +138,21 @@ interface LeaderboardWidgetProps {
     className?: string;
     allowedModes?: string[];
     defaultMode?: string;
+    tabLabels?: Record<string, string>;
+    customTitle?: string;
+    scoreLabel?: string;
+    onClose?: () => void;
 }
 
-export const LeaderboardWidget: React.FC<LeaderboardWidgetProps> = ({ className = '', allowedModes, defaultMode }) => {
+export const LeaderboardWidget: React.FC<LeaderboardWidgetProps> = ({ 
+    className = '', 
+    allowedModes, 
+    defaultMode,
+    tabLabels,
+    customTitle,
+    scoreLabel: customScoreLabel,
+    onClose
+}) => {
     const modes = allowedModes || ['competitive', 'infinite', 'universal', 'speed'];
     const initialMode = defaultMode && modes.includes(defaultMode) ? defaultMode : modes[0];
 
@@ -175,115 +187,64 @@ export const LeaderboardWidget: React.FC<LeaderboardWidgetProps> = ({ className 
     };
 
     const formatScore = (entry: LeaderboardEntry) => {
-        if (
-            mode === 'competitive' || 
-            mode.startsWith('minesweeper-') || 
-            mode.startsWith('ultimate_ttt-') || 
-            mode.startsWith('reversi-') || 
-            mode.startsWith('checkers-') || 
-            mode === 'connect_4' || 
-            mode === 'connect_4-time'
-        ) {
-            const mins = Math.floor(entry.score / 60);
-            const secs = Math.floor(entry.score % 60);
-            return `${mins}:${secs.toString().padStart(2, '0')}`;
-        }
-        if (mode.endsWith('-time') && mode.startsWith('quickdraw')) {
+        if (mode.includes('quick_draw') && mode.endsWith('-time')) {
             return `${entry.score}ms`;
         }
-        if (mode.startsWith('fingersumo-')) {
-            const val = typeof entry.score === 'number' ? entry.score.toFixed(1) : entry.score;
-            return `${val} CPS`;
+        if (mode.startsWith('finger_sumo')) {
+            return `${typeof entry.score === 'number' ? entry.score.toFixed(1) : entry.score}`;
         }
         if (mode === 'color_memory') {
-            return `${(entry.score / 100).toFixed(1)}`;
+            return `${typeof entry.score === 'number' ? entry.score.toFixed(2) : entry.score}`;
         }
-        if (mode === 'snake') {
-            return `${entry.score}`;
+        if (isAscendingMetric(mode)) {
+            if (entry.score >= 1000) {
+                const totalSec = entry.score / 1000;
+                if (totalSec >= 60) {
+                    const mins = Math.floor(totalSec / 60);
+                    const secs = (totalSec % 60).toFixed(1);
+                    return `${mins}:${secs.padStart(4, '0')}`;
+                }
+                return `${totalSec.toFixed(2)}s`;
+            }
+            const mins = Math.floor(entry.score / 60);
+            const secs = Math.floor(entry.score % 60);
+            return mins > 0 ? `${mins}:${secs.toString().padStart(2, '0')}` : `${secs}s`;
         }
-        return typeof entry.score === 'number' ? entry.score.toLocaleString() : entry.score;
+        return entry.score;
     };
 
     const getScoreLabel = () => {
-        if (mode === 'iq-test') return 'IQ';
-        if (
-            mode === 'competitive' || 
-            mode.startsWith('minesweeper-') || 
-            mode.startsWith('ultimate_ttt-') || 
-            mode.startsWith('reversi-') || 
-            mode.startsWith('checkers-') || 
-            mode === 'connect_4' || 
-            mode === 'connect_4-time' ||
-            mode.endsWith('-time')
-        ) return 'TIME';
-        if (
-            mode.endsWith('-streak') || 
-            mode.startsWith('tic_tac_toe') || 
-            mode.startsWith('wordle') || 
-            mode === 'angle' || 
-            mode.startsWith('dots_boxes') || 
-            mode === 'nim' || 
-            mode.startsWith('pong')
-        ) return 'STREAK';
-        if (mode.startsWith('fingersumo')) return '';
+        if (customScoreLabel) return customScoreLabel;
+        if (mode === 'iq-test' || mode === 'iq_test') return 'IQ';
+        if (mode.includes('quick_draw') && mode.endsWith('-time')) return 'MS';
+        if (mode.startsWith('finger_sumo')) return 'CPS';
+        if (mode === 'color_memory') return 'ACC';
+        if (mode === 'knife_flip') return 'BLADES';
         if (mode === 'snake') return 'LEN';
         if (mode === 'tower_stacker') return 'FLOORS';
-        if (mode === 'knife_flip') return 'BLADES';
-        if (mode === 'simon') return 'ROUNDS';
-        if (mode === 'speed') return 'WPM';
-        if (mode === 'color_memory') return '/ 10';
+        if (mode === 'simon') return 'STEPS';
+        if (mode.includes('streak') || mode.startsWith('tic_tac_toe') || mode.startsWith('wordle') || mode === 'angle' || mode.startsWith('dots_and_boxes') || mode === 'nim' || mode.startsWith('pong')) return 'STREAK';
+        if (isAscendingMetric(mode)) return 'TIME';
         return 'PTS';
     };
 
     const getTitle = () => {
         if (isAdmin) return 'ADMIN MODE';
-        if (mode === 'iq-test') return 'Top Minds (IQ)';
-        if (mode.startsWith('minesweeper')) return 'Minesweeper Times';
-        if (mode.startsWith('tic_tac_toe')) return 'Tic Tac Toe Streaks';
-        if (mode.startsWith('wordle')) return 'Wordle Streaks';
-        if (mode === 'angle') return 'Angle Snipers';
-        if (mode.startsWith('dots_boxes')) return 'Dots & Boxes Streaks';
-        if (mode === 'nim') return 'Nim Duelists';
-        if (mode.startsWith('pong')) return 'Pong Champions';
-        if (mode.startsWith('ultimate_ttt')) return 'Ultimate Tic-Tac-Toe';
-        if (mode.startsWith('reversi')) return 'Reversi Masters';
-        if (mode.startsWith('checkers')) return 'Checkers Speed';
-        if (mode === 'knife_flip') return 'Knife Flip Masters';
-        if (mode === 'snake') return 'Longest Snakes';
-        if (mode === 'brick_breaker') return 'Brick Breaker Scores';
-        if (mode === 'color_memory') return 'Color Memory Highs';
-        if (mode === 'fruit_merge') return 'Fruit Merge Scores';
-        if (mode === 'simon') return 'Simon Memory Records';
-        if (mode === 'tower_stacker') return 'Tower Stacker Heights';
-        if (mode === 'tetris') return 'Tetris High Scores';
-        if (mode.startsWith('2048')) return '2048 High Scores';
-        if (mode.startsWith('connect_4')) return 'Connect 4 Records';
-        if (mode.startsWith('quickdraw')) return 'Quick Draw Gunslingers';
-        if (mode.startsWith('fingersumo')) return 'Finger Sumo CPS';
+        if (customTitle) return customTitle;
+        if (mode === 'iq-test' || mode === 'iq_test') return 'Top Minds';
+        if (mode.includes('minesweeper')) return 'Top Defusers';
         if (mode === 'speed') return 'Fastest Hands';
-        return 'Top Scores';
+        if (mode === 'tic_tac_toe') return 'Top Strategists';
+        if (mode.includes('connect_4')) return 'Connect 4 Legends';
+        return 'Top Chefs';
     };
 
     const getTabLabel = (m: string) => {
+        if (tabLabels && tabLabels[m]) return tabLabels[m];
         if (m === 'competitive') return 'COMP';
         if (m === 'universal') return 'UNIV';
         if (m === 'speed') return 'SPEED';
-        if (m.startsWith('tic_tac_toe-')) return m.replace('tic_tac_toe-', '').toUpperCase();
-        if (m.startsWith('wordle-')) return m.replace('wordle-', '') + ' LTR';
-        if (m.startsWith('dots_boxes-')) return m.replace('dots_boxes-', '');
-        if (m.startsWith('pong-')) return m.replace('pong-', '').toUpperCase();
-        if (m.startsWith('minesweeper-')) return m.replace('minesweeper-', '').substring(0, 3).toUpperCase();
-        if (m.startsWith('ultimate_ttt-')) return m.replace('ultimate_ttt-', '').substring(0, 3).toUpperCase();
-        if (m.startsWith('reversi-')) return m.replace('reversi-', '').toUpperCase();
-        if (m.startsWith('checkers-')) return m.replace('checkers-', '').toUpperCase();
-        if (m.startsWith('2048-')) return m.replace('2048-', '');
-        if (m.startsWith('fingersumo-')) return m.replace('fingersumo-', '').toUpperCase();
-        if (m === 'connect_4-time') return 'SPEED';
-        if (m === 'connect_4-streak') return 'STREAK';
-        if (m.startsWith('quickdraw-')) {
-            const parts = m.replace('quickdraw-', '').split('-');
-            return `${parts[0].substring(0, 3).toUpperCase()} ${parts[1] === 'time' ? 'TIME' : 'STRK'}`;
-        }
+        if (m.startsWith('minesweeper-')) return m.replace('minesweeper-', '').substring(0, 4).toUpperCase();
         return m.substring(0, 6).toUpperCase();
     };
 
@@ -291,16 +252,27 @@ export const LeaderboardWidget: React.FC<LeaderboardWidgetProps> = ({ className 
 
     return (
         <RandomReveal distance={200} className={`flex flex-col bg-[#0a0a0a] border-l-4 border-white p-2 md:p-4 z-[150] shadow-[-10px_0_30px_rgba(0,0,0,0.8)] ${className}`}>
-            <h3 className="text-[#f4b400] text-center mb-2 text-[10px] md:text-xs uppercase border-b-2 border-[#333] pb-2 tracking-widest mt-2">
-                <RandomText text={getTitle()} />
-            </h3>
+            <div className="flex items-center justify-between border-b-2 border-[#333] pb-2 mt-2 mb-2">
+                <h3 className="text-[#f4b400] text-[10px] md:text-xs uppercase tracking-widest flex-1 text-center font-bold">
+                    <RandomText text={getTitle()} />
+                </h3>
+                {onClose && (
+                    <button 
+                        onClick={onClose}
+                        className="text-white/60 hover:text-white p-1 rounded hover:bg-neutral-800 transition-colors text-sm font-bold leading-none cursor-pointer"
+                        title="Close Leaderboard"
+                    >
+                        ✕
+                    </button>
+                )}
+            </div>
             
             {/* Capsule Slider - Only show if multiple modes allowed */}
             {modes.length > 1 && (
-                <div className="relative flex w-full bg-[#000] border border-[#333] rounded-full p-1 mb-2 select-none shrink-0 overflow-hidden">
+                <div className="relative flex w-full bg-[#000] border border-[#333] rounded-full p-1 mb-2 select-none shrink-0 overflow-x-auto custom-scrollbar">
                     {/* Moving Indicator */}
                     <div 
-                        className="absolute top-1 bottom-1 rounded-full bg-white/20 transition-all duration-300 ease-out"
+                        className="absolute top-1 bottom-1 rounded-full bg-white/20 transition-all duration-300 ease-out pointer-events-none"
                         style={{ 
                             left: `calc(${(activeIndex / modes.length) * 100}% + 2px)`,
                             width: `calc(${100 / modes.length}% - 4px)`
@@ -311,7 +283,7 @@ export const LeaderboardWidget: React.FC<LeaderboardWidgetProps> = ({ className 
                         <button
                             key={m}
                             onClick={() => setMode(m)}
-                            className={`flex-1 relative z-10 text-[7px] md:text-[8px] py-1.5 text-center transition-colors duration-200 font-bold uppercase tracking-tight
+                            className={`flex-1 min-w-[48px] relative z-10 text-[7px] md:text-[8px] py-1.5 px-1 text-center transition-colors duration-200 font-bold uppercase tracking-tight whitespace-nowrap cursor-pointer
                                 ${mode === m ? 'text-white' : 'text-[#555] hover:text-[#777]'}`}
                         >
                             {getTabLabel(m)}

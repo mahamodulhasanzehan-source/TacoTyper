@@ -281,5 +281,15 @@ export const GAMES_REGISTRY: GameMetadata[] = [
     accentGlow: 'rgba(168, 85, 247, 0.5)',
     tag: 'CLASSIC',
     statsKey: 'tetris_plays'
+  },
+  {
+    id: 'chess',
+    title: 'Chess',
+    description: 'Stockfish AI & Online Multiplayer',
+    icon: '♟️',
+    color: '#6366f1',
+    accentGlow: 'rgba(99, 102, 241, 0.5)',
+    tag: 'STRATEGY',
+    statsKey: 'chess_plays'
   }
 ];
