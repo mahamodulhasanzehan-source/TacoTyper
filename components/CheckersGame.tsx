@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { audioService } from '../services/audioService';
-import { incrementGamePlays } from '../services/firebase';
+import { incrementGamePlays, saveLeaderboardScore } from '../services/firebase';
 
 export type Piece = 'R' | 'RK' | 'B' | 'BK' | null; // R = Red, B = Black, K = King
 export type PlayerColor = 'red' | 'black';
@@ -37,7 +37,8 @@ const getInitialBoard = (): Piece[][] => {
     return board;
 };
 
-export default function CheckersGame({ onBackToHub }: CheckersGameProps) {
+export default function CheckersGame({ onBackToHub, user, username }: CheckersGameProps) {
+    const startTimeRef = useRef<number>(Date.now());
     const [board, setBoard] = useState<Piece[][]>(getInitialBoard);
     const [turn, setTurn] = useState<PlayerColor>('red'); // Red = human, Black = bot
     const [difficulty, setDifficulty] = useState<Difficulty>('medium');
@@ -225,10 +226,21 @@ export default function CheckersGame({ onBackToHub }: CheckersGameProps) {
             const opp: PlayerColor = currentTurn === 'red' ? 'black' : 'red';
             setWinner(opp);
             audioService.playSound(opp === 'red' ? 'mine_win' : 'failure');
+            if (opp === 'red' && (difficulty === 'medium' || difficulty === 'hard')) {
+                const elapsed = Date.now() - startTimeRef.current;
+                saveLeaderboardScore(
+                    user,
+                    username || user?.displayName || 'Checkers Grandmaster',
+                    elapsed,
+                    `${difficulty.toUpperCase()} Speedrun`,
+                    { mistakes: 0, timeTaken: Math.round(elapsed / 1000), ingredientsMissed: 0, rottenWordsTyped: 0, totalScore: elapsed, levelReached: 1 },
+                    `checkers-${difficulty}`
+                );
+            }
             return true;
         }
         return false;
-    }, [getAllLegalMoves]);
+    }, [getAllLegalMoves, difficulty, user, username]);
 
     // Heuristic Board Evaluation for Bot
     const evaluateBoard = (b: Piece[][]): number => {
@@ -473,6 +485,7 @@ export default function CheckersGame({ onBackToHub }: CheckersGameProps) {
     };
 
     const handleRestart = () => {
+        startTimeRef.current = Date.now();
         setBoard(getInitialBoard());
         setTurn('red');
         setSelectedPos(null);

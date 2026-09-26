@@ -98,10 +98,10 @@ export default function AngleGame({ user, onBackToHub, username }: AngleGameProp
                 else { tempMsg = 'Cold! ❄️'; color = '#38bdf8'; }
             }
 
-            let clockwiseDiff = actualTarget - numGuess;
-            if (clockwiseDiff < 0) clockwiseDiff += 360;
+            let antiClockwiseDiff = actualTarget - numGuess;
+            if (antiClockwiseDiff < 0) antiClockwiseDiff += 360;
             
-            const arrow = clockwiseDiff <= 180 ? '🔄 Rotate Clockwise' : '🔄 Rotate Counter-Clockwise';
+            const arrow = antiClockwiseDiff <= 180 ? '↺ Rotate Anti-Clockwise' : '↻ Rotate Clockwise';
 
             setFeedback({ message: tempMsg, color, arrow });
             setLastDiff(diff);
@@ -188,33 +188,34 @@ export default function AngleGame({ user, onBackToHub, username }: AngleGameProp
                         {/* Reference Base Line (0 deg) */}
                         <line x1="50" y1="50" x2="95" y2="50" stroke="#737373" strokeWidth="2.5" strokeLinecap="round" />
                         
-                        {/* Arc fill */}
+                        {/* Arc fill (anti-clockwise) */}
                         <circle 
                             cx="50" cy="50" r="18" 
                             fill="none" stroke="#d946ef" strokeWidth="4" strokeOpacity="0.4"
                             strokeDasharray={2 * Math.PI * 18}
                             strokeDashoffset={2 * Math.PI * 18 * (1 - targetAngle / 360)}
+                            style={{ transform: 'scaleY(-1)', transformOrigin: '50px 50px' }}
                             className="transition-all duration-700 ease-out"
                         />
 
-                        {/* Previous Guesses (shown only after submit) */}
+                        {/* Previous Guesses (shown only after submit, anti-clockwise) */}
                         {previousGuesses.map((g, i) => (
                             <line 
                                 key={i}
                                 x1="50" y1="50" 
                                 x2="95" y2="50" 
                                 stroke="#737373" strokeWidth="1.5" strokeDasharray="2,2"
-                                style={{ transform: `rotate(${g}deg)`, transformOrigin: '50px 50px' }}
+                                style={{ transform: `rotate(${-g}deg)`, transformOrigin: '50px 50px' }}
                             />
                         ))}
                         
-                        {/* Target Angle Line */}
+                        {/* Target Angle Line (anti-clockwise) */}
                         <line 
                             x1="50" y1="50" 
                             x2="95" y2="50" 
                             stroke="#d946ef" strokeWidth="3" strokeLinecap="round"
                             className="transition-all duration-700 ease-out shadow-[0_0_10px_rgba(217,70,239,0.8)]"
-                            style={{ transform: `rotate(${targetAngle}deg)`, transformOrigin: '50px 50px' }}
+                            style={{ transform: `rotate(${-targetAngle}deg)`, transformOrigin: '50px 50px' }}
                         />
 
                         {/* Center Hub */}

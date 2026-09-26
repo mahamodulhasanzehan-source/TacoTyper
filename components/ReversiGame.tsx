@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { incrementGamePlays } from '../services/firebase';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { incrementGamePlays, saveLeaderboardScore } from '../services/firebase';
 import { audioService } from '../services/audioService';
 import {
   Board,
@@ -17,7 +17,9 @@ interface ReversiGameProps {
 
 type Difficulty = 'easy' | 'medium' | 'hard';
 
-export default function ReversiGame({ onBackToHub }: ReversiGameProps) {
+export default function ReversiGame({ onBackToHub, user, username }: ReversiGameProps) {
+  const startTimeRef = useRef<number>(Date.now());
+  const scoreSavedRef = useRef<boolean>(false);
   const [board, setBoard] = useState<Board>(getInitialBoard);
   const [difficulty, setDifficulty] = useState<Difficulty>('medium');
   const [playerColor] = useState<'B' | 'W'>('B');
@@ -34,6 +36,8 @@ export default function ReversiGame({ onBackToHub }: ReversiGameProps) {
   }, []);
 
   const resetGame = useCallback(() => {
+    startTimeRef.current = Date.now();
+    scoreSavedRef.current = false;
     setBoard(getInitialBoard());
     setTurn('B');
     setIsBotThinking(false);
@@ -171,6 +175,29 @@ export default function ReversiGame({ onBackToHub }: ReversiGameProps) {
     if (botScore > playerScore) return '💀 BOT WINS!';
     return '🤝 DRAW GAME!';
   }, [gameOver, playerColor, botColor, darkCount, lightCount]);
+
+  useEffect(() => {
+    if (!gameOver || scoreSavedRef.current) return;
+    const playerScore = playerColor === 'B' ? darkCount : lightCount;
+    const botScore = botColor === 'B' ? darkCount : lightCount;
+    if (playerScore > botScore) {
+      audioService.playSound('mine_win');
+      if (difficulty === 'medium' || difficulty === 'hard') {
+        scoreSavedRef.current = true;
+        const elapsed = Date.now() - startTimeRef.current;
+        saveLeaderboardScore(
+          user,
+          username || user?.displayName || 'Reversi Grandmaster',
+          elapsed,
+          `${difficulty.toUpperCase()} Speedrun`,
+          { mistakes: 0, timeTaken: Math.round(elapsed / 1000), ingredientsMissed: 0, rottenWordsTyped: 0, totalScore: elapsed, levelReached: 1 },
+          `reversi-${difficulty}`
+        );
+      }
+    } else if (botScore > playerScore) {
+      audioService.playSound('failure');
+    }
+  }, [gameOver, playerColor, botColor, darkCount, lightCount, difficulty, user, username]);
 
   return (
     <div className="w-full h-screen flex flex-col bg-[#06080e] text-white select-none overflow-hidden font-sans">

@@ -214,14 +214,15 @@ export default function TicTacToeGame({ user, onBackToHub, username }: TicTacToe
             audioService.playSound('correct_answer');
             const newStreak = streak + 1;
             setStreak(newStreak);
-            if (difficulty === 2) {
+            if (difficulty === 1 || difficulty === 2) {
+                const targetMode = difficulty === 1 ? 'tic_tac_toe-medium' : 'tic_tac_toe-hard';
                 await saveLeaderboardScore(
                     user,
-                    username || user.displayName || 'Chef',
+                    username || user?.displayName || 'Chef',
                     newStreak,
-                    is5x5 ? 'Tic Tac Toe 5x5 Champion' : 'Tic Tac Toe Grandmaster',
+                    difficulty === 2 ? 'Tic Tac Toe Grandmaster' : 'Tic Tac Toe Strategist',
                     { mistakes: 0, timeTaken: 0, ingredientsMissed: 0, rottenWordsTyped: 0, totalScore: newStreak, levelReached: newStreak },
-                    'tic_tac_toe'
+                    targetMode
                 );
             }
         } else if (res === 'O') {
@@ -305,6 +306,9 @@ export default function TicTacToeGame({ user, onBackToHub, username }: TicTacToe
                                 onClick={() => {
                                     audioService.playSound('button_click');
                                     const newDiff = d.val as 0 | 1 | 2;
+                                    if (newDiff !== difficulty) {
+                                        setStreak(0);
+                                    }
                                     setDifficulty(newDiff);
                                     startNewGame(newDiff, aiPlaysFirst);
                                 }}
