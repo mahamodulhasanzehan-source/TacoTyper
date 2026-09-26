@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { incrementGamePlays, saveLeaderboardScore } from '../services/firebase';
+import { incrementGamePlays } from '../services/firebase';
 import { audioService } from '../services/audioService';
 
 interface KnifeThrowProps {
@@ -107,7 +107,7 @@ function drawKnifeShape(ctx: CanvasRenderingContext2D, alpha: number = 1) {
   ctx.restore();
 }
 
-export default function KnifeFlipGame({ onBackToHub, user, username }: KnifeThrowProps) {
+export default function KnifeFlipGame({ onBackToHub }: KnifeThrowProps) {
   const [stage, setStage] = useState(1);
   const [score, setScore] = useState(0);
   const [highScore, setHighScore] = useState(() => {
@@ -116,20 +116,6 @@ export default function KnifeFlipGame({ onBackToHub, user, username }: KnifeThro
   const [knivesLeft, setKnivesLeft] = useState(7);
   const [isGameOver, setIsGameOver] = useState(false);
   const [stageCleared, setStageCleared] = useState(false);
-
-  useEffect(() => {
-    if (!isGameOver) return;
-    if (score > 0) {
-      saveLeaderboardScore(
-        user,
-        username || user?.displayName || 'Blade Flipper',
-        score,
-        'Blade Master',
-        { mistakes: 0, timeTaken: 0, ingredientsMissed: 0, rottenWordsTyped: 0, totalScore: score, levelReached: stage },
-        'knife_flip'
-      );
-    }
-  }, [isGameOver, score, stage, user, username]);
 
   const containerRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -146,6 +132,7 @@ export default function KnifeFlipGame({ onBackToHub, user, username }: KnifeThro
   // Knife in flight & input buffer for rapid tapping
   const flyingKnife = useRef<FlyingKnife | null>(null);
   const throwBuffered = useRef(false);
+  const lastThrowTime = useRef(0);
   const knivesLeftRef = useRef(knivesLeft);
   knivesLeftRef.current = knivesLeft;
   const isGameOverRef = useRef(isGameOver);
@@ -241,8 +228,15 @@ export default function KnifeFlipGame({ onBackToHub, user, username }: KnifeThro
     audioService.playSound('piece_drop');
   }, []);
 
-  // Rapid-response tap handler with input buffering
+  // Rapid-response tap handler with input buffering & debounce against duplicate/synthesized events
   const handleThrow = useCallback(() => {
+    const now = performance.now();
+    // Guard against double firing (e.g. pointerdown followed by synthesized mousedown/click on touch release)
+    if (now - lastThrowTime.current < 120) {
+      return;
+    }
+    lastThrowTime.current = now;
+
     if (isGameOverRef.current || stageClearedRef.current) return;
     if (knivesLeftRef.current <= 0) return;
 
@@ -550,9 +544,6 @@ export default function KnifeFlipGame({ onBackToHub, user, username }: KnifeThro
   return (
     <div
       className="w-full h-screen flex flex-col bg-[#06080e] text-white select-none overflow-hidden font-sans touch-none"
-      onPointerDown={(e) => {
-        if (e.button === 0) handleThrow();
-      }}
     >
       {/* Header */}
       <header
@@ -599,7 +590,7 @@ export default function KnifeFlipGame({ onBackToHub, user, username }: KnifeThro
       <div
         ref={containerRef}
         className="flex-1 w-full relative overflow-hidden flex items-center justify-center cursor-pointer touch-none"
-        onMouseDown={(e) => {
+        onPointerDown={(e) => {
           if (e.button === 0) {
             e.preventDefault();
             handleThrow();
@@ -608,11 +599,6 @@ export default function KnifeFlipGame({ onBackToHub, user, username }: KnifeThro
       >
         <canvas
           ref={canvasRef}
-          onPointerDown={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            handleThrow();
-          }}
           className="w-full h-full block cursor-pointer touch-none"
         />
 
