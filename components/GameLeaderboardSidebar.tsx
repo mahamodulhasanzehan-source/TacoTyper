@@ -70,21 +70,21 @@ export const GameLeaderboardSidebar: React.FC<GameLeaderboardSidebarProps> = ({
         >
           {isCollapsed ? (
             <div
-              className="w-full h-full flex flex-col items-center justify-between py-3"
+              className="w-full h-full flex flex-col items-center justify-start py-3 gap-6"
               onClick={() => handleToggleCollapse(false)}
-              title="Expand Leaderboard"
+              title="Click to Expand Leaderboard"
             >
               <button
                 onClick={(e) => {
                   e.stopPropagation();
                   handleToggleCollapse(false);
                 }}
-                className="p-1 rounded bg-neutral-800 hover:bg-neutral-700 text-white border border-neutral-600 text-xs font-bold cursor-pointer transition-colors shadow-sm"
+                className="p-1.5 rounded bg-neutral-900 hover:bg-neutral-800 text-white border border-neutral-700 text-xs font-bold cursor-pointer transition-colors shadow-sm active:scale-95"
                 title="Expand Leaderboard"
               >
                 ◀
               </button>
-              <div className="flex flex-col items-center gap-3 my-auto">
+              <div className="flex flex-col items-center gap-3">
                 <span className="text-sm">🏆</span>
                 <span
                   className="text-[9px] tracking-widest text-[#f4b400] font-bold uppercase select-none"
@@ -93,20 +93,9 @@ export const GameLeaderboardSidebar: React.FC<GameLeaderboardSidebarProps> = ({
                   LEADERBOARD
                 </span>
               </div>
-              <div className="text-[10px] text-neutral-500 group-hover:text-white transition-colors">
-                ◀
-              </div>
             </div>
           ) : (
             <div className="h-full w-full relative">
-              {/* Button at top-left corner of column to collapse */}
-              <button
-                onClick={() => handleToggleCollapse(true)}
-                className="absolute top-2 left-2 z-[140] w-6 h-6 bg-neutral-900 hover:bg-neutral-800 text-neutral-300 hover:text-white border border-neutral-700 rounded flex items-center justify-center text-xs font-bold cursor-pointer transition-colors shadow-md"
-                title="Collapse Leaderboard"
-              >
-                ▶
-              </button>
               <LeaderboardWidget
                 className="h-full border-none"
                 allowedModes={[mode]}
