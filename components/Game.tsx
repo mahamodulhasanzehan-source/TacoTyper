@@ -33,7 +33,6 @@ import NimGame from './NimGame';
 import TowerStackerGame from './TowerStackerGame';
 import TetrisGame from './TetrisGame';
 import ChessGame from './ChessGame';
-import { GameLeaderboard } from './GameLeaderboard';
 
 interface GameProps {
   user: User;
@@ -455,7 +454,6 @@ export default function Game({
       <div className="flex-1 h-full min-w-0 overflow-hidden relative">
         {renderMinigame(activeApp)}
       </div>
-      <GameLeaderboard appId={activeApp} />
     </div>
   );
 }
