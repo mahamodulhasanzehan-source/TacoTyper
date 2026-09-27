@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { audioService } from '../services/audioService';
 import { incrementGamePlays, saveLeaderboardScore } from '../services/firebase';
+import { isMobileDevice } from '../utils/device';
+import { GameLeaderboardSidebar, MobileLeaderboardButton } from './GameLeaderboardSidebar';
 
 interface SnakeGameProps {
   onBackToHub: () => void;
@@ -49,6 +51,15 @@ export default function SnakeGame({ onBackToHub, user, username }: SnakeGameProp
   const [activeEffect, setActiveEffect] = useState<string | null>(null);
   const [theme, setTheme] = useState<Theme>('neon');
   const [wallWrap, setWallWrap] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+  const [showMobileLeaderboard, setShowMobileLeaderboard] = useState(false);
+
+  useEffect(() => {
+    setIsMobile(isMobileDevice());
+    const handleResize = () => setIsMobile(isMobileDevice());
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
   
   // Game logic state in refs for 60fps / interval precision
   const snakeRef = useRef<Point[]>([
@@ -679,6 +690,9 @@ export default function SnakeGame({ onBackToHub, user, username }: SnakeGameProp
             <div className="text-[10px] sm:text-xs text-neutral-400 uppercase font-semibold">High</div>
             <div className="text-sm sm:text-lg font-black text-amber-400 font-mono">{highScore}</div>
           </div>
+          {isMobile && (
+            <MobileLeaderboardButton onClick={() => setShowMobileLeaderboard(true)} />
+          )}
         </div>
       </header>
 
@@ -706,8 +720,10 @@ export default function SnakeGame({ onBackToHub, user, username }: SnakeGameProp
         </div>
       </div>
 
-      {/* Main Play Area with Responsive Sizing */}
-      <div className="flex-1 flex flex-col items-center justify-center p-2 sm:p-4 min-h-0 relative select-none">
+      {/* Main Layout Area */}
+      <div className="flex-1 w-full relative overflow-hidden flex flex-row min-h-0">
+        {/* Main Play Area with Responsive Sizing */}
+        <div className="flex-1 h-full flex flex-col items-center justify-center p-2 sm:p-4 min-h-0 min-w-0 relative select-none overflow-y-auto">
         {activeEffect && (
           <div className="absolute top-4 z-20 px-3 py-1 bg-neutral-900/90 border border-amber-500/50 rounded-full text-xs font-bold text-amber-300 shadow-lg animate-bounce">
             {activeEffect}
@@ -797,6 +813,17 @@ export default function SnakeGame({ onBackToHub, user, username }: SnakeGameProp
           <span className="flex items-center gap-1">⭐ Star (+50)</span>
           <span className="flex items-center gap-1">👻 Ghost (+30)</span>
         </div>
+        </div>
+
+        <GameLeaderboardSidebar
+          mode="snake"
+          title="Snake Masters"
+          scoreLabel="LEN"
+          storageKey="snake_leaderboard_collapsed"
+          isMobile={isMobile}
+          showMobileLeaderboard={showMobileLeaderboard}
+          onCloseMobileLeaderboard={() => setShowMobileLeaderboard(false)}
+        />
       </div>
     </div>
   );

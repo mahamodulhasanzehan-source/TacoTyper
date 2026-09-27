@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { incrementGamePlays, saveLeaderboardScore } from '../services/firebase';
 import { audioService } from '../services/audioService';
+import { isMobileDevice } from '../utils/device';
+import { GameLeaderboardSidebar, MobileLeaderboardButton } from './GameLeaderboardSidebar';
 
 interface NimProps {
   onBackToHub: () => void;
@@ -23,6 +25,15 @@ export default function NimGame({ onBackToHub, user, username }: NimProps) {
   const [lastAction, setLastAction] = useState('Your turn! Select a row and take matchsticks.');
   const [winner, setWinner] = useState<'player' | 'bot' | null>(null);
   const [streak, setStreak] = useState(0);
+  const [isMobile, setIsMobile] = useState(false);
+  const [showMobileLeaderboard, setShowMobileLeaderboard] = useState(false);
+
+  useEffect(() => {
+    setIsMobile(isMobileDevice());
+    const handleResize = () => setIsMobile(isMobileDevice());
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const handleGameEnd = useCallback((gameWinner: 'player' | 'bot') => {
     setWinner(gameWinner);
@@ -233,126 +244,149 @@ export default function NimGame({ onBackToHub, user, username }: NimProps) {
             ))}
           </div>
 
+          <div className="text-xs font-bold text-neutral-400 bg-neutral-950 px-2.5 py-1 rounded-lg border border-neutral-800">
+            🔥 <span className="text-amber-400 font-mono">{streak}</span>
+          </div>
+
           <button
             onClick={resetGame}
-            className="px-2.5 py-1 bg-neutral-800 hover:bg-neutral-700 text-xs font-bold rounded-lg border border-neutral-700 text-neutral-300"
+            className="px-2.5 py-1 bg-neutral-800 hover:bg-neutral-700 text-xs font-bold rounded-lg border border-neutral-700 text-neutral-300 cursor-pointer"
           >
             Reset
           </button>
+
+          {isMobile && (
+            <MobileLeaderboardButton onClick={() => setShowMobileLeaderboard(true)} />
+          )}
         </div>
       </header>
 
-      {/* Turn & Status Bar */}
-      <div className="flex items-center justify-between px-4 py-1.5 bg-neutral-950/70 border-b border-neutral-900 text-xs font-mono shrink-0">
-        <div className="flex items-center gap-2 truncate pr-2">
-          <span className={`w-2 h-2 rounded-full shrink-0 ${isPlayerTurn ? 'bg-amber-400 animate-ping' : 'bg-rose-500'}`} />
-          <span className="text-neutral-300 truncate text-[11px] sm:text-xs">{lastAction}</span>
-        </div>
-        <div className="text-neutral-400 text-[11px] shrink-0 font-bold">
-          Sticks Left: <span className="text-amber-400 font-mono text-xs sm:text-sm">{totalSticks}</span>
-        </div>
-      </div>
-
-      {/* Nim Pyramid Stage: 1 stick (top), 3 sticks, 5 sticks, 7 sticks (bottom) */}
-      <div className="flex-1 flex flex-col items-center justify-center p-3 sm:p-6 max-w-2xl mx-auto w-full overflow-y-auto">
-        <div className="w-full flex flex-col items-center gap-2 sm:gap-3.5 my-auto">
-          {piles.map((count, pileIdx) => {
-            const isSelected = selectedPile === pileIdx;
-
-            return (
-              <div
-                key={pileIdx}
-                onClick={() => {
-                  if (count > 0 && isPlayerTurn && !isBotThinking) {
-                    setSelectedPile(pileIdx);
-                    setSelectedCount(1);
-                    audioService.playSound('tile_click');
-                  }
-                }}
-                className={`w-full max-w-xl flex items-center justify-between px-3 sm:px-6 py-2 sm:py-2.5 rounded-2xl border-2 transition-all cursor-pointer ${
-                  count === 0
-                    ? 'bg-neutral-950/40 border-neutral-900 opacity-40 cursor-not-allowed'
-                    : isSelected
-                    ? 'bg-amber-950/30 border-amber-400 shadow-[0_0_20px_rgba(251,191,36,0.3)] scale-[1.01]'
-                    : 'bg-neutral-900/60 border-neutral-800 hover:border-neutral-700'
-                }`}
-              >
-                <div className="text-[10px] sm:text-xs font-mono font-bold text-neutral-400 w-16 sm:w-20 shrink-0">
-                  ROW {pileIdx + 1} ({count})
-                </div>
-
-                {/* Matchsticks row centered */}
-                <div className="flex-1 flex items-center justify-center gap-2 sm:gap-3.5 py-1 min-h-[56px] sm:min-h-[64px]">
-                  {Array.from({ length: count }).map((_, stickIdx) => (
-                    <div
-                      key={stickIdx}
-                      className="flex flex-col items-center group transition-transform hover:-translate-y-1"
-                    >
-                      {/* Sulfur Red Tip */}
-                      <div className="w-2.5 h-3 bg-red-600 rounded-full shadow-[0_0_6px_rgba(220,38,38,0.8)]" />
-                      {/* Wooden Match Body */}
-                      <div className="w-1.5 h-11 sm:h-13 bg-amber-200 rounded-b shadow-sm" />
-                    </div>
-                  ))}
-                  {count === 0 && (
-                    <span className="text-[10px] text-neutral-600 font-mono font-bold uppercase">EMPTY</span>
-                  )}
-                </div>
-
-                <div className="w-16 sm:w-20 text-right shrink-0">
-                  {isSelected && (
-                    <span className="text-[10px] font-mono text-amber-400 font-bold uppercase animate-pulse">
-                      Selected
-                    </span>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Player Action Controls Tray */}
-        {isPlayerTurn && selectedPile !== null && piles[selectedPile] > 0 && (
-          <div className="w-full max-w-xl bg-neutral-900/95 border border-neutral-800 p-3 sm:p-4 rounded-2xl flex flex-col items-center gap-3 animate-fade-in shadow-xl mt-3 shrink-0">
-            <div className="text-xs text-neutral-300 font-semibold uppercase tracking-wider">
-              Take sticks from Row {selectedPile + 1}
+      {/* Main Layout Area */}
+      <div className="flex-1 w-full relative overflow-hidden flex flex-row min-h-0">
+        <div className="flex-1 h-full flex flex-col relative overflow-hidden min-w-0">
+          {/* Turn & Status Bar */}
+          <div className="flex items-center justify-between px-4 py-1.5 bg-neutral-950/70 border-b border-neutral-900 text-xs font-mono shrink-0">
+            <div className="flex items-center gap-2 truncate pr-2">
+              <span className={`w-2 h-2 rounded-full shrink-0 ${isPlayerTurn ? 'bg-amber-400 animate-ping' : 'bg-rose-500'}`} />
+              <span className="text-neutral-300 truncate text-[11px] sm:text-xs">{lastAction}</span>
             </div>
+            <div className="text-neutral-400 text-[11px] shrink-0 font-bold">
+              Sticks Left: <span className="text-amber-400 font-mono text-xs sm:text-sm">{totalSticks}</span>
+            </div>
+          </div>
 
-            <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap justify-center">
-              {Array.from({ length: piles[selectedPile] }).map((_, i) => {
-                const countNum = i + 1;
+          {/* Nim Pyramid Stage: 1 stick (top), 3 sticks, 5 sticks, 7 sticks (bottom) */}
+          <div className="flex-1 flex flex-col items-center justify-center p-3 sm:p-6 max-w-2xl mx-auto w-full overflow-y-auto">
+            <div className="w-full flex flex-col items-center gap-2 sm:gap-3.5 my-auto">
+              {piles.map((count, pileIdx) => {
+                const isSelected = selectedPile === pileIdx;
+
                 return (
-                  <button
-                    key={countNum}
-                    onClick={() => setSelectedCount(countNum)}
-                    className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl font-bold font-mono text-xs sm:text-sm transition-all ${
-                      selectedCount === countNum
-                        ? 'bg-amber-500 text-black shadow-lg scale-105'
-                        : 'bg-neutral-800 text-neutral-300 hover:bg-neutral-700'
+                  <div
+                    key={pileIdx}
+                    onClick={() => {
+                      if (count > 0 && isPlayerTurn && !isBotThinking) {
+                        setSelectedPile(pileIdx);
+                        setSelectedCount(1);
+                        audioService.playSound('tile_click');
+                      }
+                    }}
+                    className={`w-full max-w-xl flex items-center justify-between px-3 sm:px-6 py-2 sm:py-2.5 rounded-2xl border-2 transition-all cursor-pointer ${
+                      count === 0
+                        ? 'bg-neutral-950/40 border-neutral-900 opacity-40 cursor-not-allowed'
+                        : isSelected
+                        ? 'bg-amber-950/30 border-amber-400 shadow-[0_0_20px_rgba(251,191,36,0.3)] scale-[1.01]'
+                        : 'bg-neutral-900/60 border-neutral-800 hover:border-neutral-700'
                     }`}
                   >
-                    {countNum}
-                  </button>
+                    <div className="text-[10px] sm:text-xs font-mono font-bold text-neutral-400 w-16 sm:w-20 shrink-0">
+                      ROW {pileIdx + 1} ({count})
+                    </div>
+
+                    {/* Matchsticks row centered */}
+                    <div className="flex-1 flex items-center justify-center gap-2 sm:gap-3.5 py-1 min-h-[56px] sm:min-h-[64px]">
+                      {Array.from({ length: count }).map((_, stickIdx) => (
+                        <div
+                          key={stickIdx}
+                          className="flex flex-col items-center group transition-transform hover:-translate-y-1"
+                        >
+                          {/* Sulfur Red Tip */}
+                          <div className="w-2.5 h-3 bg-red-600 rounded-full shadow-[0_0_6px_rgba(220,38,38,0.8)]" />
+                          {/* Wooden Match Body */}
+                          <div className="w-1.5 h-11 sm:h-13 bg-amber-200 rounded-b shadow-sm" />
+                        </div>
+                      ))}
+                      {count === 0 && (
+                        <span className="text-[10px] text-neutral-600 font-mono font-bold uppercase">EMPTY</span>
+                      )}
+                    </div>
+
+                    <div className="w-16 sm:w-20 text-right shrink-0">
+                      {isSelected && (
+                        <span className="text-[10px] font-mono text-amber-400 font-bold uppercase animate-pulse">
+                          Selected
+                        </span>
+                      )}
+                    </div>
+                  </div>
                 );
               })}
             </div>
 
-            <div className="flex items-center gap-3 w-full justify-center">
-              <button
-                onClick={handlePlayerMove}
-                className="px-6 py-2.5 bg-amber-500 hover:bg-amber-400 text-black font-black text-xs sm:text-sm uppercase tracking-wider rounded-xl shadow-lg transition-all active:scale-95 cursor-pointer"
-              >
-                Confirm: Remove {selectedCount}
-              </button>
-              <button
-                onClick={() => setSelectedPile(null)}
-                className="px-4 py-2.5 bg-neutral-800 hover:bg-neutral-700 text-neutral-400 font-bold text-xs uppercase rounded-xl"
-              >
-                Cancel
-              </button>
-            </div>
+            {/* Player Action Controls Tray */}
+            {isPlayerTurn && selectedPile !== null && piles[selectedPile] > 0 && (
+              <div className="w-full max-w-xl bg-neutral-900/95 border border-neutral-800 p-3 sm:p-4 rounded-2xl flex flex-col items-center gap-3 animate-fade-in shadow-xl mt-3 shrink-0">
+                <div className="text-xs text-neutral-300 font-semibold uppercase tracking-wider">
+                  Take sticks from Row {selectedPile + 1}
+                </div>
+
+                <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap justify-center">
+                  {Array.from({ length: piles[selectedPile] }).map((_, i) => {
+                    const countNum = i + 1;
+                    return (
+                      <button
+                        key={countNum}
+                        onClick={() => setSelectedCount(countNum)}
+                        className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl font-bold font-mono text-xs sm:text-sm transition-all ${
+                          selectedCount === countNum
+                            ? 'bg-amber-500 text-black shadow-lg scale-105'
+                            : 'bg-neutral-800 text-neutral-300 hover:bg-neutral-700'
+                        }`}
+                      >
+                        {countNum}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className="flex items-center gap-3 w-full justify-center">
+                  <button
+                    onClick={handlePlayerMove}
+                    className="px-6 py-2.5 bg-amber-500 hover:bg-amber-400 text-black font-black text-xs sm:text-sm uppercase tracking-wider rounded-xl shadow-lg transition-all active:scale-95 cursor-pointer"
+                  >
+                    Confirm: Remove {selectedCount}
+                  </button>
+                  <button
+                    onClick={() => setSelectedPile(null)}
+                    className="px-4 py-2.5 bg-neutral-800 hover:bg-neutral-700 text-neutral-400 font-bold text-xs uppercase rounded-xl"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
-        )}
+        </div>
+
+        <GameLeaderboardSidebar
+          mode="nim"
+          title="Nim Tacticians"
+          scoreLabel="STREAK"
+          storageKey="nim_leaderboard_collapsed"
+          isMobile={isMobile}
+          showMobileLeaderboard={showMobileLeaderboard}
+          onCloseMobileLeaderboard={() => setShowMobileLeaderboard(false)}
+        />
       </div>
 
       {/* Game Over Modal */}

@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { audioService } from '../services/audioService';
 import { incrementGamePlays, saveLeaderboardScore } from '../services/firebase';
+import { isMobileDevice } from '../utils/device';
+import { GameLeaderboardSidebar, MobileLeaderboardButton } from './GameLeaderboardSidebar';
 
 export interface FruitDef {
     id: number;
@@ -92,6 +94,15 @@ export default function FruitMergeGame({ onBackToHub, user, username }: FruitMer
     const [gameOver, setGameOver] = useState(false);
     const [dangerTimer, setDangerTimer] = useState(0); // in ms
     const [isPointerDown, setIsPointerDown] = useState(false);
+    const [isMobile, setIsMobile] = useState(false);
+    const [showMobileLeaderboard, setShowMobileLeaderboard] = useState(false);
+
+    useEffect(() => {
+        setIsMobile(isMobileDevice());
+        const handleResize = () => setIsMobile(isMobileDevice());
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
 
     useEffect(() => {
         if (!gameOver) return;
@@ -544,14 +555,21 @@ export default function FruitMergeGame({ onBackToHub, user, username }: FruitMer
                 </div>
 
                 {/* Next Fruit Preview */}
-                <div className="flex items-center gap-2 bg-neutral-900/80 border border-neutral-800 px-3 py-1 rounded-2xl">
-                    <div className="text-[10px] sm:text-xs text-neutral-400 font-mono uppercase">Next:</div>
-                    <FruitSVG tier={nextTier} size={28} />
+                <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 bg-neutral-900/80 border border-neutral-800 px-3 py-1 rounded-2xl">
+                        <div className="text-[10px] sm:text-xs text-neutral-400 font-mono uppercase">Next:</div>
+                        <FruitSVG tier={nextTier} size={28} />
+                    </div>
+                    {isMobile && (
+                        <MobileLeaderboardButton onClick={() => setShowMobileLeaderboard(true)} />
+                    )}
                 </div>
             </div>
 
-            {/* Game Main Area - Responsive Center with side panels on landscape */}
-            <div className="flex-1 flex flex-col md:flex-row items-center justify-center p-2 sm:p-4 gap-3 md:gap-6 overflow-hidden min-h-0">
+            {/* Main Layout Area */}
+            <div className="flex-1 w-full relative overflow-hidden flex flex-row min-h-0">
+                {/* Game Main Area - Responsive Center with side panels on landscape */}
+                <div className="flex-1 flex flex-col md:flex-row items-center justify-center p-2 sm:p-4 gap-3 md:gap-6 overflow-hidden min-h-0 min-w-0">
                 
                 {/* Canvas Game Container */}
                 <div 
@@ -618,6 +636,17 @@ export default function FruitMergeGame({ onBackToHub, user, username }: FruitMer
                         </div>
                     ))}
                 </div>
+                </div>
+
+                <GameLeaderboardSidebar
+                    mode="fruit_merge"
+                    title="Juice Masters"
+                    scoreLabel="SCORE"
+                    storageKey="fruit_merge_leaderboard_collapsed"
+                    isMobile={isMobile}
+                    showMobileLeaderboard={showMobileLeaderboard}
+                    onCloseMobileLeaderboard={() => setShowMobileLeaderboard(false)}
+                />
             </div>
         </div>
     );

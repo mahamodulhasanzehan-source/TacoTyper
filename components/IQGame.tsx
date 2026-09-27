@@ -7,6 +7,8 @@ import {
 } from '../constants';
 import { User, saveLeaderboardScore, incrementGamePlays } from '../services/firebase';
 import { audioService } from '../services/audioService';
+import { isMobileDevice } from '../utils/device';
+import { GameLeaderboardSidebar, MobileLeaderboardButton } from './GameLeaderboardSidebar';
 
 interface IQGameProps {
     user: User;
@@ -28,6 +30,15 @@ const IQGame: React.FC<IQGameProps> = ({ user, onBackToHub, username }) => {
     const [timerSeconds, setTimerSeconds] = useState(600);
     const [chosenOption, setChosenOption] = useState<string | null>(null);
     const [isTransitioning, setIsTransitioning] = useState(false);
+    const [isMobile, setIsMobile] = useState(false);
+    const [showMobileLeaderboard, setShowMobileLeaderboard] = useState(false);
+
+    useEffect(() => {
+        setIsMobile(isMobileDevice());
+        const handleResize = () => setIsMobile(isMobileDevice());
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
     
     // End Screen State
     const [finalScore, setFinalScore] = useState(0);
@@ -151,184 +162,199 @@ const IQGame: React.FC<IQGameProps> = ({ user, onBackToHub, username }) => {
     };
 
     return (
-        <div className="flex flex-col items-center justify-between w-full h-full bg-[#050508] text-white relative overflow-y-auto custom-scrollbar p-3 sm:p-4 select-none font-sans">
-            <div className="absolute inset-0 opacity-15 pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at 20% 80%, #3b82f6 2px, transparent 2px), radial-gradient(circle at 80% 20%, #3b82f6 2px, transparent 2px)', backgroundSize: '80px 80px' }}></div>
-            
-            {/* Top Bar - Pinned at top */}
-            <div className="flex justify-between items-center w-full max-w-xl shrink-0 pt-1 sm:pt-2 mb-2 z-10">
-                <button 
-                    onClick={() => {
-                        audioService.playSound('button_click');
-                        onBackToHub();
-                    }} 
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-neutral-900/80 hover:bg-neutral-800 border border-neutral-700 rounded-full text-sm font-bold transition-transform hover:scale-105 active:scale-95 shadow-md"
-                    title="Back to Hub"
-                >
-                    <span>⬅️</span>
-                    <span className="hidden sm:inline">Hub</span>
-                </button>
+        <div className="flex flex-row w-full h-full bg-[#050508] text-white relative overflow-hidden select-none font-sans">
+            <div className="flex-1 h-full flex flex-col items-center justify-between relative overflow-y-auto custom-scrollbar p-3 sm:p-4 min-w-0">
+                <div className="absolute inset-0 opacity-15 pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at 20% 80%, #3b82f6 2px, transparent 2px), radial-gradient(circle at 80% 20%, #3b82f6 2px, transparent 2px)', backgroundSize: '80px 80px' }}></div>
+                
+                {/* Top Bar - Pinned at top */}
+                <div className="flex justify-between items-center w-full max-w-xl shrink-0 pt-1 sm:pt-2 mb-2 z-10">
+                    <button 
+                        onClick={() => {
+                            audioService.playSound('button_click');
+                            onBackToHub();
+                        }} 
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-neutral-900/80 hover:bg-neutral-800 border border-neutral-700 rounded-full text-sm font-bold transition-transform hover:scale-105 active:scale-95 shadow-md"
+                        title="Back to Hub"
+                    >
+                        <span>⬅️</span>
+                        <span className="hidden sm:inline">Hub</span>
+                    </button>
 
-                <div className="flex flex-col items-center">
-                    <h1 className="text-xl md:text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-400 tracking-wide">
-                        IQ TEST
-                    </h1>
+                    <div className="flex flex-col items-center">
+                        <h1 className="text-xl md:text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-400 tracking-wide">
+                            IQ TEST
+                        </h1>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                        {screen === 'playing' && (
+                            <span className={`text-xs px-2.5 py-1 rounded-full font-mono font-bold border ${timerSeconds < 60 ? 'bg-red-950 text-red-400 border-red-700 animate-pulse' : 'bg-neutral-900 text-blue-400 border-neutral-700'}`}>
+                                {Math.floor(timerSeconds/60)}:{String(timerSeconds%60).padStart(2, '0')}
+                            </span>
+                        )}
+                        {isMobile && (
+                            <MobileLeaderboardButton onClick={() => setShowMobileLeaderboard(true)} />
+                        )}
+                    </div>
                 </div>
 
-                <div className="w-16 flex justify-end">
-                    {screen === 'playing' && (
-                        <span className={`text-xs px-2.5 py-1 rounded-full font-mono font-bold border ${timerSeconds < 60 ? 'bg-red-950 text-red-400 border-red-700 animate-pulse' : 'bg-neutral-900 text-blue-400 border-neutral-700'}`}>
-                            {Math.floor(timerSeconds/60)}:{String(timerSeconds%60).padStart(2, '0')}
-                        </span>
+                {/* Main Area */}
+                <div className="flex-1 flex flex-col items-center justify-center w-full max-w-xl my-auto py-1 z-10">
+                    {/* WELCOME SCREEN */}
+                    {screen === 'welcome' && (
+                        <div className="bg-neutral-900/90 border border-neutral-800 p-6 sm:p-8 rounded-2xl max-w-md w-full text-center shadow-2xl animate-fade-in flex flex-col items-center">
+                            <div className="text-6xl mb-4 animate-bounce">🧠</div>
+                            <h2 className="text-2xl sm:text-3xl font-black mb-2 text-blue-400">IQ Assessment</h2>
+                            <p className="text-neutral-400 text-sm mb-6 leading-relaxed">
+                                20 questions covering Logic, Verbal Reasoning, Spatial Visualization, and Number Sequences.
+                            </p>
+                            <div className="w-full space-y-2 mb-6 text-xs text-neutral-400 bg-neutral-950 p-3 rounded-xl border border-neutral-800 text-left">
+                                <div>⏱️ <strong>Time Limit:</strong> 10 Minutes</div>
+                                <div>🎯 <strong>Difficulty:</strong> Adaptive (Easy to Hard)</div>
+                                <div>🏆 <strong>Scoring:</strong> Certified Distribution (60-160)</div>
+                            </div>
+                            <button 
+                                onClick={setupGame} 
+                                className="w-full py-3.5 bg-blue-600 hover:bg-blue-500 text-white font-black rounded-xl transition-transform active:scale-95 shadow-lg"
+                            >
+                                START TEST
+                            </button>
+                        </div>
+                    )}
+
+                    {/* PLAYING SCREEN */}
+                    {screen === 'playing' && questions.length > 0 && (
+                        <div className="w-full flex flex-col animate-fade-in">
+                            {/* Progress */}
+                            <div className="w-full bg-neutral-800 h-2 rounded-full mb-4 overflow-hidden">
+                                <div 
+                                    className="h-full bg-blue-500 transition-all duration-300"
+                                    style={{ width: `${((currentQuestionIndex + 1) / questions.length) * 100}%` }}
+                                />
+                            </div>
+
+                            {/* Card */}
+                            <div className={`bg-neutral-900/90 border border-neutral-800 rounded-2xl p-5 sm:p-7 shadow-2xl transition-all duration-200 ${isTransitioning ? 'opacity-0 scale-95' : 'opacity-100 scale-100'}`}>
+                                <div className="flex justify-between items-center mb-3">
+                                    <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-blue-950/80 text-blue-400 border border-blue-800">
+                                        Question {currentQuestionIndex + 1} of {questions.length}
+                                    </span>
+                                    <span className="text-xs text-neutral-400 font-bold">
+                                        {questions[currentQuestionIndex]?.difficulty}
+                                    </span>
+                                </div>
+
+                                <p className="text-white font-bold text-base sm:text-lg leading-relaxed mb-6">
+                                    {questions[currentQuestionIndex]?.question}
+                                </p>
+
+                                <div className="grid grid-cols-1 gap-2.5 mb-6">
+                                    {questions[currentQuestionIndex]?.options.map((opt) => {
+                                        const optKey = opt.trim().charAt(0);
+                                        const isSelected = chosenOption === optKey;
+                                        return (
+                                            <button
+                                                key={opt}
+                                                onClick={() => {
+                                                    audioService.playSound('button_click');
+                                                    setChosenOption(optKey);
+                                                }}
+                                                className={`text-left p-3.5 sm:p-4 rounded-xl border transition-all duration-150 text-sm sm:text-base font-bold flex items-center gap-3 ${
+                                                    isSelected 
+                                                        ? 'bg-blue-600/30 border-blue-500 text-white shadow-[0_0_15px_rgba(59,130,246,0.3)]' 
+                                                        : 'bg-neutral-950 border-neutral-800 text-neutral-300 hover:border-neutral-700 hover:bg-neutral-900'
+                                                }`}
+                                            >
+                                                <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-black shrink-0 ${isSelected ? 'bg-blue-500 text-white' : 'bg-neutral-800 text-neutral-400'}`}>
+                                                    {optKey}
+                                                </span>
+                                                <span>{opt.replace(/^[A-D]\)\s*/, '')}</span>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+
+                                <div className="flex gap-3">
+                                    <button 
+                                        onClick={skipQuestion} 
+                                        className="flex-1 py-3 rounded-xl bg-neutral-800 text-neutral-400 hover:bg-neutral-700 font-bold text-sm transition-colors"
+                                    >
+                                        Skip
+                                    </button>
+                                    <button 
+                                        onClick={processAnswer}
+                                        disabled={!chosenOption}
+                                        className="flex-[2] py-3 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-black shadow-lg text-sm transition-transform active:scale-95"
+                                    >
+                                        {currentQuestionIndex === questions.length - 1 ? 'Finish Test' : 'Next Question'}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* END SCREEN */}
+                    {screen === 'end' && (
+                        <div className="bg-neutral-900/90 border border-neutral-800 p-6 sm:p-8 rounded-2xl max-w-md w-full text-center shadow-2xl flex flex-col items-center animate-fade-in">
+                            <h2 className="text-xl sm:text-2xl font-black mb-6 text-white">Assessment Results</h2>
+                            
+                            {/* Circular Score Display */}
+                            <div className="relative w-[130px] h-[130px] mb-6">
+                                <svg className="w-full h-full transform -rotate-90">
+                                    <circle cx="65" cy="65" r="54" fill="none" stroke="#222" strokeWidth="8" />
+                                    <circle 
+                                        cx="65" cy="65" r="54" fill="none" stroke="#3b82f6" strokeWidth="8"
+                                        strokeDasharray="339.29"
+                                        strokeDashoffset={ringOffset}
+                                        style={{ transition: 'stroke-dashoffset 1.8s cubic-bezier(0.2, 0.8, 0.2, 1)' }}
+                                    />
+                                </svg>
+                                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                                    <span className="text-3xl sm:text-4xl font-black text-white">{finalScore}</span>
+                                    <span className="text-[10px] text-blue-400 font-bold uppercase tracking-wider">IQ Score</span>
+                                </div>
+                            </div>
+
+                            <div className="mb-4">
+                                <p className="text-blue-400 font-black text-lg mb-1">{finalPercent}</p>
+                                <p className="text-neutral-400 text-xs font-bold">Solved: {correctCount} / {questions.length} Questions</p>
+                            </div>
+                            
+                            <p className="text-neutral-300 italic text-sm mb-6 px-4 bg-neutral-950 p-3 rounded-xl border border-neutral-800 w-full">
+                                "{finalComment}"
+                            </p>
+
+                            <div className="flex gap-3 w-full">
+                                <button 
+                                    onClick={() => {
+                                        audioService.playSound('button_click');
+                                        onBackToHub();
+                                    }}
+                                    className="flex-1 py-3 bg-neutral-800 hover:bg-neutral-700 text-white font-bold rounded-xl transition-colors text-sm"
+                                >
+                                    Hub
+                                </button>
+                                <button 
+                                    onClick={setupGame} 
+                                    className="flex-1 py-3 bg-blue-600 hover:bg-blue-500 text-white font-black rounded-xl transition-transform active:scale-95 shadow-lg text-sm"
+                                >
+                                    Retake
+                                </button>
+                            </div>
+                        </div>
                     )}
                 </div>
             </div>
 
-            {/* Main Area */}
-            <div className="flex-1 flex flex-col items-center justify-center w-full max-w-xl my-auto py-1 z-10">
-                {/* WELCOME SCREEN */}
-                {screen === 'welcome' && (
-                    <div className="bg-neutral-900/90 border border-neutral-800 p-6 sm:p-8 rounded-2xl max-w-md w-full text-center shadow-2xl animate-fade-in flex flex-col items-center">
-                        <div className="text-6xl mb-4 animate-bounce">🧠</div>
-                        <h2 className="text-2xl sm:text-3xl font-black mb-2 text-blue-400">IQ Assessment</h2>
-                        <p className="text-neutral-400 text-sm mb-6 leading-relaxed">
-                            20 questions covering Logic, Verbal Reasoning, Spatial Visualization, and Number Sequences.
-                        </p>
-                        <div className="w-full space-y-2 mb-6 text-xs text-neutral-400 bg-neutral-950 p-3 rounded-xl border border-neutral-800 text-left">
-                            <div>⏱️ <strong>Time Limit:</strong> 10 Minutes</div>
-                            <div>🎯 <strong>Difficulty:</strong> Adaptive (Easy to Hard)</div>
-                            <div>🏆 <strong>Scoring:</strong> Certified Distribution (60-160)</div>
-                        </div>
-                        <button 
-                            onClick={setupGame} 
-                            className="w-full py-3.5 bg-blue-600 hover:bg-blue-500 text-white font-black rounded-xl transition-transform active:scale-95 shadow-lg"
-                        >
-                            START TEST
-                        </button>
-                    </div>
-                )}
-
-                {/* PLAYING SCREEN */}
-                {screen === 'playing' && questions.length > 0 && (
-                    <div className="w-full flex flex-col animate-fade-in">
-                        {/* Progress */}
-                        <div className="w-full bg-neutral-800 h-2 rounded-full mb-4 overflow-hidden">
-                            <div 
-                                className="h-full bg-blue-500 transition-all duration-300"
-                                style={{ width: `${((currentQuestionIndex + 1) / questions.length) * 100}%` }}
-                            />
-                        </div>
-
-                        {/* Card */}
-                        <div className={`bg-neutral-900/90 border border-neutral-800 rounded-2xl p-5 sm:p-7 shadow-2xl transition-all duration-200 ${isTransitioning ? 'opacity-0 scale-95' : 'opacity-100 scale-100'}`}>
-                            <div className="flex justify-between items-center mb-3">
-                                <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-blue-950/80 text-blue-400 border border-blue-800">
-                                    Question {currentQuestionIndex + 1} of {questions.length}
-                                </span>
-                                <span className="text-xs text-neutral-400 font-bold">
-                                    {questions[currentQuestionIndex]?.difficulty}
-                                </span>
-                            </div>
-
-                            <p className="text-white font-bold text-base sm:text-lg leading-relaxed mb-6">
-                                {questions[currentQuestionIndex]?.question}
-                            </p>
-
-                            <div className="grid grid-cols-1 gap-2.5 mb-6">
-                                {questions[currentQuestionIndex]?.options.map((opt) => {
-                                    const optKey = opt.trim().charAt(0);
-                                    const isSelected = chosenOption === optKey;
-                                    return (
-                                        <button
-                                            key={opt}
-                                            onClick={() => {
-                                                audioService.playSound('button_click');
-                                                setChosenOption(optKey);
-                                            }}
-                                            className={`text-left p-3.5 sm:p-4 rounded-xl border transition-all duration-150 text-sm sm:text-base font-bold flex items-center gap-3 ${
-                                                isSelected 
-                                                    ? 'bg-blue-600/30 border-blue-500 text-white shadow-[0_0_15px_rgba(59,130,246,0.3)]' 
-                                                    : 'bg-neutral-950 border-neutral-800 text-neutral-300 hover:border-neutral-700 hover:bg-neutral-900'
-                                            }`}
-                                        >
-                                            <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-black shrink-0 ${isSelected ? 'bg-blue-500 text-white' : 'bg-neutral-800 text-neutral-400'}`}>
-                                                {optKey}
-                                            </span>
-                                            <span>{opt.replace(/^[A-D]\)\s*/, '')}</span>
-                                        </button>
-                                    );
-                                })}
-                            </div>
-
-                            <div className="flex gap-3">
-                                <button 
-                                    onClick={skipQuestion} 
-                                    className="flex-1 py-3 rounded-xl bg-neutral-800 text-neutral-400 hover:bg-neutral-700 font-bold text-sm transition-colors"
-                                >
-                                    Skip
-                                </button>
-                                <button 
-                                    onClick={processAnswer}
-                                    disabled={!chosenOption}
-                                    className="flex-[2] py-3 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-black shadow-lg text-sm transition-transform active:scale-95"
-                                >
-                                    {currentQuestionIndex === questions.length - 1 ? 'Finish Test' : 'Next Question'}
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                )}
-
-                {/* END SCREEN */}
-                {screen === 'end' && (
-                    <div className="bg-neutral-900/90 border border-neutral-800 p-6 sm:p-8 rounded-2xl max-w-md w-full text-center shadow-2xl flex flex-col items-center animate-fade-in">
-                        <h2 className="text-xl sm:text-2xl font-black mb-6 text-white">Assessment Results</h2>
-                        
-                        {/* Circular Score Display */}
-                        <div className="relative w-[130px] h-[130px] mb-6">
-                            <svg className="w-full h-full transform -rotate-90">
-                                <circle cx="65" cy="65" r="54" fill="none" stroke="#222" strokeWidth="8" />
-                                <circle 
-                                    cx="65" cy="65" r="54" fill="none" stroke="#3b82f6" strokeWidth="8"
-                                    strokeDasharray="339.29"
-                                    strokeDashoffset={ringOffset}
-                                    style={{ transition: 'stroke-dashoffset 1.8s cubic-bezier(0.2, 0.8, 0.2, 1)' }}
-                                />
-                            </svg>
-                            <div className="absolute inset-0 flex flex-col items-center justify-center">
-                                <span className="text-3xl sm:text-4xl font-black text-white">{finalScore}</span>
-                                <span className="text-[10px] text-blue-400 font-bold uppercase tracking-wider">IQ Score</span>
-                            </div>
-                        </div>
-
-                        <div className="mb-4">
-                            <p className="text-blue-400 font-black text-lg mb-1">{finalPercent}</p>
-                            <p className="text-neutral-400 text-xs font-bold">Solved: {correctCount} / {questions.length} Questions</p>
-                        </div>
-                        
-                        <p className="text-neutral-300 italic text-sm mb-6 px-4 bg-neutral-950 p-3 rounded-xl border border-neutral-800 w-full">
-                            "{finalComment}"
-                        </p>
-
-                        <div className="flex gap-3 w-full">
-                            <button 
-                                onClick={() => {
-                                    audioService.playSound('button_click');
-                                    onBackToHub();
-                                }}
-                                className="flex-1 py-3 bg-neutral-800 hover:bg-neutral-700 text-white font-bold rounded-xl transition-colors text-sm"
-                            >
-                                Hub
-                            </button>
-                            <button 
-                                onClick={setupGame} 
-                                className="flex-1 py-3 bg-blue-600 hover:bg-blue-500 text-white font-black rounded-xl transition-transform active:scale-95 shadow-lg text-sm"
-                            >
-                                Retake
-                            </button>
-                        </div>
-                    </div>
-                )}
-            </div>
+            <GameLeaderboardSidebar
+                mode="iq_test"
+                title="Top Minds"
+                scoreLabel="IQ"
+                storageKey="iq_leaderboard_collapsed"
+                isMobile={isMobile}
+                showMobileLeaderboard={showMobileLeaderboard}
+                onCloseMobileLeaderboard={() => setShowMobileLeaderboard(false)}
+            />
         </div>
     );
 };

@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { incrementGamePlays } from '../services/firebase';
+import { incrementGamePlays, saveLeaderboardScore } from '../services/firebase';
 import { audioService } from '../services/audioService';
+import { LeaderboardWidget } from './Overlays';
+import { isMobileDevice } from '../utils/device';
 
 interface KnifeThrowProps {
   onBackToHub: () => void;
@@ -107,7 +109,7 @@ function drawKnifeShape(ctx: CanvasRenderingContext2D, alpha: number = 1) {
   ctx.restore();
 }
 
-export default function KnifeFlipGame({ onBackToHub }: KnifeThrowProps) {
+export default function KnifeFlipGame({ onBackToHub, user, username }: KnifeThrowProps) {
   const [stage, setStage] = useState(1);
   const [score, setScore] = useState(0);
   const [highScore, setHighScore] = useState(() => {
@@ -116,6 +118,16 @@ export default function KnifeFlipGame({ onBackToHub }: KnifeThrowProps) {
   const [knivesLeft, setKnivesLeft] = useState(7);
   const [isGameOver, setIsGameOver] = useState(false);
   const [stageCleared, setStageCleared] = useState(false);
+
+  const [isMobile, setIsMobile] = useState(false);
+  const [isLeaderboardCollapsed, setIsLeaderboardCollapsed] = useState(() => {
+    return localStorage.getItem('knife_leaderboard_collapsed') === 'true';
+  });
+  const [showMobileLeaderboard, setShowMobileLeaderboard] = useState(false);
+
+  useEffect(() => {
+    setIsMobile(isMobileDevice());
+  }, []);
 
   const containerRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -133,6 +145,8 @@ export default function KnifeFlipGame({ onBackToHub }: KnifeThrowProps) {
   const flyingKnife = useRef<FlyingKnife | null>(null);
   const throwBuffered = useRef(false);
   const lastThrowTime = useRef(0);
+  const isTouchingRef = useRef(false);
+  const lastTouchEndTimeRef = useRef(0);
   const knivesLeftRef = useRef(knivesLeft);
   knivesLeftRef.current = knivesLeft;
   const isGameOverRef = useRef(isGameOver);
@@ -146,6 +160,21 @@ export default function KnifeFlipGame({ onBackToHub }: KnifeThrowProps) {
   useEffect(() => {
     incrementGamePlays('knife_flip');
   }, []);
+
+  useEffect(() => {
+    if (!isGameOver || score <= 0) return;
+    const guestUid = localStorage.getItem('taco_guest_uid') || localStorage.getItem('guest_uid') || 'guest_' + Math.random().toString(36).substring(2, 9);
+    const guestName = localStorage.getItem('taco_guest_name') || 'Blade Master';
+    const currentUser = user || { uid: guestUid, displayName: guestName, isAnonymous: true };
+    saveLeaderboardScore(
+      currentUser,
+      username || user?.displayName || guestName,
+      score,
+      `Stage ${stage} Ninja`,
+      { mistakes: 0, timeTaken: 0, ingredientsMissed: 0, rottenWordsTyped: 0, totalScore: score, levelReached: stage },
+      'knife_flip'
+    );
+  }, [isGameOver, score, stage, user, username]);
 
   const initStage = useCallback((stg: number) => {
     const quota = Math.min(10, 6 + Math.floor(stg * 0.7));
@@ -228,11 +257,11 @@ export default function KnifeFlipGame({ onBackToHub }: KnifeThrowProps) {
     audioService.playSound('piece_drop');
   }, []);
 
-  // Rapid-response tap handler with input buffering & debounce against duplicate/synthesized events
+  // Rapid-response tap handler with input buffering & minimal sub-frame deduplication
   const handleThrow = useCallback(() => {
     const now = performance.now();
-    // Guard against double firing (e.g. pointerdown followed by synthesized mousedown/click on touch release)
-    if (now - lastThrowTime.current < 120) {
+    // Guard against simultaneous sub-frame dual triggers (< 35ms) while allowing true high CPS
+    if (now - lastThrowTime.current < 35) {
       return;
     }
     lastThrowTime.current = now;
@@ -248,6 +277,48 @@ export default function KnifeFlipGame({ onBackToHub }: KnifeThrowProps) {
 
     launchKnife();
   }, [launchKnife]);
+
+  // Pointer event handlers that isolate real touch/mouse actions from touch-release synthetic clicks
+  const handlePointerDown = useCallback((e: React.PointerEvent) => {
+    if (e.pointerType === 'touch') {
+      isTouchingRef.current = true;
+      e.preventDefault();
+      handleThrow();
+      return;
+    }
+
+    if (e.pointerType === 'mouse') {
+      // Reject synthetic mouse events dispatched by the browser when lifting a finger on touchscreens
+      if (isTouchingRef.current || performance.now() - lastTouchEndTimeRef.current < 600) {
+        return;
+      }
+      if (e.button === 0) {
+        e.preventDefault();
+        handleThrow();
+      }
+      return;
+    }
+
+    // Pen or other pointer
+    if (e.button === 0) {
+      e.preventDefault();
+      handleThrow();
+    }
+  }, [handleThrow]);
+
+  const handlePointerUp = useCallback((e: React.PointerEvent) => {
+    if (e.pointerType === 'touch') {
+      isTouchingRef.current = false;
+      lastTouchEndTimeRef.current = performance.now();
+    }
+  }, []);
+
+  const handlePointerCancel = useCallback((e: React.PointerEvent) => {
+    if (e.pointerType === 'touch') {
+      isTouchingRef.current = false;
+      lastTouchEndTimeRef.current = performance.now();
+    }
+  }, []);
 
   // Main 60FPS Game Loop
   useEffect(() => {
@@ -518,6 +589,7 @@ export default function KnifeFlipGame({ onBackToHub }: KnifeThrowProps) {
   // Dynamic canvas sizing
   useEffect(() => {
     const handleResize = () => {
+      setIsMobile(isMobileDevice());
       const canvas = canvasRef.current;
       const container = containerRef.current;
       if (!canvas || !container) return;
@@ -527,6 +599,38 @@ export default function KnifeFlipGame({ onBackToHub }: KnifeThrowProps) {
     handleResize();
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const canvas = canvasRef.current;
+      const container = containerRef.current;
+      if (!canvas || !container) return;
+      canvas.width = container.clientWidth;
+      canvas.height = container.clientHeight;
+    }, 320);
+    return () => clearTimeout(timer);
+  }, [isLeaderboardCollapsed]);
+
+  // Suppress synthetic mouse emulation on touch release
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const onTouchStart = (e: TouchEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (target && target.closest('button, [role="button"], a')) {
+        return;
+      }
+      if (e.cancelable) {
+        e.preventDefault();
+      }
+    };
+
+    container.addEventListener('touchstart', onTouchStart, { passive: false });
+    return () => {
+      container.removeEventListener('touchstart', onTouchStart);
+    };
   }, []);
 
   // Keyboard controls (Space)
@@ -564,7 +668,7 @@ export default function KnifeFlipGame({ onBackToHub }: KnifeThrowProps) {
           </div>
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 sm:gap-4">
           <div className="text-right font-mono">
             <span className="text-[9px] text-neutral-400 uppercase font-semibold block">STAGE</span>
             <span className="text-sm font-black text-rose-400">{stage}</span>
@@ -579,83 +683,200 @@ export default function KnifeFlipGame({ onBackToHub }: KnifeThrowProps) {
           </div>
           <button
             onClick={resetGame}
-            className="px-2.5 py-1 bg-neutral-800 hover:bg-neutral-700 text-xs font-bold rounded-lg border border-neutral-700 text-neutral-300"
+            className="px-2.5 py-1 bg-neutral-800 hover:bg-neutral-700 text-xs font-bold rounded-lg border border-neutral-700 text-neutral-300 cursor-pointer"
           >
             Reset
           </button>
+          {isMobile && (
+            <button
+              onClick={() => setShowMobileLeaderboard(true)}
+              className="px-2.5 py-1 bg-[#f4b400] text-black border border-white hover:bg-yellow-400 font-bold text-xs rounded-lg shadow-sm active:scale-95 flex items-center gap-1 cursor-pointer font-sans"
+              title="Open Leaderboard"
+            >
+              <span>🏆</span>
+              <span className="text-[10px] font-black">RANK</span>
+            </button>
+          )}
         </div>
       </header>
 
-      {/* Main Canvas Area */}
-      <div
-        ref={containerRef}
-        className="flex-1 w-full relative overflow-hidden flex items-center justify-center cursor-pointer touch-none"
-        onPointerDown={(e) => {
-          if (e.button === 0) {
-            e.preventDefault();
-            handleThrow();
-          }
-        }}
-      >
-        <canvas
-          ref={canvasRef}
-          className="w-full h-full block cursor-pointer touch-none"
-        />
+      {/* Main Game & Leaderboard Layout */}
+      <div className="flex-1 w-full relative overflow-hidden flex flex-row min-h-0">
+        {/* Main Canvas Area */}
+        <div
+          ref={containerRef}
+          className="flex-1 h-full relative overflow-hidden flex items-center justify-center cursor-pointer touch-none min-w-0"
+          onPointerDown={handlePointerDown}
+          onPointerUp={handlePointerUp}
+          onPointerCancel={handlePointerCancel}
+        >
+          <canvas
+            ref={canvasRef}
+            className="w-full h-full block cursor-pointer touch-none pointer-events-none"
+          />
 
-        {/* Left Knives Supply Indicator */}
-        <div className="absolute left-4 bottom-8 flex flex-col-reverse gap-1.5 z-10 pointer-events-none">
-          {Array.from({ length: knivesLeft }).map((_, i) => (
-            <div key={i} className="flex items-center gap-1.5">
-              <span className="text-xs">🗡️</span>
+          {/* Left Knives Supply Indicator */}
+          <div className="absolute left-4 bottom-8 flex flex-col-reverse gap-1.5 z-10 pointer-events-none">
+            {Array.from({ length: knivesLeft }).map((_, i) => (
+              <div key={i} className="flex items-center gap-1.5">
+                <span className="text-xs">🗡️</span>
+              </div>
+            ))}
+          </div>
+
+          {/* Stage Clear Banner */}
+          {stageCleared && (
+            <div className="absolute inset-0 flex items-center justify-center bg-black/60 backdrop-blur-sm z-20 pointer-events-none animate-fade-in">
+              <div className="text-center">
+                <span className="text-3xl sm:text-4xl font-black text-emerald-400 tracking-wider uppercase block animate-bounce">
+                  STAGE CLEARED!
+                </span>
+                <span className="text-xs sm:text-sm text-neutral-300 font-mono">Advancing to Stage {stage + 1}...</span>
+              </div>
             </div>
-          ))}
+          )}
+
+          {/* Game Over Modal */}
+          {isGameOver && (
+            <div
+              className="absolute inset-0 flex items-center justify-center bg-black/85 backdrop-blur-sm z-30 p-4 animate-fade-in"
+              onPointerDown={e => e.stopPropagation()}
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="bg-neutral-900 border border-neutral-800 p-6 sm:p-8 rounded-2xl max-w-sm w-full text-center shadow-2xl">
+                <div className="text-4xl mb-2">💥🗡️</div>
+                <h2 className="text-2xl font-black text-rose-500 mb-1">KNIFE DEFLECTED!</h2>
+                <p className="text-sm text-neutral-400 mb-4">
+                  You struck an existing blade on the rotating log.
+                </p>
+                <div className="bg-neutral-950 p-4 rounded-xl border border-neutral-800 mb-6 flex justify-around font-mono">
+                  <div>
+                    <span className="text-xs text-neutral-400 uppercase font-semibold block">Score</span>
+                    <span className="text-xl font-black text-rose-400">{score}</span>
+                  </div>
+                  <div>
+                    <span className="text-xs text-neutral-400 uppercase font-semibold block">Stage</span>
+                    <span className="text-xl font-black text-white">{stage}</span>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={resetGame}
+                    className="flex-1 py-3 bg-rose-500 hover:bg-rose-400 text-white font-black text-sm tracking-wider uppercase rounded-xl transition-all shadow-lg active:scale-95 cursor-pointer"
+                  >
+                    Try Again
+                  </button>
+                  {isMobile && (
+                    <button
+                      onClick={() => setShowMobileLeaderboard(true)}
+                      className="px-4 py-3 bg-[#f4b400] hover:bg-yellow-400 text-black font-black text-sm uppercase rounded-xl transition-all shadow-lg active:scale-95 cursor-pointer flex items-center justify-center gap-1"
+                      title="View Leaderboard"
+                    >
+                      <span>🏆</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
-        {/* Stage Clear Banner */}
-        {stageCleared && (
-          <div className="absolute inset-0 flex items-center justify-center bg-black/60 backdrop-blur-sm z-20 pointer-events-none animate-fade-in">
-            <div className="text-center">
-              <span className="text-3xl sm:text-4xl font-black text-emerald-400 tracking-wider uppercase block animate-bounce">
-                STAGE CLEARED!
-              </span>
-              <span className="text-xs sm:text-sm text-neutral-300 font-mono">Advancing to Stage {stage + 1}...</span>
-            </div>
-          </div>
-        )}
-
-        {/* Game Over Modal */}
-        {isGameOver && (
+        {/* Desktop Leaderboard Column (Collapsible, exact same design as Taco Typer) */}
+        {!isMobile && (
           <div
-            className="absolute inset-0 flex items-center justify-center bg-black/85 backdrop-blur-sm z-30 p-4 animate-fade-in"
+            className={`h-full z-[120] transition-all duration-300 ease-in-out shrink-0 relative ${
+              isLeaderboardCollapsed
+                ? 'w-[38px] border-l-2 border-white/80 bg-[#0a0a0a] flex flex-col items-center py-2 cursor-pointer hover:bg-neutral-900 group select-none shadow-[-5px_0_15px_rgba(0,0,0,0.5)]'
+                : 'w-[280px] sm:w-[300px] border-l-4 border-white bg-[#0a0a0a] shadow-[-10px_0_30px_rgba(0,0,0,0.8)]'
+            }`}
             onPointerDown={e => e.stopPropagation()}
             onClick={e => e.stopPropagation()}
           >
-            <div className="bg-neutral-900 border border-neutral-800 p-6 sm:p-8 rounded-2xl max-w-sm w-full text-center shadow-2xl">
-              <div className="text-4xl mb-2">💥🗡️</div>
-              <h2 className="text-2xl font-black text-rose-500 mb-1">KNIFE DEFLECTED!</h2>
-              <p className="text-sm text-neutral-400 mb-4">
-                You struck an existing blade on the rotating log.
-              </p>
-              <div className="bg-neutral-950 p-4 rounded-xl border border-neutral-800 mb-6 flex justify-around font-mono">
-                <div>
-                  <span className="text-xs text-neutral-400 uppercase font-semibold block">Score</span>
-                  <span className="text-xl font-black text-rose-400">{score}</span>
+            {isLeaderboardCollapsed ? (
+              <div
+                className="w-full h-full flex flex-col items-center justify-between py-3"
+                onClick={() => {
+                  setIsLeaderboardCollapsed(false);
+                  localStorage.setItem('knife_leaderboard_collapsed', 'false');
+                }}
+                title="Expand Leaderboard"
+              >
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsLeaderboardCollapsed(false);
+                    localStorage.setItem('knife_leaderboard_collapsed', 'false');
+                  }}
+                  className="p-1 rounded bg-neutral-800 hover:bg-neutral-700 text-white border border-neutral-600 text-xs font-bold cursor-pointer transition-colors shadow-sm"
+                  title="Expand Leaderboard"
+                >
+                  ◀
+                </button>
+                <div className="flex flex-col items-center gap-3 my-auto">
+                  <span className="text-sm">🏆</span>
+                  <span
+                    className="text-[9px] tracking-widest text-[#f4b400] font-bold uppercase select-none"
+                    style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}
+                  >
+                    LEADERBOARD
+                  </span>
                 </div>
-                <div>
-                  <span className="text-xs text-neutral-400 uppercase font-semibold block">Stage</span>
-                  <span className="text-xl font-black text-white">{stage}</span>
+                <div className="text-[10px] text-neutral-500 group-hover:text-white transition-colors">
+                  ◀
                 </div>
               </div>
-              <button
-                onClick={resetGame}
-                className="w-full py-3 bg-rose-500 hover:bg-rose-400 text-white font-black text-sm tracking-wider uppercase rounded-xl transition-all shadow-lg active:scale-95"
-              >
-                Try Again
-              </button>
-            </div>
+            ) : (
+              <div className="h-full w-full relative">
+                {/* Button at top-left corner of column to collapse */}
+                <button
+                  onClick={() => {
+                    setIsLeaderboardCollapsed(true);
+                    localStorage.setItem('knife_leaderboard_collapsed', 'true');
+                  }}
+                  className="absolute top-2 left-2 z-[140] w-6 h-6 bg-neutral-900 hover:bg-neutral-800 text-neutral-300 hover:text-white border border-neutral-700 rounded flex items-center justify-center text-xs font-bold cursor-pointer transition-colors shadow-md"
+                  title="Collapse Leaderboard"
+                >
+                  ▶
+                </button>
+                <LeaderboardWidget
+                  className="h-full border-none"
+                  allowedModes={['knife_flip']}
+                  defaultMode="knife_flip"
+                  customTitle="Top Throwers"
+                  scoreLabel="KNIVES"
+                  onCollapse={() => {
+                    setIsLeaderboardCollapsed(true);
+                    localStorage.setItem('knife_leaderboard_collapsed', 'true');
+                  }}
+                />
+              </div>
+            )}
           </div>
         )}
       </div>
+
+      {/* Mobile Leaderboard Popup Modal */}
+      {isMobile && showMobileLeaderboard && (
+        <div
+          className="fixed inset-0 z-[200] bg-black/80 backdrop-blur-xs flex items-center justify-center p-3 animate-fade-in"
+          onClick={() => setShowMobileLeaderboard(false)}
+          onPointerDown={e => e.stopPropagation()}
+        >
+          <div
+            className="w-full max-w-sm h-[85vh] max-h-[580px] flex flex-col bg-[#0a0a0a] border-4 border-white shadow-2xl relative"
+            onClick={e => e.stopPropagation()}
+          >
+            <LeaderboardWidget
+              className="h-full border-none"
+              allowedModes={['knife_flip']}
+              defaultMode="knife_flip"
+              customTitle="Top Throwers"
+              scoreLabel="KNIVES"
+              onClose={() => setShowMobileLeaderboard(false)}
+            />
+          </div>
+        </div>
+      )}
 
       <footer className="py-1 px-2 text-center text-[10px] text-neutral-500 border-t border-neutral-900 bg-neutral-950/60 shrink-0">
         Tap screen, click mouse, or press Spacebar to throw • Don't hit existing knives!

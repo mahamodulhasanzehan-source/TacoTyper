@@ -610,6 +610,59 @@ export const isAscendingMetric = (mode: string): boolean => {
     );
 };
 
+// Helper to identify guest player
+export const isGuestPlayer = (uid?: string | null, username?: string | null): boolean => {
+    if (!uid && !username) return true;
+    if (uid && (uid.startsWith('guest_') || uid.startsWith('guest#') || uid === 'guest')) return true;
+    if (username) {
+        const lower = username.toLowerCase().trim();
+        if (lower.startsWith('guest#') || lower.startsWith('guest_') || lower.startsWith('chef guest') || lower === 'guest' || lower === 'guest chef' || lower === 'player') {
+            return true;
+        }
+    }
+    return false;
+};
+
+// Helper to track unique user or guest number
+export const getUserTrackingKey = (uid?: string | null, username?: string | null): string => {
+    if (username && username.toLowerCase().trim().startsWith('guest#')) {
+        return username.toLowerCase().trim();
+    }
+    if (uid) return uid.toLowerCase().trim();
+    if (username) return username.toLowerCase().trim();
+    return 'unknown_player';
+};
+
+// Filter entries so that signed-in users have at most 3 entries and specific guests have at most 1 entry
+export const filterLeaderboardEntries = (entries: LeaderboardEntry[], isTimeBased: boolean, maxListLimit: number = 25): LeaderboardEntry[] => {
+    // Sort all candidate entries by best score/time first
+    const sorted = [...entries].sort((a, b) => {
+        const valA = a.sortValue ?? (isTimeBased ? Infinity : -Infinity);
+        const valB = b.sortValue ?? (isTimeBased ? Infinity : -Infinity);
+        return isTimeBased ? valA - valB : valB - valA;
+    });
+
+    const userCounts = new Map<string, number>();
+    const filtered: LeaderboardEntry[] = [];
+
+    for (const entry of sorted) {
+        const isGuest = isGuestPlayer(entry.uid, entry.username);
+        const maxAllowed = isGuest ? 1 : 3;
+        const key = getUserTrackingKey(entry.uid, entry.username);
+        const count = userCounts.get(key) || 0;
+
+        if (count < maxAllowed) {
+            filtered.push(entry);
+            userCounts.set(key, count + 1);
+            if (filtered.length >= maxListLimit) {
+                break;
+            }
+        }
+    }
+
+    return filtered;
+};
+
 export const saveLeaderboardScore = async (
     user: User, 
     username: string, 
@@ -630,30 +683,47 @@ export const saveLeaderboardScore = async (
         sortValue = score;
     }
 
+    const safeUid = user?.uid || localStorage.getItem('taco_guest_uid') || 'guest_' + Math.random().toString(36).substring(2, 9);
+    const safeUsername = username || user?.displayName || localStorage.getItem('taco_guest_name') || 'Player';
+    const isGuest = isGuestPlayer(safeUid, safeUsername) || user?.isAnonymous;
+    const maxAllowedForUser = isGuest ? 1 : 3;
+
+    // 1. Immediately cache locally with user limits so plays always appear immediately
     try {
-        const localLB = JSON.parse(localStorage.getItem(`lb_${mode}`) || '[]');
-        localLB.push({
-            id: 'local_' + Date.now(),
-            uid: user.uid,
-            username: username,
+        const localLB: LeaderboardEntry[] = JSON.parse(localStorage.getItem(`lb_${mode}`) || '[]');
+        const newEntry: LeaderboardEntry = {
+            id: 'local_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
+            uid: safeUid,
+            username: safeUsername,
             score: score,
             title: title,
             stats: stats,
+            timestamp: Date.now(),
             mode: mode,
             levelReached: stats.levelReached,
             sortValue: sortValue,
             accuracy: extra?.accuracy || null
-        });
-        localLB.sort((a: any, b: any) => isTimeBased ? a.sortValue - b.sortValue : b.sortValue - a.sortValue);
-        localStorage.setItem(`lb_${mode}`, JSON.stringify(localLB.slice(0, 10)));
-    } catch {}
+        };
+
+        localLB.push(newEntry);
+        const filtered = filterLeaderboardEntries(localLB, isTimeBased, 25);
+        localStorage.setItem(`lb_${mode}`, JSON.stringify(filtered));
+    } catch (err) {
+        console.warn("Local leaderboard update warning:", err);
+    }
+
+    // Trigger immediate UI refresh for any mounted LeaderboardWidget
+    if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('leaderboard_updated', { detail: { mode } }));
+    }
 
     if (!dbExport) return;
 
+    // 2. Persist to Firestore in an isolated try-catch
     try {
         await addDoc(collection(dbExport, "leaderboard"), {
-            uid: user.uid,
-            username: username,
+            uid: safeUid,
+            username: safeUsername,
             score: score,
             title: title,
             stats: stats,
@@ -664,23 +734,39 @@ export const saveLeaderboardScore = async (
             accuracy: extra?.accuracy || null
         });
 
+        if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('leaderboard_updated', { detail: { mode } }));
+        }
+    } catch (e) {
+        console.warn("Firestore save score warning (playing in guest/local mode):", e);
+    }
+
+    // 3. Clean up excess user records in Firestore: max 3 for signed-in, max 1 for guest
+    try {
         const lbRef = collection(dbExport, "leaderboard");
         const q = query(
             lbRef,
-            where("uid", "==", user.uid),
-            where("mode", "==", mode),
-            orderBy("sortValue", isTimeBased ? "asc" : "desc")
+            where("uid", "==", safeUid),
+            where("mode", "==", mode)
         );
         const snapshot = await getDocs(q);
         
-        if (snapshot.docs.length > 3) {
-            const docsToDelete = snapshot.docs.slice(3);
+        if (snapshot.docs.length > maxAllowedForUser) {
+            const docs = [...snapshot.docs];
+            docs.sort((a, b) => {
+                const valA = a.data().sortValue ?? (isTimeBased ? Infinity : -Infinity);
+                const valB = b.data().sortValue ?? (isTimeBased ? Infinity : -Infinity);
+                return isTimeBased ? valA - valB : valB - valA;
+            });
+            const docsToDelete = docs.slice(maxAllowedForUser);
             for (const docSnap of docsToDelete) {
-                await deleteDoc(doc(dbExport, "leaderboard", docSnap.id));
+                try {
+                    await deleteDoc(doc(dbExport, "leaderboard", docSnap.id));
+                } catch {}
             }
         }
     } catch (e) {
-        console.error("Error enforcing max 3 entries limit", e);
+        // Non-fatal cleanup notice
     }
 };
 
@@ -697,8 +783,7 @@ export const getLeaderboard = async (mode: string = 'competitive'): Promise<Lead
     const getLocal = (): LeaderboardEntry[] => {
         try {
             const list = JSON.parse(localStorage.getItem(`lb_${mode}`) || '[]');
-            list.sort((a: any, b: any) => isTimeBased ? a.sortValue - b.sortValue : b.sortValue - a.sortValue);
-            return list.slice(0, 10);
+            return filterLeaderboardEntries(list, isTimeBased, 25);
         } catch {
             return [];
         }
@@ -708,28 +793,46 @@ export const getLeaderboard = async (mode: string = 'competitive'): Promise<Lead
 
     try {
         const lbRef = collection(dbExport, "leaderboard");
-        const q = query(
-            lbRef, 
-            where("mode", "==", mode),
-            orderBy("sortValue", isTimeBased ? "asc" : "desc"),
-            limit(20)
-        );
+        let snapshot;
+        try {
+            const q = query(
+                lbRef, 
+                where("mode", "==", mode),
+                orderBy("sortValue", isTimeBased ? "asc" : "desc"),
+                limit(100)
+            );
+            snapshot = await getDocs(q);
+        } catch {
+            // Fallback without orderBy to handle missing Firestore composite indexes gracefully
+            const fallbackQ = query(
+                lbRef,
+                where("mode", "==", mode),
+                limit(100)
+            );
+            snapshot = await getDocs(fallbackQ);
+        }
 
-        const snapshot = await getDocs(q);
-        const entries: LeaderboardEntry[] = [];
-        const seenUsers = new Set();
+        const candidateEntries: LeaderboardEntry[] = [];
+        const seenIds = new Set<string>();
         
         snapshot.forEach(d => {
             const data = d.data() as any;
-            if (!seenUsers.has(data.uid)) {
-                entries.push({ id: d.id, ...data } as any);
-                seenUsers.add(data.uid);
+            candidateEntries.push({ id: d.id, ...data } as LeaderboardEntry);
+            seenIds.add(d.id);
+        });
+
+        // Merge with local scores so offline / immediate player scores appear
+        const local = getLocal();
+        local.forEach(loc => {
+            if (!seenIds.has(loc.id)) {
+                candidateEntries.push(loc);
+                seenIds.add(loc.id);
             }
         });
 
-        return entries.slice(0, 10);
+        return filterLeaderboardEntries(candidateEntries, isTimeBased, 25);
     } catch (e) {
-        console.error("Error fetching leaderboard", e);
+        console.warn("Notice fetching leaderboard, using local cache:", e);
         return getLocal();
     }
 };

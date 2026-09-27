@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { incrementGamePlays } from '../services/firebase';
+import { incrementGamePlays, saveLeaderboardScore } from '../services/firebase';
+import { isMobileDevice } from '../utils/device';
+import { GameLeaderboardSidebar, MobileLeaderboardButton } from './GameLeaderboardSidebar';
 
 interface SimonGameProps {
   onBackToHub: () => void;
@@ -60,7 +62,7 @@ const COLOR_DEFS: Record<SimonColor, ColorDef> = {
 
 const COLOR_KEYS: SimonColor[] = ['green', 'red', 'yellow', 'blue'];
 
-export default function SimonGame({ onBackToHub }: SimonGameProps) {
+export default function SimonGame({ onBackToHub, user, username }: SimonGameProps) {
   const [sequence, setSequence] = useState<SimonColor[]>([]);
   const [playerStep, setPlayerStep] = useState(0);
   const [activeButton, setActiveButton] = useState<SimonColor | null>(null);
@@ -71,9 +73,31 @@ export default function SimonGame({ onBackToHub }: SimonGameProps) {
   });
   const [statusText, setStatusText] = useState('PRESS START');
   const [soundEnabled, setSoundEnabled] = useState(true);
+  const [isMobile, setIsMobile] = useState(false);
+  const [showMobileLeaderboard, setShowMobileLeaderboard] = useState(false);
+
+  useEffect(() => {
+    setIsMobile(isMobileDevice());
+    const handleResize = () => setIsMobile(isMobileDevice());
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const audioCtxRef = useRef<AudioContext | null>(null);
   const timeoutsRef = useRef<NodeJS.Timeout[]>([]);
+
+  useEffect(() => {
+    if (gameState === 'gameover' && score > 0) {
+      saveLeaderboardScore(
+        user,
+        username || user?.displayName || 'Sequence Prodigy',
+        score,
+        'Sequence Master',
+        { mistakes: 0, timeTaken: 0, ingredientsMissed: 0, rottenWordsTyped: 0, totalScore: score, levelReached: score },
+        'simon'
+      );
+    }
+  }, [gameState, score, user, username]);
 
   useEffect(() => {
     incrementGamePlays('simon');
@@ -290,11 +314,16 @@ export default function SimonGame({ onBackToHub }: SimonGameProps) {
             <div className="text-[10px] sm:text-xs text-neutral-400 uppercase font-semibold">High</div>
             <div className="text-sm sm:text-lg font-black text-amber-400 font-mono">{highScore}</div>
           </div>
+          {isMobile && (
+            <MobileLeaderboardButton onClick={() => setShowMobileLeaderboard(true)} />
+          )}
         </div>
       </header>
 
-      {/* Main Console Play Area */}
-      <div className="flex-1 flex flex-col items-center justify-center p-3 sm:p-6 min-h-0 relative">
+      {/* Main Layout Area */}
+      <div className="flex-1 w-full relative overflow-hidden flex flex-row min-h-0">
+        {/* Main Console Play Area */}
+        <div className="flex-1 flex flex-col items-center justify-center p-3 sm:p-6 min-h-0 min-w-0 relative">
         {/* Status Indicator Banner */}
         <div className="mb-3 sm:mb-5 px-5 py-1.5 rounded-full bg-[#111522] border border-neutral-700/80 shadow-[0_4px_16px_rgba(0,0,0,0.6)] text-center flex items-center gap-2">
           <span className={`w-2 h-2 rounded-full ${
@@ -456,6 +485,17 @@ export default function SimonGame({ onBackToHub }: SimonGameProps) {
         <p className="mt-4 text-[11px] sm:text-xs text-neutral-400 text-center max-w-sm">
           Listen to the sequence and watch the pads ignite. Repeat the pattern perfectly as each round adds another step!
         </p>
+        </div>
+
+        <GameLeaderboardSidebar
+          mode="simon"
+          title="Sequence Masters"
+          scoreLabel="STEPS"
+          storageKey="simon_leaderboard_collapsed"
+          isMobile={isMobile}
+          showMobileLeaderboard={showMobileLeaderboard}
+          onCloseMobileLeaderboard={() => setShowMobileLeaderboard(false)}
+        />
       </div>
     </div>
   );

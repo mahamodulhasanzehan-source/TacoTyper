@@ -90,6 +90,11 @@ export default function TacoGame({
   const [isMobile, setIsMobile] = useState(false);
   const hiddenInputRef = useRef<HTMLInputElement>(null);
 
+  const [isLeaderboardCollapsed, setIsLeaderboardCollapsed] = useState(() => {
+    return localStorage.getItem('taco_leaderboard_collapsed') === 'true';
+  });
+  const [showMobileLeaderboard, setShowMobileLeaderboard] = useState(false);
+
   const [speedTestText, setSpeedTestText] = useState('');
   const [speedTestResult, setSpeedTestResult] = useState<{wpm: number, cpm: number, accuracy: number, comment: string} | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -160,6 +165,7 @@ export default function TacoGame({
           
           setGameDimensions({ width: currentWidth, height: currentHeight });
           stateRef.current.gameHeight = currentHeight;
+          setIsMobile(isMobileDevice());
       };
       
       window.addEventListener('resize', handleResize);
@@ -900,6 +906,10 @@ export default function TacoGame({
       }
   };
 
+  const leaderboardOffset = !isMobile && (screen === 'start' || screen === 'game-over') 
+      ? (isLeaderboardCollapsed ? 38 : 300) 
+      : 0;
+
   return (
     <div 
         className="flex justify-center items-center w-full bg-black font-['Press_Start_2P'] text-white overflow-hidden relative"
@@ -939,9 +949,104 @@ export default function TacoGame({
                  </div>
             )}
 
+            {/* Desktop Leaderboard Column (Collapsible) */}
             {!isMobile && (screen === 'start' || screen === 'game-over') && (
-                <div className="absolute top-0 right-0 h-full w-[300px] z-[120] border-l-4 border-white bg-[#0a0a0a]">
-                    <LeaderboardWidget className="h-full border-none" allowedModes={['competitive', 'universal', 'speed']} defaultMode={gameMode === 'speed-test' ? 'speed' : 'competitive'} />
+                <div 
+                    className={`absolute top-0 right-0 h-full z-[120] transition-all duration-300 ease-in-out ${
+                        isLeaderboardCollapsed 
+                            ? 'w-[38px] border-l-2 border-white bg-[#0a0a0a] flex flex-col items-center py-2 cursor-pointer hover:bg-neutral-900 group select-none shadow-[-5px_0_15px_rgba(0,0,0,0.5)]' 
+                            : 'w-[300px] border-l-4 border-white bg-[#0a0a0a] shadow-[-10px_0_30px_rgba(0,0,0,0.8)]'
+                    }`}
+                >
+                    {isLeaderboardCollapsed ? (
+                        <div 
+                            className="w-full h-full flex flex-col items-center justify-between py-3"
+                            onClick={() => {
+                                setIsLeaderboardCollapsed(false);
+                                localStorage.setItem('taco_leaderboard_collapsed', 'false');
+                            }}
+                            title="Expand Leaderboard"
+                        >
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setIsLeaderboardCollapsed(false);
+                                    localStorage.setItem('taco_leaderboard_collapsed', 'false');
+                                }}
+                                className="p-1 rounded bg-neutral-800 hover:bg-neutral-700 text-white border border-neutral-600 text-xs font-bold cursor-pointer transition-colors shadow-sm"
+                                title="Expand Leaderboard"
+                            >
+                                ◀
+                            </button>
+                            <div className="flex flex-col items-center gap-3 my-auto">
+                                <span className="text-sm">🏆</span>
+                                <span 
+                                    className="text-[9px] tracking-widest text-[#f4b400] font-bold uppercase select-none"
+                                    style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}
+                                >
+                                    LEADERBOARD
+                                </span>
+                            </div>
+                            <div className="text-[10px] text-neutral-500 group-hover:text-white transition-colors">
+                                ◀
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="h-full w-full relative">
+                            {/* Button at top-left corner of column to collapse */}
+                            <button
+                                onClick={() => {
+                                    setIsLeaderboardCollapsed(true);
+                                    localStorage.setItem('taco_leaderboard_collapsed', 'true');
+                                }}
+                                className="absolute top-2 left-2 z-[140] w-6 h-6 bg-neutral-900 hover:bg-neutral-800 text-neutral-300 hover:text-white border border-neutral-700 rounded flex items-center justify-center text-xs font-bold cursor-pointer transition-colors shadow-md"
+                                title="Collapse Leaderboard"
+                            >
+                                ▶
+                            </button>
+                            <LeaderboardWidget 
+                                className="h-full border-none" 
+                                allowedModes={['competitive', 'universal', 'speed']} 
+                                defaultMode={gameMode === 'speed-test' ? 'speed' : 'competitive'} 
+                                onCollapse={() => {
+                                    setIsLeaderboardCollapsed(true);
+                                    localStorage.setItem('taco_leaderboard_collapsed', 'true');
+                                }}
+                            />
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* Mobile Leaderboard Top-Right Button */}
+            {isMobile && (screen === 'start' || screen === 'game-over') && (
+                <button
+                    onClick={() => setShowMobileLeaderboard(true)}
+                    className="absolute top-4 right-4 z-[110] px-2.5 py-1.5 bg-[#f4b400] text-black border-2 border-white hover:bg-yellow-400 font-bold text-xs shadow-md active:scale-95 flex items-center gap-1 cursor-pointer font-['Press_Start_2P']"
+                    title="Open Leaderboard"
+                >
+                    <span>🏆</span>
+                    <span className="text-[9px]">RANK</span>
+                </button>
+            )}
+
+            {/* Mobile Leaderboard Popup Modal */}
+            {isMobile && showMobileLeaderboard && (
+                <div 
+                    className="fixed inset-0 z-[200] bg-black/80 backdrop-blur-xs flex items-center justify-center p-3 animate-fade-in"
+                    onClick={() => setShowMobileLeaderboard(false)}
+                >
+                    <div 
+                        className="w-full max-w-sm h-[85vh] max-h-[580px] flex flex-col bg-[#0a0a0a] border-4 border-white shadow-2xl relative"
+                        onClick={e => e.stopPropagation()}
+                    >
+                        <LeaderboardWidget 
+                            className="h-full border-none" 
+                            allowedModes={['competitive', 'universal', 'speed']} 
+                            defaultMode={gameMode === 'speed-test' ? 'speed' : 'competitive'} 
+                            onClose={() => setShowMobileLeaderboard(false)}
+                        />
+                    </div>
                 </div>
             )}
 
@@ -1020,6 +1125,8 @@ export default function TacoGame({
                     username={customUsername}
                     onUpdateUsername={onUpdateUsername || handleUsernameSubmit}
                     onLogout={onLogout}
+                    leaderboardOffset={leaderboardOffset}
+                    isMobile={isMobile}
                 />
             )}
 
@@ -1086,6 +1193,8 @@ export default function TacoGame({
                     aiScore={finalAiScore}
                     isCalculating={isCalculatingScore}
                     isTimeScore={playStyle === 'competitive'}
+                    leaderboardOffset={leaderboardOffset}
+                    isMobile={isMobile}
                 />
             )}
 

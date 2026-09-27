@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { audioService } from '../services/audioService';
 import { incrementGamePlays, saveLeaderboardScore } from '../services/firebase';
+import { isMobileDevice } from '../utils/device';
+import { GameLeaderboardSidebar, MobileLeaderboardButton } from './GameLeaderboardSidebar';
 
 interface BrickBreakerProps {
   onBackToHub: () => void;
@@ -66,6 +68,15 @@ export default function BrickBreakerGame({ onBackToHub, user, username }: BrickB
   const [lives, setLives] = useState(3);
   const [gameState, setGameState] = useState<'ready' | 'playing' | 'gameover' | 'levelwin'>('ready');
   const [activeBuffs, setActiveBuffs] = useState<string[]>([]);
+  const [isMobile, setIsMobile] = useState(false);
+  const [showMobileLeaderboard, setShowMobileLeaderboard] = useState(false);
+
+  useEffect(() => {
+    setIsMobile(isMobileDevice());
+    const handleResize = () => setIsMobile(isMobileDevice());
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   useEffect(() => {
     if (gameState === 'gameover' && scoreRef.current > 0) {
@@ -918,6 +929,9 @@ export default function BrickBreakerGame({ onBackToHub, user, username }: BrickB
             <div className="text-[10px] text-neutral-400 uppercase font-semibold">Score</div>
             <div className="text-xs sm:text-sm font-black text-amber-400 font-mono">{score}</div>
           </div>
+          {isMobile && (
+            <MobileLeaderboardButton onClick={() => setShowMobileLeaderboard(true)} />
+          )}
         </div>
       </header>
 
@@ -933,9 +947,11 @@ export default function BrickBreakerGame({ onBackToHub, user, username }: BrickB
         </div>
       )}
 
-      {/* Main Play Area with Responsive Full Sizing */}
-      <div className="flex-1 flex flex-col items-center justify-center p-1 sm:p-2 md:p-3 min-h-0 relative w-full h-full overflow-hidden">
-        <div className="relative w-full h-full max-w-[min(98vw,calc((100vh-120px)*1.333))] max-h-[calc(100vh-120px)] aspect-[4/3] rounded-xl overflow-hidden shadow-2xl border border-neutral-800 bg-[#08080c] flex items-center justify-center">
+      {/* Main Layout Area */}
+      <div className="flex-1 w-full relative overflow-hidden flex flex-row min-h-0">
+        {/* Main Play Area with Responsive Full Sizing */}
+        <div className="flex-1 flex flex-col items-center justify-center p-1 sm:p-2 md:p-3 min-h-0 min-w-0 relative w-full h-full overflow-hidden">
+          <div className="relative w-full h-full max-w-[min(98vw,calc((100vh-120px)*1.333))] max-h-[calc(100vh-120px)] aspect-[4/3] rounded-xl overflow-hidden shadow-2xl border border-neutral-800 bg-[#08080c] flex items-center justify-center">
           <canvas
             ref={canvasRef}
             width={CANVAS_WIDTH}
@@ -1022,6 +1038,17 @@ export default function BrickBreakerGame({ onBackToHub, user, username }: BrickB
           <span>🧲 Sticky</span>
           <span>❤️ +Life</span>
         </div>
+        </div>
+
+        <GameLeaderboardSidebar
+          mode="brick_breaker"
+          title="Brick Masters"
+          scoreLabel="PTS"
+          storageKey="brick_breaker_leaderboard_collapsed"
+          isMobile={isMobile}
+          showMobileLeaderboard={showMobileLeaderboard}
+          onCloseMobileLeaderboard={() => setShowMobileLeaderboard(false)}
+        />
       </div>
     </div>
   );

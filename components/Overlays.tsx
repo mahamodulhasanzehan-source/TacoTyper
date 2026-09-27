@@ -9,6 +9,8 @@ import { LoadingScreen } from './LoadingScreen';
 
 interface OverlayProps {
   children: React.ReactNode;
+  className?: string;
+  style?: React.CSSProperties;
 }
 
 export interface ExitConfirmProps {
@@ -48,6 +50,8 @@ export interface GameOverProps {
     aiScore?: number;
     isCalculating?: boolean;
     isTimeScore?: boolean;
+    leaderboardOffset?: number;
+    isMobile?: boolean;
 }
 
 export interface SpeedResultProps {
@@ -100,12 +104,14 @@ export interface StartScreenProps {
     username: string | null;
     onUpdateUsername: (name: string) => void;
     onLogout: () => void;
+    leaderboardOffset?: number;
+    isMobile?: boolean;
 }
 
-const Overlay: React.FC<OverlayProps> = ({ children }) => (
+const Overlay: React.FC<OverlayProps> = ({ children, className = '', style }) => (
   <div 
-    className="absolute top-0 left-0 w-full h-full bg-black/90 text-white flex flex-col justify-center items-center z-[100] animate-fade-in p-4 overflow-y-auto"
-    style={{ animation: 'fadeIn 0.5s ease-out forwards' }}
+    className={`absolute top-0 left-0 w-full h-full bg-black/90 text-white flex flex-col justify-center items-center z-[100] animate-fade-in p-4 overflow-y-auto transition-all duration-300 ${className}`}
+    style={{ animation: 'fadeIn 0.5s ease-out forwards', ...style }}
   >
     {children}
   </div>
@@ -142,6 +148,7 @@ interface LeaderboardWidgetProps {
     customTitle?: string;
     scoreLabel?: string;
     onClose?: () => void;
+    onCollapse?: () => void;
 }
 
 export const LeaderboardWidget: React.FC<LeaderboardWidgetProps> = ({ 
@@ -151,7 +158,8 @@ export const LeaderboardWidget: React.FC<LeaderboardWidgetProps> = ({
     tabLabels,
     customTitle,
     scoreLabel: customScoreLabel,
-    onClose
+    onClose,
+    onCollapse
 }) => {
     const modes = allowedModes || ['competitive', 'infinite', 'universal', 'speed'];
     const initialMode = defaultMode && modes.includes(defaultMode) ? defaultMode : modes[0];
@@ -177,6 +185,15 @@ export const LeaderboardWidget: React.FC<LeaderboardWidgetProps> = ({
 
     useEffect(() => {
         fetchLeaderboard();
+
+        const handleUpdate = (e: any) => {
+            if (!e.detail || !e.detail.mode || e.detail.mode === mode) {
+                fetchLeaderboard();
+            }
+        };
+
+        window.addEventListener('leaderboard_updated', handleUpdate);
+        return () => window.removeEventListener('leaderboard_updated', handleUpdate);
     }, [mode]);
 
     const handleDelete = async (id: string) => {
@@ -192,9 +209,6 @@ export const LeaderboardWidget: React.FC<LeaderboardWidgetProps> = ({
         }
         if (mode.startsWith('finger_sumo')) {
             return `${typeof entry.score === 'number' ? entry.score.toFixed(1) : entry.score}`;
-        }
-        if (mode === 'color_memory') {
-            return `${typeof entry.score === 'number' ? entry.score.toFixed(2) : entry.score}`;
         }
         if (isAscendingMetric(mode)) {
             if (entry.score >= 1000) {
@@ -218,8 +232,8 @@ export const LeaderboardWidget: React.FC<LeaderboardWidgetProps> = ({
         if (mode === 'iq-test' || mode === 'iq_test') return 'IQ';
         if (mode.includes('quick_draw') && mode.endsWith('-time')) return 'MS';
         if (mode.startsWith('finger_sumo')) return 'CPS';
-        if (mode === 'color_memory') return 'ACC';
-        if (mode === 'knife_flip') return 'BLADES';
+        if (mode === 'color_memory') return 'SCORE';
+        if (mode === 'knife_flip') return 'KNIVES';
         if (mode === 'snake') return 'LEN';
         if (mode === 'tower_stacker') return 'FLOORS';
         if (mode === 'simon') return 'STEPS';
@@ -252,14 +266,23 @@ export const LeaderboardWidget: React.FC<LeaderboardWidgetProps> = ({
 
     return (
         <RandomReveal distance={200} className={`flex flex-col bg-[#0a0a0a] border-l-4 border-white p-2 md:p-4 z-[150] shadow-[-10px_0_30px_rgba(0,0,0,0.8)] ${className}`}>
-            <div className="flex items-center justify-between border-b-2 border-[#333] pb-2 mt-2 mb-2">
+            <div className="flex items-center justify-between border-b-2 border-[#333] pb-2 mt-2 mb-2 relative">
+                {onCollapse && (
+                    <button 
+                        onClick={onCollapse}
+                        className="text-white/80 hover:text-white p-1 px-1.5 rounded bg-neutral-900 hover:bg-neutral-800 border border-neutral-700 transition-colors text-xs font-bold leading-none cursor-pointer mr-1.5 shadow-sm"
+                        title="Collapse Leaderboard"
+                    >
+                        ▶
+                    </button>
+                )}
                 <h3 className="text-[#f4b400] text-[10px] md:text-xs uppercase tracking-widest flex-1 text-center font-bold">
                     <RandomText text={getTitle()} />
                 </h3>
                 {onClose && (
                     <button 
                         onClick={onClose}
-                        className="text-white/60 hover:text-white p-1 rounded hover:bg-neutral-800 transition-colors text-sm font-bold leading-none cursor-pointer"
+                        className="text-white/60 hover:text-white p-1 rounded hover:bg-neutral-800 transition-colors text-sm font-bold leading-none cursor-pointer ml-1.5"
                         title="Close Leaderboard"
                     >
                         ✕
@@ -333,7 +356,7 @@ export const LeaderboardWidget: React.FC<LeaderboardWidgetProps> = ({
                                 <span className="text-[8px] text-[#888] italic truncate max-w-[120px] md:max-w-[150px] block">
                                     "{entry.title}"
                                 </span>
-                                {mode === 'speed' && entry.accuracy !== undefined && (
+                                {mode === 'speed' && entry.accuracy != null && (
                                     <span className={`text-[7px] px-1 py-px rounded ml-1 shrink-0 ${entry.accuracy < 80 ? 'text-red-500 bg-red-900/20' : 'text-green-500 bg-green-900/20'}`}>
                                         {entry.accuracy}% ACC
                                     </span>
@@ -723,12 +746,17 @@ export const StartScreen: React.FC<StartScreenProps> = ({
     isGenerating, 
     username, 
     onUpdateUsername, 
-    onLogout 
+    onLogout,
+    leaderboardOffset = 0,
+    isMobile = false
 }) => {
     return (
-        <Overlay>
-            {/* Universal button positioned at top right */}
-            <div className="absolute top-4 right-4 z-20">
+        <Overlay style={{ paddingRight: !isMobile && leaderboardOffset > 0 ? `${leaderboardOffset}px` : undefined }}>
+            {/* Universal button positioned dynamically so it is never covered by the leaderboard */}
+            <div 
+                className="absolute top-4 z-20 transition-all duration-300"
+                style={{ right: isMobile ? '88px' : `${leaderboardOffset + 16}px` }}
+            >
                  <Button onClick={onUniversal} variant="secondary" className="text-xs md:text-sm shadow-md hover:scale-110">
                     Universal
                  </Button>
@@ -852,8 +880,20 @@ export const LevelCompleteScreen: React.FC<LevelCompleteProps> = ({ levelName, m
     </Overlay>
 );
 
-export const GameOverScreen: React.FC<GameOverProps> = ({ score, message, stats, onRestart, onHome, aiTitle, aiScore, isCalculating, isTimeScore }) => (
-    <Overlay>
+export const GameOverScreen: React.FC<GameOverProps> = ({ 
+    score, 
+    message, 
+    stats, 
+    onRestart, 
+    onHome, 
+    aiTitle, 
+    aiScore, 
+    isCalculating, 
+    isTimeScore,
+    leaderboardOffset = 0,
+    isMobile = false
+}) => (
+    <Overlay style={{ paddingRight: !isMobile && leaderboardOffset > 0 ? `${leaderboardOffset}px` : undefined }}>
         <div className="flex flex-col md:flex-row gap-4 max-w-4xl w-full items-center md:items-start justify-center p-2 sm:p-4">
              <RandomReveal className="bg-[#111] border-2 sm:border-4 border-white p-5 sm:p-8 text-center w-full max-w-md md:w-[400px] flex flex-col gap-3 sm:gap-4 relative mx-2">
                 {isCalculating ? (

@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { incrementGamePlays } from '../services/firebase';
+import { incrementGamePlays, saveLeaderboardScore } from '../services/firebase';
 import { audioService } from '../services/audioService';
+import { isMobileDevice } from '../utils/device';
+import { GameLeaderboardSidebar, MobileLeaderboardButton } from './GameLeaderboardSidebar';
 
 interface TowerStackerProps {
   onBackToHub: () => void;
@@ -35,7 +37,7 @@ const COLORS = [
   '#10b981', '#14b8a6'
 ];
 
-export default function TowerStackerGame({ onBackToHub }: TowerStackerProps) {
+export default function TowerStackerGame({ onBackToHub, user, username }: TowerStackerProps) {
   const [score, setScore] = useState(0);
   const [highScore, setHighScore] = useState(() => {
     return parseInt(localStorage.getItem('tower_stacker_high') || '0', 10);
@@ -43,6 +45,15 @@ export default function TowerStackerGame({ onBackToHub }: TowerStackerProps) {
   const [isGameOver, setIsGameOver] = useState(false);
   const [combo, setCombo] = useState(0);
   const [comboText, setComboText] = useState<string | null>(null);
+  const [isMobile, setIsMobile] = useState(false);
+  const [showMobileLeaderboard, setShowMobileLeaderboard] = useState(false);
+
+  useEffect(() => {
+    setIsMobile(isMobileDevice());
+    const handleResize = () => setIsMobile(isMobileDevice());
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const animRef = useRef<number | null>(null);
@@ -63,6 +74,19 @@ export default function TowerStackerGame({ onBackToHub }: TowerStackerProps) {
   useEffect(() => {
     incrementGamePlays('tower_stacker');
   }, []);
+
+  useEffect(() => {
+    if (isGameOver && score > 0) {
+      saveLeaderboardScore(
+        user,
+        username || user?.displayName || 'Tower Architect',
+        score,
+        'Master Architect',
+        { mistakes: 0, timeTaken: 0, ingredientsMissed: 0, rottenWordsTyped: 0, totalScore: score, levelReached: score },
+        'tower_stacker'
+      );
+    }
+  }, [isGameOver, score, user, username]);
 
   const initGame = useCallback(() => {
     const baseW = 160;
@@ -377,62 +401,78 @@ export default function TowerStackerGame({ onBackToHub }: TowerStackerProps) {
           </div>
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3 sm:gap-4">
           <div className="text-right">
             <span className="text-[10px] text-neutral-400 uppercase font-semibold block">FLOORS</span>
-            <span className="text-xl font-black text-cyan-400 font-mono">{score}</span>
+            <span className="text-lg sm:text-xl font-black text-cyan-400 font-mono">{score}</span>
           </div>
           <div className="text-right border-l border-neutral-800 pl-3">
             <span className="text-[10px] text-neutral-400 uppercase font-semibold block">RECORD</span>
-            <span className="text-xl font-black text-amber-400 font-mono">{highScore}</span>
+            <span className="text-lg sm:text-xl font-black text-amber-400 font-mono">{highScore}</span>
           </div>
+          {isMobile && (
+            <MobileLeaderboardButton onClick={() => setShowMobileLeaderboard(true)} />
+          )}
         </div>
       </header>
 
-      {/* Main Canvas Area */}
-      <div className="flex-1 flex flex-col items-center justify-center p-2 relative">
-        <canvas
-          ref={canvasRef}
-          width={400}
-          height={550}
-          className="rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.8)] border border-neutral-800 touch-none max-w-full max-h-full cursor-pointer"
-        />
+      {/* Main Container with Sidebar */}
+      <div className="flex-1 w-full relative overflow-hidden flex flex-row min-h-0">
+        {/* Main Canvas Area */}
+        <div className="flex-1 flex flex-col items-center justify-center p-2 relative min-w-0">
+          <canvas
+            ref={canvasRef}
+            width={400}
+            height={550}
+            className="rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.8)] border border-neutral-800 touch-none max-w-full max-h-full cursor-pointer"
+          />
 
-        {/* Combo / Perfect Announcement */}
-        {comboText && !isGameOver && (
-          <div className="absolute top-1/4 px-6 py-2 rounded-full bg-amber-500/20 border border-amber-400 text-amber-300 font-black text-sm tracking-widest uppercase animate-bounce shadow-2xl">
-            {comboText}
-          </div>
-        )}
-
-        {/* Game Over Modal */}
-        {isGameOver && (
-          <div className="absolute inset-0 flex items-center justify-center bg-black/80 backdrop-blur-sm z-30 p-4" onClick={e => e.stopPropagation()}>
-            <div className="bg-neutral-900 border border-neutral-800 p-8 rounded-2xl max-w-sm w-full text-center shadow-2xl">
-              <div className="text-5xl mb-2">🏢💥</div>
-              <h2 className="text-2xl font-black text-rose-400 mb-1">TOWER COLLAPSED!</h2>
-              <p className="text-sm text-neutral-400 mb-4">
-                The active floor completely missed the base.
-              </p>
-              <div className="bg-neutral-950 p-4 rounded-xl border border-neutral-800 mb-6 flex justify-around">
-                <div>
-                  <span className="text-[10px] text-neutral-400 uppercase font-semibold block">Floors Built</span>
-                  <span className="text-2xl font-black text-cyan-400">{score}</span>
-                </div>
-                <div>
-                  <span className="text-[10px] text-neutral-400 uppercase font-semibold block">Record Height</span>
-                  <span className="text-2xl font-black text-amber-400">{highScore}</span>
-                </div>
-              </div>
-              <button
-                onClick={initGame}
-                className="w-full py-3 bg-cyan-500 hover:bg-cyan-400 text-black font-black text-sm tracking-wider uppercase rounded-xl transition-all shadow-lg active:scale-95"
-              >
-                Build Again
-              </button>
+          {/* Combo / Perfect Announcement */}
+          {comboText && !isGameOver && (
+            <div className="absolute top-1/4 px-6 py-2 rounded-full bg-amber-500/20 border border-amber-400 text-amber-300 font-black text-sm tracking-widest uppercase animate-bounce shadow-2xl">
+              {comboText}
             </div>
-          </div>
-        )}
+          )}
+
+          {/* Game Over Modal */}
+          {isGameOver && (
+            <div className="absolute inset-0 flex items-center justify-center bg-black/80 backdrop-blur-sm z-30 p-4" onClick={e => e.stopPropagation()}>
+              <div className="bg-neutral-900 border border-neutral-800 p-8 rounded-2xl max-w-sm w-full text-center shadow-2xl">
+                <div className="text-5xl mb-2">🏢💥</div>
+                <h2 className="text-2xl font-black text-rose-400 mb-1">TOWER COLLAPSED!</h2>
+                <p className="text-sm text-neutral-400 mb-4">
+                  The active floor completely missed the base.
+                </p>
+                <div className="bg-neutral-950 p-4 rounded-xl border border-neutral-800 mb-6 flex justify-around">
+                  <div>
+                    <span className="text-[10px] text-neutral-400 uppercase font-semibold block">Floors Built</span>
+                    <span className="text-2xl font-black text-cyan-400">{score}</span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-neutral-400 uppercase font-semibold block">Record Height</span>
+                    <span className="text-2xl font-black text-amber-400">{highScore}</span>
+                  </div>
+                </div>
+                <button
+                  onClick={initGame}
+                  className="w-full py-3 bg-cyan-500 hover:bg-cyan-400 text-black font-black text-sm tracking-wider uppercase rounded-xl transition-all shadow-lg active:scale-95"
+                >
+                  Build Again
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <GameLeaderboardSidebar
+          mode="tower_stacker"
+          title="Tower Architects"
+          scoreLabel="FLOORS"
+          storageKey="tower_stacker_leaderboard_collapsed"
+          isMobile={isMobile}
+          showMobileLeaderboard={showMobileLeaderboard}
+          onCloseMobileLeaderboard={() => setShowMobileLeaderboard(false)}
+        />
       </div>
 
       <footer className="p-3 text-center text-xs text-neutral-500 border-t border-neutral-900 bg-neutral-950/40">

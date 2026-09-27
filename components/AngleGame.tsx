@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { User, incrementGamePlays, saveLeaderboardScore } from '../services/firebase';
 import { audioService } from '../services/audioService';
+import { isMobileDevice } from '../utils/device';
+import { GameLeaderboardSidebar, MobileLeaderboardButton } from './GameLeaderboardSidebar';
 
 interface AngleGameProps {
     user: User;
@@ -19,7 +21,16 @@ export default function AngleGame({ user, onBackToHub, username }: AngleGameProp
     const [streak, setStreak] = useState(0);
     const [previousGuesses, setPreviousGuesses] = useState<number[]>([]);
     const [isWon, setIsWon] = useState(false);
+    const [isMobile, setIsMobile] = useState(false);
+    const [showMobileLeaderboard, setShowMobileLeaderboard] = useState(false);
     
+    useEffect(() => {
+        setIsMobile(isMobileDevice());
+        const handleResize = () => setIsMobile(isMobileDevice());
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
+
     const displayableName = username || user.displayName || 'Angler';
 
     const startNewGame = useCallback(() => {
@@ -150,33 +161,39 @@ export default function AngleGame({ user, onBackToHub, username }: AngleGameProp
     }, [handleKeypadClick, gameOver]);
 
     return (
-        <div className="flex flex-col items-center justify-between w-full h-full bg-[#050508] text-white relative overflow-y-auto custom-scrollbar p-2.5 sm:p-3 select-none font-sans">
-            <div className="absolute inset-0 opacity-15 pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at 10% 20%, #d946ef 2px, transparent 2px)', backgroundSize: '70px 70px' }}></div>
+        <div className="w-full h-full flex flex-row overflow-hidden bg-[#050508]">
+            <div className="flex-1 h-full flex flex-col items-center justify-between relative overflow-y-auto custom-scrollbar p-2.5 sm:p-3 select-none font-sans min-w-0">
+                <div className="absolute inset-0 opacity-15 pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at 10% 20%, #d946ef 2px, transparent 2px)', backgroundSize: '70px 70px' }}></div>
 
-            {/* Top Bar - Pinned at Top */}
-            <div className="flex justify-between items-center w-full max-w-md shrink-0 pt-1 sm:pt-2 mb-2 z-10">
-                <button 
-                    onClick={() => {
-                        audioService.playSound('button_click');
-                        onBackToHub();
-                    }} 
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-neutral-900/80 hover:bg-neutral-800 border border-neutral-700 rounded-full text-sm font-bold transition-transform hover:scale-105 active:scale-95 shadow-md"
-                    title="Back to Hub"
-                >
-                    <span>⬅️</span>
-                    <span className="hidden sm:inline">Hub</span>
-                </button>
+                {/* Top Bar - Pinned at Top */}
+                <div className="flex justify-between items-center w-full max-w-md shrink-0 pt-1 sm:pt-2 mb-2 z-10">
+                    <button 
+                        onClick={() => {
+                            audioService.playSound('button_click');
+                            onBackToHub();
+                        }} 
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-neutral-900/80 hover:bg-neutral-800 border border-neutral-700 rounded-full text-sm font-bold transition-transform hover:scale-105 active:scale-95 shadow-md cursor-pointer"
+                        title="Back to Hub"
+                    >
+                        <span>⬅️</span>
+                        <span className="hidden sm:inline">Hub</span>
+                    </button>
 
-                <div className="flex flex-col items-center">
-                    <h1 className="text-xl md:text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-fuchsia-400 to-purple-500 tracking-wide">
-                        ANGLE ESTIMATE
-                    </h1>
+                    <div className="flex flex-col items-center">
+                        <h1 className="text-xl md:text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-fuchsia-400 to-purple-500 tracking-wide">
+                            ANGLE ESTIMATE
+                        </h1>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                        <div className="text-xs font-bold text-neutral-400 bg-neutral-900 px-2.5 py-1 rounded-full border border-neutral-800">
+                            🔥 <span className="text-amber-400 font-mono">{streak}</span>
+                        </div>
+                        {isMobile && (
+                            <MobileLeaderboardButton onClick={() => setShowMobileLeaderboard(true)} />
+                        )}
+                    </div>
                 </div>
-
-                <div className="text-xs font-bold text-neutral-400 bg-neutral-900 px-2.5 py-1 rounded-full border border-neutral-800">
-                    🔥 <span className="text-amber-400 font-mono">{streak}</span>
-                </div>
-            </div>
 
             {/* Middle Section: Protractor Dial & Feedback */}
             <div className="flex-1 flex flex-col items-center justify-center w-full max-w-md my-auto py-1 z-10">
@@ -304,6 +321,17 @@ export default function AngleGame({ user, onBackToHub, username }: AngleGameProp
                     </div>
                 </div>
             )}
+            </div>
+
+            <GameLeaderboardSidebar
+                mode="angle"
+                title="Angle Masters"
+                scoreLabel="STREAK"
+                storageKey="angle_leaderboard_collapsed"
+                isMobile={isMobile}
+                showMobileLeaderboard={showMobileLeaderboard}
+                onCloseMobileLeaderboard={() => setShowMobileLeaderboard(false)}
+            />
         </div>
     );
 }

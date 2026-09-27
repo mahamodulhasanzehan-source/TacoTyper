@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { incrementGamePlays } from '../services/firebase';
+import { incrementGamePlays, saveLeaderboardScore } from '../services/firebase';
 import { audioService } from '../services/audioService';
+import { isMobileDevice } from '../utils/device';
+import { GameLeaderboardSidebar, MobileLeaderboardButton } from './GameLeaderboardSidebar';
 import {
   Tetromino,
   getRandomTetromino,
@@ -14,7 +16,7 @@ interface TetrisProps {
   username?: string | null;
 }
 
-export default function TetrisGame({ onBackToHub }: TetrisProps) {
+export default function TetrisGame({ onBackToHub, user, username }: TetrisProps) {
   const [board, setBoard] = useState<(string | null)[][]>(() =>
     Array(20).fill(null).map(() => Array(10).fill(null))
   );
@@ -29,6 +31,15 @@ export default function TetrisGame({ onBackToHub }: TetrisProps) {
   });
   const [isGameOver, setIsGameOver] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+  const [showMobileLeaderboard, setShowMobileLeaderboard] = useState(false);
+
+  useEffect(() => {
+    setIsMobile(isMobileDevice());
+    const handleResize = () => setIsMobile(isMobileDevice());
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const boardRef = useRef(board);
   boardRef.current = board;
@@ -50,6 +61,19 @@ export default function TetrisGame({ onBackToHub }: TetrisProps) {
   useEffect(() => {
     incrementGamePlays('tetris');
   }, []);
+
+  useEffect(() => {
+    if (isGameOver && score > 0) {
+      saveLeaderboardScore(
+        user,
+        username || user?.displayName || 'Block Master',
+        score,
+        'Tetris Legend',
+        { mistakes: 0, timeTaken: 0, ingredientsMissed: 0, rottenWordsTyped: 0, totalScore: score, levelReached: level },
+        'tetris'
+      );
+    }
+  }, [isGameOver, score, level, user, username]);
 
   const resetGame = useCallback(() => {
     setBoard(Array(20).fill(null).map(() => Array(10).fill(null)));
@@ -330,11 +354,15 @@ export default function TetrisGame({ onBackToHub }: TetrisProps) {
           >
             Reset
           </button>
+          {isMobile && (
+            <MobileLeaderboardButton onClick={() => setShowMobileLeaderboard(true)} />
+          )}
         </div>
       </header>
 
-      {/* Main Playing Area: Flex-1, scales to fill available viewport */}
-      <div className="flex-1 flex items-center justify-center p-2 sm:p-4 gap-3 sm:gap-6 overflow-hidden">
+      {/* Main Playing Area with Sidebar: Flex-1, scales to fill available viewport */}
+      <div className="flex-1 w-full relative overflow-hidden flex flex-row min-h-0">
+        <div className="flex-1 flex items-center justify-center p-2 sm:p-4 gap-3 sm:gap-6 overflow-hidden min-w-0">
         {/* 10x20 Matrix - auto-calculated to take max available vertical & horizontal space */}
         <div
           className="relative p-1.5 sm:p-2 bg-neutral-950 rounded-2xl border-2 border-neutral-800 shadow-2xl flex items-center justify-center cursor-pointer"
@@ -496,6 +524,17 @@ export default function TetrisGame({ onBackToHub }: TetrisProps) {
             </div>
           </div>
         )}
+        </div>
+
+        <GameLeaderboardSidebar
+          mode="tetris"
+          title="Tetris Legends"
+          scoreLabel="PTS"
+          storageKey="tetris_leaderboard_collapsed"
+          isMobile={isMobile}
+          showMobileLeaderboard={showMobileLeaderboard}
+          onCloseMobileLeaderboard={() => setShowMobileLeaderboard(false)}
+        />
       </div>
 
       <footer className="py-1 px-2 text-center text-[10px] text-neutral-500 border-t border-neutral-900 bg-neutral-950/60 shrink-0">

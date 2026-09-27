@@ -69,10 +69,11 @@ export interface LeaderboardEntry {
   score: number; // AI Calculated or Raw
   title: string; // AI Given title
   stats: SessionStats;
-  timestamp: number;
+  timestamp: any;
   levelReached: number;
   mode: string;
-  accuracy?: number; // Specific for Speed Test
+  accuracy?: number | null; // Specific for Speed Test
+  sortValue?: number;
 }
 
 export type AppId = 
