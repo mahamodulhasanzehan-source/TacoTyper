@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { COLORS, LEVEL_CONFIGS } from '../constants';
 import type { User, FriendRequest } from '../services/firebase';
 import { LeaderboardEntry } from '../types';
-import { getLeaderboard, deleteLeaderboardEntry, fetchActiveUsers, sendFriendRequest, getFriendRequests, acceptFriendRequest, resetGlobalGameStats, isAscendingMetric } from '../services/firebase';
+import { getLeaderboard, getLocalLeaderboard, deleteLeaderboardEntry, fetchActiveUsers, sendFriendRequest, getFriendRequests, acceptFriendRequest, resetGlobalGameStats, isAscendingMetric } from '../services/firebase';
 import { RandomReveal, RandomText } from './Visuals';
 import { useSettings } from '../contexts/SettingsContext';
 import { LoadingScreen } from './LoadingScreen';
@@ -164,9 +164,11 @@ export const LeaderboardWidget: React.FC<LeaderboardWidgetProps> = ({
     const modes = allowedModes || ['competitive', 'infinite', 'universal', 'speed'];
     const initialMode = defaultMode && modes.includes(defaultMode) ? defaultMode : modes[0];
 
-    const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
-    const [loading, setLoading] = useState(true);
     const [mode, setMode] = useState<string>(initialMode);
+    const [entries, setEntries] = useState<LeaderboardEntry[]>(() => 
+        getLocalLeaderboard(initialMode === 'speed' ? 'speed-test' : initialMode)
+    );
+    const [loading, setLoading] = useState(true);
     const { isAdmin } = useSettings();
 
     // Sync mode with defaultMode prop when it changes
@@ -176,19 +178,30 @@ export const LeaderboardWidget: React.FC<LeaderboardWidgetProps> = ({
         }
     }, [defaultMode]);
 
-    const fetchLeaderboard = async () => {
+    const fetchLeaderboard = async (targetMode: string = mode) => {
         setLoading(true);
-        const data = await getLeaderboard(mode === 'speed' ? 'speed-test' : mode);
-        setEntries(data);
+        const resolvedMode = targetMode === 'speed' ? 'speed-test' : targetMode;
+        const data = await getLeaderboard(resolvedMode);
+        if (data && data.length > 0) {
+            setEntries(data);
+        } else {
+            setEntries(getLocalLeaderboard(resolvedMode));
+        }
         setLoading(false);
     };
 
     useEffect(() => {
-        fetchLeaderboard();
+        fetchLeaderboard(mode);
 
         const handleUpdate = (e: any) => {
-            if (!e.detail || !e.detail.mode || e.detail.mode === mode) {
-                fetchLeaderboard();
+            const targetMode = mode === 'speed' ? 'speed-test' : mode;
+            if (!e.detail || !e.detail.mode || e.detail.mode === targetMode || e.detail.mode === mode) {
+                if (e.detail?.entries && Array.isArray(e.detail.entries)) {
+                    setEntries(e.detail.entries);
+                    setLoading(false);
+                } else {
+                    fetchLeaderboard(mode);
+                }
             }
         };
 
@@ -200,10 +213,10 @@ export const LeaderboardWidget: React.FC<LeaderboardWidgetProps> = ({
         if (!confirm("Delete this score permanently?")) return;
         setEntries(prev => prev.filter(e => e.id !== id));
         const success = await deleteLeaderboardEntry(id);
-        if (!success) fetchLeaderboard();
+        if (!success) fetchLeaderboard(mode);
     };
 
-    const formatScore = (entry: LeaderboardEntry) => {
+    const formatScoreValue = (entry: LeaderboardEntry) => {
         if (mode.includes('quick_draw') && mode.endsWith('-time')) {
             return `${entry.score}ms`;
         }
@@ -224,7 +237,7 @@ export const LeaderboardWidget: React.FC<LeaderboardWidgetProps> = ({
             const secs = Math.floor(entry.score % 60);
             return mins > 0 ? `${mins}:${secs.toString().padStart(2, '0')}` : `${secs}s`;
         }
-        return entry.score;
+        return `${entry.score}`;
     };
 
     const getScoreLabel = () => {
@@ -237,7 +250,7 @@ export const LeaderboardWidget: React.FC<LeaderboardWidgetProps> = ({
         if (mode === 'snake') return 'LEN';
         if (mode === 'tower_stacker') return 'FLOORS';
         if (mode === 'simon') return 'STEPS';
-        if (mode.includes('streak') || mode.startsWith('tic_tac_toe') || mode.startsWith('wordle') || mode === 'angle' || mode.startsWith('dots_and_boxes') || mode === 'nim' || mode.startsWith('pong')) return 'STREAK';
+        if (mode.includes('streak') || mode.startsWith('tic_tac_toe') || mode.startsWith('wordle') || mode === 'angle' || mode.startsWith('dots_and_boxes') || mode === 'nim' || mode.startsWith('pong') || mode.startsWith('connect_4')) return 'STREAK';
         if (isAscendingMetric(mode)) return 'TIME';
         return 'PTS';
     };
@@ -248,9 +261,9 @@ export const LeaderboardWidget: React.FC<LeaderboardWidgetProps> = ({
         if (mode === 'iq-test' || mode === 'iq_test') return 'Top Minds';
         if (mode.includes('minesweeper')) return 'Top Defusers';
         if (mode === 'speed') return 'Fastest Hands';
-        if (mode === 'tic_tac_toe') return 'Top Strategists';
-        if (mode.includes('connect_4')) return 'Connect 4 Legends';
-        return 'Top Chefs';
+        if (mode.startsWith('tic_tac_toe')) return 'Tic Tac Toe';
+        if (mode.includes('connect_4')) return 'Connect 4';
+        return 'Leaderboard';
     };
 
     const getTabLabel = (m: string) => {
@@ -258,118 +271,169 @@ export const LeaderboardWidget: React.FC<LeaderboardWidgetProps> = ({
         if (m === 'competitive') return 'COMP';
         if (m === 'universal') return 'UNIV';
         if (m === 'speed') return 'SPEED';
-        if (m.startsWith('minesweeper-')) return m.replace('minesweeper-', '').substring(0, 4).toUpperCase();
-        return m.substring(0, 6).toUpperCase();
+        if (m.startsWith('minesweeper-')) return m.replace('minesweeper-', '').toUpperCase();
+        if (m.startsWith('tic_tac_toe-')) return m.replace('tic_tac_toe-', '').toUpperCase();
+        if (m.startsWith('wordle-')) return `${m.replace('wordle-', '')}L`;
+        return m.substring(0, 7).toUpperCase();
     };
 
-    const activeIndex = modes.indexOf(mode);
-
     return (
-        <RandomReveal distance={200} className={`flex flex-col bg-[#0a0a0a] border-l-4 border-white p-2 md:p-4 z-[150] shadow-[-10px_0_30px_rgba(0,0,0,0.8)] ${className}`}>
-            <div className="flex items-center justify-between border-b-2 border-[#333] pb-2 mt-2 mb-2 relative">
-                {onCollapse && (
-                    <button 
-                        onClick={onCollapse}
-                        className="text-white/80 hover:text-white p-1 px-1.5 rounded bg-neutral-900 hover:bg-neutral-800 border border-neutral-700 transition-colors text-xs font-bold leading-none cursor-pointer mr-1.5 shadow-sm"
-                        title="Collapse Leaderboard"
+        <div className={`flex flex-col bg-[#0a0a0a] p-2.5 md:p-3.5 z-[150] shadow-[-10px_0_30px_rgba(0,0,0,0.8)] h-full overflow-hidden select-none font-sans ${className}`}>
+            {/* Header with single collapse button */}
+            <div className="flex items-center justify-between border-b border-neutral-800 pb-2.5 mb-2.5 relative shrink-0">
+                <div className="flex items-center gap-2 min-w-0">
+                    {onCollapse && (
+                        <button 
+                            onClick={onCollapse}
+                            className="text-neutral-300 hover:text-white p-1.5 rounded-lg bg-neutral-900 hover:bg-neutral-800 border border-neutral-700 transition-colors text-xs font-bold leading-none cursor-pointer shadow-sm active:scale-95 shrink-0"
+                            title="Collapse Leaderboard"
+                        >
+                            ▶
+                        </button>
+                    )}
+                    <div className="flex items-center gap-1.5 min-w-0">
+                        <span className="text-amber-400 text-sm shrink-0">🏆</span>
+                        <h3 className="text-amber-400 text-xs sm:text-sm font-black uppercase tracking-wider truncate">
+                            {getTitle()}
+                        </h3>
+                    </div>
+                </div>
+
+                <div className="flex items-center gap-1.5 shrink-0">
+                    <button
+                        onClick={() => fetchLeaderboard(mode)}
+                        disabled={loading}
+                        className={`p-1.5 rounded-lg bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-neutral-400 hover:text-white text-xs transition-colors cursor-pointer active:scale-95 ${loading ? 'animate-spin text-amber-400' : ''}`}
+                        title="Refresh Leaderboard"
                     >
-                        ▶
+                        ↻
                     </button>
-                )}
-                <h3 className="text-[#f4b400] text-[10px] md:text-xs uppercase tracking-widest flex-1 text-center font-bold">
-                    <RandomText text={getTitle()} />
-                </h3>
-                {onClose && (
-                    <button 
-                        onClick={onClose}
-                        className="text-white/60 hover:text-white p-1 rounded hover:bg-neutral-800 transition-colors text-sm font-bold leading-none cursor-pointer ml-1.5"
-                        title="Close Leaderboard"
-                    >
-                        ✕
-                    </button>
-                )}
+                    {onClose && (
+                        <button 
+                            onClick={onClose}
+                            className="text-neutral-400 hover:text-white p-1.5 rounded-lg bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-xs font-bold leading-none cursor-pointer active:scale-95"
+                            title="Close Leaderboard"
+                        >
+                            ✕
+                        </button>
+                    )}
+                </div>
             </div>
             
-            {/* Capsule Slider - Only show if multiple modes allowed */}
+            {/* Segmented Category Selector */}
             {modes.length > 1 && (
-                <div className="relative flex w-full bg-[#000] border border-[#333] rounded-full p-1 mb-2 select-none shrink-0 overflow-x-auto custom-scrollbar">
-                    {/* Moving Indicator */}
-                    <div 
-                        className="absolute top-1 bottom-1 rounded-full bg-white/20 transition-all duration-300 ease-out pointer-events-none"
-                        style={{ 
-                            left: `calc(${(activeIndex / modes.length) * 100}% + 2px)`,
-                            width: `calc(${100 / modes.length}% - 4px)`
-                        }}
-                    />
-                    
-                    {modes.map(m => (
-                        <button
-                            key={m}
-                            onClick={() => setMode(m)}
-                            className={`flex-1 min-w-[48px] relative z-10 text-[7px] md:text-[8px] py-1.5 px-1 text-center transition-colors duration-200 font-bold uppercase tracking-tight whitespace-nowrap cursor-pointer
-                                ${mode === m ? 'text-white' : 'text-[#555] hover:text-[#777]'}`}
-                        >
-                            {getTabLabel(m)}
-                        </button>
-                    ))}
+                <div className="flex items-center gap-1 p-1 bg-neutral-950 rounded-xl border border-neutral-800/90 mb-3 select-none shrink-0 overflow-x-auto custom-scrollbar">
+                    {modes.map(m => {
+                        const isActive = mode === m;
+                        return (
+                            <button
+                                key={m}
+                                onClick={() => setMode(m)}
+                                className={`flex-1 min-w-[50px] py-1.5 px-2 rounded-lg text-[10px] sm:text-[11px] font-black uppercase tracking-wider text-center transition-all cursor-pointer whitespace-nowrap ${
+                                    isActive
+                                        ? 'bg-gradient-to-r from-amber-500 to-amber-400 text-black shadow-md shadow-amber-500/25 scale-[1.02]'
+                                        : 'text-neutral-400 hover:text-white hover:bg-neutral-900'
+                                }`}
+                            >
+                                {getTabLabel(m)}
+                            </button>
+                        );
+                    })}
                 </div>
             )}
 
-            {loading ? (
+            {loading && entries.length === 0 ? (
                 <div className="flex-1 flex flex-col items-center justify-center min-h-0">
-                    <LoadingScreen text="Retrieving Archives..." color="#aaa" compact={true} />
+                    <LoadingScreen text="Loading Ranks..." color="#f4b400" compact={true} />
                 </div>
             ) : entries.length === 0 ? (
-                <div className="flex-1 flex items-center justify-center text-center text-[10px] text-[#aaa] leading-5 px-4 min-h-0">
-                    List is empty.<br/>Be the first!
+                <div className="flex-1 flex flex-col items-center justify-center text-center text-xs text-neutral-400 leading-relaxed px-4 min-h-0">
+                    <span className="text-2xl mb-1">🎮</span>
+                    <span>No scores recorded yet.</span>
+                    <span className="text-[10px] text-amber-400/80 mt-1 font-bold">Be the first to rank!</span>
                 </div>
             ) : (
                 <div className="flex-1 overflow-y-auto pr-1 space-y-2 custom-scrollbar min-h-0">
-                    {entries.map((entry, idx) => (
-                        <RandomReveal key={entry.id} distance={300} className="flex flex-col bg-[#161616] p-2 border border-[#333] hover:border-[#555] transition-colors relative group">
-                            {isAdmin && (
-                                <button 
-                                    onClick={() => handleDelete(entry.id)}
-                                    className="absolute -top-2 -right-2 w-5 h-5 bg-red-600 text-white rounded-full flex items-center justify-center text-[10px] border-2 border-white hover:bg-red-800 z-50 shadow-md"
-                                >
-                                    ✕
-                                </button>
-                            )}
-                            <div className="flex justify-between items-center mb-1">
-                                <div className="flex items-center gap-2 overflow-hidden">
-                                    <span className={`text-xs font-bold w-5 ${idx === 0 ? 'text-[#f4b400]' : idx === 1 ? 'text-[#ccc]' : idx === 2 ? 'text-[#cd7f32]' : 'text-[#444]'}`}>
-                                        #{idx + 1}
-                                    </span>
-                                    {/* Chaos Animation for Names */}
-                                    <div className="text-[10px] text-white truncate max-w-[80px] md:max-w-[110px]">
-                                        <RandomText text={entry.username} distance={100} stagger={0.02} />
+                    {entries.map((entry, idx) => {
+                        const isFirst = idx === 0;
+                        const isSecond = idx === 1;
+                        const isThird = idx === 2;
+
+                        const rankBadgeClass = isFirst
+                            ? 'bg-gradient-to-br from-amber-400 to-amber-600 text-black font-black shadow-amber-500/30'
+                            : isSecond
+                            ? 'bg-gradient-to-br from-slate-200 to-slate-400 text-black font-black shadow-slate-400/20'
+                            : isThird
+                            ? 'bg-gradient-to-br from-amber-700 to-amber-900 text-amber-100 font-black shadow-amber-800/20'
+                            : 'bg-neutral-800/80 text-neutral-400 font-bold border border-neutral-700/50';
+
+                        const cardBorderClass = isFirst
+                            ? 'border-amber-500/40 bg-gradient-to-r from-amber-950/20 via-neutral-900 to-neutral-900'
+                            : isSecond
+                            ? 'border-slate-400/30 bg-gradient-to-r from-slate-900/20 via-neutral-900 to-neutral-900'
+                            : isThird
+                            ? 'border-amber-800/30 bg-gradient-to-r from-amber-950/15 via-neutral-900 to-neutral-900'
+                            : 'border-neutral-800/80 bg-neutral-900/60 hover:bg-neutral-800/70 hover:border-neutral-700';
+
+                        return (
+                            <div 
+                                key={entry.id || idx}
+                                className={`flex flex-col p-2.5 rounded-xl border transition-all relative group shadow-sm ${cardBorderClass}`}
+                            >
+                                {isAdmin && (
+                                    <button 
+                                        onClick={() => handleDelete(entry.id)}
+                                        className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-600 text-white rounded-full flex items-center justify-center text-[10px] border border-white hover:bg-red-700 z-50 shadow-md"
+                                        title="Delete Entry"
+                                    >
+                                        ✕
+                                    </button>
+                                )}
+                                <div className="flex justify-between items-center">
+                                    <div className="flex items-center gap-2 min-w-0">
+                                        <div className={`w-6 h-6 rounded-md flex items-center justify-center text-[11px] shadow shrink-0 ${rankBadgeClass}`}>
+                                            {isFirst ? '👑' : `#${idx + 1}`}
+                                        </div>
+                                        <div className="flex flex-col min-w-0">
+                                            <span className="text-xs sm:text-sm font-bold text-white truncate max-w-[100px] sm:max-w-[125px]">
+                                                {entry.username}
+                                            </span>
+                                            {entry.title && (
+                                                <span className="text-[9px] text-neutral-400 italic truncate max-w-[100px] sm:max-w-[125px]">
+                                                    "{entry.title}"
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* Big bold highlight tracked metric! */}
+                                    <div className="flex flex-col items-end shrink-0 pl-2">
+                                        <div className="flex items-baseline gap-1">
+                                            <span className="text-base sm:text-lg font-black font-mono tracking-tight text-emerald-400 drop-shadow-[0_0_8px_rgba(52,211,153,0.3)]">
+                                                {formatScoreValue(entry)}
+                                            </span>
+                                            <span className="text-[8px] sm:text-[9px] font-extrabold uppercase tracking-wider text-emerald-300/80 bg-emerald-950/70 border border-emerald-500/30 px-1 py-0.5 rounded leading-none">
+                                                {getScoreLabel()}
+                                            </span>
+                                        </div>
+                                        {mode === 'speed' && entry.accuracy != null && (
+                                            <span className={`text-[8px] font-bold px-1 rounded mt-0.5 ${entry.accuracy < 80 ? 'text-red-400 bg-red-950/50' : 'text-emerald-400 bg-emerald-950/50'}`}>
+                                                {entry.accuracy}% ACC
+                                            </span>
+                                        )}
+                                        {mode === 'competitive' && entry.levelReached && (
+                                            <span className="text-[8px] text-neutral-400 font-bold mt-0.5">
+                                                LVL {entry.levelReached}
+                                            </span>
+                                        )}
                                     </div>
                                 </div>
-                                <div className="flex flex-col items-end shrink-0 ml-1">
-                                    <span className="text-[#57a863] text-[10px] font-bold shadow-black drop-shadow-md">
-                                        <RandomText text={`${formatScore(entry)} ${getScoreLabel()}`} distance={50} />
-                                    </span>
-                                </div>
                             </div>
-                            
-                            <div className="flex justify-between items-end border-t border-[#222] pt-1 mt-1">
-                                <span className="text-[8px] text-[#888] italic truncate max-w-[120px] md:max-w-[150px] block">
-                                    "{entry.title}"
-                                </span>
-                                {mode === 'speed' && entry.accuracy != null && (
-                                    <span className={`text-[7px] px-1 py-px rounded ml-1 shrink-0 ${entry.accuracy < 80 ? 'text-red-500 bg-red-900/20' : 'text-green-500 bg-green-900/20'}`}>
-                                        {entry.accuracy}% ACC
-                                    </span>
-                                )}
-                                {mode === 'competitive' && (
-                                    <span className="text-[7px] text-[#aaa] ml-1 shrink-0">Lvl {entry.levelReached}</span>
-                                )}
-                            </div>
-                        </RandomReveal>
-                    ))}
+                        );
+                    })}
                 </div>
             )}
-        </RandomReveal>
+        </div>
     );
 };
 

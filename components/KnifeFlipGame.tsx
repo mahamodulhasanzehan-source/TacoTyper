@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { incrementGamePlays, saveLeaderboardScore } from '../services/firebase';
 import { audioService } from '../services/audioService';
-import { LeaderboardWidget } from './Overlays';
+import { GameLeaderboardSidebar, MobileLeaderboardButton } from './GameLeaderboardSidebar';
 import { isMobileDevice } from '../utils/device';
 
 interface KnifeThrowProps {
@@ -767,13 +767,10 @@ export default function KnifeFlipGame({ onBackToHub, user, username }: KnifeThro
                     Try Again
                   </button>
                   {isMobile && (
-                    <button
+                    <MobileLeaderboardButton
                       onClick={() => setShowMobileLeaderboard(true)}
-                      className="px-4 py-3 bg-[#f4b400] hover:bg-yellow-400 text-black font-black text-sm uppercase rounded-xl transition-all shadow-lg active:scale-95 cursor-pointer flex items-center justify-center gap-1"
-                      title="View Leaderboard"
-                    >
-                      <span>🏆</span>
-                    </button>
+                      className="px-4 py-3"
+                    />
                   )}
                 </div>
               </div>
@@ -781,102 +778,18 @@ export default function KnifeFlipGame({ onBackToHub, user, username }: KnifeThro
           )}
         </div>
 
-        {/* Desktop Leaderboard Column (Collapsible, exact same design as Taco Typer) */}
-        {!isMobile && (
-          <div
-            className={`h-full z-[120] transition-all duration-300 ease-in-out shrink-0 relative ${
-              isLeaderboardCollapsed
-                ? 'w-[38px] border-l-2 border-white/80 bg-[#0a0a0a] flex flex-col items-center py-2 cursor-pointer hover:bg-neutral-900 group select-none shadow-[-5px_0_15px_rgba(0,0,0,0.5)]'
-                : 'w-[280px] sm:w-[300px] border-l-4 border-white bg-[#0a0a0a] shadow-[-10px_0_30px_rgba(0,0,0,0.8)]'
-            }`}
-            onPointerDown={e => e.stopPropagation()}
-            onClick={e => e.stopPropagation()}
-          >
-            {isLeaderboardCollapsed ? (
-              <div
-                className="w-full h-full flex flex-col items-center justify-between py-3"
-                onClick={() => {
-                  setIsLeaderboardCollapsed(false);
-                  localStorage.setItem('knife_leaderboard_collapsed', 'false');
-                }}
-                title="Expand Leaderboard"
-              >
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setIsLeaderboardCollapsed(false);
-                    localStorage.setItem('knife_leaderboard_collapsed', 'false');
-                  }}
-                  className="p-1 rounded bg-neutral-800 hover:bg-neutral-700 text-white border border-neutral-600 text-xs font-bold cursor-pointer transition-colors shadow-sm"
-                  title="Expand Leaderboard"
-                >
-                  ◀
-                </button>
-                <div className="flex flex-col items-center gap-3 my-auto">
-                  <span className="text-sm">🏆</span>
-                  <span
-                    className="text-[9px] tracking-widest text-[#f4b400] font-bold uppercase select-none"
-                    style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}
-                  >
-                    LEADERBOARD
-                  </span>
-                </div>
-                <div className="text-[10px] text-neutral-500 group-hover:text-white transition-colors">
-                  ◀
-                </div>
-              </div>
-            ) : (
-              <div className="h-full w-full relative">
-                {/* Button at top-left corner of column to collapse */}
-                <button
-                  onClick={() => {
-                    setIsLeaderboardCollapsed(true);
-                    localStorage.setItem('knife_leaderboard_collapsed', 'true');
-                  }}
-                  className="absolute top-2 left-2 z-[140] w-6 h-6 bg-neutral-900 hover:bg-neutral-800 text-neutral-300 hover:text-white border border-neutral-700 rounded flex items-center justify-center text-xs font-bold cursor-pointer transition-colors shadow-md"
-                  title="Collapse Leaderboard"
-                >
-                  ▶
-                </button>
-                <LeaderboardWidget
-                  className="h-full border-none"
-                  allowedModes={['knife_flip']}
-                  defaultMode="knife_flip"
-                  customTitle="Top Throwers"
-                  scoreLabel="KNIVES"
-                  onCollapse={() => {
-                    setIsLeaderboardCollapsed(true);
-                    localStorage.setItem('knife_leaderboard_collapsed', 'true');
-                  }}
-                />
-              </div>
-            )}
-          </div>
-        )}
+        <GameLeaderboardSidebar
+          mode="knife_flip"
+          allowedModes={['knife_flip']}
+          title="Top Throwers"
+          scoreLabel="KNIVES"
+          storageKey="knife_leaderboard_collapsed"
+          isMobile={isMobile}
+          showMobileLeaderboard={showMobileLeaderboard}
+          onCloseMobileLeaderboard={() => setShowMobileLeaderboard(false)}
+          onCollapseChange={setIsLeaderboardCollapsed}
+        />
       </div>
-
-      {/* Mobile Leaderboard Popup Modal */}
-      {isMobile && showMobileLeaderboard && (
-        <div
-          className="fixed inset-0 z-[200] bg-black/80 backdrop-blur-xs flex items-center justify-center p-3 animate-fade-in"
-          onClick={() => setShowMobileLeaderboard(false)}
-          onPointerDown={e => e.stopPropagation()}
-        >
-          <div
-            className="w-full max-w-sm h-[85vh] max-h-[580px] flex flex-col bg-[#0a0a0a] border-4 border-white shadow-2xl relative"
-            onClick={e => e.stopPropagation()}
-          >
-            <LeaderboardWidget
-              className="h-full border-none"
-              allowedModes={['knife_flip']}
-              defaultMode="knife_flip"
-              customTitle="Top Throwers"
-              scoreLabel="KNIVES"
-              onClose={() => setShowMobileLeaderboard(false)}
-            />
-          </div>
-        </div>
-      )}
 
       <footer className="py-1 px-2 text-center text-[10px] text-neutral-500 border-t border-neutral-900 bg-neutral-950/60 shrink-0">
         Tap screen, click mouse, or press Spacebar to throw • Don't hit existing knives!

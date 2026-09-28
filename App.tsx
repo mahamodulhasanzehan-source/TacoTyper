@@ -6,6 +6,18 @@ import Game from './components/Game';
 import { SettingsProvider } from './contexts/SettingsContext';
 
 const getOrCreateGuestUser = (): User => {
+  try {
+    const rawSettings = localStorage.getItem('taco_app_settings');
+    if (!rawSettings) {
+      localStorage.setItem('taco_app_settings', JSON.stringify({
+        reducedMotion: false,
+        theme: 'taco',
+        neonColor: '#00ff00',
+        animDuration: 0.5
+      }));
+    }
+  } catch {}
+
   let guestUid = localStorage.getItem('taco_guest_uid');
   if (!guestUid) {
     guestUid = 'guest_' + Math.random().toString(36).substring(2, 10);
@@ -45,6 +57,18 @@ export default function App() {
           if (profile && profile.username) {
             setCustomUsername(profile.username);
           } else {
+            // First-time sign in: set default animation speed to 0.5s
+            try {
+              const raw = localStorage.getItem('taco_app_settings');
+              const current = raw ? JSON.parse(raw) : {};
+              localStorage.setItem('taco_app_settings', JSON.stringify({
+                reducedMotion: false,
+                theme: 'taco',
+                neonColor: '#00ff00',
+                ...current,
+                animDuration: 0.5
+              }));
+            } catch {}
             setNewDisplayName(currentUser.displayName || '');
             setShowNamePrompt(true);
           }
@@ -85,6 +109,17 @@ export default function App() {
         if (profile && profile.username) {
           setCustomUsername(profile.username);
         } else {
+          try {
+            const raw = localStorage.getItem('taco_app_settings');
+            const current = raw ? JSON.parse(raw) : {};
+            localStorage.setItem('taco_app_settings', JSON.stringify({
+              reducedMotion: false,
+              theme: 'taco',
+              neonColor: '#00ff00',
+              ...current,
+              animDuration: 0.5
+            }));
+          } catch {}
           setNewDisplayName(loggedUser.displayName || '');
           setShowNamePrompt(true);
         }

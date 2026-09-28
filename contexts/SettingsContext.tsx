@@ -19,7 +19,7 @@ const defaultSettings: Settings = {
   reducedMotion: false,
   theme: 'taco',
   neonColor: '#00ff00', // Default Neon Green
-  animDuration: 1 // Default 1x delay multiplier
+  animDuration: 0.5 // Default 0.5s animation duration
 };
 
 const SettingsContext = createContext<SettingsContextType>({
@@ -52,8 +52,12 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             ...parsed,
             reducedMotion: !!isReduced, // Ensure boolean
             neonColor: parsed.neonColor || '#00ff00',
-            animDuration: parsed.animDuration !== undefined ? parsed.animDuration : 1
+            animDuration: (typeof parsed.animDuration === 'number' && !isNaN(parsed.animDuration)) ? parsed.animDuration : 0.5
         });
+      } else {
+        // Defaults for guests and first-time users: animation speed 0.5s
+        setSettings(defaultSettings);
+        localStorage.setItem('taco_app_settings', JSON.stringify(defaultSettings));
       }
     } catch (e) {
       console.error("Failed to load settings", e);

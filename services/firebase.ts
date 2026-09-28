@@ -778,38 +778,73 @@ export const deleteLeaderboardEntry = async (id: string) => {
     } catch { return false; }
 };
 
+export const getLocalLeaderboard = (mode: string = 'competitive'): LeaderboardEntry[] => {
+    const isTimeBased = isAscendingMetric(mode);
+    try {
+        const list = JSON.parse(localStorage.getItem(`lb_${mode}`) || '[]');
+        return filterLeaderboardEntries(list, isTimeBased, 25);
+    } catch {
+        return [];
+    }
+};
+
 export const getLeaderboard = async (mode: string = 'competitive'): Promise<LeaderboardEntry[]> => {
     const isTimeBased = isAscendingMetric(mode);
-    const getLocal = (): LeaderboardEntry[] => {
-        try {
-            const list = JSON.parse(localStorage.getItem(`lb_${mode}`) || '[]');
-            return filterLeaderboardEntries(list, isTimeBased, 25);
-        } catch {
-            return [];
-        }
-    };
+    const local = getLocalLeaderboard(mode);
 
-    if (!dbExport) return getLocal();
+    if (!dbExport) return local;
 
     try {
         const lbRef = collection(dbExport, "leaderboard");
-        let snapshot;
-        try {
+        
+        // Single field query by mode: DOES NOT require composite index, executes fast and reliably!
+        const fetchPromise = (async () => {
             const q = query(
                 lbRef, 
                 where("mode", "==", mode),
-                orderBy("sortValue", isTimeBased ? "asc" : "desc"),
                 limit(100)
             );
-            snapshot = await getDocs(q);
-        } catch {
-            // Fallback without orderBy to handle missing Firestore composite indexes gracefully
-            const fallbackQ = query(
-                lbRef,
-                where("mode", "==", mode),
-                limit(100)
-            );
-            snapshot = await getDocs(fallbackQ);
+            return await getDocs(q);
+        })();
+
+        // 10s safety timeout for slow initial connection
+        const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 10000));
+
+        // Background handler: if fetch finishes (even after a delay), update cache & UI
+        fetchPromise.then((snapshot) => {
+            if (!snapshot || snapshot.empty) return;
+            const candidateEntries: LeaderboardEntry[] = [];
+            const seenIds = new Set<string>();
+            snapshot.forEach(d => {
+                const data = d.data() as any;
+                const sortVal = data.sortValue !== undefined 
+                    ? data.sortValue 
+                    : (isTimeBased ? (data.score ?? Infinity) : (data.score ?? -Infinity));
+                candidateEntries.push({ id: d.id, ...data, sortValue: sortVal } as LeaderboardEntry);
+                seenIds.add(d.id);
+            });
+            const currentLocal = getLocalLeaderboard(mode);
+            currentLocal.forEach(loc => {
+                if (!seenIds.has(loc.id)) {
+                    candidateEntries.push(loc);
+                    seenIds.add(loc.id);
+                }
+            });
+            const filtered = filterLeaderboardEntries(candidateEntries, isTimeBased, 25);
+            try {
+                localStorage.setItem(`lb_${mode}`, JSON.stringify(filtered));
+            } catch {}
+            if (typeof window !== 'undefined') {
+                window.dispatchEvent(new CustomEvent('leaderboard_updated', { detail: { mode, entries: filtered } }));
+            }
+        }).catch((err) => {
+            console.warn("Leaderboard fetch notice:", err);
+        });
+
+        const snapshot = await Promise.race([fetchPromise, timeoutPromise]);
+
+        if (!snapshot) {
+            return local;
         }
 
         const candidateEntries: LeaderboardEntry[] = [];
@@ -817,12 +852,14 @@ export const getLeaderboard = async (mode: string = 'competitive'): Promise<Lead
         
         snapshot.forEach(d => {
             const data = d.data() as any;
-            candidateEntries.push({ id: d.id, ...data } as LeaderboardEntry);
+            const sortVal = data.sortValue !== undefined 
+                ? data.sortValue 
+                : (isTimeBased ? (data.score ?? Infinity) : (data.score ?? -Infinity));
+            candidateEntries.push({ id: d.id, ...data, sortValue: sortVal } as LeaderboardEntry);
             seenIds.add(d.id);
         });
 
-        // Merge with local scores so offline / immediate player scores appear
-        const local = getLocal();
+        // Merge with local scores so immediate player scores always show up
         local.forEach(loc => {
             if (!seenIds.has(loc.id)) {
                 candidateEntries.push(loc);
@@ -830,10 +867,14 @@ export const getLeaderboard = async (mode: string = 'competitive'): Promise<Lead
             }
         });
 
-        return filterLeaderboardEntries(candidateEntries, isTimeBased, 25);
+        const filtered = filterLeaderboardEntries(candidateEntries, isTimeBased, 25);
+        try {
+            localStorage.setItem(`lb_${mode}`, JSON.stringify(filtered));
+        } catch {}
+        return filtered;
     } catch (e) {
         console.warn("Notice fetching leaderboard, using local cache:", e);
-        return getLocal();
+        return local;
     }
 };
 

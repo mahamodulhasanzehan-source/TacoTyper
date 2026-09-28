@@ -68,37 +68,30 @@ export const GameLeaderboardSidebar: React.FC<GameLeaderboardSidebarProps> = ({
         <div
           className={`h-full z-[120] transition-all duration-300 ease-in-out shrink-0 relative ${
             isCollapsed
-              ? 'w-[38px] border-l-2 border-white/80 bg-[#0a0a0a] flex flex-col items-center py-2 cursor-pointer hover:bg-neutral-900 group select-none shadow-[-5px_0_15px_rgba(0,0,0,0.5)]'
-              : 'w-[280px] sm:w-[300px] border-l-4 border-white bg-[#0a0a0a] shadow-[-10px_0_30px_rgba(0,0,0,0.8)]'
+              ? 'w-[42px] border-l border-neutral-800 bg-[#0a0a0a] flex flex-col items-center py-3 cursor-pointer hover:bg-neutral-900 group select-none shadow-[-5px_0_15px_rgba(0,0,0,0.5)]'
+              : 'w-[280px] sm:w-[310px] border-l border-neutral-800 bg-[#0a0a0a] shadow-[-10px_0_30px_rgba(0,0,0,0.8)]'
           }`}
           onPointerDown={e => e.stopPropagation()}
-          onClick={e => e.stopPropagation()}
+          onClick={isCollapsed ? () => handleToggleCollapse(false) : undefined}
+          title={isCollapsed ? "Click anywhere on the bar to expand leaderboard" : undefined}
         >
           {isCollapsed ? (
-            <div
-              className="w-full h-full flex flex-col items-center justify-start py-3 gap-6"
-              onClick={() => handleToggleCollapse(false)}
-              title="Click to Expand Leaderboard"
-            >
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleToggleCollapse(false);
-                }}
-                className="p-1.5 rounded bg-neutral-900 hover:bg-neutral-800 text-white border border-neutral-700 text-xs font-bold cursor-pointer transition-colors shadow-sm active:scale-95"
-                title="Expand Leaderboard"
-              >
+            <div className="w-full h-full flex flex-col items-center justify-between py-2">
+              <div className="w-7 h-7 rounded-lg bg-neutral-900 border border-neutral-800 flex items-center justify-center text-amber-400 group-hover:scale-110 group-hover:border-amber-400/50 transition-all text-xs font-bold shadow-sm">
                 ◀
-              </button>
-              <div className="flex flex-col items-center gap-3">
-                <span className="text-sm">🏆</span>
+              </div>
+              <div className="flex flex-col items-center gap-3 my-auto">
+                <span className="text-base group-hover:scale-110 transition-transform">🏆</span>
                 <span
-                  className="text-[9px] tracking-widest text-[#f4b400] font-bold uppercase select-none"
+                  className="text-[10px] tracking-widest text-[#f4b400] font-black uppercase select-none group-hover:text-amber-300 transition-colors"
                   style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}
                 >
                   LEADERBOARD
                 </span>
               </div>
+              <span className="text-[10px] text-neutral-600 group-hover:text-amber-400 transition-colors">
+                ◀
+              </span>
             </div>
           ) : (
             <div className="h-full w-full relative">

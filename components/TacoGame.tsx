@@ -960,33 +960,28 @@ export default function TacoGame({
                 >
                     {isLeaderboardCollapsed ? (
                         <div 
-                            className="w-full h-full flex flex-col items-center justify-start py-3 gap-6"
+                            className="w-full h-full flex flex-col items-center justify-between py-2"
                             onClick={() => {
                                 setIsLeaderboardCollapsed(false);
                                 localStorage.setItem('taco_leaderboard_collapsed', 'false');
                             }}
-                            title="Click to Expand Leaderboard"
+                            title="Click anywhere on the bar to expand leaderboard"
                         >
-                            <button
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    setIsLeaderboardCollapsed(false);
-                                    localStorage.setItem('taco_leaderboard_collapsed', 'false');
-                                }}
-                                className="p-1.5 rounded bg-neutral-900 hover:bg-neutral-800 text-white border border-neutral-700 text-xs font-bold cursor-pointer transition-colors shadow-sm active:scale-95"
-                                title="Expand Leaderboard"
-                            >
+                            <div className="w-7 h-7 rounded-lg bg-neutral-900 border border-neutral-800 flex items-center justify-center text-amber-400 group-hover:scale-110 group-hover:border-amber-400/50 transition-all text-xs font-bold shadow-sm">
                                 ◀
-                            </button>
-                            <div className="flex flex-col items-center gap-3">
-                                <span className="text-sm">🏆</span>
+                            </div>
+                            <div className="flex flex-col items-center gap-3 my-auto">
+                                <span className="text-base group-hover:scale-110 transition-transform">🏆</span>
                                 <span 
-                                    className="text-[9px] tracking-widest text-[#f4b400] font-bold uppercase select-none"
+                                    className="text-[10px] tracking-widest text-[#f4b400] font-black uppercase select-none group-hover:text-amber-300 transition-colors"
                                     style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}
                                 >
                                     LEADERBOARD
                                 </span>
                             </div>
+                            <span className="text-[10px] text-neutral-600 group-hover:text-amber-400 transition-colors">
+                                ◀
+                            </span>
                         </div>
                     ) : (
                         <div className="h-full w-full relative">
