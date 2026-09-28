@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { User, saveLeaderboardScore, incrementGamePlays } from '../services/firebase';
 import { isMobileDevice } from '../utils/device';
 import { audioService } from '../services/audioService';
+import { GameLeaderboardSidebar, MobileLeaderboardButton } from './GameLeaderboardSidebar';
 
 interface MinesweeperGameProps {
     user: User;
@@ -49,6 +50,7 @@ export default function MinesweeperGame({ user, onBackToHub, username }: Mineswe
     const [firstClick, setFirstClick] = useState(true);
     const [touchMode, setTouchMode] = useState<'dig' | 'flag'>('dig');
     const [isMobile, setIsMobile] = useState(false);
+    const [showMobileLeaderboard, setShowMobileLeaderboard] = useState(false);
 
     const timerRef = useRef<number | null>(null);
     const longPressTimer = useRef<number | null>(null);
@@ -57,6 +59,9 @@ export default function MinesweeperGame({ user, onBackToHub, username }: Mineswe
 
     useEffect(() => {
         setIsMobile(isMobileDevice());
+        const handleResize = () => setIsMobile(isMobileDevice());
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
     }, []);
 
     useEffect(() => {
@@ -232,40 +237,44 @@ export default function MinesweeperGame({ user, onBackToHub, username }: Mineswe
     };
 
     return (
-        <div className="flex flex-col items-center justify-between w-full h-full bg-[#050508] text-white relative overflow-y-auto custom-scrollbar p-2.5 sm:p-3 select-none font-sans">
-            <div className="absolute inset-0 opacity-15 pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at 70% 30%, #ef4444 2px, transparent 2px)', backgroundSize: '70px 70px' }}></div>
+        <div className="flex flex-row w-full h-full bg-[#050508] text-white relative overflow-hidden select-none font-sans">
+            <div className="flex-1 h-full flex flex-col items-center justify-between relative overflow-y-auto custom-scrollbar p-2.5 sm:p-3 min-w-0">
+                <div className="absolute inset-0 opacity-15 pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at 70% 30%, #ef4444 2px, transparent 2px)', backgroundSize: '70px 70px' }}></div>
 
-            {/* Top Bar - Pinned at top */}
-            <div className="flex justify-between items-center w-full max-w-xl shrink-0 pt-1 sm:pt-2 mb-2 z-10">
-                <button 
-                    onClick={() => {
-                        audioService.playSound('button_click');
-                        onBackToHub();
-                    }} 
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-neutral-900/80 hover:bg-neutral-800 border border-neutral-700 rounded-full text-sm font-bold transition-transform hover:scale-105 active:scale-95 shadow-md"
-                    title="Back to Hub"
-                >
-                    <span>⬅️</span>
-                    <span className="hidden sm:inline">Hub</span>
-                </button>
+                {/* Top Bar - Pinned at top */}
+                <div className="flex justify-between items-center w-full max-w-xl shrink-0 pt-1 sm:pt-2 mb-2 z-10">
+                    <button 
+                        onClick={() => {
+                            audioService.playSound('button_click');
+                            onBackToHub();
+                        }} 
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-neutral-900/80 hover:bg-neutral-800 border border-neutral-700 rounded-full text-sm font-bold transition-transform hover:scale-105 active:scale-95 shadow-md"
+                        title="Back to Hub"
+                    >
+                        <span>⬅️</span>
+                        <span className="hidden sm:inline">Hub</span>
+                    </button>
 
-                <div className="flex flex-col items-center">
-                    <h1 className="text-xl md:text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-red-400 to-amber-500 tracking-wide">
-                        MINESWEEPER
-                    </h1>
+                    <div className="flex flex-col items-center">
+                        <h1 className="text-xl md:text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-red-400 to-amber-500 tracking-wide">
+                            MINESWEEPER
+                        </h1>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                        {gameState !== 'menu' && (
+                            <button 
+                                onClick={() => setGameState('menu')}
+                                className="px-2.5 py-1 bg-neutral-800 hover:bg-neutral-700 border border-neutral-600 rounded-full text-xs font-bold text-neutral-300 transition-transform active:scale-95 shadow-md"
+                            >
+                                Menu
+                            </button>
+                        )}
+                        {isMobile && (
+                            <MobileLeaderboardButton onClick={() => setShowMobileLeaderboard(true)} />
+                        )}
+                    </div>
                 </div>
-
-                <div className="w-16 flex justify-end">
-                    {gameState !== 'menu' && (
-                        <button 
-                            onClick={() => setGameState('menu')}
-                            className="px-2.5 py-1 bg-neutral-800 hover:bg-neutral-700 border border-neutral-600 rounded-full text-xs font-bold text-neutral-300 transition-transform active:scale-95 shadow-md"
-                        >
-                            Menu
-                        </button>
-                    )}
-                </div>
-            </div>
 
             {/* Menu or Game */}
             <div className="flex-1 flex flex-col items-center justify-center w-full my-auto py-1 z-10">
@@ -442,6 +451,23 @@ export default function MinesweeperGame({ user, onBackToHub, username }: Mineswe
                 </div>
             )}
             </div>
+            </div>
+
+            <GameLeaderboardSidebar
+                mode={`minesweeper-${difficulty}`}
+                allowedModes={['minesweeper-beginner', 'minesweeper-intermediate', 'minesweeper-expert']}
+                tabLabels={{
+                    'minesweeper-beginner': 'BEG',
+                    'minesweeper-intermediate': 'INT',
+                    'minesweeper-expert': 'EXP'
+                }}
+                title="Top Defusers"
+                scoreLabel="TIME"
+                storageKey="minesweeper_leaderboard_collapsed"
+                isMobile={isMobile}
+                showMobileLeaderboard={showMobileLeaderboard}
+                onCloseMobileLeaderboard={() => setShowMobileLeaderboard(false)}
+            />
         </div>
     );
 }

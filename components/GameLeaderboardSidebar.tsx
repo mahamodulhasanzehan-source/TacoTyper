@@ -3,6 +3,8 @@ import { LeaderboardWidget } from './Overlays';
 
 interface GameLeaderboardSidebarProps {
   mode: string;
+  allowedModes?: string[];
+  tabLabels?: Record<string, string>;
   title?: string;
   scoreLabel?: string;
   storageKey: string;
@@ -29,6 +31,8 @@ export const MobileLeaderboardButton: React.FC<{
 
 export const GameLeaderboardSidebar: React.FC<GameLeaderboardSidebarProps> = ({
   mode,
+  allowedModes,
+  tabLabels,
   title,
   scoreLabel,
   storageKey,
@@ -40,6 +44,8 @@ export const GameLeaderboardSidebar: React.FC<GameLeaderboardSidebarProps> = ({
   const [isCollapsed, setIsCollapsed] = useState(() => {
     return localStorage.getItem(storageKey) === 'true';
   });
+
+  const activeModes = allowedModes || [mode];
 
   const handleToggleCollapse = (collapsed: boolean) => {
     setIsCollapsed(collapsed);
@@ -98,8 +104,9 @@ export const GameLeaderboardSidebar: React.FC<GameLeaderboardSidebarProps> = ({
             <div className="h-full w-full relative">
               <LeaderboardWidget
                 className="h-full border-none"
-                allowedModes={[mode]}
+                allowedModes={activeModes}
                 defaultMode={mode}
+                tabLabels={tabLabels}
                 customTitle={title}
                 scoreLabel={scoreLabel}
                 onCollapse={() => handleToggleCollapse(true)}
@@ -122,8 +129,9 @@ export const GameLeaderboardSidebar: React.FC<GameLeaderboardSidebarProps> = ({
           >
             <LeaderboardWidget
               className="h-full border-none"
-              allowedModes={[mode]}
+              allowedModes={activeModes}
               defaultMode={mode}
+              tabLabels={tabLabels}
               customTitle={title}
               scoreLabel={scoreLabel}
               onClose={onCloseMobileLeaderboard}

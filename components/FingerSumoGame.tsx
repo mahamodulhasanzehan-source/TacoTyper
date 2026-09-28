@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { incrementGamePlays } from '../services/firebase';
+import { incrementGamePlays, saveLeaderboardScore } from '../services/firebase';
 import { audioService } from '../services/audioService';
+import { isMobileDevice } from '../utils/device';
+import { GameLeaderboardSidebar, MobileLeaderboardButton } from './GameLeaderboardSidebar';
 
 interface FingerSumoProps {
   onBackToHub: () => void;
@@ -10,7 +12,7 @@ interface FingerSumoProps {
 
 type Difficulty = 'easy' | 'medium' | 'hard';
 
-export default function FingerSumoGame({ onBackToHub }: FingerSumoProps) {
+export default function FingerSumoGame({ onBackToHub, user, username }: FingerSumoProps) {
   const [difficulty, setDifficulty] = useState<Difficulty>('medium');
   const [isMatchActive, setIsMatchActive] = useState(false);
   const [position, setPosition] = useState(0); // -100 (Bot Ringout) to +100 (Player Ringout)
@@ -19,9 +21,23 @@ export default function FingerSumoGame({ onBackToHub }: FingerSumoProps) {
   const [roundWinner, setRoundWinner] = useState<'player' | 'bot' | null>(null);
   const [matchWinner, setMatchWinner] = useState<'player' | 'bot' | null>(null);
   const [playerTapsCount, setPlayerTapsCount] = useState(0);
+  const [finalCPS, setFinalCPS] = useState<number | null>(null);
+  const [isMobile, setIsMobile] = useState(false);
+  const [showMobileLeaderboard, setShowMobileLeaderboard] = useState(false);
+
+  useEffect(() => {
+    setIsMobile(isMobileDevice());
+    const handleResize = () => setIsMobile(isMobileDevice());
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const isMatchActiveRef = useRef(isMatchActive);
   isMatchActiveRef.current = isMatchActive;
+
+  const totalMatchTapsRef = useRef(0);
+  const totalMatchActiveTimeMsRef = useRef(0);
+  const roundStartTimeRef = useRef<number | null>(null);
 
   useEffect(() => {
     incrementGamePlays('finger_sumo');
@@ -32,6 +48,7 @@ export default function FingerSumoGame({ onBackToHub }: FingerSumoProps) {
     setRoundWinner(null);
     setIsMatchActive(true);
     isMatchActiveRef.current = true;
+    roundStartTimeRef.current = Date.now();
     setPlayerTapsCount(0);
   }, []);
 
@@ -39,11 +56,15 @@ export default function FingerSumoGame({ onBackToHub }: FingerSumoProps) {
     setPlayerScore(0);
     setBotScore(0);
     setMatchWinner(null);
+    setFinalCPS(null);
     setPosition(0);
     setRoundWinner(null);
     setIsMatchActive(false);
     isMatchActiveRef.current = false;
     setPlayerTapsCount(0);
+    totalMatchTapsRef.current = 0;
+    totalMatchActiveTimeMsRef.current = 0;
+    roundStartTimeRef.current = null;
   }, []);
 
   // Player tap handler
@@ -58,10 +79,12 @@ export default function FingerSumoGame({ onBackToHub }: FingerSumoProps) {
       // Start match on first tap
       setIsMatchActive(true);
       isMatchActiveRef.current = true;
+      roundStartTimeRef.current = Date.now();
     }
 
     audioService.playSound('tile_click');
     setPlayerTapsCount(c => c + 1);
+    totalMatchTapsRef.current += 1;
 
     // Player pushes towards bot side (- direction)
     const pushForce = 3.8;
@@ -69,20 +92,39 @@ export default function FingerSumoGame({ onBackToHub }: FingerSumoProps) {
       const next = p - pushForce;
       if (next <= -95) {
         // Player pushed Bot completely out of ring!
+        if (roundStartTimeRef.current) {
+          totalMatchActiveTimeMsRef.current += (Date.now() - roundStartTimeRef.current);
+          roundStartTimeRef.current = null;
+        }
         audioService.playSound('success');
         setIsMatchActive(false);
         isMatchActiveRef.current = false;
         setRoundWinner('player');
         setPlayerScore(ps => {
           const nextScore = ps + 1;
-          if (nextScore >= 3) setMatchWinner('player');
+          if (nextScore >= 3) {
+            setMatchWinner('player');
+            const totalSec = Math.max(1, totalMatchActiveTimeMsRef.current / 1000);
+            const calculatedCps = Math.round((totalMatchTapsRef.current / totalSec) * 10) / 10;
+            setFinalCPS(calculatedCps);
+            if (difficulty === 'medium' || difficulty === 'hard') {
+              saveLeaderboardScore(
+                user,
+                username || user?.displayName || 'Sumo Master',
+                calculatedCps,
+                `${difficulty.toUpperCase()} Sumo Champion`,
+                { mistakes: 0, timeTaken: Math.round(totalSec), ingredientsMissed: 0, rottenWordsTyped: 0, totalScore: calculatedCps, levelReached: nextScore },
+                `finger_sumo-${difficulty}`
+              );
+            }
+          }
           return nextScore;
         });
         return -100;
       }
       return next;
     });
-  }, [matchWinner, roundWinner, resetRound]);
+  }, [matchWinner, roundWinner, resetRound, difficulty, user, username]);
 
   // Spacebar controls
   useEffect(() => {
@@ -134,6 +176,10 @@ export default function FingerSumoGame({ onBackToHub }: FingerSumoProps) {
         const next = p + botPushForce;
         if (next >= 95) {
           // Bot pushed player out of ring!
+          if (roundStartTimeRef.current) {
+            totalMatchActiveTimeMsRef.current += (Date.now() - roundStartTimeRef.current);
+            roundStartTimeRef.current = null;
+          }
           audioService.playSound('failure');
           setIsMatchActive(false);
           isMatchActiveRef.current = false;
@@ -193,6 +239,9 @@ export default function FingerSumoGame({ onBackToHub }: FingerSumoProps) {
           >
             Reset
           </button>
+          {isMobile && (
+            <MobileLeaderboardButton onClick={() => setShowMobileLeaderboard(true)} />
+          )}
         </div>
       </header>
 
@@ -215,8 +264,9 @@ export default function FingerSumoGame({ onBackToHub }: FingerSumoProps) {
         </div>
       </div>
 
-      {/* Sumo Arena Stage */}
-      <div className="flex-1 flex flex-col items-center justify-between p-3 sm:p-6 max-w-lg mx-auto w-full relative">
+      {/* Sumo Arena Stage Container with Sidebar */}
+      <div className="flex-1 w-full relative overflow-hidden flex flex-row min-h-0">
+        <div className="flex-1 flex flex-col items-center justify-between p-3 sm:p-6 max-w-lg mx-auto w-full relative min-w-0">
         {/* Opponent Bot Card (Top) */}
         <div className="w-full bg-neutral-900/80 border border-neutral-800 p-3 rounded-2xl flex items-center justify-between">
           <div className="flex items-center gap-2.5">
@@ -367,11 +417,17 @@ export default function FingerSumoGame({ onBackToHub }: FingerSumoProps) {
               <h2 className={`text-2xl font-black mb-1 ${matchWinner === 'player' ? 'text-amber-400' : 'text-rose-500'}`}>
                 {matchWinner === 'player' ? 'GRAND CHAMPION!' : 'DEFEATED!'}
               </h2>
-              <p className="text-sm text-neutral-400 mb-4">
+              <p className="text-sm text-neutral-400 mb-2">
                 {matchWinner === 'player'
                   ? `You won 3 rounds against the ${difficulty.toUpperCase()} AI bot!`
                   : `Bot conquered the tournament 3 to ${playerScore}.`}
               </p>
+              {matchWinner === 'player' && finalCPS !== null && (
+                <div className="mb-4 py-2 px-3 bg-neutral-950 rounded-xl border border-neutral-800">
+                  <span className="text-[10px] text-neutral-400 uppercase font-semibold block">Sustained Speed</span>
+                  <span className="text-2xl font-black text-amber-400 font-mono">{finalCPS} <span className="text-xs text-neutral-400">CPS</span></span>
+                </div>
+              )}
               <button
                 onClick={startNewMatch}
                 className="w-full py-3 bg-amber-500 hover:bg-amber-400 text-black font-black text-sm tracking-wider uppercase rounded-xl transition-all shadow-lg active:scale-95"
@@ -381,6 +437,22 @@ export default function FingerSumoGame({ onBackToHub }: FingerSumoProps) {
             </div>
           </div>
         )}
+        </div>
+
+        <GameLeaderboardSidebar
+          mode={`finger_sumo-${difficulty === 'easy' ? 'medium' : difficulty}`}
+          allowedModes={['finger_sumo-medium', 'finger_sumo-hard']}
+          tabLabels={{
+            'finger_sumo-medium': 'MED',
+            'finger_sumo-hard': 'HARD'
+          }}
+          title="Sumo Champions"
+          scoreLabel="CPS"
+          storageKey="finger_sumo_leaderboard_collapsed"
+          isMobile={isMobile}
+          showMobileLeaderboard={showMobileLeaderboard}
+          onCloseMobileLeaderboard={() => setShowMobileLeaderboard(false)}
+        />
       </div>
 
       <footer className="py-1 px-2 text-center text-[10px] text-neutral-500 border-t border-neutral-900 bg-neutral-950/60 shrink-0">

@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { audioService } from '../services/audioService';
 import { incrementGamePlays, saveLeaderboardScore } from '../services/firebase';
+import { isMobileDevice } from '../utils/device';
+import { GameLeaderboardSidebar, MobileLeaderboardButton } from './GameLeaderboardSidebar';
 
 export type Piece = 'R' | 'RK' | 'B' | 'BK' | null; // R = Red, B = Black, K = King
 export type PlayerColor = 'red' | 'black';
@@ -50,6 +52,15 @@ export default function CheckersGame({ onBackToHub, user, username }: CheckersGa
     const [capturedRed, setCapturedRed] = useState(0);
     const [capturedBlack, setCapturedBlack] = useState(0);
     const [moveHistory, setMoveHistory] = useState<{ board: Piece[][]; turn: PlayerColor }[]>([]);
+    const [isMobile, setIsMobile] = useState(false);
+    const [showMobileLeaderboard, setShowMobileLeaderboard] = useState(false);
+
+    useEffect(() => {
+        setIsMobile(isMobileDevice());
+        const handleResize = () => setIsMobile(isMobileDevice());
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
 
     // Container auto-resize logic for mobile responsiveness
     const boardContainerRef = useRef<HTMLDivElement>(null);
@@ -551,11 +562,15 @@ export default function CheckersGame({ onBackToHub, user, username }: CheckersGa
                     >
                         🔄
                     </button>
+                    {isMobile && (
+                        <MobileLeaderboardButton onClick={() => setShowMobileLeaderboard(true)} />
+                    )}
                 </div>
             </div>
 
-            {/* Board Container Area with dynamic responsive space */}
-            <div className="flex-1 flex flex-col md:flex-row items-center justify-center p-2 sm:p-4 gap-2 md:gap-8 overflow-hidden min-h-0">
+            <div className="flex-1 w-full relative overflow-hidden flex flex-row min-h-0">
+                {/* Board Container Area with dynamic responsive space */}
+                <div className="flex-1 flex flex-col md:flex-row items-center justify-center p-2 sm:p-4 gap-2 md:gap-8 overflow-hidden min-h-0 min-w-0">
                 
                 {/* Stats / Player cards */}
                 <div className="flex md:flex-col items-center justify-between md:justify-center gap-3 w-full md:w-52 shrink-0 bg-neutral-900/70 border border-neutral-800/80 px-3 py-2 md:py-4 rounded-2xl shadow-lg">
@@ -670,6 +685,22 @@ export default function CheckersGame({ onBackToHub, user, username }: CheckersGa
                         )}
                     </div>
                 </div>
+                </div>
+
+                <GameLeaderboardSidebar
+                    mode={`checkers-${difficulty === 'easy' ? 'medium' : difficulty}`}
+                    allowedModes={['checkers-medium', 'checkers-hard']}
+                    tabLabels={{
+                        'checkers-medium': 'MED',
+                        'checkers-hard': 'HARD'
+                    }}
+                    title="Checkers Masters"
+                    scoreLabel="TIME"
+                    storageKey="checkers_leaderboard_collapsed"
+                    isMobile={isMobile}
+                    showMobileLeaderboard={showMobileLeaderboard}
+                    onCloseMobileLeaderboard={() => setShowMobileLeaderboard(false)}
+                />
             </div>
         </div>
     );

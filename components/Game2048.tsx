@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { audioService } from '../services/audioService';
-import { incrementGamePlays } from '../services/firebase';
+import { incrementGamePlays, saveLeaderboardScore } from '../services/firebase';
+import { isMobileDevice } from '../utils/device';
+import { GameLeaderboardSidebar, MobileLeaderboardButton } from './GameLeaderboardSidebar';
 
 interface Game2048Props {
   onBackToHub: () => void;
@@ -44,7 +46,7 @@ const TILE_COLORS: Record<number, { bg: string; text: string; glow?: string }> =
   16384: { bg: '#14b8a6', text: '#ffffff', glow: 'rgba(20, 184, 166, 1.0)' }, // Starlight Teal
 };
 
-export default function Game2048({ onBackToHub }: Game2048Props) {
+export default function Game2048({ onBackToHub, user, username }: Game2048Props) {
   const [gridSize, setGridSize] = useState<number>(4);
   const [tiles, setTiles] = useState<Tile[]>([]);
   const [score, setScore] = useState<number>(0);
@@ -55,6 +57,15 @@ export default function Game2048({ onBackToHub }: Game2048Props) {
   const [hasWon, setHasWon] = useState<boolean>(false);
   const [continuePlaying, setContinuePlaying] = useState<boolean>(false);
   const [history, setHistory] = useState<HistoryState[]>([]);
+  const [isMobile, setIsMobile] = useState(false);
+  const [showMobileLeaderboard, setShowMobileLeaderboard] = useState(false);
+
+  useEffect(() => {
+    setIsMobile(isMobileDevice());
+    const handleResize = () => setIsMobile(isMobileDevice());
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
 
@@ -105,98 +116,107 @@ export default function Game2048({ onBackToHub }: Game2048Props) {
 
   const checkGameOver = (currentTiles: Tile[], size = gridSize): boolean => {
     if (currentTiles.length < size * size) return false;
-    const grid: number[][] = Array(size).fill(0).map(() => Array(size).fill(0));
+
+    const grid: (number | null)[][] = Array(size).fill(null).map(() => Array(size).fill(null));
     currentTiles.forEach(t => {
       grid[t.r][t.c] = t.val;
     });
 
     for (let r = 0; r < size; r++) {
       for (let c = 0; c < size; c++) {
-        if (grid[r][c] === 0) return false;
-        if (c < size - 1 && grid[r][c] === grid[r][c + 1]) return false;
-        if (r < size - 1 && grid[r][c] === grid[r + 1][c]) return false;
+        const val = grid[r][c];
+        if (r + 1 < size && grid[r + 1][c] === val) return false;
+        if (c + 1 < size && grid[r][c + 1] === val) return false;
       }
     }
     return true;
   };
 
-  const move = useCallback((direction: Direction) => {
+  const move = useCallback((dir: Direction) => {
     if (gameOver) return;
 
-    let changed = false;
-    let gainedScore = 0;
     const size = gridSize;
-
-    // Map current tiles onto grid
-    const grid: (Tile | null)[][] = Array(size).fill(null).map(() => Array(size).fill(null));
+    const currentGrid: (Tile | null)[][] = Array(size).fill(null).map(() => Array(size).fill(null));
     tiles.forEach(t => {
-      grid[t.r][t.c] = { ...t, merged: false, isNew: false };
+      currentGrid[t.r][t.c] = { ...t, merged: false, isNew: false };
     });
 
-    const isHorizontal = direction === 'LEFT' || direction === 'RIGHT';
-    const isForward = direction === 'RIGHT' || direction === 'DOWN';
+    let moved = false;
+    let gainedScore = 0;
+    const newTiles: Tile[] = [];
 
-    const newTilesList: Tile[] = [];
+    const traverse = (rIdx: number, cIdx: number) => {
+      const tile = currentGrid[rIdx][cIdx];
+      if (!tile) return;
 
-    for (let line = 0; line < size; line++) {
-      const lineTiles: Tile[] = [];
-      for (let i = 0; i < size; i++) {
-        const r = isHorizontal ? line : (isForward ? size - 1 - i : i);
-        const c = isHorizontal ? (isForward ? size - 1 - i : i) : line;
-        const item = grid[r][c];
-        if (item) lineTiles.push(item);
-      }
+      let dr = 0;
+      let dc = 0;
+      if (dir === 'UP') dr = -1;
+      else if (dir === 'DOWN') dr = 1;
+      else if (dir === 'LEFT') dc = -1;
+      else if (dir === 'RIGHT') dc = 1;
 
-      const mergedLine: Tile[] = [];
-      let i = 0;
-      while (i < lineTiles.length) {
-        const current = lineTiles[i];
-        if (i + 1 < lineTiles.length && lineTiles[i].val === lineTiles[i + 1].val) {
-          const newVal = current.val * 2;
-          gainedScore += newVal;
-          if (newVal === 2048 && !hasWon && !continuePlaying) {
-            setHasWon(true);
-            audioService.playSound('mine_win');
-          }
-          mergedLine.push({
-            id: current.id,
-            val: newVal,
-            r: 0,
-            c: 0,
-            merged: true
-          });
-          i += 2;
-          changed = true;
+      let nextR = rIdx + dr;
+      let nextC = cIdx + dc;
+      let targetR = rIdx;
+      let targetC = cIdx;
+
+      while (nextR >= 0 && nextR < size && nextC >= 0 && nextC < size) {
+        const nextTile = currentGrid[nextR][nextC];
+        if (nextTile === null) {
+          targetR = nextR;
+          targetC = nextC;
+          nextR += dr;
+          nextC += dc;
+        } else if (nextTile.val === tile.val && !nextTile.merged) {
+          targetR = nextR;
+          targetC = nextC;
+          break;
         } else {
-          mergedLine.push({
-            ...current,
-            merged: false
-          });
-          i += 1;
+          break;
         }
       }
 
-      mergedLine.forEach((t, idx) => {
-        const targetPos = isForward ? size - 1 - idx : idx;
-        const newR = isHorizontal ? line : targetPos;
-        const newC = isHorizontal ? targetPos : line;
-
-        if (t.r !== newR || t.c !== newC) {
-          changed = true;
+      if (targetR !== rIdx || targetC !== cIdx) {
+        moved = true;
+        const targetTile = currentGrid[targetR][targetC];
+        if (targetTile && targetTile.val === tile.val && !targetTile.merged) {
+          const mergedVal = tile.val * 2;
+          gainedScore += mergedVal;
+          targetTile.val = mergedVal;
+          targetTile.merged = true;
+          currentGrid[rIdx][cIdx] = null;
+          if (mergedVal === 2048 && !hasWon && !continuePlaying) {
+            setHasWon(true);
+            audioService.playSound('success');
+          }
+        } else {
+          currentGrid[rIdx][cIdx] = null;
+          currentGrid[targetR][targetC] = { ...tile, r: targetR, c: targetC };
         }
-        t.r = newR;
-        t.c = newC;
-        newTilesList.push(t);
-      });
+      }
+    };
+
+    const rowIndices = dir === 'DOWN' ? Array.from({ length: size }, (_, i) => size - 1 - i) : Array.from({ length: size }, (_, i) => i);
+    const colIndices = dir === 'RIGHT' ? Array.from({ length: size }, (_, i) => size - 1 - i) : Array.from({ length: size }, (_, i) => i);
+
+    for (const r of rowIndices) {
+      for (const c of colIndices) {
+        traverse(r, c);
+      }
     }
 
-    if (changed) {
-      setHistory(prev => [
-        ...prev.slice(-15),
-        { tiles: tiles.map(t => ({ ...t })), score }
-      ]);
+    if (moved) {
+      setHistory(prev => [...prev.slice(-20), { tiles: tiles.map(t => ({ ...t })), score }]);
 
-      const spawned = spawnRandomTile(newTilesList, size);
+      for (let r = 0; r < size; r++) {
+        for (let c = 0; c < size; c++) {
+          const t = currentGrid[r][c];
+          if (t) newTiles.push(t);
+        }
+      }
+
+      const spawned = spawnRandomTile(newTiles, size);
       setTiles(spawned);
 
       const nextScore = score + gainedScore;
@@ -215,9 +235,17 @@ export default function Game2048({ onBackToHub }: Game2048Props) {
       if (checkGameOver(spawned, size)) {
         setGameOver(true);
         audioService.playSound('button_click');
+        saveLeaderboardScore(
+          user,
+          username || user?.displayName || '2048 Master',
+          nextScore,
+          `${size}x${size} Tile Legend`,
+          { mistakes: 0, timeTaken: 0, ingredientsMissed: 0, rottenWordsTyped: 0, totalScore: nextScore, levelReached: nextScore },
+          `2048-${size}x${size}`
+        );
       }
     }
-  }, [continuePlaying, gameOver, gridSize, hasWon, highScore, score, spawnRandomTile, tiles]);
+  }, [continuePlaying, gameOver, gridSize, hasWon, highScore, score, spawnRandomTile, tiles, user, username]);
 
   const handleUndo = () => {
     if (history.length === 0) return;
@@ -261,217 +289,240 @@ export default function Game2048({ onBackToHub }: Game2048Props) {
     if (Math.abs(dx) < 20 && Math.abs(dy) < 20) return;
 
     if (Math.abs(dx) > Math.abs(dy)) {
-      move(dx > 0 ? 'RIGHT' : 'LEFT');
+      if (dx > 0) move('RIGHT');
+      else move('LEFT');
     } else {
-      move(dy > 0 ? 'DOWN' : 'UP');
+      if (dy > 0) move('DOWN');
+      else move('UP');
     }
   };
 
   return (
-    <div className="flex flex-col h-full w-full bg-[#07090e] text-white select-none overflow-hidden font-sans">
-      {/* Header */}
-      <header className="flex items-center justify-between p-3 sm:px-5 sm:py-3 bg-[#0d111a] border-b border-neutral-800 shrink-0">
-        <div className="flex items-center gap-3">
-          <button
-            onClick={onBackToHub}
-            className="px-3 py-1.5 rounded-full bg-neutral-900 hover:bg-neutral-800 text-xs sm:text-sm font-bold transition-all text-neutral-300 hover:text-white flex items-center gap-1.5 border border-neutral-700 active:scale-95 shadow-md cursor-pointer"
-          >
-            <span>←</span>
-            <span>Hub</span>
-          </button>
+    <div className="flex flex-row h-full w-full bg-[#07090e] text-white select-none overflow-hidden font-sans">
+      <div className="flex-1 h-full flex flex-col relative overflow-hidden min-w-0">
+        {/* Header */}
+        <header className="flex items-center justify-between p-3 sm:px-5 sm:py-3 bg-[#0d111a] border-b border-neutral-800 shrink-0">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={onBackToHub}
+              className="px-3 py-1.5 rounded-full bg-neutral-900 hover:bg-neutral-800 text-xs sm:text-sm font-bold transition-all text-neutral-300 hover:text-white flex items-center gap-1.5 border border-neutral-700 active:scale-95 shadow-md cursor-pointer"
+            >
+              <span>←</span>
+              <span>Hub</span>
+            </button>
+            <div className="flex items-center gap-2">
+              <span className="text-xl">🔢</span>
+              <h1 className="text-base sm:text-lg font-black text-amber-400 tracking-wide">2048</h1>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3 sm:gap-5">
+            <div className="text-right">
+              <div className="text-[10px] text-neutral-400 uppercase font-semibold">Score</div>
+              <div className="text-sm sm:text-lg font-black text-amber-400 font-mono">{score}</div>
+            </div>
+            <div className="text-right border-l border-neutral-800 pl-3">
+              <div className="text-[10px] text-neutral-400 uppercase font-semibold">Best</div>
+              <div className="text-sm sm:text-lg font-black text-cyan-400 font-mono">{highScore}</div>
+            </div>
+            {isMobile && (
+              <MobileLeaderboardButton onClick={() => setShowMobileLeaderboard(true)} />
+            )}
+          </div>
+        </header>
+
+        {/* Control Strip */}
+        <div className="flex flex-wrap items-center justify-between gap-2 px-3 sm:px-5 py-2 bg-[#0a0d14] border-b border-neutral-800 text-xs text-neutral-400 shrink-0">
           <div className="flex items-center gap-2">
-            <span className="text-xl">🔢</span>
-            <h1 className="text-base sm:text-lg font-black text-amber-400 tracking-wide">2048</h1>
+            <span>Grid:</span>
+            <button
+              onClick={() => setGridSize(3)}
+              className={`px-2 py-0.5 rounded font-bold transition-all ${gridSize === 3 ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40' : 'hover:bg-neutral-800'}`}
+            >
+              3x3
+            </button>
+            <button
+              onClick={() => setGridSize(4)}
+              className={`px-2 py-0.5 rounded font-bold transition-all ${gridSize === 4 ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40' : 'hover:bg-neutral-800'}`}
+            >
+              4x4
+            </button>
+            <button
+              onClick={() => setGridSize(5)}
+              className={`px-2 py-0.5 rounded font-bold transition-all ${gridSize === 5 ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40' : 'hover:bg-neutral-800'}`}
+            >
+              5x5
+            </button>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleUndo}
+              disabled={history.length === 0}
+              className={`px-2.5 py-1 rounded font-bold transition-all border ${
+                history.length > 0
+                  ? 'bg-neutral-900 border-neutral-700 hover:bg-neutral-800 text-neutral-200 cursor-pointer'
+                  : 'opacity-40 border-transparent cursor-not-allowed text-neutral-500'
+              }`}
+            >
+              ↶ Undo ({history.length})
+            </button>
+            <button
+              onClick={() => initGame(gridSize)}
+              className="px-3 py-1 bg-amber-500 hover:bg-amber-400 text-black font-extrabold rounded-lg shadow cursor-pointer transition-transform active:scale-95"
+            >
+              New Game
+            </button>
           </div>
         </div>
 
-        <div className="flex items-center gap-3 sm:gap-5">
-          <div className="text-right">
-            <div className="text-[10px] text-neutral-400 uppercase font-semibold">Score</div>
-            <div className="text-sm sm:text-lg font-black text-amber-400 font-mono">{score}</div>
-          </div>
-          <div className="text-right border-l border-neutral-800 pl-3">
-            <div className="text-[10px] text-neutral-400 uppercase font-semibold">Best</div>
-            <div className="text-sm sm:text-lg font-black text-cyan-400 font-mono">{highScore}</div>
-          </div>
-        </div>
-      </header>
-
-      {/* Control Strip */}
-      <div className="flex flex-wrap items-center justify-between gap-2 px-3 sm:px-5 py-2 bg-[#0a0d14] border-b border-neutral-800 text-xs text-neutral-400 shrink-0">
-        <div className="flex items-center gap-2">
-          <span>Grid:</span>
-          <button
-            onClick={() => setGridSize(3)}
-            className={`px-2 py-0.5 rounded font-bold transition-all ${gridSize === 3 ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40' : 'hover:bg-neutral-800'}`}
-          >
-            3x3
-          </button>
-          <button
-            onClick={() => setGridSize(4)}
-            className={`px-2 py-0.5 rounded font-bold transition-all ${gridSize === 4 ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40' : 'hover:bg-neutral-800'}`}
-          >
-            4x4
-          </button>
-          <button
-            onClick={() => setGridSize(5)}
-            className={`px-2 py-0.5 rounded font-bold transition-all ${gridSize === 5 ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40' : 'hover:bg-neutral-800'}`}
-          >
-            5x5
-          </button>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <button
-            onClick={handleUndo}
-            disabled={history.length === 0}
-            className={`px-2.5 py-1 rounded font-bold transition-all border ${
-              history.length > 0
-                ? 'bg-neutral-900 border-neutral-700 hover:bg-neutral-800 text-neutral-200 cursor-pointer'
-                : 'opacity-40 border-transparent cursor-not-allowed text-neutral-500'
-            }`}
-          >
-            ↶ Undo ({history.length})
-          </button>
-          <button
-            onClick={() => initGame(gridSize)}
-            className="px-3 py-1 bg-amber-500 hover:bg-amber-400 text-black font-extrabold rounded-lg shadow cursor-pointer transition-transform active:scale-95"
-          >
-            New Game
-          </button>
-        </div>
-      </div>
-
-      {/* Main Board Area with Non-resizing Rigid Boxy Grid and Smooth Sliding Tiles */}
-      <div className="flex-1 flex flex-col items-center justify-center p-2 sm:p-4 min-h-0 relative select-none">
-        <div
-          onTouchStart={handleTouchStart}
-          onTouchEnd={handleTouchEnd}
-          className="relative aspect-square w-full max-w-[min(90vw,400px,calc(100vh-230px))] max-h-[min(90vw,400px,calc(100vh-230px))] bg-[#12151f] p-2.5 sm:p-3.5 rounded-2xl shadow-2xl border-2 sm:border-3 border-neutral-800 flex items-center justify-center touch-none overflow-hidden"
-        >
-          {/* Background Grid Slots (Static cells that never resize) */}
+        {/* Main Board Area with Non-resizing Rigid Boxy Grid and Smooth Sliding Tiles */}
+        <div className="flex-1 flex flex-col items-center justify-center p-2 sm:p-4 min-h-0 relative select-none">
           <div
-            className="grid gap-2 sm:gap-2.5 w-full h-full aspect-square"
-            style={{
-              gridTemplateColumns: `repeat(${gridSize}, minmax(0, 1fr))`,
-              gridTemplateRows: `repeat(${gridSize}, minmax(0, 1fr))`
-            }}
+            onTouchStart={handleTouchStart}
+            onTouchEnd={handleTouchEnd}
+            className="relative aspect-square w-full max-w-[min(90vw,400px,calc(100vh-230px))] max-h-[min(90vw,400px,calc(100vh-230px))] bg-[#12151f] p-2.5 sm:p-3.5 rounded-2xl shadow-2xl border-2 sm:border-3 border-neutral-800 flex items-center justify-center touch-none overflow-hidden"
           >
-            {Array.from({ length: gridSize * gridSize }).map((_, i) => (
-              <div
-                key={`bg-cell-${i}`}
-                className="w-full h-full rounded-lg sm:rounded-xl bg-neutral-900/60"
-              />
-            ))}
-          </div>
-
-          {/* Sliding Animated Tiles Layer */}
-          <div className="absolute inset-2.5 sm:inset-3.5 pointer-events-none">
-            {tiles.map(tile => {
-              const tileStyle = TILE_COLORS[tile.val] || { bg: '#a855f7', text: '#ffffff' };
-              const percent = 100 / gridSize;
-
-              return (
+            {/* Background Grid Slots (Static cells that never resize) */}
+            <div
+              className="grid gap-2 sm:gap-2.5 w-full h-full aspect-square"
+              style={{
+                gridTemplateColumns: `repeat(${gridSize}, minmax(0, 1fr))`,
+                gridTemplateRows: `repeat(${gridSize}, minmax(0, 1fr))`
+              }}
+            >
+              {Array.from({ length: gridSize * gridSize }).map((_, i) => (
                 <div
-                  key={tile.id}
-                  className="absolute p-1 sm:p-1.5 transition-all duration-150 ease-out"
-                  style={{
-                    width: `${percent}%`,
-                    height: `${percent}%`,
-                    transform: `translate(${tile.c * 100}%, ${tile.r * 100}%)`,
-                  }}
-                >
+                  key={`bg-cell-${i}`}
+                  className="w-full h-full rounded-lg sm:rounded-xl bg-neutral-900/60"
+                />
+              ))}
+            </div>
+
+            {/* Sliding Animated Tiles Layer */}
+            <div className="absolute inset-2.5 sm:inset-3.5 pointer-events-none">
+              {tiles.map(tile => {
+                const tileStyle = TILE_COLORS[tile.val] || { bg: '#a855f7', text: '#ffffff' };
+                const percent = 100 / gridSize;
+
+                return (
                   <div
-                    className={`w-full h-full rounded-lg sm:rounded-xl flex items-center justify-center font-black select-none leading-none shadow-md ${
-                      tile.merged ? 'animate-tile-merge' : tile.isNew ? 'animate-tile-pop' : ''
-                    }`}
+                    key={tile.id}
+                    className="absolute p-1 sm:p-1.5 transition-all duration-150 ease-out"
                     style={{
-                      backgroundColor: tileStyle.bg,
-                      color: tileStyle.text,
-                      boxShadow: tileStyle.glow ? `0 0 16px ${tileStyle.glow}` : undefined,
-                      fontSize: tile.val >= 1024 ? '1.15rem' : tile.val >= 128 ? '1.35rem' : '1.65rem'
+                      width: `${percent}%`,
+                      height: `${percent}%`,
+                      transform: `translate(${tile.c * 100}%, ${tile.r * 100}%)`,
                     }}
                   >
-                    {tile.val}
+                    <div
+                      className={`w-full h-full rounded-lg sm:rounded-xl flex items-center justify-center font-black select-none leading-none shadow-md ${
+                        tile.merged ? 'animate-tile-merge' : tile.isNew ? 'animate-tile-pop' : ''
+                      }`}
+                      style={{
+                        backgroundColor: tileStyle.bg,
+                        color: tileStyle.text,
+                        boxShadow: tileStyle.glow ? `0 0 16px ${tileStyle.glow}` : undefined,
+                        fontSize: tile.val >= 1024 ? '1.15rem' : tile.val >= 128 ? '1.35rem' : '1.65rem'
+                      }}
+                    >
+                      {tile.val}
+                    </div>
                   </div>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
 
-          {/* Win Dialog */}
-          {hasWon && !continuePlaying && (
-            <div className="absolute inset-0 bg-black/85 backdrop-blur-sm flex flex-col items-center justify-center p-6 rounded-2xl text-center z-30 animate-fade-in">
-              <span className="text-4xl mb-2">🏆</span>
-              <h2 className="text-2xl font-black text-amber-400 mb-1">YOU REACHED 2048!</h2>
-              <p className="text-sm text-neutral-300 mb-4">Legendary tile unlocked!</p>
-              <div className="flex gap-3">
-                <button
-                  onClick={() => setContinuePlaying(true)}
-                  className="px-4 py-2 bg-neutral-800 hover:bg-neutral-700 text-white font-bold rounded-xl cursor-pointer"
-                >
-                  Keep Playing
-                </button>
+            {/* Win Dialog */}
+            {hasWon && !continuePlaying && (
+              <div className="absolute inset-0 bg-black/85 backdrop-blur-sm flex flex-col items-center justify-center p-6 rounded-2xl text-center z-30 animate-fade-in">
+                <span className="text-4xl mb-2">🏆</span>
+                <h2 className="text-2xl font-black text-amber-400 mb-1">YOU REACHED 2048!</h2>
+                <p className="text-sm text-neutral-300 mb-4">Legendary tile unlocked!</p>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setContinuePlaying(true)}
+                    className="px-4 py-2 bg-neutral-800 hover:bg-neutral-700 text-white font-bold rounded-xl cursor-pointer"
+                  >
+                    Keep Playing
+                  </button>
+                  <button
+                    onClick={() => initGame(gridSize)}
+                    className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-black font-extrabold rounded-xl cursor-pointer"
+                  >
+                    New Game
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Game Over Dialog */}
+            {gameOver && (
+              <div className="absolute inset-0 bg-black/85 backdrop-blur-sm flex flex-col items-center justify-center p-6 rounded-2xl text-center z-30 animate-fade-in">
+                <span className="text-4xl mb-2">💥</span>
+                <h2 className="text-2xl font-black text-red-500 mb-1">NO MORE MOVES</h2>
+                <p className="text-sm text-neutral-300 mb-4">Final Score: <span className="font-bold text-amber-400">{score}</span></p>
                 <button
                   onClick={() => initGame(gridSize)}
-                  className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-black font-extrabold rounded-xl cursor-pointer"
+                  className="px-6 py-2.5 bg-amber-500 hover:bg-amber-400 text-black font-extrabold rounded-xl shadow-lg transition-transform hover:scale-105 cursor-pointer"
                 >
-                  New Game
+                  Try Again
                 </button>
               </div>
-            </div>
-          )}
+            )}
+          </div>
 
-          {/* Game Over Dialog */}
-          {gameOver && (
-            <div className="absolute inset-0 bg-black/85 backdrop-blur-sm flex flex-col items-center justify-center p-6 rounded-2xl text-center z-30 animate-fade-in">
-              <span className="text-4xl mb-2">💥</span>
-              <h2 className="text-2xl font-black text-red-500 mb-1">NO MORE MOVES</h2>
-              <p className="text-sm text-neutral-300 mb-4">Final Score: <span className="font-bold text-amber-400">{score}</span></p>
+          {/* Mobile/Touch Directional Controls */}
+          <div className="mt-3 flex flex-col items-center gap-1.5 sm:hidden shrink-0">
+            <button
+              onClick={() => move('UP')}
+              className="w-14 h-10 bg-neutral-800 active:bg-amber-500 active:text-black rounded-xl text-lg font-bold flex items-center justify-center border border-neutral-700 active:scale-95 shadow cursor-pointer"
+            >
+              ▲
+            </button>
+            <div className="flex gap-3">
               <button
-                onClick={() => initGame(gridSize)}
-                className="px-6 py-2.5 bg-amber-500 hover:bg-amber-400 text-black font-extrabold rounded-xl shadow-lg transition-transform hover:scale-105 cursor-pointer"
+                onClick={() => move('LEFT')}
+                className="w-14 h-10 bg-neutral-800 active:bg-amber-500 active:text-black rounded-xl text-lg font-bold flex items-center justify-center border border-neutral-700 active:scale-95 shadow cursor-pointer"
               >
-                Try Again
+                ◀
+              </button>
+              <button
+                onClick={() => move('DOWN')}
+                className="w-14 h-10 bg-neutral-800 active:bg-amber-500 active:text-black rounded-xl text-lg font-bold flex items-center justify-center border border-neutral-700 active:scale-95 shadow cursor-pointer"
+              >
+                ▼
+              </button>
+              <button
+                onClick={() => move('RIGHT')}
+                className="w-14 h-10 bg-neutral-800 active:bg-amber-500 active:text-black rounded-xl text-lg font-bold flex items-center justify-center border border-neutral-700 active:scale-95 shadow cursor-pointer"
+              >
+                ▶
               </button>
             </div>
-          )}
-        </div>
-
-        {/* Mobile/Touch Directional Controls */}
-        <div className="mt-3 flex flex-col items-center gap-1.5 sm:hidden shrink-0">
-          <button
-            onClick={() => move('UP')}
-            className="w-14 h-10 bg-neutral-800 active:bg-amber-500 active:text-black rounded-xl text-lg font-bold flex items-center justify-center border border-neutral-700 active:scale-95 shadow cursor-pointer"
-          >
-            ▲
-          </button>
-          <div className="flex gap-3">
-            <button
-              onClick={() => move('LEFT')}
-              className="w-14 h-10 bg-neutral-800 active:bg-amber-500 active:text-black rounded-xl text-lg font-bold flex items-center justify-center border border-neutral-700 active:scale-95 shadow cursor-pointer"
-            >
-              ◀
-            </button>
-            <button
-              onClick={() => move('DOWN')}
-              className="w-14 h-10 bg-neutral-800 active:bg-amber-500 active:text-black rounded-xl text-lg font-bold flex items-center justify-center border border-neutral-700 active:scale-95 shadow cursor-pointer"
-            >
-              ▼
-            </button>
-            <button
-              onClick={() => move('RIGHT')}
-              className="w-14 h-10 bg-neutral-800 active:bg-amber-500 active:text-black rounded-xl text-lg font-bold flex items-center justify-center border border-neutral-700 active:scale-95 shadow cursor-pointer"
-            >
-              ▶
-            </button>
           </div>
-        </div>
 
-        <p className="mt-2 text-[11px] text-neutral-500 text-center hidden sm:block">
-          Use Arrow Keys, WASD, or Swipe on Touchscreen. Press [Z] to Undo.
-        </p>
+          <p className="mt-2 text-[11px] text-neutral-500 text-center hidden sm:block">
+            Use Arrow Keys, WASD, or Swipe on Touchscreen. Press [Z] to Undo.
+          </p>
+        </div>
       </div>
+
+      <GameLeaderboardSidebar
+        mode={`2048-${gridSize}x${gridSize}`}
+        allowedModes={['2048-3x3', '2048-4x4', '2048-5x5']}
+        tabLabels={{
+          '2048-3x3': '3×3',
+          '2048-4x4': '4×4',
+          '2048-5x5': '5×5'
+        }}
+        title="2048 Legends"
+        scoreLabel="PTS"
+        storageKey="game2048_leaderboard_collapsed"
+        isMobile={isMobile}
+        showMobileLeaderboard={showMobileLeaderboard}
+        onCloseMobileLeaderboard={() => setShowMobileLeaderboard(false)}
+      />
     </div>
   );
 }

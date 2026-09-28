@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { User, saveLeaderboardScore, incrementGamePlays } from '../services/firebase';
 import { audioService } from '../services/audioService';
 import { isMobileDevice } from '../utils/device';
+import { GameLeaderboardSidebar, MobileLeaderboardButton } from './GameLeaderboardSidebar';
 
 interface Connect4GameProps {
     user: User;
@@ -24,7 +25,9 @@ export default function Connect4Game({ user, onBackToHub, username }: Connect4Ga
     const [startTime, setStartTime] = useState<number | null>(null);
     const [elapsedTime, setElapsedTime] = useState(0);
     const [hoveredCol, setHoveredCol] = useState<number | null>(null);
+    const [streak, setStreak] = useState(0);
     const [isMobile, setIsMobile] = useState(false);
+    const [showMobileLeaderboard, setShowMobileLeaderboard] = useState(false);
     const [lastDrop, setLastDrop] = useState<{ r: number, c: number } | null>(null);
     const elapsedTimeRef = useRef(0);
 
@@ -34,6 +37,9 @@ export default function Connect4Game({ user, onBackToHub, username }: Connect4Ga
 
     useEffect(() => {
         setIsMobile(isMobileDevice());
+        const handleResize = () => setIsMobile(isMobileDevice());
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
     }, []);
 
     const startNewGame = useCallback(() => {
@@ -280,16 +286,31 @@ export default function Connect4Game({ user, onBackToHub, username }: Connect4Ga
         if (result === 'R') {
             audioService.playSound('correct_answer');
             const finalTime = elapsedTimeRef.current;
+            const newStreak = streak + 1;
+            setStreak(newStreak);
+
+            // 1. Save to Fastest Win category (lowest time)
             await saveLeaderboardScore(
                 user, 
-                username || user.displayName || 'Chef', 
+                username || user.displayName || 'Connect 4 Master', 
                 finalTime, 
-                'Connect 4 Master', 
+                'Connect 4 Speedster', 
                 { mistakes: 0, timeTaken: finalTime, ingredientsMissed: 0, rottenWordsTyped: 0, totalScore: finalTime, levelReached: 1 }, 
-                'connect_4'
+                'connect_4-time'
+            );
+
+            // 2. Save to Win Streak category
+            await saveLeaderboardScore(
+                user, 
+                username || user.displayName || 'Connect 4 Master', 
+                newStreak, 
+                'Connect 4 Strategist', 
+                { mistakes: 0, timeTaken: finalTime, ingredientsMissed: 0, rottenWordsTyped: 0, totalScore: newStreak, levelReached: newStreak }, 
+                'connect_4-streak'
             );
         } else if (result === 'Y') {
             audioService.playSound('wrong_answer');
+            setStreak(0);
         }
     };
 
@@ -311,38 +332,43 @@ export default function Connect4Game({ user, onBackToHub, username }: Connect4Ga
     };
 
     return (
-        <div className="flex flex-col items-center justify-between w-full h-full bg-[#050508] text-white relative overflow-y-auto custom-scrollbar p-2.5 sm:p-4 select-none font-sans">
-            <div className="absolute inset-0 opacity-15 pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at 50% 50%, #2563eb 2px, transparent 2px)', backgroundSize: '60px 60px' }}></div>
+        <div className="flex flex-row w-full h-full bg-[#050508] text-white relative overflow-hidden select-none font-sans">
+            <div className="flex-1 h-full flex flex-col items-center justify-between relative overflow-y-auto custom-scrollbar p-2.5 sm:p-4 min-w-0">
+                <div className="absolute inset-0 opacity-15 pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at 50% 50%, #2563eb 2px, transparent 2px)', backgroundSize: '60px 60px' }}></div>
 
-            {/* Top Navigation - Pinned at top */}
-            <div className="flex justify-between items-center w-full max-w-xl shrink-0 pt-1 sm:pt-2 mb-2 z-10">
-                <button 
-                    onClick={() => {
-                        audioService.playSound('button_click');
-                        onBackToHub();
-                    }} 
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-neutral-900/80 hover:bg-neutral-800 border border-neutral-700 rounded-full text-sm font-bold transition-transform hover:scale-105 active:scale-95 shadow-md"
-                    title="Back to Hub"
-                >
-                    <span>⬅️</span>
-                    <span className="hidden sm:inline">Hub</span>
-                </button>
+                {/* Top Navigation - Pinned at top */}
+                <div className="flex justify-between items-center w-full max-w-xl shrink-0 pt-1 sm:pt-2 mb-2 z-10">
+                    <button 
+                        onClick={() => {
+                            audioService.playSound('button_click');
+                            onBackToHub();
+                        }} 
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-neutral-900/80 hover:bg-neutral-800 border border-neutral-700 rounded-full text-sm font-bold transition-transform hover:scale-105 active:scale-95 shadow-md"
+                        title="Back to Hub"
+                    >
+                        <span>⬅️</span>
+                        <span className="hidden sm:inline">Hub</span>
+                    </button>
 
-                <div className="flex flex-col items-center">
-                    <h1 className="text-xl md:text-2xl font-black tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-red-500 to-amber-400">
-                        CONNECT 4
-                    </h1>
-                    <div className="text-xs text-neutral-400 mt-0.5 font-bold">
-                        ⏱️ Time: <span className="text-amber-400 font-mono">{elapsedTime}s</span>
+                    <div className="flex flex-col items-center">
+                        <h1 className="text-xl md:text-2xl font-black tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-red-500 to-amber-400">
+                            CONNECT 4
+                        </h1>
+                        <div className="text-xs text-neutral-400 mt-0.5 font-bold flex items-center gap-3">
+                            <span>⏱️ Time: <span className="text-amber-400 font-mono">{elapsedTime}s</span></span>
+                            <span>🔥 Streak: <span className="text-cyan-400 font-mono">{streak}</span></span>
+                        </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                        <span className={`text-xs px-2.5 py-1 rounded-full font-bold border ${isPlayerTurn ? 'bg-red-950/80 text-red-400 border-red-700' : 'bg-amber-950/80 text-amber-400 border-amber-700'}`}>
+                            {isPlayerTurn ? 'Your Turn' : 'AI...'}
+                        </span>
+                        {isMobile && (
+                            <MobileLeaderboardButton onClick={() => setShowMobileLeaderboard(true)} />
+                        )}
                     </div>
                 </div>
-
-                <div className="w-16 flex justify-end">
-                    <span className={`text-xs px-2.5 py-1 rounded-full font-bold border ${isPlayerTurn ? 'bg-red-950/80 text-red-400 border-red-700' : 'bg-amber-950/80 text-amber-400 border-amber-700'}`}>
-                        {isPlayerTurn ? 'Your Turn' : 'AI Thinking...'}
-                    </span>
-                </div>
-            </div>
 
             {/* Middle Section: Board & Hover Indicator */}
             <div className="flex-1 flex flex-col items-center justify-center w-full max-w-xl my-auto py-1 z-10">
@@ -436,6 +462,21 @@ export default function Connect4Game({ user, onBackToHub, username }: Connect4Ga
                     )}
                 </div>
             </div>
+            </div>
+
+            <GameLeaderboardSidebar
+                mode="connect_4-time"
+                allowedModes={['connect_4-time', 'connect_4-streak']}
+                tabLabels={{
+                    'connect_4-time': 'FASTEST',
+                    'connect_4-streak': 'STREAK'
+                }}
+                title="Connect 4 Legends"
+                storageKey="connect_4_leaderboard_collapsed"
+                isMobile={isMobile}
+                showMobileLeaderboard={showMobileLeaderboard}
+                onCloseMobileLeaderboard={() => setShowMobileLeaderboard(false)}
+            />
         </div>
     );
 }

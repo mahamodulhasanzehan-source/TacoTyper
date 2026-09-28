@@ -3,6 +3,8 @@ import { User, saveLeaderboardScore, incrementGamePlays } from '../services/fire
 import { LoadingScreen } from './LoadingScreen';
 import { audioService } from '../services/audioService';
 import { WORDLE_WORDS_BY_LENGTH, validateWord } from '../services/wordleService';
+import { isMobileDevice } from '../utils/device';
+import { GameLeaderboardSidebar, MobileLeaderboardButton } from './GameLeaderboardSidebar';
 
 interface WordleGameProps {
     user: User;
@@ -30,6 +32,15 @@ export default function WordleGame({ user, username, onBackToHub }: WordleGamePr
     const [isWon, setIsWon] = useState(false);
     const [isLost, setIsLost] = useState(false);
     const [showGameOverPopup, setShowGameOverPopup] = useState(false);
+    const [isMobile, setIsMobile] = useState(false);
+    const [showMobileLeaderboard, setShowMobileLeaderboard] = useState(false);
+
+    useEffect(() => {
+        setIsMobile(isMobileDevice());
+        const handleResize = () => setIsMobile(isMobileDevice());
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
 
     const startNewGame = useCallback((length: number = wordLength) => {
         setIsLoading(true);
@@ -197,45 +208,49 @@ export default function WordleGame({ user, username, onBackToHub }: WordleGamePr
     };
 
     return (
-        <div className="flex flex-col items-center justify-between w-full h-full bg-[#050508] text-white relative overflow-y-auto custom-scrollbar p-2.5 sm:p-3 select-none font-sans">
-            <div className="absolute inset-0 opacity-15 pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at 20% 30%, #22c55e 2px, transparent 2px)', backgroundSize: '70px 70px' }}></div>
+        <div className="flex flex-row w-full h-full bg-[#050508] text-white relative overflow-hidden select-none font-sans">
+            <div className="flex-1 h-full flex flex-col items-center justify-between relative overflow-y-auto custom-scrollbar p-2.5 sm:p-3 min-w-0">
+                <div className="absolute inset-0 opacity-15 pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at 20% 30%, #22c55e 2px, transparent 2px)', backgroundSize: '70px 70px' }}></div>
 
-            {/* Top Bar - Pinned at Top */}
-            <div className="flex justify-between items-center w-full max-w-xl shrink-0 pt-1 sm:pt-2 mb-2 z-10">
-                <button 
-                    onClick={() => {
-                        audioService.playSound('button_click');
-                        onBackToHub();
-                    }} 
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-neutral-900/80 hover:bg-neutral-800 border border-neutral-700 rounded-full text-sm font-bold transition-transform hover:scale-105 active:scale-95 shadow-md"
-                    title="Back to Hub"
-                >
-                    <span>⬅️</span>
-                    <span className="hidden sm:inline">Hub</span>
-                </button>
-
-                <div className="flex flex-col items-center">
-                    <h1 className="text-xl md:text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-emerald-500 tracking-wide">
-                        WORDLE
-                    </h1>
-                    <div className="text-xs text-neutral-400 font-bold mt-0.5">
-                        🔥 Streak: <span className="text-amber-400 font-mono text-sm">{streak}</span>
-                    </div>
-                </div>
-
-                <div className="w-16 flex justify-end">
-                    <button
+                {/* Top Bar - Pinned at Top */}
+                <div className="flex justify-between items-center w-full max-w-xl shrink-0 pt-1 sm:pt-2 mb-2 z-10">
+                    <button 
                         onClick={() => {
                             audioService.playSound('button_click');
-                            startNewGame(wordLength);
-                        }}
-                        className="px-2.5 py-1 bg-neutral-800 hover:bg-neutral-700 border border-neutral-600 rounded-full text-xs font-bold text-neutral-300 transition-transform active:scale-95 shadow-md"
-                        title="New Word"
+                            onBackToHub();
+                        }} 
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-neutral-900/80 hover:bg-neutral-800 border border-neutral-700 rounded-full text-sm font-bold transition-transform hover:scale-105 active:scale-95 shadow-md"
+                        title="Back to Hub"
                     >
-                        🔄
+                        <span>⬅️</span>
+                        <span className="hidden sm:inline">Hub</span>
                     </button>
+
+                    <div className="flex flex-col items-center">
+                        <h1 className="text-xl md:text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-emerald-500 tracking-wide">
+                            WORDLE
+                        </h1>
+                        <div className="text-xs text-neutral-400 font-bold mt-0.5">
+                            🔥 Streak: <span className="text-amber-400 font-mono text-sm">{streak}</span>
+                        </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                        <button
+                            onClick={() => {
+                                audioService.playSound('button_click');
+                                startNewGame(wordLength);
+                            }}
+                            className="px-2.5 py-1 bg-neutral-800 hover:bg-neutral-700 border border-neutral-600 rounded-full text-xs font-bold text-neutral-300 transition-transform active:scale-95 shadow-md"
+                            title="New Word"
+                        >
+                            🔄
+                        </button>
+                        {isMobile && (
+                            <MobileLeaderboardButton onClick={() => setShowMobileLeaderboard(true)} />
+                        )}
+                    </div>
                 </div>
-            </div>
 
             {/* Middle Container for Grid & Controls */}
             <div className="flex-1 flex flex-col items-center justify-center w-full max-w-xl my-auto py-1 z-10">
@@ -413,6 +428,25 @@ export default function WordleGame({ user, username, onBackToHub }: WordleGamePr
                     )}
                 </>
             )}
+            </div>
+
+            <GameLeaderboardSidebar
+                mode={`wordle-${wordLength}`}
+                allowedModes={['wordle-5', 'wordle-6', 'wordle-7', 'wordle-8', 'wordle-9']}
+                tabLabels={{
+                    'wordle-5': '5-LET',
+                    'wordle-6': '6-LET',
+                    'wordle-7': '7-LET',
+                    'wordle-8': '8-LET',
+                    'wordle-9': '9-LET'
+                }}
+                title="Wordle Masters"
+                scoreLabel="STREAK"
+                storageKey="wordle_leaderboard_collapsed"
+                isMobile={isMobile}
+                showMobileLeaderboard={showMobileLeaderboard}
+                onCloseMobileLeaderboard={() => setShowMobileLeaderboard(false)}
+            />
         </div>
     );
 }

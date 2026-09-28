@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { User, saveLeaderboardScore, incrementGamePlays } from '../services/firebase';
 import { audioService } from '../services/audioService';
+import { isMobileDevice } from '../utils/device';
+import { GameLeaderboardSidebar, MobileLeaderboardButton } from './GameLeaderboardSidebar';
 
 interface TicTacToeGameProps {
     user: User;
@@ -73,6 +75,15 @@ export default function TicTacToeGame({ user, onBackToHub, username }: TicTacToe
     const [aiPlaysFirst, setAiPlaysFirst] = useState(false);
     const [currentStarter, setCurrentStarter] = useState<'player' | 'ai'>('player');
     const [nextAiPlaysFirst, setNextAiPlaysFirst] = useState(false);
+    const [isMobile, setIsMobile] = useState(false);
+    const [showMobileLeaderboard, setShowMobileLeaderboard] = useState(false);
+
+    useEffect(() => {
+        setIsMobile(isMobileDevice());
+        const handleResize = () => setIsMobile(isMobileDevice());
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
 
     const combos = is5x5 ? COMBOS_5X5_MATCH_4 : COMBOS_3X3;
 
@@ -251,8 +262,9 @@ export default function TicTacToeGame({ user, onBackToHub, username }: TicTacToe
     };
 
     return (
-        <div className="flex flex-col items-center justify-between w-full h-full bg-[#050508] text-white relative overflow-y-auto custom-scrollbar p-2.5 sm:p-4 select-none font-sans">
-            <div className="absolute inset-0 opacity-15 pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at 50% 50%, #38bdf8 2px, transparent 2px)', backgroundSize: '60px 60px' }}></div>
+        <div className="flex flex-row w-full h-full bg-[#050508] text-white relative overflow-hidden select-none font-sans">
+            <div className="flex-1 h-full flex flex-col items-center justify-between relative overflow-y-auto custom-scrollbar p-2.5 sm:p-4 min-w-0">
+                <div className="absolute inset-0 opacity-15 pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at 50% 50%, #38bdf8 2px, transparent 2px)', backgroundSize: '60px 60px' }}></div>
 
             {/* Top Bar - Pinned at top */}
             <div className="flex justify-between items-center w-full max-w-lg shrink-0 pt-1 sm:pt-2 mb-2 z-10">
@@ -277,7 +289,7 @@ export default function TicTacToeGame({ user, onBackToHub, username }: TicTacToe
                     </div>
                 </div>
 
-                <div className="w-16 flex justify-end">
+                <div className="flex items-center gap-2">
                     <button
                         onClick={() => {
                             audioService.playSound('button_click');
@@ -288,6 +300,9 @@ export default function TicTacToeGame({ user, onBackToHub, username }: TicTacToe
                     >
                         🔄
                     </button>
+                    {isMobile && (
+                        <MobileLeaderboardButton onClick={() => setShowMobileLeaderboard(true)} />
+                    )}
                 </div>
             </div>
 
@@ -408,6 +423,22 @@ export default function TicTacToeGame({ user, onBackToHub, username }: TicTacToe
                     </div>
                 )}
             </div>
+            </div>
+
+            <GameLeaderboardSidebar
+                mode={difficulty === 2 ? 'tic_tac_toe-hard' : 'tic_tac_toe-medium'}
+                allowedModes={['tic_tac_toe-medium', 'tic_tac_toe-hard']}
+                tabLabels={{
+                    'tic_tac_toe-medium': 'MED',
+                    'tic_tac_toe-hard': 'HARD'
+                }}
+                title="Tic Tac Toe Masters"
+                scoreLabel="STREAK"
+                storageKey="tic_tac_toe_leaderboard_collapsed"
+                isMobile={isMobile}
+                showMobileLeaderboard={showMobileLeaderboard}
+                onCloseMobileLeaderboard={() => setShowMobileLeaderboard(false)}
+            />
         </div>
     );
 }

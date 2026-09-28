@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { incrementGamePlays, saveLeaderboardScore } from '../services/firebase';
 import { audioService } from '../services/audioService';
+import { isMobileDevice } from '../utils/device';
+import { GameLeaderboardSidebar, MobileLeaderboardButton } from './GameLeaderboardSidebar';
 import {
   Board,
   getInitialBoard,
@@ -28,6 +30,15 @@ export default function ReversiGame({ onBackToHub, user, username }: ReversiGame
   const [statusMessage, setStatusMessage] = useState('');
   const [gameOver, setGameOver] = useState(false);
   const [recentlyFlipped, setRecentlyFlipped] = useState<Set<number>>(new Set());
+  const [isMobile, setIsMobile] = useState(false);
+  const [showMobileLeaderboard, setShowMobileLeaderboard] = useState(false);
+
+  useEffect(() => {
+    setIsMobile(isMobileDevice());
+    const handleResize = () => setIsMobile(isMobileDevice());
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const botColor: 'B' | 'W' = playerColor === 'B' ? 'W' : 'B';
 
@@ -78,111 +89,102 @@ export default function ReversiGame({ onBackToHub, user, username }: ReversiGame
   // Handle Player Turn
   const handleCellClick = useCallback((idx: number) => {
     if (turn !== playerColor || isBotThinking || gameOver) return;
-
     const move = legalMoves.find(m => m.idx === idx);
     if (!move) return;
 
-    playFlipCascadeSound(move.flips.length);
-    setRecentlyFlipped(new Set(move.flips));
-
-    const nextBoard = applyMove(board, move.idx, move.flips, playerColor);
+    const nextBoard = applyMove(board, idx, move.flips, playerColor);
     setBoard(nextBoard);
+    setRecentlyFlipped(new Set(move.flips));
+    playFlipCascadeSound(move.flips.length);
 
-    // Clear recently flipped animation tag after 500ms
-    setTimeout(() => {
-      setRecentlyFlipped(new Set());
-    }, 500);
-
-    // Switch turn
-    const nextTurn = botColor;
-    const oppMoves = getLegalMoves(nextBoard, nextTurn);
-
+    // Check opponent moves
+    const oppMoves = getLegalMoves(nextBoard, botColor);
     if (oppMoves.length > 0) {
-      setTurn(nextTurn);
-      setStatusMessage('');
+      setTurn(botColor);
+      setStatusMessage('Bot is calculating move...');
     } else {
-      // Opponent must pass
-      const playerNextMoves = getLegalMoves(nextBoard, playerColor);
-      if (playerNextMoves.length > 0) {
-        setStatusMessage('Bot has no legal moves. Bot passes!');
-        audioService.playSound('word_valid');
-        setTurn(playerColor);
+      // Opponent passes
+      const myNextMoves = getLegalMoves(nextBoard, playerColor);
+      if (myNextMoves.length > 0) {
+        setStatusMessage('Bot has no legal moves! Your turn again.');
+        audioService.playSound('powerup');
       } else {
+        // Both pass -> Game Over
         setGameOver(true);
       }
     }
-  }, [turn, playerColor, isBotThinking, gameOver, legalMoves, board, botColor]);
+  }, [board, botColor, gameOver, isBotThinking, legalMoves, playerColor, turn]);
 
-  // Bot Turn Automation
+  // Bot Turn Effect
   useEffect(() => {
     if (turn !== botColor || gameOver) return;
 
     setIsBotThinking(true);
+    const delay = difficulty === 'hard' ? 700 : difficulty === 'medium' ? 500 : 350;
+
     const timer = setTimeout(() => {
-      const chosenIdx = getBotMove(board, botColor, difficulty);
+      const bestMoveIdx = getBotMove(board, botColor, difficulty);
 
-      if (chosenIdx !== null) {
-        const move = getLegalMoves(board, botColor).find(m => m.idx === chosenIdx);
-        if (move) {
-          playFlipCascadeSound(move.flips.length);
-          setRecentlyFlipped(new Set(move.flips));
+      if (bestMoveIdx !== null) {
+        const move = getLegalMoves(board, botColor).find(m => m.idx === bestMoveIdx);
+        const flips = move ? move.flips : [];
+        const nextBoard = applyMove(board, bestMoveIdx, flips, botColor);
+        setBoard(nextBoard);
+        setRecentlyFlipped(new Set(flips));
+        playFlipCascadeSound(flips.length);
 
-          const nextBoard = applyMove(board, move.idx, move.flips, botColor);
-          setBoard(nextBoard);
-
-          setTimeout(() => {
-            setRecentlyFlipped(new Set());
-          }, 500);
-
-          // Check if player has moves
-          const playerMoves = getLegalMoves(nextBoard, playerColor);
-          if (playerMoves.length > 0) {
-            setTurn(playerColor);
-            setStatusMessage('');
+        const playerMoves = getLegalMoves(nextBoard, playerColor);
+        if (playerMoves.length > 0) {
+          setTurn(playerColor);
+          setStatusMessage('Your turn');
+        } else {
+          // Player has no moves -> check if bot can move again
+          const botNextMoves = getLegalMoves(nextBoard, botColor);
+          if (botNextMoves.length > 0) {
+            setStatusMessage('No legal moves for you! Bot plays again.');
+            setTurn(botColor);
           } else {
-            // Player must pass
-            const botNextMoves = getLegalMoves(nextBoard, botColor);
-            if (botNextMoves.length > 0) {
-              setStatusMessage('You have no legal moves. Turn passed to Bot.');
-              audioService.playSound('word_invalid');
-              setTurn(botColor);
-            } else {
-              setGameOver(true);
-            }
+            // Both pass -> Game Over
+            setGameOver(true);
           }
         }
       } else {
+        // Bot has no moves -> check if player can move
         const playerMoves = getLegalMoves(board, playerColor);
         if (playerMoves.length > 0) {
-          setStatusMessage('Bot passes!');
+          setStatusMessage('Bot passed! Your turn.');
           setTurn(playerColor);
         } else {
           setGameOver(true);
         }
       }
+
       setIsBotThinking(false);
-    }, 450);
+    }, delay);
 
     return () => clearTimeout(timer);
-  }, [turn, botColor, board, difficulty, gameOver, playerColor]);
+  }, [board, botColor, difficulty, gameOver, playerColor, turn]);
 
-  // Winner calculation
+  // Game Winner Announcement
   const winnerText = useMemo(() => {
-    if (!gameOver) return null;
+    if (!gameOver) return '';
     const playerScore = playerColor === 'B' ? darkCount : lightCount;
-    const botScore = botColor === 'B' ? darkCount : lightCount;
-    if (playerScore > botScore) return '🎉 YOU WIN!';
-    if (botScore > playerScore) return '💀 BOT WINS!';
-    return '🤝 DRAW GAME!';
-  }, [gameOver, playerColor, botColor, darkCount, lightCount]);
+    const botScore = playerColor === 'B' ? lightCount : darkCount;
 
+    if (playerScore > botScore) return '🎉 YOU WON!';
+    if (botScore > playerScore) return '🤖 BOT WON!';
+    return '🤝 TIE GAME!';
+  }, [darkCount, gameOver, lightCount, playerColor]);
+
+  // Play game over sound effect & record score
   useEffect(() => {
-    if (!gameOver || scoreSavedRef.current) return;
+    if (!gameOver) return;
     const playerScore = playerColor === 'B' ? darkCount : lightCount;
-    const botScore = botColor === 'B' ? darkCount : lightCount;
+    const botScore = playerColor === 'B' ? lightCount : darkCount;
+
     if (playerScore > botScore) {
       audioService.playSound('mine_win');
-      if (difficulty === 'medium' || difficulty === 'hard') {
+      if (!scoreSavedRef.current && (difficulty === 'medium' || difficulty === 'hard')) {
         scoreSavedRef.current = true;
         const elapsed = Date.now() - startTimeRef.current;
         saveLeaderboardScore(
@@ -200,103 +202,104 @@ export default function ReversiGame({ onBackToHub, user, username }: ReversiGame
   }, [gameOver, playerColor, botColor, darkCount, lightCount, difficulty, user, username]);
 
   return (
-    <div className="w-full h-screen flex flex-col bg-[#06080e] text-white select-none overflow-hidden font-sans">
-      <header className="flex items-center justify-between px-3 py-2 bg-neutral-900/90 border-b border-neutral-800 z-20 shrink-0">
-        <div className="flex items-center gap-2">
-          <button
-            onClick={onBackToHub}
-            className="px-2.5 py-1 bg-neutral-800 hover:bg-neutral-700 text-xs font-bold rounded-lg border border-neutral-700 text-neutral-300"
-          >
-            ← Hub
-          </button>
-          <div>
-            <h1 className="text-sm sm:text-base font-black tracking-wide text-emerald-400">REVERSI</h1>
-            <span className="text-[9px] text-neutral-400 font-mono hidden sm:inline">8X8 OTHELLO STRATEGY</span>
+    <div className="w-full h-full flex flex-row bg-[#06080e] text-white select-none overflow-hidden font-sans">
+      <div className="flex-1 h-full flex flex-col relative overflow-hidden min-w-0">
+        <header className="flex items-center justify-between px-3 py-2 bg-neutral-900/90 border-b border-neutral-800 z-20 shrink-0">
+          <div className="flex items-center gap-2">
+            <button
+              onClick={onBackToHub}
+              className="px-2.5 py-1 bg-neutral-800 hover:bg-neutral-700 text-xs font-bold rounded-lg border border-neutral-700 text-neutral-300"
+            >
+              ← Hub
+            </button>
+            <div>
+              <h1 className="text-sm sm:text-base font-black tracking-wide text-emerald-400">REVERSI</h1>
+              <span className="text-[9px] text-neutral-400 font-mono hidden sm:inline">8X8 OTHELLO STRATEGY</span>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            {/* Difficulty Picker */}
+            <div className="flex bg-neutral-950 p-0.5 rounded-lg border border-neutral-800">
+              {(['easy', 'medium', 'hard'] as Difficulty[]).map(d => (
+                <button
+                  key={d}
+                  disabled={isBotThinking || gameOver}
+                  onClick={() => {
+                    setDifficulty(d);
+                    resetGame();
+                  }}
+                  className={`px-2 py-0.5 text-[10px] sm:text-xs font-bold rounded capitalize transition-all ${
+                    difficulty === d
+                      ? 'bg-emerald-500 text-black shadow font-bold'
+                      : 'text-neutral-400 hover:text-white disabled:opacity-50'
+                  }`}
+                >
+                  {d}
+                </button>
+              ))}
+            </div>
+
+            <button
+              onClick={resetGame}
+              className="px-2.5 py-1 bg-neutral-800 hover:bg-neutral-700 text-xs font-bold rounded-lg border border-neutral-700 text-neutral-300"
+            >
+              Reset
+            </button>
+
+            {isMobile && (
+              <MobileLeaderboardButton onClick={() => setShowMobileLeaderboard(true)} />
+            )}
+          </div>
+        </header>
+
+        {/* Discs Score & Turn Bar */}
+        <div className="flex items-center justify-between py-2 bg-neutral-950/90 border-b border-neutral-900 px-4 shrink-0">
+          {/* Dark (Player) */}
+          <div className={`flex items-center gap-2 px-3 py-1 rounded-xl border transition-all ${
+            turn === 'B' ? 'border-emerald-400 bg-neutral-900 shadow-md' : 'border-transparent'
+          }`}>
+            <div className="w-5 h-5 rounded-full bg-neutral-950 border-2 border-neutral-600 shadow-inner flex items-center justify-center text-[10px]">
+              ⚫
+            </div>
+            <div>
+              <div className="text-[9px] text-neutral-400 font-semibold uppercase">You</div>
+              <div className="text-base font-black font-mono text-white leading-none">{darkCount}</div>
+            </div>
+          </div>
+
+          {/* Turn Alert Message */}
+          <div className="text-center font-mono text-xs text-neutral-300 max-w-[180px] sm:max-w-xs truncate">
+            {gameOver ? (
+              <span className="text-amber-400 font-bold">{winnerText}</span>
+            ) : isBotThinking ? (
+              <span className="text-amber-400 animate-pulse font-bold">🤖 Bot thinking...</span>
+            ) : statusMessage ? (
+              statusMessage
+            ) : (
+              'Your turn'
+            )}
+          </div>
+
+          {/* Light (Bot) */}
+          <div className={`flex items-center gap-2 px-3 py-1 rounded-xl border transition-all ${
+            turn === 'W' ? 'border-emerald-400 bg-neutral-900 shadow-md' : 'border-transparent'
+          }`}>
+            <div className="text-right">
+              <div className="text-[9px] text-neutral-400 font-semibold uppercase">Bot</div>
+              <div className="text-base font-black font-mono text-white leading-none">{lightCount}</div>
+            </div>
+            <div className="w-5 h-5 rounded-full bg-slate-100 border-2 border-slate-300 shadow-inner flex items-center justify-center text-[10px]">
+              ⚪
+            </div>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          {/* Difficulty Picker */}
-          <div className="flex bg-neutral-950 p-0.5 rounded-lg border border-neutral-800">
-            {(['easy', 'medium', 'hard'] as Difficulty[]).map(d => (
-              <button
-                key={d}
-                disabled={isBotThinking || gameOver}
-                onClick={() => setDifficulty(d)}
-                className={`px-2 py-0.5 text-[10px] sm:text-xs font-bold rounded capitalize transition-all ${
-                  difficulty === d
-                    ? 'bg-emerald-500 text-black shadow font-bold'
-                    : 'text-neutral-400 hover:text-white disabled:opacity-50'
-                }`}
-              >
-                {d}
-              </button>
-            ))}
-          </div>
-
-          <button
-            onClick={resetGame}
-            className="px-2.5 py-1 bg-neutral-800 hover:bg-neutral-700 text-xs font-bold rounded-lg border border-neutral-700 text-neutral-300"
-          >
-            Reset
-          </button>
-        </div>
-      </header>
-
-      {/* Discs Score & Turn Bar */}
-      <div className="flex items-center justify-between py-2 bg-neutral-950/90 border-b border-neutral-900 px-4 shrink-0">
-        {/* Dark (Player) */}
-        <div className={`flex items-center gap-2 px-3 py-1 rounded-xl border transition-all ${
-          turn === 'B' ? 'border-emerald-400 bg-neutral-900 shadow-md' : 'border-transparent'
-        }`}>
-          <div className="w-5 h-5 rounded-full bg-neutral-950 border-2 border-neutral-600 shadow-inner flex items-center justify-center text-[10px]">
-            ⚫
-          </div>
-          <div>
-            <div className="text-[9px] text-neutral-400 font-semibold uppercase">You</div>
-            <div className="text-base font-black font-mono text-white leading-none">{darkCount}</div>
-          </div>
-        </div>
-
-        {/* Status Notice */}
-        <div className="text-xs font-mono font-bold text-center px-2">
-          {statusMessage ? (
-            <span className="text-amber-400 animate-pulse">{statusMessage}</span>
-          ) : isBotThinking ? (
-            <span className="text-neutral-400">Bot thinking...</span>
-          ) : turn === playerColor ? (
-            <span className="text-emerald-400">Your Turn (Pick dot)</span>
-          ) : (
-            <span className="text-neutral-400">Bot's Turn</span>
-          )}
-        </div>
-
-        {/* Light (Bot) */}
-        <div className={`flex items-center gap-2 px-3 py-1 rounded-xl border transition-all ${
-          turn === 'W' ? 'border-emerald-400 bg-neutral-900 shadow-md' : 'border-transparent'
-        }`}>
-          <div>
-            <div className="text-[9px] text-neutral-400 font-semibold uppercase text-right">Bot</div>
-            <div className="text-base font-black font-mono text-white text-right leading-none">{lightCount}</div>
-          </div>
-          <div className="w-5 h-5 rounded-full bg-slate-100 border-2 border-slate-300 shadow flex items-center justify-center text-[10px]">
-            ⚪
-          </div>
-        </div>
-      </div>
-
-      {/* Reversi Board - Dynamic responsive scaling taking maximum available container space */}
-      <div className="flex-1 flex flex-col items-center justify-center p-2 sm:p-4 relative overflow-hidden">
-        <div
-          className="aspect-square p-2 bg-[#022c22] rounded-2xl border-4 border-[#065f46] shadow-2xl flex items-center justify-center"
-          style={{
-            width: 'min(92vw, calc(100vh - 150px), 520px)',
-            height: 'min(92vw, calc(100vh - 150px), 520px)'
-          }}
-        >
-          <div className="w-full h-full grid grid-cols-8 grid-rows-8 gap-1 sm:gap-1.5 bg-[#064e3b] p-1.5 rounded-xl">
+        {/* Board Viewport */}
+        <div className="flex-1 flex items-center justify-center p-3 relative overflow-hidden">
+          <div className="w-full max-w-[min(90vw,440px,calc(100vh-200px))] aspect-square bg-[#064e3b] p-2 sm:p-3 rounded-2xl shadow-2xl border-4 border-[#022c22] grid grid-cols-8 grid-rows-8 gap-1 select-none">
             {board.map((cell, idx) => {
-              const isLegal = legalMoves.some(m => m.idx === idx) && turn === playerColor;
+              const isLegal = legalMoves.some(m => m.idx === idx);
               const isFlipped = recentlyFlipped.has(idx);
 
               return (
@@ -360,11 +363,26 @@ export default function ReversiGame({ onBackToHub, user, username }: ReversiGame
             </div>
           </div>
         )}
+
+        <footer className="py-1 px-2 text-center text-[10px] text-neutral-500 border-t border-neutral-900 bg-neutral-950/60 shrink-0">
+          Sandwich your opponent's discs to flip them to your color!
+        </footer>
       </div>
 
-      <footer className="py-1 px-2 text-center text-[10px] text-neutral-500 border-t border-neutral-900 bg-neutral-950/60 shrink-0">
-        Sandwich your opponent's discs to flip them to your color!
-      </footer>
+      <GameLeaderboardSidebar
+        mode={`reversi-${difficulty === 'easy' ? 'medium' : difficulty}`}
+        allowedModes={['reversi-medium', 'reversi-hard']}
+        tabLabels={{
+          'reversi-medium': 'MED',
+          'reversi-hard': 'HARD'
+        }}
+        title="Reversi Masters"
+        scoreLabel="TIME"
+        storageKey="reversi_leaderboard_collapsed"
+        isMobile={isMobile}
+        showMobileLeaderboard={showMobileLeaderboard}
+        onCloseMobileLeaderboard={() => setShowMobileLeaderboard(false)}
+      />
     </div>
   );
 }

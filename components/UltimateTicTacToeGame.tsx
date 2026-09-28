@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { audioService } from '../services/audioService';
 import { incrementGamePlays, saveLeaderboardScore } from '../services/firebase';
+import { isMobileDevice } from '../utils/device';
+import { GameLeaderboardSidebar, MobileLeaderboardButton } from './GameLeaderboardSidebar';
 
 interface UltimateTicTacToeProps {
   onBackToHub: () => void;
@@ -52,6 +54,15 @@ export default function UltimateTicTacToeGame({ onBackToHub, user, username }: U
   const [history, setHistory] = useState<MoveHistory[]>([]);
   const [lastMove, setLastMove] = useState<{ mr: number; mc: number; sr: number; sc: number } | null>(null);
   const [showRules, setShowRules] = useState<boolean>(false);
+  const [isMobile, setIsMobile] = useState(false);
+  const [showMobileLeaderboard, setShowMobileLeaderboard] = useState(false);
+
+  useEffect(() => {
+    setIsMobile(isMobileDevice());
+    const handleResize = () => setIsMobile(isMobileDevice());
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   useEffect(() => {
     incrementGamePlays('ultimate_tictactoe');
@@ -470,38 +481,42 @@ export default function UltimateTicTacToeGame({ onBackToHub, user, username }: U
   };
 
   return (
-    <div className="flex flex-col h-full w-full bg-[#06080d] text-white select-none overflow-hidden font-sans">
-      {/* Header */}
-      <header className="flex items-center justify-between px-3 sm:px-5 py-2.5 bg-[#0b0e17] border-b border-neutral-800 shrink-0">
-        <div className="flex items-center gap-3">
-          <button
-            onClick={onBackToHub}
-            className="px-3 py-1.5 rounded-full bg-neutral-900 hover:bg-neutral-800 text-xs sm:text-sm font-bold transition-all text-neutral-300 hover:text-white flex items-center gap-1.5 border border-neutral-700 active:scale-95 shadow-md cursor-pointer"
-          >
-            <span>←</span>
-            <span>Hub</span>
-          </button>
-          <div className="flex items-center gap-2">
-            <span className="text-lg">⚔️</span>
-            <h1 className="text-sm sm:text-base font-black text-violet-400 tracking-wide">Ultimate Tic-Tac-Toe</h1>
+    <div className="flex flex-row h-full w-full bg-[#06080d] text-white select-none overflow-hidden font-sans">
+      <div className="flex-1 h-full flex flex-col relative overflow-hidden min-w-0">
+        {/* Header */}
+        <header className="flex items-center justify-between px-3 sm:px-5 py-2.5 bg-[#0b0e17] border-b border-neutral-800 shrink-0">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={onBackToHub}
+              className="px-3 py-1.5 rounded-full bg-neutral-900 hover:bg-neutral-800 text-xs sm:text-sm font-bold transition-all text-neutral-300 hover:text-white flex items-center gap-1.5 border border-neutral-700 active:scale-95 shadow-md cursor-pointer"
+            >
+              <span>←</span>
+              <span>Hub</span>
+            </button>
+            <div className="flex items-center gap-2">
+              <span className="text-lg">⚔️</span>
+              <h1 className="text-sm sm:text-base font-black text-violet-400 tracking-wide">Ultimate Tic-Tac-Toe</h1>
+            </div>
           </div>
-        </div>
 
-        <div className="flex items-center gap-2 sm:gap-3">
-          <button
-            onClick={() => setShowRules(true)}
-            className="px-2.5 py-1 text-xs bg-neutral-900 hover:bg-neutral-800 text-neutral-300 rounded-lg border border-neutral-700 font-medium cursor-pointer"
-          >
-            📖 Rules
-          </button>
-          <button
-            onClick={resetGame}
-            className="px-3 py-1 text-xs bg-violet-600 hover:bg-violet-500 text-white font-black rounded-lg shadow-md cursor-pointer transition-transform active:scale-95"
-          >
-            Reset
-          </button>
-        </div>
-      </header>
+          <div className="flex items-center gap-2 sm:gap-3">
+            <button
+              onClick={() => setShowRules(true)}
+              className="px-2.5 py-1 text-xs bg-neutral-900 hover:bg-neutral-800 text-neutral-300 rounded-lg border border-neutral-700 font-medium cursor-pointer"
+            >
+              📖 Rules
+            </button>
+            <button
+              onClick={resetGame}
+              className="px-3 py-1 text-xs bg-violet-600 hover:bg-violet-500 text-white font-black rounded-lg shadow-md cursor-pointer transition-transform active:scale-95"
+            >
+              Reset
+            </button>
+            {isMobile && (
+              <MobileLeaderboardButton onClick={() => setShowMobileLeaderboard(true)} />
+            )}
+          </div>
+        </header>
 
       {/* Control / Config Strip */}
       <div className="flex flex-wrap items-center justify-between gap-2 px-3 sm:px-5 py-2 bg-[#090b12] border-b border-neutral-800/90 text-xs shrink-0">
@@ -747,6 +762,23 @@ export default function UltimateTicTacToeGame({ onBackToHub, user, username }: U
           </div>
         </div>
       )}
+      </div>
+
+      <GameLeaderboardSidebar
+        mode={`ultimate_tictactoe-${botDifficulty === 'easy' ? 'medium' : botDifficulty}`}
+        allowedModes={['ultimate_tictactoe-medium', 'ultimate_tictactoe-hard', 'ultimate_tictactoe-master']}
+        tabLabels={{
+          'ultimate_tictactoe-medium': 'MED',
+          'ultimate_tictactoe-hard': 'HARD',
+          'ultimate_tictactoe-master': 'MASTER'
+        }}
+        title="Ultimate Masters"
+        scoreLabel="TIME"
+        storageKey="ultimate_tictactoe_leaderboard_collapsed"
+        isMobile={isMobile}
+        showMobileLeaderboard={showMobileLeaderboard}
+        onCloseMobileLeaderboard={() => setShowMobileLeaderboard(false)}
+      />
     </div>
   );
 }

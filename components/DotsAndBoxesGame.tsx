@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { audioService } from '../services/audioService';
 import { incrementGamePlays, saveLeaderboardScore } from '../services/firebase';
+import { isMobileDevice } from '../utils/device';
+import { GameLeaderboardSidebar, MobileLeaderboardButton } from './GameLeaderboardSidebar';
 
 export type PlayerColor = 'blue' | 'red'; // Blue = Player (You), Red = Bot / Player 2
 
@@ -17,6 +19,15 @@ export default function DotsAndBoxesGame({ onBackToHub, user, username }: DotsAn
     const [turn, setTurn] = useState<PlayerColor>('blue'); // Blue = Player 1, Red = Bot/Player 2
     const [isBotThinking, setIsBotThinking] = useState(false);
     const [streak, setStreak] = useState(0);
+    const [isMobile, setIsMobile] = useState(false);
+    const [showMobileLeaderboard, setShowMobileLeaderboard] = useState(false);
+
+    useEffect(() => {
+        setIsMobile(isMobileDevice());
+        const handleResize = () => setIsMobile(isMobileDevice());
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
 
     // Board structures:
     // Horizontal lines: (N + 1) rows, N cols, stores who drew it ('blue' | 'red' | null)
@@ -487,11 +498,15 @@ export default function DotsAndBoxesGame({ onBackToHub, user, username }: DotsAn
                     >
                         🔄
                     </button>
+                    {isMobile && (
+                        <MobileLeaderboardButton onClick={() => setShowMobileLeaderboard(true)} />
+                    )}
                 </div>
             </div>
 
-            {/* Main Content Area */}
-            <div className="flex-1 flex flex-col md:flex-row items-center justify-center p-2 sm:p-4 gap-2 md:gap-8 overflow-hidden min-h-0">
+            <div className="flex-1 w-full relative overflow-hidden flex flex-row min-h-0">
+                {/* Main Content Area */}
+                <div className="flex-1 flex flex-col md:flex-row items-center justify-center p-2 sm:p-4 gap-2 md:gap-8 overflow-hidden min-h-0 min-w-0">
                 
                 {/* Score & Turn Banner (Responsive layout) */}
                 <div className="flex md:flex-col items-center justify-between md:justify-center gap-3 w-full md:w-52 shrink-0 bg-neutral-900/70 border border-neutral-800/80 px-3.5 py-2 md:py-4 rounded-2xl shadow-lg">
@@ -698,6 +713,23 @@ export default function DotsAndBoxesGame({ onBackToHub, user, username }: DotsAn
                         )}
                     </div>
                 </div>
+                </div>
+
+                <GameLeaderboardSidebar
+                    mode={`dots_and_boxes-${gridSize}`}
+                    allowedModes={['dots_and_boxes-4', 'dots_and_boxes-5', 'dots_and_boxes-6']}
+                    tabLabels={{
+                        'dots_and_boxes-4': '4×4',
+                        'dots_and_boxes-5': '5×5',
+                        'dots_and_boxes-6': '6×6'
+                    }}
+                    title="Box Masters"
+                    scoreLabel="STREAK"
+                    storageKey="dots_and_boxes_leaderboard_collapsed"
+                    isMobile={isMobile}
+                    showMobileLeaderboard={showMobileLeaderboard}
+                    onCloseMobileLeaderboard={() => setShowMobileLeaderboard(false)}
+                />
             </div>
         </div>
     );

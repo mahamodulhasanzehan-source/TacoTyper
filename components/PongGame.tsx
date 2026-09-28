@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { incrementGamePlays, saveLeaderboardScore } from '../services/firebase';
 import { audioService } from '../services/audioService';
+import { isMobileDevice } from '../utils/device';
+import { GameLeaderboardSidebar, MobileLeaderboardButton } from './GameLeaderboardSidebar';
 
 interface PongGameProps {
   onBackToHub: () => void;
@@ -17,6 +19,15 @@ export default function PongGame({ onBackToHub, user, username }: PongGameProps)
   const [isPlaying, setIsPlaying] = useState(false);
   const [matchWinner, setMatchWinner] = useState<'player' | 'bot' | null>(null);
   const [streak, setStreak] = useState(0);
+  const [isMobile, setIsMobile] = useState(false);
+  const [showMobileLeaderboard, setShowMobileLeaderboard] = useState(false);
+
+  useEffect(() => {
+    setIsMobile(isMobileDevice());
+    const handleResize = () => setIsMobile(isMobileDevice());
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const handleMatchEnd = useCallback((winner: 'player' | 'bot') => {
     setMatchWinner(winner);
@@ -29,7 +40,7 @@ export default function PongGame({ onBackToHub, user, username }: PongGameProps)
             user,
             username || user?.displayName || 'Pong Ace',
             next,
-            'Pong Master',
+            `${difficulty.toUpperCase()} Pong Master`,
             { mistakes: 0, timeTaken: 0, ingredientsMissed: 0, rottenWordsTyped: 0, totalScore: next, levelReached: next },
             `pong-${difficulty}`
           );
@@ -143,130 +154,93 @@ export default function PongGame({ onBackToHub, user, username }: PongGameProps)
         pY.current += pVel.current * dt;
         pY.current = Math.max(paddleH / 2, Math.min(h - paddleH / 2, pY.current));
 
-        // Bot AI
-        let botSpeed = 240;
-        let targetY = ball.current.y;
+        // AI Bot logic
+        let targetBotY = h / 2;
+        let botSpeed = 260; // Easy
 
-        if (difficulty === 'easy') {
-          botSpeed = 190;
-          targetY = ball.current.y + (Math.sin(now / 300) * 40);
-        } else if (difficulty === 'medium') {
-          botSpeed = 270;
-          targetY = ball.current.y;
-        } else {
+        if (difficulty === 'medium') {
           botSpeed = 360;
-          targetY = predictBallLanding(ball.current.x, ball.current.y, ball.current.vx, ball.current.vy, w - 30, h);
+          targetBotY = ball.current.vx > 0 ? ball.current.y : h / 2;
+        } else if (difficulty === 'hard') {
+          botSpeed = 480;
+          targetBotY = predictBallLanding(ball.current.x, ball.current.y, ball.current.vx, ball.current.vy, w - 24, h);
+        } else {
+          targetBotY = ball.current.vx > 0 ? ball.current.y + (Math.sin(now / 300) * 45) : h / 2;
         }
 
-        const diff = targetY - bY.current;
-        if (Math.abs(diff) > 4) {
-          bY.current += Math.sign(diff) * Math.min(botSpeed * dt, Math.abs(diff));
+        const diffY = targetBotY - bY.current;
+        if (Math.abs(diffY) > 8) {
+          bY.current += Math.sign(diffY) * Math.min(Math.abs(diffY), botSpeed * dt);
         }
         bY.current = Math.max(paddleH / 2, Math.min(h - paddleH / 2, bY.current));
 
-        // Ball movement
-        ball.current.x += ball.current.vx;
-        ball.current.y += ball.current.vy;
+        // Ball physics
+        const b = ball.current;
+        b.x += b.vx * (b.speed * 60) * dt;
+        b.y += b.vy * (b.speed * 60) * dt;
 
-        // Top / Bottom wall bounce
-        if (ball.current.y - ball.current.radius <= 0) {
-          ball.current.y = ball.current.radius;
-          ball.current.vy = Math.abs(ball.current.vy);
+        // Top/Bottom bounce
+        if (b.y - b.radius <= 0) {
+          b.y = b.radius;
+          b.vy = Math.abs(b.vy);
           audioService.playSound('tile_click');
-        } else if (ball.current.y + ball.current.radius >= h) {
-          ball.current.y = h - ball.current.radius;
-          ball.current.vy = -Math.abs(ball.current.vy);
+        } else if (b.y + b.radius >= h) {
+          b.y = h - b.radius;
+          b.vy = -Math.abs(b.vy);
           audioService.playSound('tile_click');
         }
 
-        // Paddle collisions
-        const playerPaddleX = 25;
-        const botPaddleX = w - 25 - paddleW;
+        // Left paddle (Player) collision
+        const pLeft = 24;
+        const pRight = 24 + paddleW;
+        const pTop = pY.current - paddleH / 2;
+        const pBottom = pY.current + paddleH / 2;
 
-        // Player Deflection
-        if (
-          ball.current.vx < 0 &&
-          ball.current.x - ball.current.radius <= playerPaddleX + paddleW &&
-          ball.current.x + ball.current.radius >= playerPaddleX &&
-          ball.current.y >= pY.current - paddleH / 2 &&
-          ball.current.y <= pY.current + paddleH / 2
-        ) {
-          const contactOffset = (ball.current.y - pY.current) / (paddleH / 2);
-          const maxAngle = (Math.PI / 180) * 58;
-          let bounceAngle = contactOffset * maxAngle;
+        if (b.x - b.radius <= pRight && b.x + b.radius >= pLeft && b.y >= pTop && b.y <= pBottom && b.vx < 0) {
+          const hitOffset = (b.y - pY.current) / (paddleH / 2);
+          const maxAngle = Math.PI / 3.2; // 56 deg
+          const bounceAngle = hitOffset * maxAngle;
 
-          // Relative paddle vs ball vertical direction:
-          // Moving same direction -> faster, moving opposite -> slower
-          let speedMultiplier = 1.035; // base gentle volley increment
-          const paddleMoving = Math.abs(pVel.current) > 30;
-          const sameDirection = paddleMoving && Math.sign(pVel.current) === Math.sign(ball.current.vy);
-          const oppositeDirection = paddleMoving && Math.sign(pVel.current) === -Math.sign(ball.current.vy);
-
-          if (sameDirection) {
-            speedMultiplier = 1.14;
-          } else if (oppositeDirection) {
-            speedMultiplier = 0.86;
-          }
-
-          let newSpeed = ball.current.speed * speedMultiplier;
-          newSpeed = Math.max(3.8, Math.min(10.5, newSpeed));
-          ball.current.speed = newSpeed;
-
-          // Non-looping & spin dynamics:
-          // Prevent strictly horizontal ping-pong trapping
-          if (Math.abs(bounceAngle) < 0.08 && !paddleMoving) {
-            bounceAngle = (Math.random() > 0.5 ? 1 : -1) * 0.15;
-          }
-          // Subtle micro-variation to avoid exact repeating trajectories
-          bounceAngle += (Math.random() - 0.5) * 0.04;
-
-          const spinEffect = (pVel.current / 450) * 1.2;
-          ball.current.vx = Math.abs(newSpeed * Math.cos(bounceAngle));
-          ball.current.vy = newSpeed * Math.sin(bounceAngle) + spinEffect;
-          ball.current.x = playerPaddleX + paddleW + ball.current.radius;
-          audioService.playSound('piece_drop');
+          b.speed = Math.min(6.5, b.speed + 0.18);
+          b.vx = Math.abs(Math.cos(bounceAngle));
+          b.vy = Math.sin(bounceAngle);
+          b.x = pRight + b.radius;
+          audioService.playSound('tile_click');
         }
 
-        // Bot Deflection
-        if (
-          ball.current.vx > 0 &&
-          ball.current.x + ball.current.radius >= botPaddleX &&
-          ball.current.x - ball.current.radius <= botPaddleX + paddleW &&
-          ball.current.y >= bY.current - paddleH / 2 &&
-          ball.current.y <= bY.current + paddleH / 2
-        ) {
-          const contactOffset = (ball.current.y - bY.current) / (paddleH / 2);
-          const maxAngle = (Math.PI / 180) * 58;
-          let bounceAngle = contactOffset * maxAngle;
+        // Right paddle (Bot) collision
+        const bLeft = w - 24 - paddleW;
+        const bRight = w - 24;
+        const bTop = bY.current - paddleH / 2;
+        const bBottom = bY.current + paddleH / 2;
 
-          // Non-looping anti-lock
-          if (Math.abs(bounceAngle) < 0.08) {
-            bounceAngle = (Math.random() > 0.5 ? 1 : -1) * 0.15;
-          }
-          bounceAngle += (Math.random() - 0.5) * 0.04;
+        if (b.x + b.radius >= bLeft && b.x - b.radius <= bRight && b.y >= bTop && b.y <= bBottom && b.vx > 0) {
+          const hitOffset = (b.y - bY.current) / (paddleH / 2);
+          const maxAngle = Math.PI / 3.2;
+          const bounceAngle = hitOffset * maxAngle;
 
-          const newSpeed = Math.min(10.0, Math.max(3.8, ball.current.speed * 1.035));
-          ball.current.speed = newSpeed;
-
-          ball.current.vx = -Math.abs(newSpeed * Math.cos(bounceAngle));
-          ball.current.vy = newSpeed * Math.sin(bounceAngle);
-          ball.current.x = botPaddleX - ball.current.radius;
-          audioService.playSound('piece_land');
+          b.speed = Math.min(6.5, b.speed + 0.18);
+          b.vx = -Math.abs(Math.cos(bounceAngle));
+          b.vy = Math.sin(bounceAngle);
+          b.x = bLeft - b.radius;
+          audioService.playSound('tile_click');
         }
 
         // Scoring
-        if (ball.current.x < 0) {
-          audioService.playSound('failure');
-          setBotScore(b => {
-            const next = b + 1;
+        if (b.x < 0) {
+          // Bot scored
+          audioService.playSound('wrong_answer');
+          setBotScore(s => {
+            const next = s + 1;
             if (next >= 7) handleMatchEnd('bot');
             else resetBall(true);
             return next;
           });
-        } else if (ball.current.x > w) {
+        } else if (b.x > w) {
+          // Player scored
           audioService.playSound('success');
-          setPlayerScore(p => {
-            const next = p + 1;
+          setPlayerScore(s => {
+            const next = s + 1;
             if (next >= 7) handleMatchEnd('player');
             else resetBall(false);
             return next;
@@ -274,99 +248,84 @@ export default function PongGame({ onBackToHub, user, username }: PongGameProps)
         }
       }
 
-      // Render Court
-      ctx.fillStyle = '#05070d';
-      ctx.fillRect(0, 0, w, h);
+      // Render Scene
+      ctx.clearRect(0, 0, w, h);
 
-      // Court boundary
-      ctx.strokeStyle = '#1e293b';
-      ctx.lineWidth = 3;
-      ctx.strokeRect(8, 8, w - 16, h - 16);
-
-      // Center divider line
+      // Court background lines
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+      ctx.lineWidth = 2;
       ctx.setLineDash([8, 8]);
       ctx.beginPath();
-      ctx.moveTo(w / 2, 8);
-      ctx.lineTo(w / 2, h - 8);
-      ctx.strokeStyle = '#334155';
-      ctx.lineWidth = 2;
+      ctx.moveTo(w / 2, 0);
+      ctx.lineTo(w / 2, h);
       ctx.stroke();
       ctx.setLineDash([]);
 
-      // Scores watermark
-      ctx.font = 'bold 64px monospace';
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
-      ctx.textAlign = 'center';
-      ctx.fillText(String(playerScore), w / 4, h / 2 + 20);
-      ctx.fillText(String(botScore), (3 * w) / 4, h / 2 + 20);
+      // Outer boundaries
+      ctx.strokeStyle = 'rgba(6, 182, 212, 0.25)';
+      ctx.strokeRect(1, 1, w - 2, h - 2);
 
-      // Player Paddle (Cyan)
-      ctx.fillStyle = '#06b6d4';
-      ctx.shadowColor = 'rgba(6, 182, 212, 0.6)';
-      ctx.shadowBlur = 12;
+      // Player Paddle (Left - Cyan)
+      ctx.shadowColor = '#06b6d4';
+      ctx.shadowBlur = 14;
+      ctx.fillStyle = '#22d3ee';
       ctx.beginPath();
-      ctx.roundRect(25, pY.current - paddleH / 2, paddleW, paddleH, 4);
+      ctx.roundRect(24, pY.current - paddleH / 2, paddleW, paddleH, 6);
       ctx.fill();
 
-      // Bot Paddle (Rose)
-      ctx.fillStyle = '#f43f5e';
-      ctx.shadowColor = 'rgba(244, 63, 94, 0.6)';
-      ctx.shadowBlur = 12;
+      // Bot Paddle (Right - Rose)
+      ctx.shadowColor = '#f43f5e';
+      ctx.shadowBlur = 14;
+      ctx.fillStyle = '#fb7185';
       ctx.beginPath();
-      ctx.roundRect(w - 25 - paddleW, bY.current - paddleH / 2, paddleW, paddleH, 4);
+      ctx.roundRect(w - 24 - paddleW, bY.current - paddleH / 2, paddleW, paddleH, 6);
       ctx.fill();
+
+      // Glowing Ball
+      if (isPlaying) {
+        ctx.shadowColor = '#ffffff';
+        ctx.shadowBlur = 16;
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(ball.current.x, ball.current.y, ball.current.radius, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
       ctx.shadowBlur = 0;
-
-      // Ball
-      ctx.fillStyle = '#ffffff';
-      ctx.shadowColor = '#38bdf8';
-      ctx.shadowBlur = 10;
-      ctx.beginPath();
-      ctx.arc(ball.current.x, ball.current.y, ball.current.radius, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.shadowBlur = 0;
-
       animIdRef.current = requestAnimationFrame(loop);
     };
 
     animIdRef.current = requestAnimationFrame(loop);
+
     return () => {
       if (animIdRef.current) cancelAnimationFrame(animIdRef.current);
     };
-  }, [isPlaying, matchWinner, difficulty, resetBall, playerScore, botScore, predictBallLanding]);
+  }, [difficulty, handleMatchEnd, isPlaying, matchWinner, predictBallLanding, resetBall]);
 
-  // Responsive Canvas resizing
+  // Window Resize Listener for Canvas resolution
   useEffect(() => {
     const handleResize = () => {
-      const canvas = canvasRef.current;
-      const container = containerRef.current;
-      if (!canvas || !container) return;
-
-      const targetW = container.clientWidth;
-      const targetH = container.clientHeight;
-
-      if (canvas.width !== targetW || canvas.height !== targetH) {
-        canvas.width = targetW;
-        canvas.height = targetH;
-      }
+      const el = containerRef.current;
+      const cvs = canvasRef.current;
+      if (!el || !cvs) return;
+      cvs.width = el.clientWidth;
+      cvs.height = el.clientHeight;
     };
-
     handleResize();
-    const observer = new ResizeObserver(handleResize);
-    if (containerRef.current) observer.observe(containerRef.current);
-    return () => observer.disconnect();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Keyboard controls
+  // Keyboard Event Handlers
   useEffect(() => {
     const onDown = (e: KeyboardEvent) => {
-      if (['KeyW', 'KeyS', 'ArrowUp', 'ArrowDown'].includes(e.code)) {
+      if (['ArrowUp', 'ArrowDown', 'KeyW', 'KeyS'].includes(e.code)) {
         e.preventDefault();
         keysPressed.current[e.code] = true;
       }
     };
     const onUp = (e: KeyboardEvent) => {
-      if (keysPressed.current[e.code]) {
+      if (['ArrowUp', 'ArrowDown', 'KeyW', 'KeyS'].includes(e.code)) {
         delete keysPressed.current[e.code];
       }
     };
@@ -408,133 +367,155 @@ export default function PongGame({ onBackToHub, user, username }: PongGameProps)
   };
 
   return (
-    <div className="w-full h-screen flex flex-col bg-[#05070d] text-white select-none overflow-hidden font-sans">
-      <header className="flex items-center justify-between px-3 py-2 bg-neutral-900/90 border-b border-neutral-800 z-20 shrink-0">
-        <div className="flex items-center gap-2">
-          <button
-            onClick={onBackToHub}
-            className="px-2.5 py-1 bg-neutral-800 hover:bg-neutral-700 text-xs font-bold rounded-lg border border-neutral-700 text-neutral-300"
-          >
-            ← Hub
-          </button>
-          <div>
-            <h1 className="text-sm sm:text-base font-black tracking-wide text-cyan-400">PONG 2D</h1>
-            <span className="text-[9px] text-neutral-400 font-mono hidden sm:inline">FIRST TO 7 • TABLE TENNIS</span>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <div className="flex bg-neutral-950 p-0.5 rounded-lg border border-neutral-800">
-            {(['easy', 'medium', 'hard'] as Difficulty[]).map(d => (
-              <button
-                key={d}
-                disabled={isPlaying}
-                onClick={() => {
-                  if (d !== difficulty) setStreak(0);
-                  setDifficulty(d);
-                }}
-                className={`px-2 py-0.5 text-[10px] sm:text-xs font-bold rounded capitalize transition-all ${
-                  difficulty === d
-                    ? 'bg-cyan-500 text-black shadow font-bold'
-                    : 'text-neutral-400 hover:text-white disabled:opacity-50'
-                }`}
-              >
-                {d}
-              </button>
-            ))}
-          </div>
-
-          <button
-            onClick={startMatch}
-            className="px-2.5 py-1 bg-neutral-800 hover:bg-neutral-700 text-xs font-bold rounded-lg border border-neutral-700 text-neutral-300"
-          >
-            {isPlaying ? 'Restart' : 'Play'}
-          </button>
-        </div>
-      </header>
-
-      {/* Score Header Bar */}
-      <div className="flex items-center justify-between px-6 py-1.5 bg-neutral-950/80 border-b border-neutral-900 text-xs font-mono shrink-0">
-        <div className="flex items-center gap-2">
-          <span className="w-2.5 h-2.5 rounded-full bg-cyan-400" />
-          <span className="text-cyan-400 font-bold">YOU: {playerScore}</span>
-        </div>
-        <div className="text-[11px] text-neutral-400">
-          Target: 7 Points
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="text-rose-400 font-bold">BOT: {botScore}</span>
-          <span className="w-2.5 h-2.5 rounded-full bg-rose-400" />
-        </div>
-      </div>
-
-      {/* Main Canvas Area */}
-      <div ref={containerRef} className="flex-1 w-full relative overflow-hidden flex items-center justify-center touch-none">
-        <canvas
-          ref={canvasRef}
-          onPointerDown={handlePointerDown}
-          onPointerMove={handlePointerMove}
-          onPointerUp={handlePointerUp}
-          onPointerCancel={handlePointerUp}
-          className="w-full h-full block cursor-ns-resize touch-none"
-        />
-
-        {/* Start Game Overlay */}
-        {!isPlaying && (
-          <div className="absolute inset-0 flex items-center justify-center bg-black/60 backdrop-blur-sm z-20">
-            <div className="bg-neutral-900 border border-neutral-800 p-6 rounded-2xl max-w-sm w-full text-center shadow-2xl">
-              <div className="text-4xl mb-2">🏓</div>
-              <h2 className="text-2xl font-black text-cyan-400 mb-2">PONG SHOWDOWN</h2>
-              <p className="text-xs text-neutral-400 mb-6">
-                Drag on the screen or use W/S / Arrow keys to slide your paddle.
-              </p>
-              <button
-                onClick={startMatch}
-                className="w-full py-3 bg-cyan-500 hover:bg-cyan-400 text-black font-black text-sm tracking-wider uppercase rounded-xl transition-all shadow-lg active:scale-95"
-              >
-                Start Match
-              </button>
+    <div className="w-full h-full flex flex-row bg-[#05070d] text-white select-none overflow-hidden font-sans">
+      <div className="flex-1 h-full flex flex-col relative overflow-hidden min-w-0">
+        <header className="flex items-center justify-between px-3 py-2 bg-neutral-900/90 border-b border-neutral-800 z-20 shrink-0">
+          <div className="flex items-center gap-2">
+            <button
+              onClick={onBackToHub}
+              className="px-2.5 py-1 bg-neutral-800 hover:bg-neutral-700 text-xs font-bold rounded-lg border border-neutral-700 text-neutral-300"
+            >
+              ← Hub
+            </button>
+            <div>
+              <h1 className="text-sm sm:text-base font-black tracking-wide text-cyan-400">PONG 2D</h1>
+              <span className="text-[9px] text-neutral-400 font-mono hidden sm:inline">FIRST TO 7 • TABLE TENNIS</span>
             </div>
           </div>
-        )}
 
-        {/* Match Finished Modal */}
-        {matchWinner && (
-          <div className="absolute inset-0 flex items-center justify-center bg-black/85 backdrop-blur-sm z-30 p-4">
-            <div className="bg-neutral-900 border border-neutral-800 p-6 sm:p-8 rounded-2xl max-w-sm w-full text-center shadow-2xl">
-              <div className="text-4xl mb-2">{matchWinner === 'player' ? '🏆' : '💀'}</div>
-              <h2 className={`text-2xl font-black mb-1 ${matchWinner === 'player' ? 'text-cyan-400' : 'text-rose-500'}`}>
-                {matchWinner === 'player' ? 'VICTORY!' : 'DEFEATED!'}
-              </h2>
-              <p className="text-sm text-neutral-400 mb-4">
-                {matchWinner === 'player'
-                  ? `You outmatched the ${difficulty.toUpperCase()} AI bot!`
-                  : `The ${difficulty.toUpperCase()} bot scored 7 points.`}
-              </p>
-              <div className="bg-neutral-950 p-4 rounded-xl border border-neutral-800 mb-6 flex justify-around font-mono">
-                <div>
-                  <span className="text-xs text-neutral-400 uppercase font-semibold block">You</span>
-                  <span className="text-2xl font-black text-cyan-400">{playerScore}</span>
-                </div>
-                <div>
-                  <span className="text-xs text-neutral-400 uppercase font-semibold block">Bot</span>
-                  <span className="text-2xl font-black text-rose-500">{botScore}</span>
-                </div>
+          <div className="flex items-center gap-2">
+            <div className="flex bg-neutral-950 p-0.5 rounded-lg border border-neutral-800">
+              {(['easy', 'medium', 'hard'] as Difficulty[]).map(d => (
+                <button
+                  key={d}
+                  disabled={isPlaying}
+                  onClick={() => {
+                    if (d !== difficulty) setStreak(0);
+                    setDifficulty(d);
+                  }}
+                  className={`px-2 py-0.5 text-[10px] sm:text-xs font-bold rounded capitalize transition-all ${
+                    difficulty === d
+                      ? 'bg-cyan-500 text-black shadow font-bold'
+                      : 'text-neutral-400 hover:text-white disabled:opacity-50'
+                  }`}
+                >
+                  {d}
+                </button>
+              ))}
+            </div>
+
+            <button
+              onClick={startMatch}
+              className="px-2.5 py-1 bg-neutral-800 hover:bg-neutral-700 text-xs font-bold rounded-lg border border-neutral-700 text-neutral-300"
+            >
+              {isPlaying ? 'Restart' : 'Play'}
+            </button>
+
+            {isMobile && (
+              <MobileLeaderboardButton onClick={() => setShowMobileLeaderboard(true)} />
+            )}
+          </div>
+        </header>
+
+        {/* Score Header Bar */}
+        <div className="flex items-center justify-between px-6 py-1.5 bg-neutral-950/80 border-b border-neutral-900 text-xs font-mono shrink-0">
+          <div className="flex items-center gap-2">
+            <span className="w-2.5 h-2.5 rounded-full bg-cyan-400" />
+            <span className="text-cyan-400 font-bold">YOU: {playerScore}</span>
+          </div>
+          <div className="text-[11px] text-neutral-400 flex items-center gap-3">
+            <span>Target: 7 Points</span>
+            <span className="text-cyan-400 font-bold">🔥 Streak: {streak}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-rose-400 font-bold">BOT: {botScore}</span>
+            <span className="w-2.5 h-2.5 rounded-full bg-rose-400" />
+          </div>
+        </div>
+
+        {/* Main Canvas Area */}
+        <div ref={containerRef} className="flex-1 w-full relative overflow-hidden flex items-center justify-center touch-none">
+          <canvas
+            ref={canvasRef}
+            onPointerDown={handlePointerDown}
+            onPointerMove={handlePointerMove}
+            onPointerUp={handlePointerUp}
+            onPointerCancel={handlePointerUp}
+            className="w-full h-full block cursor-ns-resize touch-none"
+          />
+
+          {/* Start Game Overlay */}
+          {!isPlaying && (
+            <div className="absolute inset-0 flex items-center justify-center bg-black/60 backdrop-blur-sm z-20">
+              <div className="bg-neutral-900 border border-neutral-800 p-6 rounded-2xl max-w-sm w-full text-center shadow-2xl">
+                <div className="text-4xl mb-2">🏓</div>
+                <h2 className="text-2xl font-black text-cyan-400 mb-2">PONG SHOWDOWN</h2>
+                <p className="text-xs text-neutral-400 mb-6">
+                  Drag on the screen or use W/S / Arrow keys to slide your paddle.
+                </p>
+                <button
+                  onClick={startMatch}
+                  className="w-full py-3 bg-cyan-500 hover:bg-cyan-400 text-black font-black text-sm tracking-wider uppercase rounded-xl transition-all shadow-lg active:scale-95"
+                >
+                  Start Match
+                </button>
               </div>
-              <button
-                onClick={startMatch}
-                className="w-full py-3 bg-cyan-500 hover:bg-cyan-400 text-black font-black text-sm tracking-wider uppercase rounded-xl transition-all shadow-lg active:scale-95"
-              >
-                Play Again
-              </button>
             </div>
-          </div>
-        )}
+          )}
+
+          {/* Match Finished Modal */}
+          {matchWinner && (
+            <div className="absolute inset-0 flex items-center justify-center bg-black/85 backdrop-blur-sm z-30 p-4">
+              <div className="bg-neutral-900 border border-neutral-800 p-6 sm:p-8 rounded-2xl max-w-sm w-full text-center shadow-2xl">
+                <div className="text-4xl mb-2">{matchWinner === 'player' ? '🏆' : '💀'}</div>
+                <h2 className={`text-2xl font-black mb-1 ${matchWinner === 'player' ? 'text-cyan-400' : 'text-rose-500'}`}>
+                  {matchWinner === 'player' ? 'VICTORY!' : 'DEFEATED!'}
+                </h2>
+                <p className="text-sm text-neutral-400 mb-4">
+                  {matchWinner === 'player'
+                    ? `You outmatched the ${difficulty.toUpperCase()} AI bot!`
+                    : `The ${difficulty.toUpperCase()} bot scored 7 points.`}
+                </p>
+                <div className="bg-neutral-950 p-4 rounded-xl border border-neutral-800 mb-6 flex justify-around font-mono">
+                  <div>
+                    <span className="text-xs text-neutral-400 uppercase font-semibold block">You</span>
+                    <span className="text-2xl font-black text-cyan-400">{playerScore}</span>
+                  </div>
+                  <div>
+                    <span className="text-xs text-neutral-400 uppercase font-semibold block">Bot</span>
+                    <span className="text-2xl font-black text-rose-500">{botScore}</span>
+                  </div>
+                </div>
+                <button
+                  onClick={startMatch}
+                  className="w-full py-3 bg-cyan-500 hover:bg-cyan-400 text-black font-black text-sm tracking-wider uppercase rounded-xl transition-all shadow-lg active:scale-95"
+                >
+                  Play Again
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <footer className="py-1 px-2 text-center text-[10px] text-neutral-500 border-t border-neutral-900 bg-neutral-950/60 shrink-0">
+          Controls: Drag vertically anywhere on screen • W/S or Arrow Keys
+        </footer>
       </div>
 
-      <footer className="py-1 px-2 text-center text-[10px] text-neutral-500 border-t border-neutral-900 bg-neutral-950/60 shrink-0">
-        Controls: Drag vertically anywhere on screen • W/S or Arrow Keys
-      </footer>
+      <GameLeaderboardSidebar
+        mode={`pong-${difficulty === 'easy' ? 'medium' : difficulty}`}
+        allowedModes={['pong-medium', 'pong-hard']}
+        tabLabels={{
+          'pong-medium': 'MED',
+          'pong-hard': 'HARD'
+        }}
+        title="Pong Masters"
+        scoreLabel="STREAK"
+        storageKey="pong_leaderboard_collapsed"
+        isMobile={isMobile}
+        showMobileLeaderboard={showMobileLeaderboard}
+        onCloseMobileLeaderboard={() => setShowMobileLeaderboard(false)}
+      />
     </div>
   );
 }
