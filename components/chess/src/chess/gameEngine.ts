@@ -155,6 +155,11 @@ export function showSidebarView(view: 'main' | 'bots' | 'searching' | 'game') {
     if (searching) searching.classList.toggle('hidden', view !== 'searching');
     if (game) game.classList.toggle('hidden', view !== 'game');
 
+    const container = document.querySelector('.app-main-container');
+    if (container) {
+        container.classList.toggle('in-game', view === 'game');
+    }
+
     if (view === 'game') {
         if (rightSidebar) rightSidebar.style.display = 'none';
         if (btnResign) btnResign.classList.remove('hidden');
@@ -531,6 +536,24 @@ export function setupEventListeners() {
 
     const btnResign = document.getElementById('btn-resign');
     if (btnResign) btnResign.addEventListener('click', handleResign);
+
+    const btnFlipBoard = document.getElementById('btn-flip-board');
+    if (btnFlipBoard) {
+        btnFlipBoard.addEventListener('click', () => {
+            gameState.isFlipped = !gameState.isFlipped;
+            render2DBoard();
+        });
+    }
+
+    const btnSoundToggle = document.getElementById('btn-sound-toggle');
+    const soundIcon = document.getElementById('sound-icon');
+    if (btnSoundToggle) {
+        btnSoundToggle.addEventListener('click', () => {
+            SoundEngine.muted = !SoundEngine.muted;
+            if (soundIcon) soundIcon.textContent = SoundEngine.muted ? '🔇' : '🔊';
+            btnSoundToggle.setAttribute('title', SoundEngine.muted ? 'Unmute Sound' : 'Mute Sound');
+        });
+    }
 
     const btnConfirmResign = document.getElementById('btn-confirm-resign');
     if (btnConfirmResign) btnConfirmResign.addEventListener('click', executeResign);

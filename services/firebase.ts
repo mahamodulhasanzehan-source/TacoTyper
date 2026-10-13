@@ -625,12 +625,16 @@ export const isGuestPlayer = (uid?: string | null, username?: string | null): bo
 
 // Helper to track unique user or guest number
 export const getUserTrackingKey = (uid?: string | null, username?: string | null): string => {
-    if (username && username.toLowerCase().trim().startsWith('guest#')) {
-        return username.toLowerCase().trim();
+    const cleanUid = (uid || '').toLowerCase().trim();
+    const cleanUser = (username || '').toLowerCase().trim();
+    if (cleanUid && !cleanUid.startsWith('guest_')) {
+        return `uid_${cleanUid}`;
     }
-    if (uid) return uid.toLowerCase().trim();
-    if (username) return username.toLowerCase().trim();
-    return 'unknown_player';
+    if (cleanUser && !cleanUser.startsWith('guest#') && cleanUser !== 'player' && cleanUser !== 'chef') {
+        return `user_${cleanUser}`;
+    }
+    if (cleanUid) return `uid_${cleanUid}`;
+    return `anon_${cleanUser || 'player'}`;
 };
 
 // Filter entries so that signed-in users have at most 3 entries and specific guests have at most 1 entry
@@ -643,17 +647,25 @@ export const filterLeaderboardEntries = (entries: LeaderboardEntry[], isTimeBase
     });
 
     const userCounts = new Map<string, number>();
+    const seenExactKeys = new Set<string>();
     const filtered: LeaderboardEntry[] = [];
 
     for (const entry of sorted) {
         const isGuest = isGuestPlayer(entry.uid, entry.username);
         const maxAllowed = isGuest ? 1 : 3;
-        const key = getUserTrackingKey(entry.uid, entry.username);
-        const count = userCounts.get(key) || 0;
+        const userKey = getUserTrackingKey(entry.uid, entry.username);
 
+        // Deduplicate ghost clones (identical score + level from same user)
+        const exactScoreKey = `${userKey}_${entry.score}_${entry.levelReached || 0}`;
+        if (seenExactKeys.has(exactScoreKey)) {
+            continue;
+        }
+
+        const count = userCounts.get(userKey) || 0;
         if (count < maxAllowed) {
             filtered.push(entry);
-            userCounts.set(key, count + 1);
+            userCounts.set(userKey, count + 1);
+            seenExactKeys.add(exactScoreKey);
             if (filtered.length >= maxListLimit) {
                 break;
             }
@@ -788,67 +800,111 @@ export const getLocalLeaderboard = (mode: string = 'competitive'): LeaderboardEn
     }
 };
 
-export const getLeaderboard = async (mode: string = 'competitive'): Promise<LeaderboardEntry[]> => {
-    const isTimeBased = isAscendingMetric(mode);
-    const local = getLocalLeaderboard(mode);
+// Real-time listener for leaderboards using Firestore onSnapshot
+export const subscribeLeaderboard = (
+    mode: string = 'competitive',
+    onUpdate: (entries: LeaderboardEntry[]) => void
+): (() => void) => {
+    const resolvedMode = mode === 'speed' ? 'speed-test' : mode;
+    const isTimeBased = isAscendingMetric(resolvedMode);
 
-    if (!dbExport) return local;
+    // Provide instant render from local cache
+    const initialLocal = getLocalLeaderboard(resolvedMode);
+    if (initialLocal.length > 0) {
+        onUpdate(initialLocal);
+    }
+
+    if (!dbExport) {
+        return () => {};
+    }
 
     try {
         const lbRef = collection(dbExport, "leaderboard");
-        
-        // Single field query by mode: DOES NOT require composite index, executes fast and reliably!
-        const fetchPromise = (async () => {
-            const q = query(
-                lbRef, 
-                where("mode", "==", mode),
-                limit(100)
-            );
-            return await getDocs(q);
-        })();
+        const q = query(
+            lbRef,
+            where("mode", "==", resolvedMode),
+            limit(100)
+        );
 
-        // 10s safety timeout for slow initial connection
-        const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 10000));
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+            const remoteEntries: LeaderboardEntry[] = [];
+            const seenDocIds = new Set<string>();
 
-        // Background handler: if fetch finishes (even after a delay), update cache & UI
-        fetchPromise.then((snapshot) => {
-            if (!snapshot || snapshot.empty) return;
-            const candidateEntries: LeaderboardEntry[] = [];
-            const seenIds = new Set<string>();
             snapshot.forEach(d => {
                 const data = d.data() as any;
                 const sortVal = data.sortValue !== undefined 
                     ? data.sortValue 
                     : (isTimeBased ? (data.score ?? Infinity) : (data.score ?? -Infinity));
-                candidateEntries.push({ id: d.id, ...data, sortValue: sortVal } as LeaderboardEntry);
-                seenIds.add(d.id);
+                remoteEntries.push({ id: d.id, ...data, sortValue: sortVal } as LeaderboardEntry);
+                seenDocIds.add(d.id);
             });
-            const currentLocal = getLocalLeaderboard(mode);
-            currentLocal.forEach(loc => {
-                if (!seenIds.has(loc.id)) {
-                    candidateEntries.push(loc);
-                    seenIds.add(loc.id);
+
+            // Reconcile with local cache: eliminate local optimistic duplicates
+            const localCache = getLocalLeaderboard(resolvedMode);
+            const preservedLocal: LeaderboardEntry[] = [];
+
+            for (const loc of localCache) {
+                if (seenDocIds.has(loc.id)) continue;
+                if (loc.id.startsWith('local_')) {
+                    const locKey = getUserTrackingKey(loc.uid, loc.username);
+                    const isAlreadyInRemote = remoteEntries.some(rem => {
+                        const remKey = getUserTrackingKey(rem.uid, rem.username);
+                        if (remKey !== locKey) return false;
+                        if (rem.score !== loc.score) return false;
+                        if (loc.levelReached && rem.levelReached && loc.levelReached !== rem.levelReached) return false;
+                        const locTime = loc.timestamp || 0;
+                        const remTime = typeof rem.timestamp === 'number' 
+                            ? rem.timestamp 
+                            : (rem.timestamp?.toMillis ? rem.timestamp.toMillis() : Date.now());
+                        return Math.abs(locTime - remTime) < 300000;
+                    });
+                    if (isAlreadyInRemote) continue;
                 }
-            });
-            const filtered = filterLeaderboardEntries(candidateEntries, isTimeBased, 25);
-            try {
-                localStorage.setItem(`lb_${mode}`, JSON.stringify(filtered));
-            } catch {}
-            if (typeof window !== 'undefined') {
-                window.dispatchEvent(new CustomEvent('leaderboard_updated', { detail: { mode, entries: filtered } }));
+                preservedLocal.push(loc);
             }
-        }).catch((err) => {
-            console.warn("Leaderboard fetch notice:", err);
+
+            const combined = [...remoteEntries, ...preservedLocal];
+            const filtered = filterLeaderboardEntries(combined, isTimeBased, 25);
+
+            try {
+                localStorage.setItem(`lb_${resolvedMode}`, JSON.stringify(filtered));
+            } catch {}
+
+            onUpdate(filtered);
+        }, (err) => {
+            console.warn("Real-time leaderboard listener notice:", err);
+            onUpdate(getLocalLeaderboard(resolvedMode));
         });
 
-        const snapshot = await Promise.race([fetchPromise, timeoutPromise]);
+        return unsubscribe;
+    } catch (e) {
+        console.warn("Failed to subscribe to leaderboard:", e);
+        return () => {};
+    }
+};
 
-        if (!snapshot) {
+export const getLeaderboard = async (mode: string = 'competitive'): Promise<LeaderboardEntry[]> => {
+    const resolvedMode = mode === 'speed' ? 'speed-test' : mode;
+    const isTimeBased = isAscendingMetric(resolvedMode);
+    const local = getLocalLeaderboard(resolvedMode);
+
+    if (!dbExport) return local;
+
+    try {
+        const lbRef = collection(dbExport, "leaderboard");
+        const q = query(
+            lbRef, 
+            where("mode", "==", resolvedMode),
+            limit(100)
+        );
+        const snapshot = await getDocs(q);
+
+        if (!snapshot || snapshot.empty) {
             return local;
         }
 
         const candidateEntries: LeaderboardEntry[] = [];
-        const seenIds = new Set<string>();
+        const seenDocIds = new Set<string>();
         
         snapshot.forEach(d => {
             const data = d.data() as any;
@@ -856,20 +912,26 @@ export const getLeaderboard = async (mode: string = 'competitive'): Promise<Lead
                 ? data.sortValue 
                 : (isTimeBased ? (data.score ?? Infinity) : (data.score ?? -Infinity));
             candidateEntries.push({ id: d.id, ...data, sortValue: sortVal } as LeaderboardEntry);
-            seenIds.add(d.id);
+            seenDocIds.add(d.id);
         });
 
-        // Merge with local scores so immediate player scores always show up
-        local.forEach(loc => {
-            if (!seenIds.has(loc.id)) {
-                candidateEntries.push(loc);
-                seenIds.add(loc.id);
+        // Reconcile optimistic local entries
+        for (const loc of local) {
+            if (seenDocIds.has(loc.id)) continue;
+            if (loc.id.startsWith('local_')) {
+                const locKey = getUserTrackingKey(loc.uid, loc.username);
+                const isAlreadyInRemote = candidateEntries.some(rem => {
+                    const remKey = getUserTrackingKey(rem.uid, rem.username);
+                    return remKey === locKey && rem.score === loc.score;
+                });
+                if (isAlreadyInRemote) continue;
             }
-        });
+            candidateEntries.push(loc);
+        }
 
         const filtered = filterLeaderboardEntries(candidateEntries, isTimeBased, 25);
         try {
-            localStorage.setItem(`lb_${mode}`, JSON.stringify(filtered));
+            localStorage.setItem(`lb_${resolvedMode}`, JSON.stringify(filtered));
         } catch {}
         return filtered;
     } catch (e) {

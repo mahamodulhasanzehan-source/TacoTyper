@@ -77,7 +77,10 @@ export const MiniGameCard: React.FC<MiniGameCardProps> = ({ game, featured = fal
       {/* Bottom Bar: Bold High-Contrast Title & PLAY Button */}
       <div className="z-10 w-full flex items-center justify-between gap-1.5 pt-1.5 border-t border-white/10">
         <div className="flex flex-col min-w-0 pr-1">
-          <span className="text-white text-xs sm:text-sm font-black truncate tracking-wide group-hover:text-[var(--accent-color)] transition-colors drop-shadow-sm font-['Press_Start_2P']">
+          <span 
+            className="text-white text-[10px] sm:text-xs font-black truncate tracking-wide group-hover:text-[var(--accent-color)] transition-colors drop-shadow-sm font-['Press_Start_2P',sans-serif]"
+            title={game.title}
+          >
             {game.title}
           </span>
           <span className="text-[9px] sm:text-[10px] text-neutral-400 font-sans truncate font-medium">

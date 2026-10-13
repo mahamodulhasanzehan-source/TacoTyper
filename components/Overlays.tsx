@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { COLORS, LEVEL_CONFIGS } from '../constants';
 import type { User, FriendRequest } from '../services/firebase';
 import { LeaderboardEntry } from '../types';
-import { getLeaderboard, getLocalLeaderboard, deleteLeaderboardEntry, fetchActiveUsers, sendFriendRequest, getFriendRequests, acceptFriendRequest, resetGlobalGameStats, isAscendingMetric } from '../services/firebase';
+import { getLeaderboard, getLocalLeaderboard, subscribeLeaderboard, deleteLeaderboardEntry, fetchActiveUsers, sendFriendRequest, getFriendRequests, acceptFriendRequest, resetGlobalGameStats, isAscendingMetric } from '../services/firebase';
 import { RandomReveal, RandomText } from './Visuals';
 import { useSettings } from '../contexts/SettingsContext';
 import { LoadingScreen } from './LoadingScreen';
@@ -191,11 +191,17 @@ export const LeaderboardWidget: React.FC<LeaderboardWidgetProps> = ({
     };
 
     useEffect(() => {
-        fetchLeaderboard(mode);
+        setLoading(true);
+        const resolvedMode = mode === 'speed' ? 'speed-test' : mode;
+
+        // Real-time Firestore stream: scores on any device sync live instantly!
+        const unsubscribe = subscribeLeaderboard(resolvedMode, (updatedEntries) => {
+            setEntries(updatedEntries);
+            setLoading(false);
+        });
 
         const handleUpdate = (e: any) => {
-            const targetMode = mode === 'speed' ? 'speed-test' : mode;
-            if (!e.detail || !e.detail.mode || e.detail.mode === targetMode || e.detail.mode === mode) {
+            if (!e.detail || !e.detail.mode || e.detail.mode === resolvedMode || e.detail.mode === mode) {
                 if (e.detail?.entries && Array.isArray(e.detail.entries)) {
                     setEntries(e.detail.entries);
                     setLoading(false);
@@ -206,7 +212,10 @@ export const LeaderboardWidget: React.FC<LeaderboardWidgetProps> = ({
         };
 
         window.addEventListener('leaderboard_updated', handleUpdate);
-        return () => window.removeEventListener('leaderboard_updated', handleUpdate);
+        return () => {
+            unsubscribe();
+            window.removeEventListener('leaderboard_updated', handleUpdate);
+        };
     }, [mode]);
 
     const handleDelete = async (id: string) => {
@@ -322,18 +331,18 @@ export const LeaderboardWidget: React.FC<LeaderboardWidgetProps> = ({
             
             {/* Segmented Category Selector */}
             {modes.length > 1 && (
-                <div className="flex items-center gap-1 p-1 bg-neutral-950 rounded-xl border border-neutral-800/90 mb-3 select-none shrink-0 overflow-x-auto custom-scrollbar">
+                <div className="flex items-center gap-1.5 p-1 bg-neutral-950/90 rounded-xl border border-neutral-800/90 mb-3 select-none shrink-0 overflow-x-auto custom-scrollbar shadow-inner">
                     {modes.map(m => {
                         const isActive = mode === m;
                         return (
                             <button
                                 key={m}
                                 onClick={() => setMode(m)}
-                                className={`flex-1 min-w-[50px] py-1.5 px-2 rounded-lg text-[10px] sm:text-[11px] font-black uppercase tracking-wider text-center transition-all cursor-pointer whitespace-nowrap ${
+                                className={`flex-1 min-w-[54px] py-1.5 px-2.5 rounded-lg text-[10px] sm:text-[11px] font-black uppercase tracking-wider text-center transition-all cursor-pointer whitespace-nowrap ${
                                     isActive
-                                        ? 'bg-gradient-to-r from-amber-500 to-amber-400 text-black shadow-md shadow-amber-500/25 scale-[1.02]'
+                                        ? 'bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 text-black shadow-md shadow-amber-500/30 scale-[1.02]'
                                         : 'text-neutral-400 hover:text-white hover:bg-neutral-900'
-                                }`}
+                                    }`}
                             >
                                 {getTabLabel(m)}
                             </button>
@@ -360,20 +369,20 @@ export const LeaderboardWidget: React.FC<LeaderboardWidgetProps> = ({
                         const isThird = idx === 2;
 
                         const rankBadgeClass = isFirst
-                            ? 'bg-gradient-to-br from-amber-400 to-amber-600 text-black font-black shadow-amber-500/30'
+                            ? 'bg-gradient-to-br from-amber-300 via-amber-400 to-amber-600 text-black font-black shadow-md shadow-amber-500/40 border border-amber-300/60'
                             : isSecond
-                            ? 'bg-gradient-to-br from-slate-200 to-slate-400 text-black font-black shadow-slate-400/20'
+                            ? 'bg-gradient-to-br from-slate-200 via-slate-300 to-slate-400 text-black font-black shadow-md shadow-slate-400/30 border border-white/60'
                             : isThird
-                            ? 'bg-gradient-to-br from-amber-700 to-amber-900 text-amber-100 font-black shadow-amber-800/20'
-                            : 'bg-neutral-800/80 text-neutral-400 font-bold border border-neutral-700/50';
+                            ? 'bg-gradient-to-br from-amber-600 via-amber-700 to-amber-900 text-amber-100 font-black shadow-md shadow-amber-800/30 border border-amber-600/60'
+                            : 'bg-neutral-850 text-neutral-400 font-bold border border-neutral-700/60';
 
                         const cardBorderClass = isFirst
-                            ? 'border-amber-500/40 bg-gradient-to-r from-amber-950/20 via-neutral-900 to-neutral-900'
+                            ? 'border-amber-500/50 bg-gradient-to-r from-amber-950/30 via-neutral-900 to-neutral-900 shadow-amber-500/10'
                             : isSecond
-                            ? 'border-slate-400/30 bg-gradient-to-r from-slate-900/20 via-neutral-900 to-neutral-900'
+                            ? 'border-slate-400/40 bg-gradient-to-r from-slate-900/30 via-neutral-900 to-neutral-900 shadow-slate-400/10'
                             : isThird
-                            ? 'border-amber-800/30 bg-gradient-to-r from-amber-950/15 via-neutral-900 to-neutral-900'
-                            : 'border-neutral-800/80 bg-neutral-900/60 hover:bg-neutral-800/70 hover:border-neutral-700';
+                            ? 'border-amber-800/40 bg-gradient-to-r from-amber-950/20 via-neutral-900 to-neutral-900 shadow-amber-800/10'
+                            : 'border-neutral-800/90 bg-neutral-900/70 hover:bg-neutral-850 hover:border-neutral-700';
 
                         return (
                             <div 
@@ -389,30 +398,30 @@ export const LeaderboardWidget: React.FC<LeaderboardWidgetProps> = ({
                                         ✕
                                     </button>
                                 )}
-                                <div className="flex justify-between items-center">
-                                    <div className="flex items-center gap-2 min-w-0">
-                                        <div className={`w-6 h-6 rounded-md flex items-center justify-center text-[11px] shadow shrink-0 ${rankBadgeClass}`}>
-                                            {isFirst ? '👑' : `#${idx + 1}`}
+                                <div className="flex justify-between items-center gap-2">
+                                    <div className="flex items-center gap-2 min-w-0 flex-1">
+                                        <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs shadow shrink-0 ${rankBadgeClass}`}>
+                                            {isFirst ? '👑' : isSecond ? '🥈' : isThird ? '🥉' : `#${idx + 1}`}
                                         </div>
                                         <div className="flex flex-col min-w-0">
-                                            <span className="text-xs sm:text-sm font-bold text-white truncate max-w-[100px] sm:max-w-[125px]">
+                                            <span className="text-xs sm:text-sm font-black text-white truncate max-w-[95px] sm:max-w-[120px]">
                                                 {entry.username}
                                             </span>
                                             {entry.title && (
-                                                <span className="text-[9px] text-neutral-400 italic truncate max-w-[100px] sm:max-w-[125px]">
+                                                <span className="text-[9px] text-neutral-400 italic truncate max-w-[95px] sm:max-w-[120px]">
                                                     "{entry.title}"
                                                 </span>
                                             )}
                                         </div>
                                     </div>
 
-                                    {/* Big bold highlight tracked metric! */}
-                                    <div className="flex flex-col items-end shrink-0 pl-2">
-                                        <div className="flex items-baseline gap-1">
-                                            <span className="text-base sm:text-lg font-black font-mono tracking-tight text-emerald-400 drop-shadow-[0_0_8px_rgba(52,211,153,0.3)]">
+                                    {/* Big bold highlight tracked metric! Highlight text for all statistics */}
+                                    <div className="flex flex-col items-end shrink-0 pl-1">
+                                        <div className="flex items-baseline gap-1.5">
+                                            <span className="text-lg sm:text-xl font-black font-mono tracking-tight text-emerald-400 drop-shadow-[0_0_10px_rgba(52,211,153,0.4)]">
                                                 {formatScoreValue(entry)}
                                             </span>
-                                            <span className="text-[8px] sm:text-[9px] font-extrabold uppercase tracking-wider text-emerald-300/80 bg-emerald-950/70 border border-emerald-500/30 px-1 py-0.5 rounded leading-none">
+                                            <span className="text-[8px] sm:text-[9px] font-black uppercase tracking-wider text-emerald-300 bg-emerald-950/80 border border-emerald-500/40 px-1.5 py-0.5 rounded leading-none">
                                                 {getScoreLabel()}
                                             </span>
                                         </div>

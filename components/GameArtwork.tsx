@@ -534,6 +534,29 @@ export const GameArtwork: React.FC<GameArtworkProps> = ({ id, color }) => {
         </svg>
       );
 
+    case 'chess':
+      return (
+        <svg viewBox="0 0 100 100" className="w-full h-full p-2">
+          {/* Checkered 4x4 background board */}
+          <rect x="12" y="12" width="76" height="76" rx="8" fill="#1e1b4b" stroke="#4338ca" strokeWidth="2" />
+          <rect x="12" y="12" width="38" height="38" fill="#312e81" />
+          <rect x="50" y="50" width="38" height="38" fill="#312e81" />
+          {/* Chess Knight Piece Silhouette with Neon Accent */}
+          <path
+            d="M 32 80 L 68 80 L 64 74 C 64 68 68 62 68 52 C 68 40 58 32 54 22 C 48 24 44 28 42 34 C 38 32 32 35 32 42 C 32 46 36 49 42 50 C 38 56 34 65 32 80 Z"
+            fill="#6366f1"
+            stroke="#a5b4fc"
+            strokeWidth="2.5"
+            strokeLinejoin="round"
+          />
+          {/* Knight eye */}
+          <circle cx="42" cy="40" r="2.5" fill="#facc15" />
+          {/* Mane detail */}
+          <line x1="58" y1="42" x2="65" y2="46" stroke="#818cf8" strokeWidth="2" strokeLinecap="round" />
+          <line x1="56" y1="52" x2="64" y2="56" stroke="#818cf8" strokeWidth="2" strokeLinecap="round" />
+        </svg>
+      );
+
     case 'iq':
     default:
       return (

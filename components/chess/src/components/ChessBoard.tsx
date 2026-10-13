@@ -22,16 +22,26 @@ export function ChessBoard() {
       </div>
       <div id="pvp-controls" className="hidden" style={{ display: 'none' }}></div>
 
-      {/* Fixed Top-Right Resign Button during active match */}
-      <button id="btn-resign" className="top-right-resign-btn hidden" title="Resign Game">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" />
-          <line x1="4" y1="22" x2="4" y2="15" />
-        </svg>
-        <span>Resign</span>
-      </button>
+      {/* Top Floating Toolbar for Quick In-Game Controls */}
+      <div className="chess-toolbar">
+        <button id="btn-sound-toggle" className="chess-toolbar-btn" type="button" title="Toggle Sound">
+          <span id="sound-icon">🔊</span>
+          <span className="chess-toolbar-label hidden sm:inline">Sound</span>
+        </button>
+        <button id="btn-flip-board" className="chess-toolbar-btn" type="button" title="Flip Board Perspective">
+          <span>🔄</span>
+          <span className="chess-toolbar-label hidden sm:inline">Flip</span>
+        </button>
+        <button id="btn-resign" className="chess-toolbar-btn resign-toolbar-btn hidden" type="button" title="Resign Game">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" />
+            <line x1="4" y1="22" x2="4" y2="15" />
+          </svg>
+          <span>Resign</span>
+        </button>
+      </div>
 
-      {/* Left Area: Chessboard + Opponent Bar */}
+      {/* Main Area: Chessboard + Opponent Bar + In-Board Turn Pill */}
       <div className="chess-board-area">
         <div className="board-and-players-wrapper">
           {/* Top Player Bar */}
@@ -41,6 +51,13 @@ export function ChessBoard() {
               <span id="player-top-name" className="player-name">Opponent</span>
               <span id="player-top-rating" className="player-rating">1500 ELO</span>
             </div>
+            <div id="player-top-badge" className="player-side-badge">Black</div>
+          </div>
+
+          {/* Active Turn Status Pill (Visible live during gameplay & review) */}
+          <div id="turn-status-container" className="turn-status-pill">
+            <div id="status-dot" className="status-dot pulse"></div>
+            <span id="status-text" className="status-text-val">White's Turn</span>
           </div>
 
           {/* The 2D Chess Board Container */}
@@ -53,32 +70,34 @@ export function ChessBoard() {
               <span id="player-bottom-name" className="player-name">You</span>
               <span id="player-bottom-rating" className="player-rating">1500 ELO</span>
             </div>
+            <div id="player-bottom-badge" className="player-side-badge user">White</div>
           </div>
         </div>
       </div>
 
-      {/* Right Area: Sidebar */}
+      {/* Sidebar: Desktop right panel / Mobile zero-scroll docked dock */}
       <div id="right-sidebar" className="chess-right-sidebar">
         {/* View 1: Main Menu */}
         <div id="sidebar-main-menu" className="sidebar-view">
           <div className="sidebar-header">
             <div className="sidebar-logo">♟️</div>
             <h2 className="sidebar-title">Play Chess</h2>
+            <p className="sidebar-subtitle">Select a mode to begin</p>
           </div>
           <div className="sidebar-menu-list">
-            <button id="btn-choice-pvp" className="sidebar-menu-btn pvp-btn">
+            <button id="btn-choice-pvp" className="sidebar-menu-btn pvp-btn" type="button">
               <div className="menu-btn-icon">⚡</div>
               <div className="menu-btn-text">
                 <span className="menu-btn-title">Play Online</span>
-                <span className="menu-btn-desc">Find an opponent of similar skill</span>
+                <span className="menu-btn-desc">Random opponent</span>
               </div>
             </button>
 
-            <button id="btn-choice-bot" className="sidebar-menu-btn bot-btn">
+            <button id="btn-choice-bot" className="sidebar-menu-btn bot-btn" type="button">
               <div className="menu-btn-icon">🤖</div>
               <div className="menu-btn-text">
                 <span className="menu-btn-title">Play Bots</span>
-                <span className="menu-btn-desc">Challenge AI from Easy to Master</span>
+                <span className="menu-btn-desc">4 AI difficulty levels</span>
               </div>
             </button>
           </div>
@@ -88,43 +107,43 @@ export function ChessBoard() {
         <div id="sidebar-bots-menu" className="sidebar-view hidden">
           <div className="sidebar-header">
             <div className="sidebar-logo">🤖</div>
-            <h2 className="sidebar-title">Play Bots</h2>
-            <p className="sidebar-subtitle">Select Bot Level (Random Black or White)</p>
+            <h2 className="sidebar-title">Select Bot Level</h2>
+            <p className="sidebar-subtitle">Random piece color assigned</p>
           </div>
           <div className="sidebar-bots-list">
-            <button className="bot-card" data-diff="martin">
+            <button className="bot-card" data-diff="martin" type="button">
               <div className="bot-avatar">♟️</div>
               <div className="bot-info">
                 <span className="bot-name">Martin (200)</span>
-                <span className="bot-rating">Beginner • Relaxed</span>
+                <span className="bot-rating">Beginner</span>
               </div>
             </button>
 
-            <button className="bot-card" data-diff="easy">
+            <button className="bot-card" data-diff="easy" type="button">
               <div className="bot-avatar">♞</div>
               <div className="bot-info">
                 <span className="bot-name">Jimmy (800)</span>
-                <span className="bot-rating">Casual • Friendly</span>
+                <span className="bot-rating">Casual</span>
               </div>
             </button>
 
-            <button className="bot-card" data-diff="medium">
+            <button className="bot-card" data-diff="medium" type="button">
               <div className="bot-avatar">♜</div>
               <div className="bot-info">
                 <span className="bot-name">Nelson (1500)</span>
-                <span className="bot-rating">Intermediate • Tactical</span>
+                <span className="bot-rating">Tactical</span>
               </div>
             </button>
 
-            <button className="bot-card" data-diff="gm">
+            <button className="bot-card" data-diff="gm" type="button">
               <div className="bot-avatar">♛</div>
               <div className="bot-info">
-                <span className="bot-name">Stockfish (0 ELO)</span>
-                <span className="bot-rating">Max Engine • Level 20</span>
+                <span className="bot-name">Stockfish</span>
+                <span className="bot-rating">Level 20 Master</span>
               </div>
             </button>
           </div>
-          <button id="btn-bot-back" className="sidebar-back-btn">
+          <button id="btn-bot-back" className="sidebar-back-btn" type="button">
             ← Back to Menu
           </button>
         </div>
@@ -142,7 +161,7 @@ export function ChessBoard() {
               Searching for an opponent...
             </div>
           </div>
-          <button id="btn-cancel-search" className="sidebar-back-btn">
+          <button id="btn-cancel-search" className="sidebar-back-btn" type="button">
             Cancel Search
           </button>
         </div>
@@ -153,14 +172,8 @@ export function ChessBoard() {
             <div className="sidebar-logo">♔</div>
             <h2 className="sidebar-title">Live Match</h2>
           </div>
-          
-          <div className="sidebar-turn-status">
-            <div id="status-dot" className="status-dot pulse"></div>
-            <span id="status-text" className="status-text-val">White's Turn</span>
-          </div>
-
           <div className="sidebar-game-actions">
-            <button id="btn-sidebar-menu" className="sidebar-action-btn menu-btn">
+            <button id="btn-sidebar-menu" className="sidebar-action-btn menu-btn" type="button">
               <span>← Main Menu</span>
             </button>
           </div>

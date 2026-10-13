@@ -226,7 +226,7 @@ const HubScreen: React.FC<HubScreenProps> = ({
                             <span className="font-mono text-[10px] text-neutral-500">{sortedGames.length} GAMES</span>
                         </div>
 
-                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4.5">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4.5">
                             {sortedGames.slice(1).map((game, index) => (
                                 <RandomReveal 
                                     key={game.id} 

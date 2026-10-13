@@ -76,21 +76,13 @@ export const GameLeaderboardSidebar: React.FC<GameLeaderboardSidebarProps> = ({
           title={isCollapsed ? "Click anywhere on the bar to expand leaderboard" : undefined}
         >
           {isCollapsed ? (
-            <div className="w-full h-full flex flex-col items-center justify-between py-2">
-              <div className="w-7 h-7 rounded-lg bg-neutral-900 border border-neutral-800 flex items-center justify-center text-amber-400 group-hover:scale-110 group-hover:border-amber-400/50 transition-all text-xs font-bold shadow-sm">
-                ◀
-              </div>
-              <div className="flex flex-col items-center gap-3 my-auto">
-                <span className="text-base group-hover:scale-110 transition-transform">🏆</span>
-                <span
-                  className="text-[10px] tracking-widest text-[#f4b400] font-black uppercase select-none group-hover:text-amber-300 transition-colors"
-                  style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}
-                >
-                  LEADERBOARD
-                </span>
-              </div>
-              <span className="text-[10px] text-neutral-600 group-hover:text-amber-400 transition-colors">
-                ◀
+            <div className="w-full h-full flex flex-col items-center justify-center py-4 gap-4">
+              <span className="text-base group-hover:scale-125 transition-transform drop-shadow-[0_0_8px_rgba(245,158,11,0.5)]">🏆</span>
+              <span
+                className="text-[10px] tracking-widest text-[#f4b400] font-black uppercase select-none group-hover:text-amber-300 transition-colors"
+                style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}
+              >
+                LEADERBOARD
               </span>
             </div>
           ) : (
