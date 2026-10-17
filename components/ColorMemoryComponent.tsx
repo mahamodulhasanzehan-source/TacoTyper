@@ -50,10 +50,13 @@ export default function ColorMemoryComponent({ onBackToHub, user, username }: Co
             <div className="flex-1 h-full relative overflow-hidden min-w-0">
                 <button 
                     onClick={onBackToHub}
-                    className="absolute top-2.5 left-2.5 sm:top-4 sm:left-4 z-[60] text-lg sm:text-2xl hover:scale-110 active:scale-95 transition-transform bg-neutral-900/90 hover:bg-neutral-800 p-1.5 sm:p-2.5 rounded-full border border-neutral-700 backdrop-blur-md shadow-lg cursor-pointer flex items-center justify-center"
+                    className="absolute top-2.5 left-2.5 sm:top-4 sm:left-4 z-[60] w-8 h-8 sm:w-9 sm:h-9 bg-neutral-900/90 hover:bg-neutral-800 border border-neutral-700/80 hover:border-neutral-500 rounded-lg backdrop-blur-md shadow-lg cursor-pointer flex items-center justify-center text-neutral-200 hover:text-white transition-all active:scale-95"
                     title="Back to Hub"
                 >
-                    🏠
+                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                        <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                    </svg>
                 </button>
                 {isMobile && (
                     <div className="absolute top-2.5 right-2.5 sm:top-4 sm:right-4 z-[60]">

@@ -133,7 +133,7 @@ export const Button: React.FC<React.ButtonHTMLAttributes<HTMLButtonElement> & { 
           fontFamily: '"Press Start 2P", cursive',
           color: 'var(--color-text)' 
       }}
-      className={`text-xs md:text-base py-3 px-4 md:py-4 md:px-5 border-4 border-white cursor-pointer transition-all duration-200 hover:scale-110 hover:brightness-125 active:scale-95 ${className}`}
+      className={`text-xs md:text-sm py-2.5 px-4 md:py-3 md:px-5 border-2 md:border-[3px] border-white cursor-pointer inline-flex items-center justify-center text-center transition-all duration-150 hover:brightness-110 hover:scale-[1.02] active:scale-[0.98] box-border ${className}`}
     >
       {children}
     </button>
@@ -295,14 +295,23 @@ export const LeaderboardWidget: React.FC<LeaderboardWidgetProps> = ({
                     {onCollapse && (
                         <button 
                             onClick={onCollapse}
-                            className="text-neutral-300 hover:text-white p-1.5 rounded-lg bg-neutral-900 hover:bg-neutral-800 border border-neutral-700 transition-colors text-xs font-bold leading-none cursor-pointer shadow-sm active:scale-95 shrink-0"
+                            className="text-neutral-300 hover:text-white w-7 h-7 rounded-lg bg-neutral-900 hover:bg-neutral-800 border border-neutral-700 transition-colors cursor-pointer shadow-sm active:scale-95 shrink-0 inline-flex items-center justify-center"
                             title="Collapse Leaderboard"
                         >
-                            ▶
+                            <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M8 5v14l11-7z"/>
+                            </svg>
                         </button>
                     )}
                     <div className="flex items-center gap-1.5 min-w-0">
-                        <span className="text-amber-400 text-sm shrink-0">🏆</span>
+                        <svg className="w-4 h-4 text-amber-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"></path>
+                            <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"></path>
+                            <path d="M4 22h16"></path>
+                            <path d="M10 14.66V17c0 .55-.45 1-1 1H7"></path>
+                            <path d="M14 14.66V17c0 .55.45 1 1 1h2"></path>
+                            <path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"></path>
+                        </svg>
                         <h3 className="text-amber-400 text-xs sm:text-sm font-black uppercase tracking-wider truncate">
                             {getTitle()}
                         </h3>
@@ -313,18 +322,23 @@ export const LeaderboardWidget: React.FC<LeaderboardWidgetProps> = ({
                     <button
                         onClick={() => fetchLeaderboard(mode)}
                         disabled={loading}
-                        className={`p-1.5 rounded-lg bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-neutral-400 hover:text-white text-xs transition-colors cursor-pointer active:scale-95 ${loading ? 'animate-spin text-amber-400' : ''}`}
+                        className={`w-7 h-7 rounded-lg bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-neutral-400 hover:text-white transition-colors cursor-pointer active:scale-95 inline-flex items-center justify-center ${loading ? 'animate-spin text-amber-400' : ''}`}
                         title="Refresh Leaderboard"
                     >
-                        ↻
+                        <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
+                        </svg>
                     </button>
                     {onClose && (
                         <button 
                             onClick={onClose}
-                            className="text-neutral-400 hover:text-white p-1.5 rounded-lg bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-xs font-bold leading-none cursor-pointer active:scale-95"
+                            className="text-neutral-400 hover:text-white w-7 h-7 rounded-lg bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 transition-colors cursor-pointer active:scale-95 inline-flex items-center justify-center"
                             title="Close Leaderboard"
                         >
-                            ✕
+                            <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                                <line x1="18" y1="6" x2="6" y2="18"></line>
+                                <line x1="6" y1="6" x2="18" y2="18"></line>
+                            </svg>
                         </button>
                     )}
                 </div>

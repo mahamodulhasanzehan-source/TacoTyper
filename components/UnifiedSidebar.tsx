@@ -50,14 +50,23 @@ export const UnifiedSidebar: React.FC<UnifiedSidebarProps> = ({
             audioService.playSound('button_click');
             onToggle();
           }}
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs sm:text-sm font-bold shadow-lg transition-all duration-200 select-none ${
+          className={`inline-flex items-center justify-center gap-1.5 h-8 sm:h-9 px-2.5 sm:px-3 rounded-lg border text-xs sm:text-sm font-bold shadow-md transition-all duration-200 select-none cursor-pointer active:scale-95 ${
             isOpen 
-              ? 'bg-amber-500 text-black border-amber-400 scale-105' 
+              ? 'bg-amber-500 text-black border-amber-400 font-black' 
               : 'bg-neutral-900/90 hover:bg-neutral-800 text-white border-neutral-700 hover:border-neutral-500'
           }`}
           title={isOpen ? 'Collapse Sidebar' : 'Open Sidebar (Chat & Scores)'}
         >
-          <span>{isOpen ? '✕' : '💬'}</span>
+          {isOpen ? (
+            <svg className="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          ) : (
+            <svg className="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+            </svg>
+          )}
           <span className="hidden sm:inline">{isOpen ? 'Close' : 'Chat & Ranks'}</span>
           {!isOpen && hasUnread && (
             <span className="w-2 h-2 rounded-full bg-red-500 animate-ping inline-block ml-0.5" />
@@ -88,35 +97,52 @@ export const UnifiedSidebar: React.FC<UnifiedSidebarProps> = ({
           <div className="flex items-center gap-1 bg-neutral-900 p-1 rounded-xl border border-neutral-800">
             <button
               onClick={() => handleTabChange('chat')}
-              className={`px-3 py-1 text-xs font-bold rounded-lg transition-all flex items-center gap-1 ${
+              className={`px-2.5 sm:px-3 py-1.5 text-xs font-bold rounded-lg transition-all inline-flex items-center justify-center gap-1.5 cursor-pointer ${
                 activeTab === 'chat'
-                  ? 'bg-amber-500 text-black shadow'
-                  : 'text-neutral-400 hover:text-white'
+                  ? 'bg-amber-500 text-black shadow-sm font-black'
+                  : 'text-neutral-400 hover:text-white hover:bg-neutral-800/60'
               }`}
             >
-              <span>💬 Chat</span>
+              <svg className="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+              </svg>
+              <span>Chat</span>
               {hasUnread && activeTab !== 'chat' && (
-                <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
+                <span className="w-1.5 h-1.5 rounded-full bg-red-500 ml-0.5" />
               )}
             </button>
 
             <button
               onClick={() => handleTabChange('leaderboard')}
-              className={`px-3 py-1 text-xs font-bold rounded-lg transition-all ${
+              className={`px-2.5 sm:px-3 py-1.5 text-xs font-bold rounded-lg transition-all inline-flex items-center justify-center gap-1.5 cursor-pointer ${
                 activeTab === 'leaderboard'
-                  ? 'bg-amber-500 text-black shadow'
-                  : 'text-neutral-400 hover:text-white'
+                  ? 'bg-amber-500 text-black shadow-sm font-black'
+                  : 'text-neutral-400 hover:text-white hover:bg-neutral-800/60'
               }`}
             >
-              🏆 Scores
+              <svg className="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"></path>
+                <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"></path>
+                <path d="M4 22h16"></path>
+                <path d="M10 14.66V17c0 .55-.45 1-1 1H7"></path>
+                <path d="M14 14.66V17c0 .55.45 1 1 1h2"></path>
+                <path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"></path>
+              </svg>
+              <span>Scores</span>
             </button>
 
             <button
               onClick={() => handleTabChange('friends')}
-              className="px-2.5 py-1 text-xs font-bold rounded-lg text-neutral-400 hover:text-white transition-all"
+              className="px-2.5 sm:px-3 py-1.5 text-xs font-bold rounded-lg text-neutral-400 hover:text-white hover:bg-neutral-800/60 transition-all inline-flex items-center justify-center gap-1.5 cursor-pointer"
               title="Friends & Requests"
             >
-              👥 Friends
+              <svg className="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                <circle cx="9" cy="7" r="4"></circle>
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+              </svg>
+              <span>Friends</span>
             </button>
           </div>
 
@@ -125,10 +151,13 @@ export const UnifiedSidebar: React.FC<UnifiedSidebarProps> = ({
               audioService.playSound('button_click');
               onToggle();
             }}
-            className="text-neutral-400 hover:text-white p-1 text-lg rounded-lg hover:bg-neutral-800 transition-colors"
+            className="text-neutral-400 hover:text-white w-7 h-7 rounded-lg hover:bg-neutral-800 flex items-center justify-center transition-colors cursor-pointer"
             title="Collapse Sidebar"
           >
-            ✕
+            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
           </button>
         </div>
 

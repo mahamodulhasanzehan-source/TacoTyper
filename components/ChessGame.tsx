@@ -19,17 +19,22 @@ export default function ChessGame({ onBackToHub, username }: ChessGameProps) {
       <div className="flex justify-between items-center w-full px-3 sm:px-6 py-2 border-b border-neutral-800/80 bg-black/60 backdrop-blur-md shrink-0 z-30">
         <button
           onClick={onBackToHub}
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-neutral-900 hover:bg-neutral-800 border border-neutral-700 rounded-full text-xs sm:text-sm font-bold transition-transform hover:scale-105 active:scale-95 shadow-md cursor-pointer"
+          className="h-8 px-2.5 sm:px-3 bg-neutral-900 hover:bg-neutral-800 border border-neutral-700/80 hover:border-neutral-500 rounded-lg text-xs sm:text-sm font-bold text-neutral-200 hover:text-white transition-all shadow-sm cursor-pointer inline-flex items-center justify-center gap-1.5 active:scale-95"
           title="Back to Hub"
         >
-          <span>⬅️</span>
+          <svg className="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="19" y1="12" x2="5" y2="12"></line>
+            <polyline points="12 19 5 12 12 5"></polyline>
+          </svg>
           <span className="hidden sm:inline">Hub</span>
         </button>
 
         <div className="flex items-center gap-2">
-          <span className="text-xl">♟️</span>
+          <svg className="w-4 h-4 text-indigo-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="m2 4 3 12h14l3-12-6 7-4-7-4 7-6-7zm3 16h14"></path>
+          </svg>
           <span className="font-extrabold text-sm sm:text-base text-indigo-400 font-mono tracking-wider">CHESS</span>
-          <span className="text-[10px] uppercase font-bold tracking-widest px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 hidden sm:inline-block">
+          <span className="text-[10px] uppercase font-bold tracking-widest px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 hidden sm:inline-block">
             STOCKFISH & PVP
           </span>
         </div>
