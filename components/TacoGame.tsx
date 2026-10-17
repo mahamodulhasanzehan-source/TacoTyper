@@ -1131,7 +1131,8 @@ export default function TacoGame({
                     cpm={speedTestResult.cpm}
                     accuracy={speedTestResult.accuracy}
                     comment={speedTestResult.comment}
-                    onRestart={() => setScreen('start')}
+                    onRestart={() => startSpeedTest()}
+                    onHome={() => setScreen('start')}
                 />
             )}
 

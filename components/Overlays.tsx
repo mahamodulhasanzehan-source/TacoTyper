@@ -60,6 +60,7 @@ export interface SpeedResultProps {
     accuracy: number;
     comment: string;
     onRestart: () => void;
+    onHome?: () => void;
 }
 
 export interface GeneratingModalProps {
@@ -1052,35 +1053,52 @@ export const InfoModal: React.FC<InfoModalProps> = ({ text, onClose }) => (
     </Overlay>
 );
 
-export const SpeedResultScreen: React.FC<SpeedResultProps> = ({ wpm, cpm, accuracy, comment, onRestart }) => (
+export const SpeedResultScreen: React.FC<SpeedResultProps> = ({ wpm, cpm, accuracy, comment, onRestart, onHome }) => (
     <Overlay>
-         <div className="flex flex-col md:flex-row gap-4 max-w-4xl w-full items-start justify-center p-4">
-            <RandomReveal className="bg-[#111] border-4 border-[#4facfe] p-8 text-center w-full md:w-[400px]">
-                <h2 className="text-2xl text-[#4facfe] mb-6">Speed Test Result</h2>
+        <div className="w-full max-w-md my-auto py-2">
+            <RandomReveal className="bg-[#111] border-2 sm:border-4 border-[#4facfe] p-4 sm:p-6 text-center w-full rounded-lg shadow-2xl">
+                <h2 className="text-xl sm:text-2xl text-[#4facfe] font-bold mb-3 tracking-wide">Speed Test Result</h2>
                 
-                <div className="grid grid-cols-2 gap-4 mb-6">
-                    <div className="bg-[#222] p-3 rounded">
-                        <div className="text-[10px] text-[#888]">WPM</div>
-                        <div className="text-2xl text-white font-bold">{wpm}</div>
+                <div className="grid grid-cols-2 gap-2 sm:gap-3 mb-3">
+                    <div className="bg-[#222] p-2.5 rounded">
+                        <div className="text-[10px] text-[#888] font-bold">WPM</div>
+                        <div className="text-xl sm:text-2xl text-white font-bold">{wpm}</div>
                     </div>
-                    <div className="bg-[#222] p-3 rounded">
-                        <div className="text-[10px] text-[#888]">ACCURACY</div>
-                        <div className={`text-2xl font-bold ${accuracy >= 95 ? 'text-green-500' : accuracy >= 80 ? 'text-yellow-500' : 'text-red-500'}`}>
+                    <div className="bg-[#222] p-2.5 rounded">
+                        <div className="text-[10px] text-[#888] font-bold">ACCURACY</div>
+                        <div className={`text-xl sm:text-2xl font-bold ${accuracy >= 95 ? 'text-green-500' : accuracy >= 80 ? 'text-yellow-500' : 'text-red-500'}`}>
                             {accuracy}%
                         </div>
                     </div>
-                    <div className="bg-[#222] p-3 rounded col-span-2">
-                         <div className="text-[10px] text-[#888]">RAW CPM</div>
-                         <div className="text-xl text-[#ccc]">{cpm}</div>
+                    <div className="bg-[#222] p-2 rounded col-span-2">
+                         <div className="text-[10px] text-[#888] font-bold">RAW CPM</div>
+                         <div className="text-base sm:text-lg text-[#ccc] font-bold">{cpm}</div>
                     </div>
                 </div>
 
-                <div className="bg-[#1a1a1a] p-4 rounded border-l-4 border-[#f4b400] mb-8 text-left">
-                    <div className="text-[10px] text-[#f4b400] mb-1">CHEF'S FEEDBACK:</div>
-                    <p className="text-xs text-white italic">"{comment}"</p>
+                <div className="bg-[#1a1a1a] p-3 rounded border-l-4 border-[#f4b400] mb-4 text-left">
+                    <div className="text-[10px] text-[#f4b400] font-bold mb-1 tracking-wider uppercase">Chef's Feedback:</div>
+                    <p className="text-xs sm:text-sm text-gray-200 italic leading-snug">"{comment}"</p>
                 </div>
 
-                <Button onClick={onRestart} className="w-full bg-[#4facfe] border-[#2c7bb6]">TRY AGAIN</Button>
+                <div className="flex gap-2 sm:gap-3">
+                    {onHome && (
+                        <button 
+                            onClick={onHome} 
+                            style={{ fontFamily: '"Press Start 2P", cursive' }}
+                            className="flex-1 text-xs py-3 px-3 bg-[#2a2a2a] hover:bg-[#383838] border-2 border-[#555] text-white cursor-pointer transition-all hover:scale-105 active:scale-95"
+                        >
+                            HOME
+                        </button>
+                    )}
+                    <button 
+                        onClick={onRestart} 
+                        style={{ fontFamily: '"Press Start 2P", cursive' }}
+                        className="flex-1 text-xs py-3 px-3 bg-[#4facfe] hover:bg-[#3597f0] border-2 border-[#2c7bb6] text-white cursor-pointer transition-all hover:scale-105 active:scale-95"
+                    >
+                        TRY AGAIN
+                    </button>
+                </div>
             </RandomReveal>
         </div>
     </Overlay>
