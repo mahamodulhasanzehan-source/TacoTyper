@@ -23,6 +23,7 @@ const WordComponent: React.FC<WordProps> = ({ word, isActive, onClick }) => {
       borderRadius: '4px',
       userSelect: 'none',
       whiteSpace: 'nowrap',
+      boxSizing: 'border-box',
       // Removed transition for transform to prevent interpolation fighting with JS updates
       transition: 'background-color 0.2s ease', 
       cursor: 'pointer',

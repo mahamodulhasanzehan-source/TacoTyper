@@ -278,9 +278,16 @@ export default function TacoGame({
     }
 
     state.wordsSpawnedThisLevel++;
-    const wordWidthEstimate = text.length * 16;
-    const maxX = Math.max(10, width - wordWidthEstimate - 30);
-    const x = Math.floor(Math.random() * maxX) + 15;
+    const isMobileView = width < 768;
+    const charWidth = isMobileView ? 16 : 24;
+    const basePadding = isMobileView ? 28 : 36;
+    const wordWidth = Math.ceil(text.length * charWidth * 1.12 + basePadding);
+
+    const containerBorder = 15;
+    const safeMargin = isMobileView ? 12 : 24;
+    const availableWidth = width - (containerBorder * 2) - (safeMargin * 2);
+    const maxSpawnX = Math.max(0, availableWidth - wordWidth);
+    const x = Math.floor(Math.random() * (maxSpawnX + 1)) + safeMargin;
 
     let baseSpeed = 1.0;
     if (state.gameMode === 'standard') {
