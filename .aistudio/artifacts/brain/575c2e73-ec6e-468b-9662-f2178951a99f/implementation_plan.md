@@ -1,30 +1,30 @@
-# Modern Arcade UI & Real-Time Cloud Leaderboard Sync
+# Taco Typer: Offline Algorithm & Multi-Outcome Chef Critique Engine
 
-Comprehensive plan to upgrade mobile and desktop responsiveness, elevate the arcade game visual identity with bespoke vector artwork inspired by multi-game party apps, and eliminate leaderboard synchronization lag and ghost duplicates through real-time Firestore listeners and multi-score deduplication.
+Transform Taco Typer's typing test and evaluation systems by replacing external AI API calls with instant, 100% offline algorithms. This includes an expanded curated library of culinary passages, a deterministic competitive scoring model, and a multi-case humorous Head Chef critique matrix delivering fiery critiques, sharp commentary, and high praise tailored to player performance.
 
 > [!IMPORTANT]
 > **User Review & Confirmed Decisions**
-> - **Duplicate Handling**: Retain up to the top 3 best scores per player per game mode (enforced client-side and cloud-side; guests retain 1 best score).
-> - **Cross-Device Syncing**: Switch from manual / timed polling to live Firestore `onSnapshot` real-time listeners. Any score achieved on any device instantly streams to all active viewports without page reload or stale cache lockouts.
-> - **Visual Identity**: Modern arcade dark aesthetic inspired by popular party & 2-player mini-game collections, featuring responsive cards, crisp bespoke SVG thumbnails, unified header hierarchy, and smooth non-blocking interactions.
+> - **Critique Personality Tone**: Humorous culinary chef inspired by fiery kitchen masters (e.g. Gordon Ramsay style banter) with dynamic tiers ranging from kitchen catastrophe roasting to Michelin-star reverence.
+> - **AI Integration**: Replace entirely with offline algorithms and prewritten pools for 0ms latency, zero API rate-limits, 100% offline reliability, and fair leaderboard scoring.
+> - **Comprehensive Outcome Coverage**: Distinct outcome matrices covering Ultra Speed & Accuracy, High Speed & Low Accuracy ("Panic in the Kitchen"), Low Speed & High Accuracy ("Guacamole Stalling"), Balanced Line Cook tiers, and catastrophic kitchen fails, each with randomized dialogue variations to prevent repetition.
 
 ---
 
 ## 1. Overview & Core Concept
 
 ### What It Does
-Transforms the app into an instant-play party game arcade with seamless cross-device synchronization:
-1. **True Real-Time Global Leaderboards**: Connects every game's leaderboard directly to Firestore live streams. As players on phones, tablets, or computers submit scores, rankings update dynamically in real time for everyone viewing the leaderboard.
-2. **Deterministic Deduplication**: Eliminates ghost clones and conflicting ranks caused by local storage race conditions, guest/signed-in identifier transitions, and optimistic cache clashes.
-3. **Polished Multi-Game Arcade Experience**: Enhances mobile touch ergonomics and desktop wide layouts with vibrant, responsive game tiles, bespoke SVG game thumbnails, unified collapsible sidebars, and clean loading skeletons that never freeze interactivity.
+Replaces the 3 cloud AI functions in Taco Typer (`generateSpeedText`, `generateSpeedComment`, `generateCompetitiveScore`) with self-contained client-side algorithms:
+1. **Curated Culinary Passage Engine**: Replaces slow text generation with an extensive pool of diverse, high-interest culinary and food history passages (taco heritage, sourdough microbiology, volcanic molcajetes, street taco techniques) with dynamic word-count and difficulty selections.
+2. **Multi-Case Head Chef Critique Matrix**: Evaluates player WPM and Accuracy into distinct performance quadrants, producing lively, humorous commentary with fiery roasts for sloppy speed, witty impatience for slow perfection, and Michelin-star commendations for master chefs.
+3. **Deterministic Fair Ranking Engine**: Standardizes score calculation (0–100) and kitchen rank titles (`Dishwasher Apprentice` up to `Executive Chef`), ensuring 100% competitive fairness where identical performance yields identical ranks across all players on the global leaderboard.
 
 ### Target Audience & Persona
-Casual players, speed typists, and competitive party gamers playing both solo challenges (Taco Typer, 2048, Minesweeper, Knife Flip) and head-to-head strategy games across mobile phones, tablets, and desktop browsers.
+Typing test enthusiasts, casual gamers, and speedrunners who want immediate round starts, instant post-match results, and repeatable, fair competitive rankings without waiting on external LLM response times.
 
 ### Key Value
-- Zero discrepancies in leaderboards between different devices or login states.
-- Immediate visual feedback with zero broken icons or low-resolution textures.
-- Effortless switching between games with responsive sidebar controls and thumb-friendly navigation.
+- **Instantaneous (0ms) Round Transitions**: Eliminates the loading spinners and API waits when starting speed tests and generating post-test evaluations.
+- **Fair Competitive Integrity**: Eliminates erratic LLM scoring variance; players are ranked purely by algorithmic metrics.
+- **Zero Cost & Infinite Offline Play**: Functions completely without API keys, network access, or backend token costs.
 
 ---
 
@@ -32,147 +32,107 @@ Casual players, speed typists, and competitive party gamers playing both solo ch
 
 ### Key User Flows
 
-#### A. Browsing & Launching Games (Hub View)
-- **Zero-Latency Hub Presentation**: The hub renders immediately with crisp vector thumbnails, play counts, and category tags.
-- **Responsive Layout**:
-  - *Mobile*: 2-column or 3-column dense arcade grid with high touch targets (touch targets $\ge 48\text{px}$). Featured games highlight current popular modes.
-  - *Desktop*: 4-to-6 column fluid arcade bento display with hover micro-elevations, glow accents, and responsive navigation header.
-- **Interaction Transitions**: Tapping or clicking any game tile executes smooth transition into the game arena without blocking animations.
+#### A. Instant Speed Test Launch
+- Player taps **Speed Test** in Taco Typer.
+- A passage is instantly selected from the expanded culinary library based on varied thematic categories (Street Food Lore, Fermentation Science, Ancient Recipes, Spice Chemistry).
+- The countdown triggers immediately with **zero loading lag** or spinner.
 
-#### B. In-Game Play & Live Leaderboard Sidebar
-- **Desktop Game Arena**: Full-width or centered game arena with a sleek right-side leaderboard column.
-  - Features an intuitive collapse toggle (`▶` collapse to vertical strip, `◀` expand).
-  - Displays top 3 entries with gold, silver, and bronze trophies, followed by numerical ranks.
-  - Live metric highlights (score, streak, time) in high-contrast tabular monospace font.
-- **Mobile Game Arena**: Unobtrusive top HUD keeping screen real estate clear for touch gameplay.
-  - Fixed mobile bottom/top modal toggle (`🏆` badge) opening a slide-up leaderboard drawer.
-  - Automatically receives live score updates while open.
+#### B. In-Game Typing & Real-Time Metrics
+- Keystrokes are tracked live: WPM, CPM, and real-time accuracy percentages.
+- Audio cues trigger seamlessly on correct keystrokes and mistakes.
 
-#### C. Score Submission & Rank Resolution
-- On game over or stage completion, the score is calculated and transmitted via an atomic write.
-- The player's rank highlights with a subtle pulse.
-- If the player already had 3 existing scores on the board, the lowest one is replaced only if the new score surpasses it, preserving their personal best achievements without flooding the board.
+#### C. Multi-Outcome Head Chef Results Screen
+- Upon timer expiry or text completion, the results screen opens instantaneously.
+- The player receives:
+  - **Head Chef Assessment**: Humorous, animated critique box matching their specific outcome quadrant.
+  - **Performance Score (0–100)**: Mathematically calculated based on WPM and accuracy curve.
+  - **Kitchen Rank Badge**: Clearly rendered title with distinctive chef badges.
+  - **Stats Grid**: Tabular metrics for WPM, CPM, Accuracy, and duration.
+  - **Instant Leaderboard Submission**: Immediate persistence to the local and Firestore leaderboards.
 
-### Visual Identity & Theme
-- **Color Discipline**:
-  - Canvas: `#0a0b10` (deep cosmic obsidian).
-  - Surfaces & Panels: `#121520` (subdued arcade slate with 1px border `rgba(255,255,255,0.08)`).
-  - Primary Accents: Amber Gold (`#f59e0b` / `#fbbf24`), Emerald (`#10b981`), and Cyber Blue (`#38bdf8`).
-- **Typography & Scale**:
-  - Display / Titles: `Plus Jakarta Sans` / `Outfit` (bold, energetic arcade feel).
-  - Tabular Numbers & Scoreboards: Tabular monospace font (`font-mono tabular-nums`) ensuring column alignment.
-  - Clean unboxed metadata with typographic dots (`·`) instead of generic pill tags.
-- **Bespoke Vector Thumbnail Artwork**:
-  - Each of the 20+ games receives dedicated, handcrafted SVG artwork styled with vibrant game geometry, contrasting color palettes, and distinct iconography (e.g. 2-player split arenas, chess knights, retro lasers, neon tacos, minesweeper grids).
+### Chef Outcome Matrix & Scenarios
+
+| Outcome Quadrant | Condition | Chef Tone & Example Critique |
+| :--- | :--- | :--- |
+| **Michelin Virtuoso** | WPM $\ge$ 95, Acc $\ge$ 96% | *Praise & Awe*: "Gordon Ramsay is weeping tears of joy. The tortillas are flying, the salsa is singing, and you just earned three Michelin stars in 60 seconds flat!" |
+| **Executive Head Chef** | WPM 80–94, Acc $\ge$ 92% | *High Professional Praise*: "Phenomenal line work! Your fingers move faster than a seasoned sous chef during Friday dinner rush. Immaculate plating!" |
+| **Solid Sous Chef** | WPM 60–79, Acc $\ge$ 88% | *Approving Master*: "Solid shift on the line. Crispy carnitas, sharp timing, and no spilled sauce. Take a bow, chef!" |
+| **Reliable Line Cook** | WPM 45–59, Acc $\ge$ 80% | *Constructive Grit*: "Order up! You survived the dinner rush without burning down the kitchen. Keep those hands moving and tighten your station." |
+| **Prep Cook in Training** | WPM 30–44, Acc $\ge$ 75% | *Grumpy Chef*: "You're still chopping onions while the dining room is full! Decent accuracy, but you need double espresso and quicker fingers." |
+| **Panic in the Kitchen** | WPM $\ge$ 65, Acc $<$ 75% | *Fiery Roast (Sloppy Speed)*: "IT'S RAW! We ordered street tacos and you sent out alphabet confetti! Slow down, breathe, and actually read the ticket before firing!" |
+| **Guacamole Stalling** | WPM $<$ 30, Acc $\ge$ 95% | *Impatient Sarcasm (Slow Perfection)*: "Meticulous presentation, chef... but Table 4 has been waiting for their chips since last Tuesday! Pick up the tempo!" |
+| **Kitchen Catastrophe** | WPM $<$ 30, Acc $<$ 70% | *Full Kitchen Meltdown*: "Shut it down! Even the microwave cooks faster than this, and with better spelling! Put the spatula down, wipe your station, and try again!" |
+
+*Each outcome category includes 3–5 randomized variations to ensure fresh experiences on replay.*
 
 ---
 
 ## 3. Key Product Decisions & Trade-Offs
 
-### Decision 1: Firestore Real-Time Listener (`onSnapshot`) vs. Polling
-- **Chosen Approach**: Use Firestore `onSnapshot` subscriptions with targeted mode queries (`where("mode", "==", currentMode)`).
-- **Why**: Guarantees identical ranking and score visibility across all devices within milliseconds. Eliminates stale cached rankings and prevents the need for manual page refreshing.
-- **Trade-Off**: Uses active listener connections while the leaderboard is visible. We mitigate read volume by unsubscribing as soon as the user collapses the sidebar or closes the modal.
+### Decision 1: Pure Local Module vs. Hybrid AI Fallback
+- **Chosen Approach**: Replace the async Gemini calls in `aiService.ts` with direct synchronous algorithmic generators for `generateSpeedText`, `generateSpeedComment`, and `generateCompetitiveScore`.
+- **Why**: Eliminates 1–3 second API delays, avoids network failures and quota limits, and delivers the requested snappy arcade experience.
+- **Trade-Off**: Texts and critiques are drawn from pre-composed algorithmic pools rather than novel AI sentences. However, by providing 20+ varied culinary texts and 30+ contextual chef lines with template variations, the experience feels rich and authentic.
 
-### Decision 2: Deduplication Engine (Max 3 Entries Per Player)
-- **Chosen Approach**:
-  - Normalize user tracking keys combining verified `uid` and normalized `username`.
-  - Filter streams to keep up to 3 highest-ranking entries for authenticated users, and 1 best entry for unauthenticated guests.
-  - Reconcile optimistic local entries with server entries using unique transaction timestamps and match keys so newly submitted scores never render as duplicates before server confirmation.
-- **Why**: Prevents leaderboard clutter by active single players while rewarding consistent top performers. Completely resolves user confusion where multiple copies of the exact same score appear.
-
-### Decision 3: SVG Component Artwork vs. External Raster Assets
-- **Chosen Approach**: Native inline React SVG artwork with modular geometry for every game thumbnail.
-- **Why**: SVGs are zero-bandwidth, instant-loading, infinitely sharp across high-DPI retina mobile screens and 4K desktop displays, and completely impervious to CDN network timeouts or broken image links.
+### Decision 2: Deterministic Scoring Curve for Leaderboard Integrity
+- **Chosen Approach**: 
+  $$\text{Score} = \text{round}\left( \min\left(100, \text{WPM} \times \left(\frac{\text{Accuracy}}{100}\right)^{2.2}\right) \right)$$
+- **Why**: Exponentially penalizes low accuracy (preventing spam-typing high WPM) while rewarding high-speed precision fairly. Ensures that every player with identical stats gets identical ranks.
 
 ---
 
 ## 4. Technical Architecture & Data Strategy
 
-### System Architecture & Data Flow
+### System Architecture
 
 ```
 ┌────────────────────────────────────────────────────────────────────────┐
-│                          User Interface Layer                          │
+│                        Taco Typer Game Flow                            │
 │                                                                        │
-│   ┌─────────────────────┐   ┌──────────────────────────────────────┐   │
-│   │   HubScreen.tsx     │   │      GameArena Component             │   │
-│   │   - Modern Bento    │   │      (Taco, Knife, Minesweeper, ...) │   │
-│   │   - Custom SVG Art  │   └──────────────────┬───────────────────┘   │
-│   └──────────┬──────────┘                      │                       │
-│              │                                 ▼                       │
-│              │                  ┌──────────────────────────────────┐   │
-│              │                  │   GameLeaderboardSidebar.tsx     │   │
-│              │                  │   - Real-Time Subscription       │   │
-│              │                  │   - Smooth Collapse / Expand     │   │
-│              │                  │   - Top-3 Player Grouping        │   │
-│              │                  └──────────────────┬───────────────┘   │
-└──────────────┼─────────────────────────────────────┼───────────────────┘
-               │                                     │
-               ▼                                     ▼
+│   ┌─────────────────────┐            ┌─────────────────────────────┐   │
+│   │   TypingSpeedGame   │            │        TacoGame.tsx         │   │
+│   │   - Keystroke input │            │   - Speed Test Screen       │   │
+│   │   - Live WPM/CPM    │            │   - Game Over / Victory     │   │
+│   └──────────┬──────────┘            └──────────────┬──────────────┘   │
+└──────────────┼──────────────────────────────────────┼──────────────────┘
+               │                                      │
+               ▼                                      ▼
 ┌────────────────────────────────────────────────────────────────────────┐
-│                     State & Persistence Layer                          │
+│                Deterministic Culinary Game Engine                      │
+│                     (services/tacoEngine.ts)                           │
 │                                                                        │
+│   ┌──────────────────────────┐    ┌────────────────────────────────┐   │
+│   │  Culinary Text Library   │    │   Head Chef Critique Matrix    │   │
+│   │  - 20+ Themed Passages   │    │   - 8 Outcome Quadrants        │   │
+│   │  - Balanced word counts  │    │   - 35+ Fiery / High-Praise    │   │
+│   │  - History & food trivia │    │     contextual voice lines     │   │
+│   └──────────┬───────────────┘    └────────────────┬───────────────┘   │
+│              │                                     │                   │
+│              ▼                                     ▼                   │
 │   ┌────────────────────────────────────────────────────────────────┐   │
-│   │                   services/firebase.ts                         │   │
-│   │                                                                │   │
-│   │   • subscribeLeaderboard(mode, callback): UnsubscribeFn        │   │
-│   │   • saveLeaderboardScore(user, score, mode, ...): Promise      │   │
-│   │   • reconcileAndDeduplicate(remoteEntries, localOptimistic)    │   │
-│   │   • filterLeaderboardEntries(entries, maxPerUser = 3)          │   │
-│   └───────────────────────────────┬────────────────────────────────┘   │
-└───────────────────────────────────┼────────────────────────────────────┘
-                                    │
-                                    ▼
+│   │                 Deterministic Ranking Engine                   │   │
+│   │  - Exponential Accuracy Weighting: WPM * (Acc/100)^2.2         │   │
+│   │  - Clean Title Resolution: Executive Chef down to Apprentice   │   │
+│   │  - 0ms Execution Time (Zero API Dependencies)                  │   │
+│   └────────────────────────────────┬───────────────────────────────┘   │
+└────────────────────────────────────┼───────────────────────────────────┘
+                                     │
+                                     ▼
 ┌────────────────────────────────────────────────────────────────────────┐
-│                   Cloud Firestore (Live Backend)                       │
-│                                                                        │
-│   Collection: "leaderboard"                                            │
-│   - Document Fields: { uid, username, score, sortValue, mode, ... }    │
-│   - Real-Time Broadcasts via onSnapshot                                │
-│   - Security Rules: firestore.rules (Validation & Access Controls)     │
+│               Persistence & Live Leaderboard Sync                      │
+│   - Instant write to Firestore & local storage                         │
+│   - Real-time rank update without latency                              │
 └────────────────────────────────────────────────────────────────────────┘
 ```
 
-### Data Model & Deduplication Schema
+### Component & File Changes
 
-```typescript
-interface LeaderboardRecord {
-  id: string;              // Firestore document ID or temp optimistic ID
-  uid: string;             // User UID or stable guest UUID
-  username: string;        // Clean display name
-  score: number;           // Actual metric score
-  sortValue: number;       // Normalized sorting value (time vs points)
-  mode: string;            // Game identifier and sub-mode
-  stats?: SessionStats;    // Optional game-specific metrics
-  timestamp: number;       // Epoch timestamp
-}
-
-// User Identity Resolution
-function getPlayerIdentityKey(uid?: string, username?: string): string {
-  const cleanUser = (username || '').toLowerCase().trim();
-  const cleanUid = (uid || '').toLowerCase().trim();
-  // Group by UID when authenticated, or clean username if persistent
-  if (cleanUid && !cleanUid.startsWith('guest_')) return `auth_${cleanUid}`;
-  if (cleanUser && !cleanUser.startsWith('guest#')) return `user_${cleanUser}`;
-  return `guest_${cleanUid || 'anon'}`;
-}
-```
-
-### Component Work Breakdown
-
-1. **`services/firebase.ts`**:
-   - Implement `subscribeLeaderboard(mode, onUpdate)` utilizing Firestore `onSnapshot`.
-   - Update `filterLeaderboardEntries` to strictly cap at 3 entries per authenticated player and 1 per guest.
-   - Implement smart optimistic reconciliation that absorbs newly submitted scores without creating duplicate entries before cloud confirmation.
-2. **`components/GameLeaderboardSidebar.tsx` & `components/Overlays.tsx`**:
-   - Connect sidebar lifecycle directly to `subscribeLeaderboard`.
-   - Add graceful loading skeletons and error states.
-   - Support one-click collapse/expand state saved in `localStorage`.
-   - Provide mobile bottom-sheet modal with high-contrast readable rankings.
-3. **`components/GameArtwork.tsx` & `components/MiniGameCard.tsx`**:
-   - Refine all SVG game artwork with rich colors, themed vector graphics, and party-game aesthetics.
-   - Polish card layouts to prevent overflow, ensure clear text contrast, and support responsive scaling on narrow devices.
-4. **`components/HubScreen.tsx` & Layout Containers**:
-   - Standardize viewport containers and safe-area insets for mobile devices.
-   - Ensure header controls, authentication status, and settings modals operate smoothly with zero touch lag.
+1. **`services/tacoEngine.ts` (New Focused Engine)**:
+   - Houses the comprehensive culinary text corpus (25+ authentic culinary paragraphs).
+   - Houses the multi-case chef commentary selector covering all 8 performance quadrants with randomized voice lines.
+   - Houses the deterministic competitive scoring algorithm and rank title resolver.
+2. **`services/aiService.ts`**:
+   - Re-exports or delegates `generateSpeedText`, `generateSpeedComment`, and `generateCompetitiveScore` directly to `tacoEngine.ts`, ensuring zero breaking changes for existing components.
+3. **`components/TacoGame.tsx` & `components/TypingSpeedGame.tsx`**:
+   - Removes unnecessary loading spinners (`isGenerating`, `isEvaluating`) when starting speed test or rendering results, making transitions feel instantaneous.
+   - Preserves all leaderboard score saving and stats tracking.

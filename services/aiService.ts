@@ -1,6 +1,11 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { SPEED_TEST_TEXTS } from '../constants';
 import { SessionStats } from '../types';
+import { 
+  getDeterministicSpeedText, 
+  getDeterministicSpeedComment, 
+  getDeterministicCompetitiveScore 
+} from './tacoEngine';
 
 class AIService {
   private aiInstance: GoogleGenAI | null = null;
@@ -26,84 +31,15 @@ class AIService {
   }
 
   async generateSpeedText(): Promise<string> {
-    const ai = this.getClient();
-    if (!ai) return this.getFallbackText();
-
-    try {
-      const response = await ai.models.generateContent({
-        model: 'gemini-3.8-flash',
-        contents: "Generate 2 short, interesting paragraphs about culinary history, exotic ingredients, or food science. The text should be educational and engaging, suitable for a typing test. Total length around 60-80 words. Plain text only, no markdown formatting.",
-      });
-      return response.text?.trim() || this.getFallbackText();
-    } catch (e) {
-      console.warn("AI Text Gen fallback activated:", e);
-      return this.getFallbackText();
-    }
+    return getDeterministicSpeedText();
   }
 
-  async generateSpeedComment(wpm: number, cpm: number, accuracy: number): Promise<string> {
-    const ai = this.getClient();
-    if (!ai) {
-      if (accuracy < 90) return "You're making a mess of my kitchen!";
-      if (wpm > 60) return "Fast hands, Chef!";
-      return "Practice your knife skills.";
-    }
-
-    try {
-      const response = await ai.models.generateContent({
-        model: 'gemini-3.8-flash',
-        contents: `Act as a strict but fair head chef. A line cook just completed a prep task (typing test). Stats: ${wpm} WPM, ${accuracy}% Accuracy. Give a one-sentence feedback comment. If accuracy is low, be critical about sloppy work. If fast and accurate, praise them.`,
-      });
-      return response.text?.trim() || "Back to the station, Chef.";
-    } catch {
-      return "Keep cooking, Chef.";
-    }
+  async generateSpeedComment(wpm: number, _cpm: number, accuracy: number): Promise<string> {
+    return getDeterministicSpeedComment(wpm, accuracy).comment;
   }
 
   async generateCompetitiveScore(stats: SessionStats, speedTest?: { wpm: number, accuracy: number }): Promise<{ score: number, title: string }> {
-    const ai = this.getClient();
-    if (!ai) {
-      return this.calculateFallbackScore(stats, speedTest);
-    }
-
-    try {
-      const prompt = speedTest 
-        ? `Evaluate this speed typing performance: ${speedTest.wpm} WPM, ${speedTest.accuracy}% Accuracy. Assign a score (0-100) and a creative kitchen rank title (e.g. "Sous Chef", "Dishwasher", "Line Cook", "Executive Chef").`
-        : `Evaluate this cooking game session: 
-           Mistakes: ${stats.mistakes}, 
-           Time: ${stats.timeTaken.toFixed(1)}s, 
-           Ingredients Missed: ${stats.ingredientsMissed}, 
-           Rotten Food Typed: ${stats.rottenWordsTyped}, 
-           Total Score: ${stats.totalScore}, 
-           Level Reached: ${stats.levelReached}.
-           Assign a performance score (0-100) and a creative kitchen rank title.`;
-
-      const response = await ai.models.generateContent({
-        model: 'gemini-3.8-flash',
-        contents: prompt,
-        config: {
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.OBJECT,
-            properties: {
-              score: { type: Type.INTEGER },
-              title: { type: Type.STRING }
-            },
-            required: ['score', 'title']
-          }
-        }
-      });
-      
-      const jsonStr = response.text;
-      if (jsonStr) {
-        const data = JSON.parse(jsonStr);
-        return { score: Number(data.score) || 75, title: String(data.title) || "Taco Virtuoso" };
-      }
-      return this.calculateFallbackScore(stats, speedTest);
-    } catch (e) {
-      console.warn("AI Scoring fallback activated:", e);
-      return this.calculateFallbackScore(stats, speedTest);
-    }
+    return getDeterministicCompetitiveScore(stats, speedTest);
   }
 
   private spellingBeeUsedWords: Set<string> = new Set();
