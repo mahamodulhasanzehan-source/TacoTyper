@@ -7,38 +7,26 @@ export interface HeadChefEvaluation {
   outcomeCategory: string;
 }
 
-export const CULINARY_SPEED_TEXTS: string[] = [
-  "Nixtamalization is the ancient Mesoamerican process where dried corn is soaked and cooked in an alkaline solution, usually limewater. This chemical miracle softens the maize pericarp, unlocks bound niacin, and releases the unmistakable fragrant aroma of fresh masa for heirloom tortillas.",
-  "Molcajetes are traditional Mexican mortars carved from a single block of porous basalt volcanic rock. Grinding roasted serrano chilies, charred garlic, and ripe avocados against the volcanic basalt releases essential aromatic oils that a modern steel food processor could never replicate.",
-  "Authentic tacos al pastor trace their lineage to Lebanese immigrants who arrived in Mexico City during the early twentieth century. Adapting traditional spit-roasted shawarma, Mexican taqueros substituted pork marinated in achiote paste and dried chilies, crowning the vertical trompo with a roasted pineapple.",
-  "Sourdough fermentation relies on a symbiotic colony of wild yeasts and lactic acid bacteria. As the microbes metabolize complex starches, they release carbon dioxide that inflates gluten pockets, while lactic and acetic acids impart that signature tangy flavor and crisp caramelized crust.",
-  "Vanilla beans originate from an orchid vine native to the tropical rainforests of Mesoamerica. Before synthetic extracts existed, the Totonac people were legendary custodians of vanilla, hand-pollinating delicate pale flowers that open for merely a few precious hours at daybreak.",
-  "Oaxacan mole negro is among the most sophisticated sauces in global gastronomy. Crafting an authentic mole requires over thirty distinct ingredients, including charred chilhuacle chilies, Mexican dark chocolate, plantains, raisins, and aromatic spices, simmered patiently over embers for days.",
-  "The Maillard reaction is a chemical phenomenon occurring between amino acids and reducing sugars under dry kitchen heat. Beginning around three hundred degrees Fahrenheit, it creates hundreds of new flavor compounds, responsible for the deep savory crust on seared steaks and roasted seeds.",
-  "Birria is a rich, slow-braised stew hailing from the Mexican state of Jalisco. Meat is steeped in an aromatic adobo broth laced with guajillo chilies, cloves, cumin, and Mexican oregano until tender enough to shred, accompanied by a steaming cup of savory spiced consommé.",
-  "Saffron consists of the vivid crimson stigmas gathered from the autumn crocus flower. Because each blossom yields only three delicate threads, it takes roughly seventy-five thousand flowers harvested meticulously by hand to produce a single pound of this prized golden spice.",
-  "Charring vegetables directly over a smoking comal is the secret soul of rustic Mexican salsas. Blistering plum tomatoes, fiery habaneros, and unpeeled garlic cloves until black spots appear transforms raw vegetal bitterness into sweet, complex caramelization.",
-  "Ceviche utilizes the natural acidity of fresh lime juice to chemically denature raw fish proteins. The citric acid alters the molecular structure similarly to thermal cooking, turning the flesh opaque and firm without ever touching an open flame or heated pan.",
-  "Carnitas originate from the culinary heartland of Michoacan. Pork cuts are gently confited in pure lard inside copper kettles for hours alongside Mexican cola, bitter orange peel, and warm spices until meltingly tender inside with a crackling golden exterior.",
-  "Epazote is a pungent, leafy herb indigenous to Central America, featuring distinctive notes of petroleum, citrus, and mint. Taqueros and home cooks add sprigs to simmering black beans not only for its assertive rustic flavor, but also for its digestive carminative properties.",
-  "Cotija cheese is an artisan dry aged cow's milk cheese born in the alpine mountains of Michoacan. Known affectionately as the Parmesan of Mexico, its firm crumbly texture and salty, sharp profile make it the quintessential topping for charred street corn and tacos.",
-  "Cacao was revered as divine currency and medicine across the Aztec and Mayan empires. Nobles whipped ground roasted cacao beans with cool spring water, wild honey, allspice, and fiery ground chilies to produce a frothy, energizing elixir fit for warrior royalty.",
-  "A proper cast iron skillet is the workhorse of high-heat cooking. Over time, polymerized cooking oils bond chemically to the raw iron surface, creating a mirror-smooth nonstick patina capable of achieving intense sear temperatures without peeling or degrading.",
-  "Guacamole purists insist on using Hass avocados at peak softness, mashed with sea salt, finely minced white onion, chopped serrano pepper, fresh cilantro, and a whisper of fresh lime juice. No fillers or sour cream should ever compromise the velvety fruit.",
-  "Chiles en nogada is a patriotic culinary masterpiece celebrating Mexican independence. Poblano chilies are stuffed with sweet-savory picadillo pork, blanketed in a velvety walnut cream sauce, and crowned with ruby pomegranate seeds and fresh green parsley.",
-  "Tortilla chips, or totopos, originated in ancient Mexico as an economical and delicious method to repurpose yesterday's stale corn tortillas. Cut into triangles and submerged into boiling oil, they emerge rigid, golden, and ready for vibrant salsa.",
-  "Tamarind pods contain a sticky, tart pulp packed with natural tartaric acid. Widely celebrated in Mexican aguas frescas and tangy dipping glazes, tamarind provides an electric, lip-smacking contrast against rich, smoky meats and fiery roasted habanero pastes."
+import { SPEED_TEST_TEXTS } from '../constants';
+
+export const DIVERSE_SPEED_TEXTS: string[] = [
+  ...SPEED_TEST_TEXTS,
+  "The concept of zero as both a placeholder and a numerical value emerged independently across ancient civilizations, notably in Babylonian astronomical tables and Mayan calendars. However, its formalization into mathematical arithmetic occurred in seventh-century India with mathematician Brahmagupta, paving the way for algebra and calculus.",
+  "Deep in the heart of our cells, deoxyribonucleic acid coils into elegant double-helix structures. Encoded within just four chemical bases is the molecular blueprint for every protein that sustains life, testifying to billions of years of biological evolution.",
+  "Mount Everest, standing at over eight thousand eight hundred meters above sea level, was formed by the violent collision of the Indian and Eurasian tectonic plates fifty million years ago. Even today, the mighty range continues to climb several millimeters each year as the continental landmasses grind together.",
+  "In 1915, Albert Einstein published his general theory of relativity, proposing that gravity is not a traditional force, but rather the curvature of spacetime produced by mass and energy. The historic theory was dramatically confirmed four years later during a total solar eclipse.",
+  "Coral reefs represent some of the most biodiverse and fragile ecosystems on Earth. Though they cover less than one percent of the ocean floor, these bustling marine cities provide shelter, breeding grounds, and sustenance for more than a quarter of all known marine species."
 ];
 
 let lastTextIndex = -1;
 
 export function getDeterministicSpeedText(): string {
-  let idx = Math.floor(Math.random() * CULINARY_SPEED_TEXTS.length);
-  if (idx === lastTextIndex && CULINARY_SPEED_TEXTS.length > 1) {
-    idx = (idx + 1) % CULINARY_SPEED_TEXTS.length;
+  let idx = Math.floor(Math.random() * DIVERSE_SPEED_TEXTS.length);
+  if (idx === lastTextIndex && DIVERSE_SPEED_TEXTS.length > 1) {
+    idx = (idx + 1) % DIVERSE_SPEED_TEXTS.length;
   }
   lastTextIndex = idx;
-  return CULINARY_SPEED_TEXTS[idx];
+  return DIVERSE_SPEED_TEXTS[idx];
 }
 
 const CHEF_CRITIQUES = {

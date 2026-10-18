@@ -67,7 +67,7 @@ export const generateRandomFleet = (): Ship[] => {
   return ships;
 };
 
-// Bot Shot Selection Engine
+// Smart Hunt & Target Bot Engine
 export const getBotShot = (
   firedShots: { [idx: number]: 'hit' | 'miss' },
   enemyShips: Ship[],
@@ -78,9 +78,95 @@ export const getBotShot = (
   for (let i = 0; i < 100; i++) {
     if (!firedShots[i]) unfired.push(i);
   }
+  if (unfired.length === 0) return { shotIdx: 0, newQueue: [] };
 
-  // If there's an ongoing target queue from recent hits (Medium / Hard)
-  let queue = [...botTargetQueue];
+  // Identify all hit cells that belong to ships that are ALREADY sunk
+  const sunkHitCells = new Set<number>();
+  enemyShips.forEach(s => {
+    if (s.hits.length === s.size) {
+      s.hits.forEach(cell => sunkHitCells.add(cell));
+    }
+  });
+
+  // Active unsunk hits that need finishing off
+  const activeHits = Object.keys(firedShots)
+    .map(Number)
+    .filter(idx => firedShots[idx] === 'hit' && !sunkHitCells.has(idx));
+
+  let queue = [...botTargetQueue].filter(idx => !firedShots[idx] && idx >= 0 && idx < 100);
+
+  // TARGET MODE: When there are active unsunk hits on the board
+  if (activeHits.length > 0) {
+    // 1. If 2 or more hits belong to the same active ship, detect line direction and attack ends
+    if (activeHits.length >= 2) {
+      const rows = activeHits.map(idx => Math.floor(idx / 10));
+      const cols = activeHits.map(idx => idx % 10);
+      const sameRow = rows.every(r => r === rows[0]);
+      const sameCol = cols.every(c => c === cols[0]);
+
+      if (sameRow) {
+        const r = rows[0];
+        const minCol = Math.min(...cols);
+        const maxCol = Math.max(...cols);
+        const lineCandidates: number[] = [];
+        if (minCol > 0 && !firedShots[r * 10 + (minCol - 1)]) {
+          lineCandidates.push(r * 10 + (minCol - 1));
+        }
+        if (maxCol < 9 && !firedShots[r * 10 + (maxCol + 1)]) {
+          lineCandidates.push(r * 10 + (maxCol + 1));
+        }
+        if (lineCandidates.length > 0) {
+          const shot = lineCandidates[0];
+          const remainingQueue = [
+            ...lineCandidates.slice(1),
+            ...queue.filter(q => q !== shot && !lineCandidates.includes(q))
+          ];
+          return { shotIdx: shot, newQueue: remainingQueue };
+        }
+      } else if (sameCol) {
+        const c = cols[0];
+        const minRow = Math.min(...rows);
+        const maxRow = Math.max(...rows);
+        const lineCandidates: number[] = [];
+        if (minRow > 0 && !firedShots[(minRow - 1) * 10 + c]) {
+          lineCandidates.push((minRow - 1) * 10 + c);
+        }
+        if (maxRow < 9 && !firedShots[(maxRow + 1) * 10 + c]) {
+          lineCandidates.push((maxRow + 1) * 10 + c);
+        }
+        if (lineCandidates.length > 0) {
+          const shot = lineCandidates[0];
+          const remainingQueue = [
+            ...lineCandidates.slice(1),
+            ...queue.filter(q => q !== shot && !lineCandidates.includes(q))
+          ];
+          return { shotIdx: shot, newQueue: remainingQueue };
+        }
+      }
+    }
+
+    // 2. Consume existing target queue from previous hits
+    while (queue.length > 0) {
+      const candidate = queue.shift()!;
+      if (!firedShots[candidate] && candidate >= 0 && candidate < 100) {
+        return { shotIdx: candidate, newQueue: queue };
+      }
+    }
+
+    // 3. Queue was empty but unsunk hits exist: gather all adjacent orthogonal cells
+    const freshNeighbors: number[] = [];
+    for (const hit of activeHits) {
+      const adj = getAdjacentCells(hit).filter(n => !firedShots[n]);
+      freshNeighbors.push(...adj);
+    }
+    const uniqueNeighbors = Array.from(new Set(freshNeighbors));
+    if (uniqueNeighbors.length > 0) {
+      const shot = uniqueNeighbors[0];
+      return { shotIdx: shot, newQueue: uniqueNeighbors.slice(1) };
+    }
+  }
+
+  // Check remaining queue
   while (queue.length > 0) {
     const candidate = queue.shift()!;
     if (!firedShots[candidate] && candidate >= 0 && candidate < 100) {
@@ -88,33 +174,26 @@ export const getBotShot = (
     }
   }
 
-  if (difficulty === 'easy') {
-    // Pure random guess among unfired
-    const randomIdx = unfired[Math.floor(Math.random() * unfired.length)];
-    return { shotIdx: randomIdx, newQueue: [] };
-  }
+  // HUNT MODE: Parity search and probability density
+  const survivingSizes = enemyShips
+    .filter(s => s.hits.length < s.size)
+    .map(s => s.size);
 
-  if (difficulty === 'medium') {
-    // Parity / Checkerboard search (r + c) % 2 === 0
+  const minShipSize = survivingSizes.length > 0 ? Math.min(...survivingSizes) : 2;
+
+  if (difficulty === 'easy') {
+    // Parity / checkerboard
     const parityCandidates = unfired.filter(idx => {
       const r = Math.floor(idx / 10);
       const c = idx % 10;
       return (r + c) % 2 === 0;
     });
-
-    const chosen = parityCandidates.length > 0
-      ? parityCandidates[Math.floor(Math.random() * parityCandidates.length)]
-      : unfired[Math.floor(Math.random() * unfired.length)];
-
-    return { shotIdx: chosen, newQueue: [] };
+    const pool = parityCandidates.length > 0 ? parityCandidates : unfired;
+    const randomIdx = pool[Math.floor(Math.random() * pool.length)];
+    return { shotIdx: randomIdx, newQueue: [] };
   }
 
-  // Hard: Probability Density Mapping
-  // Calculate which remaining unfired cells can fit surviving ships
-  const survivingSizes = enemyShips
-    .filter(s => s.hits.length < s.size)
-    .map(s => s.size);
-
+  // Medium / Hard: Probability Density Mapping
   const probability = new Array(100).fill(0);
 
   for (const size of survivingSizes) {
@@ -125,7 +204,7 @@ export const getBotShot = (
         const span: number[] = [];
         for (let i = 0; i < size; i++) {
           const idx = r * 10 + (c + i);
-          if (firedShots[idx] === 'miss') {
+          if (firedShots[idx] === 'miss' || sunkHitCells.has(idx)) {
             valid = false;
             break;
           }
@@ -133,12 +212,11 @@ export const getBotShot = (
         }
         if (valid) {
           span.forEach(idx => {
-            if (!firedShots[idx]) probability[idx] += 1;
-            // Boost if adjacent to an unsunk hit
-            if (firedShots[idx] === 'hit') {
-              span.forEach(sIdx => {
-                if (!firedShots[sIdx]) probability[sIdx] += 5;
-              });
+            if (!firedShots[idx]) {
+              probability[idx] += 1;
+              if ((Math.floor(idx / 10) + (idx % 10)) % minShipSize === 0) {
+                probability[idx] += 2;
+              }
             }
           });
         }
@@ -152,7 +230,7 @@ export const getBotShot = (
         const span: number[] = [];
         for (let i = 0; i < size; i++) {
           const idx = (r + i) * 10 + c;
-          if (firedShots[idx] === 'miss') {
+          if (firedShots[idx] === 'miss' || sunkHitCells.has(idx)) {
             valid = false;
             break;
           }
@@ -160,11 +238,11 @@ export const getBotShot = (
         }
         if (valid) {
           span.forEach(idx => {
-            if (!firedShots[idx]) probability[idx] += 1;
-            if (firedShots[idx] === 'hit') {
-              span.forEach(sIdx => {
-                if (!firedShots[sIdx]) probability[sIdx] += 5;
-              });
+            if (!firedShots[idx]) {
+              probability[idx] += 1;
+              if ((Math.floor(idx / 10) + (idx % 10)) % minShipSize === 0) {
+                probability[idx] += 2;
+              }
             }
           });
         }
@@ -172,18 +250,23 @@ export const getBotShot = (
     }
   }
 
-  // Pick the unfired cell with highest probability score
   let maxScore = -1;
-  let bestIdx = unfired[0];
+  let bestCandidates: number[] = [];
 
   for (const idx of unfired) {
     if (probability[idx] > maxScore) {
       maxScore = probability[idx];
-      bestIdx = idx;
+      bestCandidates = [idx];
+    } else if (probability[idx] === maxScore) {
+      bestCandidates.push(idx);
     }
   }
 
-  return { shotIdx: bestIdx, newQueue: [] };
+  const chosen = bestCandidates.length > 0
+    ? bestCandidates[Math.floor(Math.random() * bestCandidates.length)]
+    : unfired[Math.floor(Math.random() * unfired.length)];
+
+  return { shotIdx: chosen, newQueue: [] };
 };
 
 export const getAdjacentCells = (idx: number): number[] => {

@@ -5,7 +5,8 @@ import {
   Ship,
   SHIPS_CONFIG,
   generateRandomFleet,
-  getBotShot
+  getBotShot,
+  getAdjacentCells
 } from './battleship/battleshipLogic';
 import { ShipSilhouette } from './battleship/ShipSilhouette';
 
@@ -254,7 +255,6 @@ export default function BattleshipGame({ onBackToHub }: BattleshipProps) {
 
     const timer = setTimeout(() => {
       const { shotIdx, newQueue } = getBotShot(botShots, playerShips, difficulty, botQueue);
-      setBotQueue(newQueue);
 
       let isHit = false;
       let hitShipName = '';
@@ -277,10 +277,17 @@ export default function BattleshipGame({ onBackToHub }: BattleshipProps) {
         if (sunk) {
           audioService.playSound('wrong_answer');
           setCombatLog(`ALERT: Your ${hitShipName} was sunk by enemy counter-battery!`);
+          // Purge cells of the sunk ship from the target queue
+          const sunkSet = new Set(sunk.cells);
+          setBotQueue(newQueue.filter(idx => !sunkSet.has(idx)));
         } else {
           setCombatLog(`Enemy shell struck your ${hitShipName}!`);
+          // Add orthogonal neighbors to front of targeting queue to immediately finish the ship
+          const neighbors = getAdjacentCells(shotIdx).filter(n => !newBotShots[n] && !newQueue.includes(n));
+          setBotQueue([...neighbors, ...newQueue]);
         }
       } else {
+        setBotQueue(newQueue);
         audioService.playSound('piece_land');
       }
 

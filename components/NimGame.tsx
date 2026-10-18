@@ -276,8 +276,8 @@ export default function NimGame({ onBackToHub, user, username }: NimProps) {
           </div>
 
           {/* Nim Pyramid Stage: 1 stick (top), 3 sticks, 5 sticks, 7 sticks (bottom) */}
-          <div className="flex-1 flex flex-col items-center justify-center p-3 sm:p-6 max-w-2xl mx-auto w-full overflow-y-auto">
-            <div className="w-full flex flex-col items-center gap-2 sm:gap-3.5 my-auto">
+          <div className="flex-1 flex flex-col items-center justify-center p-2 sm:p-4 max-w-xl mx-auto w-full overflow-hidden min-h-0">
+            <div className="w-full flex flex-col items-center gap-1.5 sm:gap-2 my-auto">
               {piles.map((count, pileIdx) => {
                 const isSelected = selectedPile === pileIdx;
 
@@ -291,11 +291,11 @@ export default function NimGame({ onBackToHub, user, username }: NimProps) {
                         audioService.playSound('tile_click');
                       }
                     }}
-                    className={`w-full max-w-xl flex items-center justify-between px-3 sm:px-6 py-2 sm:py-2.5 rounded-2xl border-2 transition-all cursor-pointer ${
+                    className={`w-full max-w-lg flex items-center justify-between px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl border-2 transition-all cursor-pointer ${
                       count === 0
                         ? 'bg-neutral-950/40 border-neutral-900 opacity-40 cursor-not-allowed'
                         : isSelected
-                        ? 'bg-amber-950/30 border-amber-400 shadow-[0_0_20px_rgba(251,191,36,0.3)] scale-[1.01]'
+                        ? 'bg-amber-950/30 border-amber-400 shadow-[0_0_16px_rgba(251,191,36,0.3)] scale-[1.01]'
                         : 'bg-neutral-900/60 border-neutral-800 hover:border-neutral-700'
                     }`}
                   >
@@ -304,16 +304,16 @@ export default function NimGame({ onBackToHub, user, username }: NimProps) {
                     </div>
 
                     {/* Matchsticks row centered */}
-                    <div className="flex-1 flex items-center justify-center gap-2 sm:gap-3.5 py-1 min-h-[56px] sm:min-h-[64px]">
+                    <div className="flex-1 flex items-center justify-center gap-1.5 sm:gap-2.5 py-0.5 min-h-[38px] sm:min-h-[46px]">
                       {Array.from({ length: count }).map((_, stickIdx) => (
                         <div
                           key={stickIdx}
-                          className="flex flex-col items-center group transition-transform hover:-translate-y-1"
+                          className="flex flex-col items-center group transition-transform hover:-translate-y-0.5"
                         >
                           {/* Sulfur Red Tip */}
-                          <div className="w-2.5 h-3 bg-red-600 rounded-full shadow-[0_0_6px_rgba(220,38,38,0.8)]" />
+                          <div className="w-2 h-2 sm:w-2.5 sm:h-2.5 bg-red-600 rounded-full shadow-[0_0_4px_rgba(220,38,38,0.8)]" />
                           {/* Wooden Match Body */}
-                          <div className="w-1.5 h-11 sm:h-13 bg-amber-200 rounded-b shadow-sm" />
+                          <div className="w-1.5 h-6 sm:h-8 md:h-9 bg-amber-200 rounded-b shadow-sm" />
                         </div>
                       ))}
                       {count === 0 && (
@@ -333,10 +333,10 @@ export default function NimGame({ onBackToHub, user, username }: NimProps) {
               })}
             </div>
 
-            {/* Player Action Controls Tray */}
+            {/* Compact Player Action Controls Tray - Fits on-screen with zero scroll */}
             {isPlayerTurn && selectedPile !== null && piles[selectedPile] > 0 && (
-              <div className="w-full max-w-xl bg-neutral-900/95 border border-neutral-800 p-3 sm:p-4 rounded-2xl flex flex-col items-center gap-3 animate-fade-in shadow-xl mt-3 shrink-0">
-                <div className="text-xs text-neutral-300 font-semibold uppercase tracking-wider">
+              <div className="w-full max-w-lg bg-neutral-900/95 border border-neutral-800 p-2 sm:p-2.5 rounded-xl flex flex-col items-center gap-2 animate-fade-in shadow-xl mt-2 shrink-0">
+                <div className="text-[11px] sm:text-xs text-neutral-300 font-semibold uppercase tracking-wider">
                   Take sticks from Row {selectedPile + 1}
                 </div>
 
@@ -347,9 +347,9 @@ export default function NimGame({ onBackToHub, user, username }: NimProps) {
                       <button
                         key={countNum}
                         onClick={() => setSelectedCount(countNum)}
-                        className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl font-bold font-mono text-xs sm:text-sm transition-all ${
+                        className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg font-bold font-mono text-xs sm:text-sm transition-all cursor-pointer ${
                           selectedCount === countNum
-                            ? 'bg-amber-500 text-black shadow-lg scale-105'
+                            ? 'bg-amber-500 text-black shadow-md scale-105'
                             : 'bg-neutral-800 text-neutral-300 hover:bg-neutral-700'
                         }`}
                       >
@@ -359,16 +359,16 @@ export default function NimGame({ onBackToHub, user, username }: NimProps) {
                   })}
                 </div>
 
-                <div className="flex items-center gap-3 w-full justify-center">
+                <div className="flex items-center gap-2 w-full justify-center">
                   <button
                     onClick={handlePlayerMove}
-                    className="px-6 py-2.5 bg-amber-500 hover:bg-amber-400 text-black font-black text-xs sm:text-sm uppercase tracking-wider rounded-xl shadow-lg transition-all active:scale-95 cursor-pointer"
+                    className="px-4 py-1.5 bg-amber-500 hover:bg-amber-400 text-black font-black text-xs uppercase tracking-wider rounded-lg shadow-md transition-all active:scale-95 cursor-pointer"
                   >
                     Confirm: Remove {selectedCount}
                   </button>
                   <button
                     onClick={() => setSelectedPile(null)}
-                    className="px-4 py-2.5 bg-neutral-800 hover:bg-neutral-700 text-neutral-400 font-bold text-xs uppercase rounded-xl"
+                    className="px-3 py-1.5 bg-neutral-800 hover:bg-neutral-700 text-neutral-400 font-bold text-xs uppercase rounded-lg cursor-pointer"
                   >
                     Cancel
                   </button>

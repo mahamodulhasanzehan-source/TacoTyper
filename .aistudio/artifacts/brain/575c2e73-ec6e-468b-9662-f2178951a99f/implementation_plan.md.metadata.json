@@ -1,6 +1,6 @@
 {
-  "summary": "Implementation plan to replace all Taco Typer Gemini AI functions with instant offline algorithms, an expanded curated culinary passage library, deterministic competitive scoring, and a multi-case humorous chef critique engine covering a rich matrix of player outcomes.",
-  "updatedAt": "2026-10-17T09:40:07.426317553Z",
+  "summary": "Architecture and migration plan for replacing all Gemini API calls across the platform with deterministic algorithms, comprehensive static datasets, and free zero-auth APIs.",
+  "updatedAt": "2026-10-18T14:59:17.610321175Z",
   "requestFeedback": true,
   "userFacing": true
 }

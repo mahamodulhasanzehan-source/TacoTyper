@@ -161,18 +161,18 @@ export default function AngleGame({ user, onBackToHub, username }: AngleGameProp
     }, [handleKeypadClick, gameOver]);
 
     return (
-        <div className="w-full h-full flex flex-row overflow-hidden bg-[#050508]">
-            <div className="flex-1 h-full flex flex-col items-center justify-between relative overflow-y-auto custom-scrollbar p-2.5 sm:p-3 select-none font-sans min-w-0">
+        <div className="w-full h-screen flex flex-row overflow-hidden bg-[#050508]">
+            <div className="flex-1 h-full flex flex-col items-center justify-between relative overflow-hidden p-2 sm:p-3 select-none font-sans min-w-0">
                 <div className="absolute inset-0 opacity-15 pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at 10% 20%, #d946ef 2px, transparent 2px)', backgroundSize: '70px 70px' }}></div>
 
-                {/* Top Bar - Pinned at Top */}
-                <div className="flex justify-between items-center w-full max-w-md shrink-0 pt-1 sm:pt-2 mb-2 z-10">
+                {/* Top Bar - Compact Header */}
+                <div className="flex justify-between items-center w-full max-w-md shrink-0 h-10 mb-1 z-10">
                     <button 
                         onClick={() => {
                             audioService.playSound('button_click');
                             onBackToHub();
                         }} 
-                        className="flex items-center gap-1.5 px-3 py-1.5 bg-neutral-900/80 hover:bg-neutral-800 border border-neutral-700 rounded-full text-sm font-bold transition-transform hover:scale-105 active:scale-95 shadow-md cursor-pointer"
+                        className="flex items-center gap-1.5 px-2.5 py-1 bg-neutral-900/80 hover:bg-neutral-800 border border-neutral-700 rounded-lg text-xs font-bold transition-colors cursor-pointer"
                         title="Back to Hub"
                     >
                         <span>⬅️</span>
@@ -180,13 +180,13 @@ export default function AngleGame({ user, onBackToHub, username }: AngleGameProp
                     </button>
 
                     <div className="flex flex-col items-center">
-                        <h1 className="text-xl md:text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-fuchsia-400 to-purple-500 tracking-wide">
+                        <h1 className="text-base sm:text-lg md:text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-fuchsia-400 to-purple-500 tracking-wide">
                             ANGLE ESTIMATE
                         </h1>
                     </div>
 
-                    <div className="flex items-center gap-2">
-                        <div className="text-xs font-bold text-neutral-400 bg-neutral-900 px-2.5 py-1 rounded-full border border-neutral-800">
+                    <div className="flex items-center gap-1.5">
+                        <div className="text-[11px] sm:text-xs font-bold text-neutral-400 bg-neutral-900 px-2 py-0.5 rounded-lg border border-neutral-800">
                             🔥 <span className="text-amber-400 font-mono">{streak}</span>
                         </div>
                         {isMobile && (
@@ -195,94 +195,96 @@ export default function AngleGame({ user, onBackToHub, username }: AngleGameProp
                     </div>
                 </div>
 
-            {/* Middle Section: Protractor Dial & Feedback */}
-            <div className="flex-1 flex flex-col items-center justify-center w-full max-w-md my-auto py-1 z-10">
-                {/* Protractor Dial */}
-                <div 
-                    className="relative w-[min(48vw,175px)] h-[min(48vw,175px)] sm:w-48 sm:h-48 md:w-52 md:h-52 bg-neutral-900/90 rounded-full border-4 border-neutral-700 flex items-center justify-center shadow-2xl transition-all mb-2"
-                >
-                    <svg className="absolute inset-0 w-full h-full" viewBox="0 0 100 100">
-                        {/* Reference Base Line (0 deg) */}
-                        <line x1="50" y1="50" x2="95" y2="50" stroke="#737373" strokeWidth="2.5" strokeLinecap="round" />
-                        
-                        {/* Arc fill (anti-clockwise) */}
-                        <circle 
-                            cx="50" cy="50" r="18" 
-                            fill="none" stroke="#d946ef" strokeWidth="4" strokeOpacity="0.4"
-                            strokeDasharray={2 * Math.PI * 18}
-                            strokeDashoffset={2 * Math.PI * 18 * (1 - targetAngle / 360)}
-                            style={{ transform: 'scaleY(-1)', transformOrigin: '50px 50px' }}
-                            className="transition-all duration-700 ease-out"
-                        />
+                {/* Middle Section: Responsive Protractor Dial & Feedback */}
+                <div className="flex-1 flex flex-col items-center justify-center w-full max-w-md my-auto py-1 z-10 min-h-0">
+                    {/* Protractor Dial: Scaled dynamically to viewport height */}
+                    <div 
+                        className="relative w-[min(26vh,160px)] h-[min(26vh,160px)] bg-neutral-900/90 rounded-full border-4 border-neutral-700 flex items-center justify-center shadow-2xl transition-all mb-1 shrink-0"
+                    >
+                        <svg className="absolute inset-0 w-full h-full" viewBox="0 0 100 100">
+                            {/* Reference Base Line (0 deg) */}
+                            <line x1="50" y1="50" x2="95" y2="50" stroke="#737373" strokeWidth="2.5" strokeLinecap="round" />
+                            
+                            {/* Arc fill (anti-clockwise) */}
+                            <circle 
+                                cx="50" cy="50" r="18" 
+                                fill="none" stroke="#d946ef" strokeWidth="4" strokeOpacity="0.4"
+                                strokeDasharray={2 * Math.PI * 18}
+                                strokeDashoffset={2 * Math.PI * 18 * (1 - targetAngle / 360)}
+                                style={{ transform: 'scaleY(-1)', transformOrigin: '50px 50px' }}
+                                className="transition-all duration-700 ease-out"
+                            />
 
-                        {/* Previous Guesses (shown only after submit, anti-clockwise) */}
-                        {previousGuesses.map((g, i) => (
+                            {/* Previous Guesses (shown only after submit, anti-clockwise) */}
+                            {previousGuesses.map((g, i) => (
+                                <line 
+                                    key={i}
+                                    x1="50" y1="50" 
+                                    x2="95" y2="50" 
+                                    stroke="#737373" strokeWidth="1.5" strokeDasharray="2,2"
+                                    style={{ transform: `rotate(${-g}deg)`, transformOrigin: '50px 50px' }}
+                                />
+                            ))}
+                            
+                            {/* Target Angle Line (anti-clockwise) */}
                             <line 
-                                key={i}
                                 x1="50" y1="50" 
                                 x2="95" y2="50" 
-                                stroke="#737373" strokeWidth="1.5" strokeDasharray="2,2"
-                                style={{ transform: `rotate(${-g}deg)`, transformOrigin: '50px 50px' }}
+                                stroke="#d946ef" strokeWidth="3" strokeLinecap="round"
+                                className="transition-all duration-700 ease-out shadow-[0_0_10px_rgba(217,70,239,0.8)]"
+                                style={{ transform: `rotate(${-targetAngle}deg)`, transformOrigin: '50px 50px' }}
                             />
-                        ))}
-                        
-                        {/* Target Angle Line (anti-clockwise) */}
-                        <line 
-                            x1="50" y1="50" 
-                            x2="95" y2="50" 
-                            stroke="#d946ef" strokeWidth="3" strokeLinecap="round"
-                            className="transition-all duration-700 ease-out shadow-[0_0_10px_rgba(217,70,239,0.8)]"
-                            style={{ transform: `rotate(${-targetAngle}deg)`, transformOrigin: '50px 50px' }}
-                        />
 
-                        {/* Center Hub */}
-                        <circle cx="50" cy="50" r="4" fill="#ffffff" />
-                    </svg>
-                </div>
-
-                {/* Status & Input Display */}
-                <div className="flex flex-col items-center w-full">
-                    <div className="text-[11px] sm:text-xs text-neutral-400 font-bold mb-1">
-                        Attempts remaining: <span className="text-amber-400 font-mono text-sm">{6 - previousGuesses.length}</span>
+                            {/* Center Hub */}
+                            <circle cx="50" cy="50" r="4" fill="#ffffff" />
+                        </svg>
                     </div>
 
-                    <div className="flex items-center gap-2 mb-1.5">
-                        <div className="w-24 sm:w-28 px-3 py-1 text-center text-xl sm:text-2xl font-mono font-black bg-neutral-950 border-2 border-neutral-700 rounded-xl text-white flex items-center justify-center shadow-inner">
-                            {guess || '0'}°
+                    {/* Status & Input Display */}
+                    <div className="flex flex-col items-center w-full shrink-0">
+                        <div className="text-[10px] sm:text-[11px] text-neutral-400 font-bold mb-0.5">
+                            Attempts remaining: <span className="text-amber-400 font-mono text-xs sm:text-sm">{6 - previousGuesses.length}</span>
+                        </div>
+
+                        <div className="flex items-center gap-2 mb-1">
+                            <div className="w-20 sm:w-24 px-2 py-0.5 text-center text-lg sm:text-xl font-mono font-black bg-neutral-950 border border-neutral-700 rounded-lg text-white flex items-center justify-center shadow-inner">
+                                {guess || '0'}°
+                            </div>
+                        </div>
+
+                        <div className="flex flex-col items-center text-center min-h-[22px]">
+                            {feedback && (
+                                <div className="animate-fade-in flex flex-col items-center">
+                                    <span className="text-xs font-black" style={{ color: feedback.color }}>{feedback.message}</span>
+                                    {feedback.arrow && <span className="text-[10px] font-bold text-neutral-300">{feedback.arrow}</span>}
+                                </div>
+                            )}
                         </div>
                     </div>
+                </div>
 
-                    {feedback && (
-                        <div className="flex flex-col items-center text-center animate-fade-in min-h-[28px]">
-                            <span className="text-xs sm:text-sm font-black" style={{ color: feedback.color }}>{feedback.message}</span>
-                            {feedback.arrow && <span className="text-[10px] sm:text-xs font-bold text-neutral-300 mt-0.5">{feedback.arrow}</span>}
+                {/* Bottom Keypad - Sized to always remain on-screen with Delete|0|Submit row fully visible */}
+                <div className="w-full max-w-[270px] shrink-0 pb-1 z-10 flex flex-col items-center">
+                    {!gameOver && (
+                        <div className="grid grid-cols-3 gap-1 w-full">
+                            {['1', '2', '3', '4', '5', '6', '7', '8', '9', 'DEL', '0', 'ENTER'].map((key) => (
+                                <button
+                                    key={key}
+                                    onClick={() => handleKeypadClick(key)}
+                                    className={`h-8 sm:h-9 md:h-9.5 rounded-lg font-black text-xs sm:text-sm flex items-center justify-center transition-all active:scale-95 cursor-pointer ${
+                                        key === 'ENTER' 
+                                            ? 'bg-fuchsia-600 hover:bg-fuchsia-500 text-white shadow-md' 
+                                            : key === 'DEL'
+                                            ? 'bg-neutral-800 hover:bg-neutral-700 text-neutral-300 border border-neutral-700'
+                                            : 'bg-neutral-900 hover:bg-neutral-800 text-white border border-neutral-800'
+                                    }`}
+                                >
+                                    {key === 'DEL' ? '⌫ DEL' : key === 'ENTER' ? 'SUBMIT' : key}
+                                </button>
+                            ))}
                         </div>
                     )}
                 </div>
-            </div>
-
-            {/* Bottom Keypad - Pinned at bottom */}
-            <div className="w-full max-w-[280px] shrink-0 pb-1 sm:pb-3 mt-auto z-10 flex flex-col items-center">
-                {!gameOver && (
-                    <div className="grid grid-cols-3 gap-1.5 w-full">
-                        {['1', '2', '3', '4', '5', '6', '7', '8', '9', 'DEL', '0', 'ENTER'].map((key) => (
-                            <button
-                                key={key}
-                                onClick={() => handleKeypadClick(key)}
-                                className={`h-9 min-[380px]:h-10 sm:h-11 rounded-xl font-black text-xs sm:text-sm flex items-center justify-center transition-all active:scale-95 ${
-                                    key === 'ENTER' 
-                                        ? 'bg-fuchsia-600 hover:bg-fuchsia-500 text-white shadow-lg' 
-                                        : key === 'DEL'
-                                        ? 'bg-neutral-800 hover:bg-neutral-700 text-neutral-300'
-                                        : 'bg-neutral-900 hover:bg-neutral-800 text-white border border-neutral-800'
-                                }`}
-                            >
-                                {key === 'DEL' ? '⌫' : key === 'ENTER' ? 'SUBMIT' : key}
-                            </button>
-                        ))}
-                    </div>
-                )}
-            </div>
 
             {/* Result Modal */}
             {gameOver && (

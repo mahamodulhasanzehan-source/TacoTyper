@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useLayoutEffect } from 'react';
 import { User, saveLeaderboardScore, incrementGamePlays } from '../services/firebase';
 import { isMobileDevice } from '../utils/device';
 import { audioService } from '../services/audioService';
 import { GameLeaderboardSidebar, MobileLeaderboardButton } from './GameLeaderboardSidebar';
+import { useSettings } from '../contexts/SettingsContext';
 
 interface MinesweeperGameProps {
     user: User;
@@ -31,17 +32,18 @@ const CONFIG = {
 
 const NUMBER_COLORS = [
     '',
-    '#3b82f6', // 1: Blue
-    '#22c55e', // 2: Green
-    '#ef4444', // 3: Red
-    '#8b5cf6', // 4: Purple
-    '#f97316', // 5: Orange
-    '#06b6d4', // 6: Cyan
-    '#ec4899', // 7: Pink
+    '#38bdf8', // 1: Blue
+    '#4ade80', // 2: Green
+    '#f87171', // 3: Red
+    '#c084fc', // 4: Purple
+    '#fb923c', // 5: Orange
+    '#22d3ee', // 6: Cyan
+    '#f472b6', // 7: Pink
     '#e2e8f0', // 8: Gray-white
 ];
 
 export default function MinesweeperGame({ user, onBackToHub, username }: MinesweeperGameProps) {
+    const { settings } = useSettings();
     const [difficulty, setDifficulty] = useState<Difficulty>('beginner');
     const [grid, setGrid] = useState<Cell[][]>([]);
     const [gameState, setGameState] = useState<'menu' | 'playing' | 'won' | 'lost'>('menu');
@@ -51,6 +53,10 @@ export default function MinesweeperGame({ user, onBackToHub, username }: Mineswe
     const [touchMode, setTouchMode] = useState<'dig' | 'flag'>('dig');
     const [isMobile, setIsMobile] = useState(false);
     const [showMobileLeaderboard, setShowMobileLeaderboard] = useState(false);
+    const [boardMountKey, setBoardMountKey] = useState(0);
+
+    const boardContainerRef = useRef<HTMLDivElement>(null);
+    const [containerDimensions, setContainerDimensions] = useState({ width: 0, height: 0 });
 
     const timerRef = useRef<number | null>(null);
     const longPressTimer = useRef<number | null>(null);
@@ -63,6 +69,26 @@ export default function MinesweeperGame({ user, onBackToHub, username }: Mineswe
         window.addEventListener('resize', handleResize);
         return () => window.removeEventListener('resize', handleResize);
     }, []);
+
+    // Monitor board container size to auto-resize grid dynamically
+    useLayoutEffect(() => {
+        const updateDims = () => {
+            if (boardContainerRef.current) {
+                const rect = boardContainerRef.current.getBoundingClientRect();
+                setContainerDimensions({ width: rect.width, height: rect.height });
+            }
+        };
+        updateDims();
+        const observer = new ResizeObserver(updateDims);
+        if (boardContainerRef.current) {
+            observer.observe(boardContainerRef.current);
+        }
+        window.addEventListener('resize', updateDims);
+        return () => {
+            observer.disconnect();
+            window.removeEventListener('resize', updateDims);
+        };
+    }, [gameState, difficulty]);
 
     useEffect(() => {
         if (gameState === 'playing') {
@@ -100,6 +126,7 @@ export default function MinesweeperGame({ user, onBackToHub, username }: Mineswe
         setTimer(0);
         setFirstClick(true);
         setGameState('playing');
+        setBoardMountKey(prev => prev + 1);
         incrementGamePlays('minesweeper');
     };
 
@@ -236,144 +263,184 @@ export default function MinesweeperGame({ user, onBackToHub, username }: Mineswe
         }
     };
 
+    // Responsive Cell Size Calculation to guarantee 100% fit on any screen without scroll
+    const { rows, cols } = CONFIG[difficulty];
+    const gridGap = difficulty === 'expert' ? 1.5 : 2;
+    const paddingX = 16;
+    const paddingY = 16;
+    const availW = Math.max(80, (containerDimensions.width || 600) - paddingX);
+    const availH = Math.max(80, (containerDimensions.height || 450) - paddingY);
+
+    const cellFromW = Math.floor((availW - (cols - 1) * gridGap) / cols);
+    const cellFromH = Math.floor((availH - (rows - 1) * gridGap) / rows);
+    const dynamicCellSize = Math.max(16, Math.min(cellFromW, cellFromH, difficulty === 'expert' ? 36 : 46));
+    const dynamicFontSize = Math.max(9, Math.floor(dynamicCellSize * 0.54));
+
+    // Animation Duration from Settings Context (Default 0.5s)
+    const animSpeed = settings.reducedMotion ? 0 : (settings.animDuration !== undefined ? settings.animDuration : 0.5);
+
     return (
-        <div className="flex flex-row w-full h-full bg-[#050508] text-white relative overflow-hidden select-none font-sans">
-            <div className="flex-1 h-full flex flex-col items-center justify-between relative overflow-y-auto custom-scrollbar p-2.5 sm:p-3 min-w-0">
-                <div className="absolute inset-0 opacity-15 pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at 70% 30%, #ef4444 2px, transparent 2px)', backgroundSize: '70px 70px' }}></div>
+        <div className="flex flex-row w-full h-screen bg-[#07090e] text-white relative overflow-hidden select-none font-sans">
+            <style>{`
+                @keyframes msTileFlyIn {
+                    0% {
+                        opacity: 0;
+                        transform: translateY(-20px) scale(0.65);
+                    }
+                    100% {
+                        opacity: 1;
+                        transform: translateY(0) scale(1);
+                    }
+                }
+            `}</style>
 
-                {/* Top Bar - Pinned at top */}
-                <div className="flex justify-between items-center w-full max-w-xl shrink-0 pt-1 sm:pt-2 mb-2 z-10">
-                    <button 
-                        onClick={() => {
-                            audioService.playSound('button_click');
-                            onBackToHub();
-                        }} 
-                        className="flex items-center gap-1.5 px-3 py-1.5 bg-neutral-900/80 hover:bg-neutral-800 border border-neutral-700 rounded-full text-sm font-bold transition-transform hover:scale-105 active:scale-95 shadow-md"
-                        title="Back to Hub"
-                    >
-                        <span>⬅️</span>
-                        <span className="hidden sm:inline">Hub</span>
-                    </button>
-
-                    <div className="flex flex-col items-center">
-                        <h1 className="text-xl md:text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-red-400 to-amber-500 tracking-wide">
+            <div className="flex-1 h-full flex flex-col min-w-0 overflow-hidden relative">
+                {/* Compact, Uncluttered Top Bar & HUD */}
+                <header className="flex items-center justify-between px-3 py-1.5 bg-neutral-900/95 border-b border-neutral-800 shrink-0 z-20 gap-2 h-12">
+                    {/* Left: Hub Navigation & Game Title */}
+                    <div className="flex items-center gap-2 shrink-0">
+                        <button 
+                            onClick={() => {
+                                audioService.playSound('button_click');
+                                onBackToHub();
+                            }} 
+                            className="flex items-center gap-1.5 px-2.5 py-1 bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 rounded-lg text-xs font-bold text-neutral-300 transition-colors cursor-pointer"
+                            title="Back to Hub"
+                        >
+                            <span>⬅️</span>
+                            <span className="hidden sm:inline">Hub</span>
+                        </button>
+                        <div className="font-black text-sm sm:text-base tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-red-400 to-amber-500">
                             MINESWEEPER
-                        </h1>
+                        </div>
                     </div>
 
-                    <div className="flex items-center gap-2">
-                        {gameState !== 'menu' && (
-                            <button 
-                                onClick={() => setGameState('menu')}
-                                className="px-2.5 py-1 bg-neutral-800 hover:bg-neutral-700 border border-neutral-600 rounded-full text-xs font-bold text-neutral-300 transition-transform active:scale-95 shadow-md"
+                    {/* Center: In-game Retro Digital Status HUD */}
+                    {gameState !== 'menu' && (
+                        <div className="flex items-center gap-2 sm:gap-4 shrink-0">
+                            {/* Mine Counter */}
+                            <div className="bg-neutral-950 px-2 py-0.5 rounded-lg border border-neutral-800 font-mono text-red-500 font-black text-xs sm:text-sm flex items-center gap-1 shadow-inner">
+                                <span className="text-xs">💣</span>
+                                <span>{String(Math.max(0, minesLeft)).padStart(3, '0')}</span>
+                            </div>
+
+                            {/* Reset Smiley */}
+                            <button
+                                onClick={() => {
+                                    audioService.playSound('button_click');
+                                    initBoard(difficulty);
+                                }}
+                                className="text-lg sm:text-xl p-1 bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 rounded-lg transition-transform active:scale-90 cursor-pointer"
+                                title="Reset Board"
                             >
-                                Menu
+                                {gameState === 'playing' ? '🙂' : gameState === 'won' ? '😎' : '💥'}
                             </button>
+
+                            {/* Timer */}
+                            <div className="bg-neutral-950 px-2 py-0.5 rounded-lg border border-neutral-800 font-mono text-amber-400 font-black text-xs sm:text-sm flex items-center gap-1 shadow-inner">
+                                <span className="text-xs">⏱️</span>
+                                <span>{String(Math.min(999, timer)).padStart(3, '0')}</span>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Right: Quick Difficulty Switcher, Touch Mode Toggle & Mobile Leaderboard */}
+                    <div className="flex items-center gap-1.5 shrink-0">
+                        {gameState !== 'menu' && (
+                            <>
+                                {/* Fast Difficulty Switcher */}
+                                <div className="hidden sm:flex bg-neutral-950 p-0.5 rounded-lg border border-neutral-800 text-[11px] font-bold">
+                                    {(['beginner', 'intermediate', 'expert'] as Difficulty[]).map(d => (
+                                        <button
+                                            key={d}
+                                            onClick={() => initBoard(d)}
+                                            className={`px-2 py-0.5 rounded uppercase transition-colors ${
+                                                difficulty === d 
+                                                    ? 'bg-neutral-800 text-amber-400 shadow-sm' 
+                                                    : 'text-neutral-400 hover:text-white'
+                                            }`}
+                                        >
+                                            {d.slice(0, 3)}
+                                        </button>
+                                    ))}
+                                </div>
+
+                                {/* Dig / Flag Mode Switcher (Great for touch/mobile) */}
+                                <button
+                                    onClick={() => {
+                                        audioService.playSound('button_click');
+                                        setTouchMode(prev => prev === 'dig' ? 'flag' : 'dig');
+                                    }}
+                                    className={`px-2.5 py-1 rounded-lg text-xs font-bold border transition-colors flex items-center gap-1 ${
+                                        touchMode === 'flag'
+                                            ? 'bg-red-600/30 border-red-500 text-red-300'
+                                            : 'bg-neutral-800 border-neutral-700 text-neutral-300'
+                                    }`}
+                                    title="Toggle Dig / Flag Mode"
+                                >
+                                    <span>{touchMode === 'flag' ? '🚩 Flag' : '⛏️ Dig'}</span>
+                                </button>
+
+                                <button 
+                                    onClick={() => setGameState('menu')}
+                                    className="px-2 py-1 bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 rounded-lg text-xs font-bold text-neutral-400 hover:text-white transition-colors"
+                                >
+                                    Menu
+                                </button>
+                            </>
                         )}
                         {isMobile && (
                             <MobileLeaderboardButton onClick={() => setShowMobileLeaderboard(true)} />
                         )}
                     </div>
-                </div>
+                </header>
 
-            {/* Menu or Game */}
-            <div className="flex-1 flex flex-col items-center justify-center w-full my-auto py-1 z-10">
-            {gameState === 'menu' ? (
-                <div className="bg-neutral-900/90 border border-neutral-800 p-6 sm:p-8 rounded-2xl max-w-md w-full text-center shadow-2xl animate-fade-in flex flex-col items-center z-10">
-                    <div className="text-5xl mb-4 animate-bounce">💣</div>
-                    <h2 className="text-2xl font-black mb-1 text-red-400">Minefield Sector</h2>
-                    <p className="text-neutral-400 text-xs mb-6">Uncover safe zones without detonating hidden explosives.</p>
+                {/* Main Content Area: Fits 100% of Viewport Without Scrollbars */}
+                <div 
+                    ref={boardContainerRef} 
+                    className="flex-1 w-full min-h-0 flex items-center justify-center p-2 overflow-hidden relative"
+                >
+                    {gameState === 'menu' ? (
+                        <div className="bg-neutral-900/90 border border-neutral-800 p-6 rounded-2xl max-w-sm w-full text-center shadow-2xl animate-fade-in flex flex-col items-center z-10">
+                            <div className="text-4xl mb-3 animate-bounce">💣</div>
+                            <h2 className="text-xl font-black mb-1 text-red-400">Minefield Sector</h2>
+                            <p className="text-neutral-400 text-xs mb-5">Uncover safe zones without detonating hidden explosives.</p>
 
-                    <div className="flex flex-col gap-3 w-full mb-6">
-                        {(['beginner', 'intermediate', 'expert'] as Difficulty[]).map(d => (
-                            <button
-                                key={d}
-                                onClick={() => {
-                                    audioService.playSound('button_click');
-                                    initBoard(d);
-                                }}
-                                className="group p-4 bg-neutral-950 border border-neutral-800 hover:border-red-500 rounded-xl transition-all text-left flex justify-between items-center active:scale-98"
-                            >
-                                <div>
-                                    <div className="font-black text-white text-base group-hover:text-red-400 transition-colors">
-                                        {CONFIG[d].name}
-                                    </div>
-                                    <div className="text-xs text-neutral-500 font-mono mt-0.5">
-                                        {CONFIG[d].rows}x{CONFIG[d].cols} Grid • {CONFIG[d].mines} Mines
-                                    </div>
-                                </div>
-                                <span className="text-xl group-hover:translate-x-1 transition-transform">➡️</span>
-                            </button>
-                        ))}
-                    </div>
+                            <div className="flex flex-col gap-2.5 w-full mb-4">
+                                {(['beginner', 'intermediate', 'expert'] as Difficulty[]).map(d => (
+                                    <button
+                                        key={d}
+                                        onClick={() => {
+                                            audioService.playSound('button_click');
+                                            initBoard(d);
+                                        }}
+                                        className="group p-3 bg-neutral-950 border border-neutral-800 hover:border-red-500 rounded-xl transition-all text-left flex justify-between items-center active:scale-98"
+                                    >
+                                        <div>
+                                            <div className="font-black text-white text-sm group-hover:text-red-400 transition-colors">
+                                                {CONFIG[d].name}
+                                            </div>
+                                            <div className="text-[11px] text-neutral-500 font-mono mt-0.5">
+                                                {CONFIG[d].rows}x{CONFIG[d].cols} Grid • {CONFIG[d].mines} Mines
+                                            </div>
+                                        </div>
+                                        <span className="text-base group-hover:translate-x-1 transition-transform">➡️</span>
+                                    </button>
+                                ))}
+                            </div>
 
-                    <div className="text-xs text-neutral-500 flex items-center gap-2">
-                        <span>💡 Tip: Tap to dig, long-press to flag.</span>
-                    </div>
-                </div>
-            ) : (
-                <div className={`flex flex-col items-center w-full ${difficulty === 'expert' ? 'max-w-4xl' : difficulty === 'intermediate' ? 'max-w-xl' : 'max-w-md'} z-10 animate-fade-in`}>
-                    {/* Header Controls */}
-                    <div className="bg-neutral-900/95 border border-neutral-800 rounded-2xl px-5 py-3 mb-3 flex justify-between items-center w-full shadow-lg">
-                        {/* Mine Counter */}
-                        <div className="bg-neutral-950 px-3 py-1 rounded-lg border border-neutral-800 font-mono text-red-500 font-black text-lg flex items-center gap-1.5">
-                            <span>💣</span>
-                            <span>{String(Math.max(0, minesLeft)).padStart(3, '0')}</span>
+                            <div className="text-[11px] text-neutral-500 flex items-center gap-1.5">
+                                <span>💡 Tip: Tap/Click to dig, right-click or toggle to flag.</span>
+                            </div>
                         </div>
-
-                        {/* Reset Smiley */}
-                        <button
-                            onClick={() => {
-                                audioService.playSound('button_click');
-                                initBoard(difficulty);
-                            }}
-                            className="text-2xl p-1.5 bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 rounded-xl transition-transform active:scale-90"
-                            title="Reset Board"
-                        >
-                            {gameState === 'playing' ? '🙂' : gameState === 'won' ? '😎' : '💥'}
-                        </button>
-
-                        {/* Timer */}
-                        <div className="bg-neutral-950 px-3 py-1 rounded-lg border border-neutral-800 font-mono text-amber-400 font-black text-lg flex items-center gap-1.5">
-                            <span>⏱️</span>
-                            <span>{String(Math.min(999, timer)).padStart(3, '0')}</span>
-                        </div>
-                    </div>
-
-                    {/* Mode Switcher for Mobile Touch */}
-                    <div className="flex items-center gap-2 mb-3">
-                        <button
-                            onClick={() => {
-                                audioService.playSound('button_click');
-                                setTouchMode('dig');
-                            }}
-                            className={`px-4 py-1.5 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all ${
-                                touchMode === 'dig' ? 'bg-blue-600 text-white shadow-lg' : 'bg-neutral-900 text-neutral-400 border border-neutral-800'
-                            }`}
-                        >
-                            <span>⛏️</span>
-                            <span>Dig Mode</span>
-                        </button>
-                        <button
-                            onClick={() => {
-                                audioService.playSound('button_click');
-                                setTouchMode('flag');
-                            }}
-                            className={`px-4 py-1.5 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all ${
-                                touchMode === 'flag' ? 'bg-red-600 text-white shadow-lg' : 'bg-neutral-900 text-neutral-400 border border-neutral-800'
-                            }`}
-                        >
-                            <span>🚩</span>
-                            <span>Flag Mode</span>
-                        </button>
-                    </div>
-
-                    {/* Minefield Grid Container */}
-                    <div className="bg-neutral-900/90 border border-neutral-800 rounded-2xl p-2 sm:p-3 shadow-2xl overflow-auto max-w-full max-h-[72vh] custom-scrollbar flex justify-center">
+                    ) : (
+                        /* Auto-Resizing Grid Container that Guarantees Zero Scrollbars */
                         <div 
-                            className="inline-grid gap-0.5 sm:gap-1"
+                            key={`board-${boardMountKey}`}
+                            className="inline-grid bg-neutral-950 p-1.5 sm:p-2 rounded-2xl border border-neutral-800 shadow-2xl"
                             style={{
-                                gridTemplateColumns: `repeat(${CONFIG[difficulty].cols}, max-content)`
+                                gridTemplateColumns: `repeat(${cols}, ${dynamicCellSize}px)`,
+                                gap: `${gridGap}px`
                             }}
                         >
                             {grid.map((row, rIdx) => 
@@ -381,14 +448,14 @@ export default function MinesweeperGame({ user, onBackToHub, username }: Mineswe
                                     const cellClass = cell.isRevealed
                                         ? cell.isMine
                                             ? 'bg-red-700/80 border-red-500'
-                                            : 'bg-neutral-950/90 border-neutral-800/80'
+                                            : 'bg-neutral-900 border-neutral-800/80'
                                         : 'bg-neutral-800 hover:bg-neutral-750 active:bg-neutral-700 border-neutral-700 shadow-sm';
 
-                                    const cellSize = difficulty === 'expert' 
-                                        ? 'w-5 h-5 sm:w-6 sm:h-6 md:w-7 md:h-7 text-[9px] sm:text-xs md:text-sm' 
-                                        : difficulty === 'intermediate' 
-                                            ? 'w-[min(5.5vw,26px)] h-[min(5.5vw,26px)] min-w-[20px] min-h-[20px] sm:w-7 sm:h-7 md:w-8 md:h-8 text-[10px] sm:text-xs md:text-sm' 
-                                            : 'w-[min(9vw,38px)] h-[min(9vw,38px)] min-w-[26px] min-h-[26px] sm:w-10 sm:h-10 md:w-11 md:h-11 text-xs sm:text-base md:text-lg';
+                                    // Tile Fly-In Animation duration controlled by Settings animDuration
+                                    const stagger = Math.min(0.25, (rIdx + cIdx) * 0.005 * (animSpeed / 0.5));
+                                    const animStyle = animSpeed > 0 ? {
+                                        animation: `msTileFlyIn ${animSpeed}s cubic-bezier(0.2, 0.9, 0.3, 1.2) ${stagger}s both`
+                                    } : undefined;
 
                                     return (
                                         <button
@@ -397,7 +464,13 @@ export default function MinesweeperGame({ user, onBackToHub, username }: Mineswe
                                             onContextMenu={(e) => handleContextMenu(e, rIdx, cIdx)}
                                             onTouchStart={() => handleTouchStart(rIdx, cIdx)}
                                             onTouchEnd={handleTouchEnd}
-                                            className={`${cellSize} shrink-0 rounded-lg border flex items-center justify-center font-black transition-all ${cellClass}`}
+                                            style={{
+                                                width: `${dynamicCellSize}px`,
+                                                height: `${dynamicCellSize}px`,
+                                                fontSize: `${dynamicFontSize}px`,
+                                                ...animStyle
+                                            }}
+                                            className={`shrink-0 rounded-md border flex items-center justify-center font-black transition-all ${cellClass}`}
                                             disabled={gameState !== 'playing' && !cell.isRevealed}
                                         >
                                             {cell.isRevealed ? (
@@ -409,48 +482,46 @@ export default function MinesweeperGame({ user, onBackToHub, username }: Mineswe
                                                     </span>
                                                 ) : null
                                             ) : cell.isFlagged ? (
-                                                <span className="animate-bounce">🚩</span>
+                                                <span className="scale-90">🚩</span>
                                             ) : null}
                                         </button>
                                     );
                                 })
                             )}
                         </div>
-                    </div>
-
-                    {/* Victory / Defeat Modal */}
-                    {(gameState === 'won' || gameState === 'lost') && (
-                        <div className="fixed inset-0 bg-black/85 flex items-center justify-center z-50 p-4 animate-fade-in">
-                            <div className={`bg-neutral-900 border-2 ${gameState === 'won' ? 'border-green-500' : 'border-red-500'} rounded-2xl p-6 sm:p-8 max-w-sm w-full flex flex-col items-center text-center shadow-2xl`}>
-                                <div className="text-5xl mb-3">{gameState === 'won' ? '😎' : '💥'}</div>
-                                <h3 className={`text-2xl font-black mb-2 ${gameState === 'won' ? 'text-green-400' : 'text-red-400'}`}>
-                                    {gameState === 'won' ? 'SECTOR CLEARED!' : 'DETONATION!'}
-                                </h3>
-                                <p className="text-neutral-400 text-xs mb-6">
-                                    {gameState === 'won' 
-                                        ? `All safe tiles uncovered in ${timer} seconds.` 
-                                        : 'A hidden mine was triggered. Better luck on the next sweep!'}
-                                </p>
-                                <div className="flex gap-3 w-full">
-                                    <button
-                                        onClick={() => setGameState('menu')}
-                                        className="flex-1 py-3 bg-neutral-800 hover:bg-neutral-700 text-white font-bold rounded-xl text-sm transition-colors"
-                                    >
-                                        Menu
-                                    </button>
-                                    <button
-                                        onClick={() => initBoard(difficulty)}
-                                        className={`flex-1 py-3 ${gameState === 'won' ? 'bg-green-600 hover:bg-green-500' : 'bg-red-600 hover:bg-red-500'} text-white font-black rounded-xl text-sm transition-transform active:scale-95 shadow-lg`}
-                                    >
-                                        Play Again
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
                     )}
                 </div>
-            )}
-            </div>
+
+                {/* Victory / Defeat Modal */}
+                {(gameState === 'won' || gameState === 'lost') && (
+                    <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4 animate-fade-in">
+                        <div className={`bg-neutral-900 border-2 ${gameState === 'won' ? 'border-green-500' : 'border-red-500'} rounded-2xl p-6 max-w-xs w-full flex flex-col items-center text-center shadow-2xl`}>
+                            <div className="text-4xl mb-2">{gameState === 'won' ? '😎' : '💥'}</div>
+                            <h3 className={`text-xl font-black mb-1 ${gameState === 'won' ? 'text-green-400' : 'text-red-400'}`}>
+                                {gameState === 'won' ? 'SECTOR CLEARED!' : 'DETONATION!'}
+                            </h3>
+                            <p className="text-neutral-400 text-xs mb-5">
+                                {gameState === 'won' 
+                                    ? `All safe tiles uncovered in ${timer} seconds.` 
+                                    : 'A hidden mine was triggered. Better luck on the next sweep!'}
+                            </p>
+                            <div className="flex gap-2.5 w-full">
+                                <button
+                                    onClick={() => setGameState('menu')}
+                                    className="flex-1 py-2.5 bg-neutral-800 hover:bg-neutral-700 text-white font-bold rounded-xl text-xs transition-colors"
+                                >
+                                    Menu
+                                </button>
+                                <button
+                                    onClick={() => initBoard(difficulty)}
+                                    className={`flex-1 py-2.5 ${gameState === 'won' ? 'bg-green-600 hover:bg-green-500' : 'bg-red-600 hover:bg-red-500'} text-white font-black rounded-xl text-xs transition-transform active:scale-95 shadow-lg`}
+                                >
+                                    Play Again
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
 
             <GameLeaderboardSidebar
