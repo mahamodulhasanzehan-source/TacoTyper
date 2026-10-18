@@ -107,24 +107,92 @@ export const GameArtwork: React.FC<GameArtworkProps> = ({ id, color }) => {
 
     case 'connect-4':
       return (
-        <svg viewBox="0 0 100 100" className="w-full h-full p-2">
-          {/* Blue board */}
-          <rect x="10" y="15" width="80" height="70" rx="10" fill="#2563eb" />
-          {/* Grid holes with chips */}
-          <circle cx="25" cy="32" r="8" fill="#1e3a8a" />
-          <circle cx="45" cy="32" r="8" fill="#ef4444" />
-          <circle cx="65" cy="32" r="8" fill="#1e3a8a" />
-          <circle cx="85" cy="32" r="8" fill="#eab308" />
+        <svg viewBox="0 0 100 100" className="w-full h-full p-1.5 filter drop-shadow-[0_4px_8px_rgba(0,0,0,0.5)]">
+          {/* Base Stand Legs */}
+          <path d="M 8 86 L 18 68 L 26 68 L 20 86 Z" fill="#1d4ed8" stroke="#1e40af" strokeWidth="1" />
+          <path d="M 92 86 L 82 68 L 74 68 L 80 86 Z" fill="#1d4ed8" stroke="#1e40af" strokeWidth="1" />
+          <rect x="14" y="80" width="72" height="6" rx="2" fill="#1e3a8a" />
 
-          <circle cx="25" cy="52" r="8" fill="#ef4444" />
-          <circle cx="45" cy="52" r="8" fill="#eab308" />
-          <circle cx="65" cy="52" r="8" fill="#ef4444" />
-          <circle cx="85" cy="52" r="8" fill="#1e3a8a" />
+          {/* Blue Vertical Connect 4 Grid */}
+          <rect x="13" y="12" width="74" height="60" rx="6" fill="#2563eb" stroke="#1d4ed8" strokeWidth="2" />
+          {/* Top drop slots indents */}
+          <rect x="17" y="12" width="66" height="3" fill="#1e40af" />
 
-          <circle cx="25" cy="72" r="8" fill="#eab308" />
-          <circle cx="45" cy="72" r="8" fill="#ef4444" />
-          <circle cx="65" cy="72" r="8" fill="#ef4444" />
-          <circle cx="85" cy="72" r="8" fill="#eab308" />
+          {/* 5 columns x 4 rows perfectly aligned grid (cols at 22, 36, 50, 64, 78; rows at 22, 35, 48, 61) */}
+          {/* Row 1 (y = 22) */}
+          <circle cx="22" cy="22" r="5.2" fill="#0f172a" />
+          <circle cx="36" cy="22" r="5.2" fill="#0f172a" />
+          <circle cx="50" cy="22" r="5.2" fill="#0f172a" />
+          {/* Winning 4th Red Disc */}
+          <g>
+            <circle cx="64" cy="22" r="5.2" fill="#ef4444" stroke="#b91c1c" strokeWidth="1" />
+            <circle cx="64" cy="22" r="3" fill="none" stroke="#fca5a5" strokeWidth="0.8" />
+          </g>
+          <circle cx="78" cy="22" r="5.2" fill="#0f172a" />
+
+          {/* Row 2 (y = 35) */}
+          <circle cx="22" cy="35" r="5.2" fill="#0f172a" />
+          <circle cx="36" cy="35" r="5.2" fill="#0f172a" />
+          {/* Winning 3rd Red Disc */}
+          <g>
+            <circle cx="50" cy="35" r="5.2" fill="#ef4444" stroke="#b91c1c" strokeWidth="1" />
+            <circle cx="50" cy="35" r="3" fill="none" stroke="#fca5a5" strokeWidth="0.8" />
+          </g>
+          {/* Yellow Disc */}
+          <g>
+            <circle cx="64" cy="35" r="5.2" fill="#eab308" stroke="#ca8a04" strokeWidth="1" />
+            <circle cx="64" cy="35" r="3" fill="none" stroke="#fef08a" strokeWidth="0.8" />
+          </g>
+          <circle cx="78" cy="35" r="5.2" fill="#0f172a" />
+
+          {/* Row 3 (y = 48) */}
+          <circle cx="22" cy="48" r="5.2" fill="#0f172a" />
+          {/* Winning 2nd Red Disc */}
+          <g>
+            <circle cx="36" cy="48" r="5.2" fill="#ef4444" stroke="#b91c1c" strokeWidth="1" />
+            <circle cx="36" cy="48" r="3" fill="none" stroke="#fca5a5" strokeWidth="0.8" />
+          </g>
+          {/* Yellow Disc */}
+          <g>
+            <circle cx="50" cy="48" r="5.2" fill="#eab308" stroke="#ca8a04" strokeWidth="1" />
+            <circle cx="50" cy="48" r="3" fill="none" stroke="#fef08a" strokeWidth="0.8" />
+          </g>
+          {/* Yellow Disc */}
+          <g>
+            <circle cx="64" cy="48" r="5.2" fill="#eab308" stroke="#ca8a04" strokeWidth="1" />
+            <circle cx="64" cy="48" r="3" fill="none" stroke="#fef08a" strokeWidth="0.8" />
+          </g>
+          <circle cx="78" cy="48" r="5.2" fill="#0f172a" />
+
+          {/* Row 4 (y = 61) */}
+          {/* Winning 1st Red Disc */}
+          <g>
+            <circle cx="22" cy="61" r="5.2" fill="#ef4444" stroke="#b91c1c" strokeWidth="1" />
+            <circle cx="22" cy="61" r="3" fill="none" stroke="#fca5a5" strokeWidth="0.8" />
+          </g>
+          {/* Yellow Disc */}
+          <g>
+            <circle cx="36" cy="61" r="5.2" fill="#eab308" stroke="#ca8a04" strokeWidth="1" />
+            <circle cx="36" cy="61" r="3" fill="none" stroke="#fef08a" strokeWidth="0.8" />
+          </g>
+          {/* Red Disc */}
+          <g>
+            <circle cx="50" cy="61" r="5.2" fill="#ef4444" stroke="#b91c1c" strokeWidth="1" />
+            <circle cx="50" cy="61" r="3" fill="none" stroke="#fca5a5" strokeWidth="0.8" />
+          </g>
+          {/* Yellow Disc */}
+          <g>
+            <circle cx="64" cy="61" r="5.2" fill="#eab308" stroke="#ca8a04" strokeWidth="1" />
+            <circle cx="64" cy="61" r="3" fill="none" stroke="#fef08a" strokeWidth="0.8" />
+          </g>
+          {/* Red Disc */}
+          <g>
+            <circle cx="78" cy="61" r="5.2" fill="#ef4444" stroke="#b91c1c" strokeWidth="1" />
+            <circle cx="78" cy="61" r="3" fill="none" stroke="#fca5a5" strokeWidth="0.8" />
+          </g>
+
+          {/* Winning 4-in-a-row highlight tracer */}
+          <line x1="20" y1="63" x2="66" y2="20" stroke="#facc15" strokeWidth="2" strokeDasharray="3,2" />
         </svg>
       );
 
@@ -220,21 +288,72 @@ export const GameArtwork: React.FC<GameArtworkProps> = ({ id, color }) => {
 
     case 'taco':
       return (
-        <svg viewBox="0 0 100 100" className="w-full h-full p-2">
-          {/* Taco shell */}
-          <path d="M 15 65 Q 50 15 85 65 Z" fill="#f59e0b" />
-          {/* Fillings */}
-          <path d="M 22 62 Q 50 24 78 62" fill="#ef4444" />
-          <path d="M 26 60 Q 50 30 74 60" fill="#22c55e" />
-          <circle cx="42" cy="48" r="3.5" fill="#eab308" />
-          <circle cx="58" cy="46" r="3.5" fill="#eab308" />
-          {/* Keyboard keys below */}
-          <rect x="18" y="74" width="16" height="12" rx="3" fill="#ffffff" />
-          <text x="26" y="80" fill="#000" fontSize="8" fontWeight="bold" textAnchor="middle" dominantBaseline="central">A</text>
-          <rect x="42" y="74" width="16" height="12" rx="3" fill="#ffffff" />
-          <text x="50" y="80" fill="#000" fontSize="8" fontWeight="bold" textAnchor="middle" dominantBaseline="central">S</text>
-          <rect x="66" y="74" width="16" height="12" rx="3" fill="#ffffff" />
-          <text x="74" y="80" fill="#000" fontSize="8" fontWeight="bold" textAnchor="middle" dominantBaseline="central">D</text>
+        <svg viewBox="0 0 100 100" className="w-full h-full p-1.5 filter drop-shadow-[0_4px_8px_rgba(0,0,0,0.5)]">
+          {/* Crispy Folded Golden Taco Shell */}
+          <path
+            d="M 12 62 C 14 26, 86 26, 88 62 C 84 66, 16 66, 12 62 Z"
+            fill="#d97706"
+          />
+          <path
+            d="M 15 60 C 18 28, 82 28, 85 60 C 80 64, 20 64, 15 60 Z"
+            fill="#f59e0b"
+          />
+          {/* Seasoned Ground Beef */}
+          <path d="M 22 56 Q 50 28 78 56 Z" fill="#78350f" />
+          {/* Crisp Wavy Shredded Lettuce */}
+          <path
+            d="M 20 54 Q 28 44 36 52 Q 44 42 52 50 Q 60 42 68 50 Q 74 44 80 54 Z"
+            fill="#22c55e"
+          />
+          <path
+            d="M 26 50 Q 34 42 42 48 Q 50 38 58 46 Q 66 38 74 48 Z"
+            fill="#4ade80"
+          />
+          {/* Diced Tomato Cubes & Cheddar Cheese shreds */}
+          <rect x="30" y="44" width="5" height="5" rx="1" fill="#ef4444" transform="rotate(12 32 46)" />
+          <rect x="46" y="38" width="5.5" height="5.5" rx="1" fill="#ef4444" transform="rotate(-8 48 40)" />
+          <rect x="64" y="44" width="5" height="5" rx="1" fill="#ef4444" transform="rotate(15 66 46)" />
+          <line x1="38" y1="42" x2="44" y2="46" stroke="#facc15" strokeWidth="2.5" strokeLinecap="round" />
+          <line x1="56" y1="40" x2="62" y2="43" stroke="#facc15" strokeWidth="2.5" strokeLinecap="round" />
+          <line x1="48" y1="46" x2="54" y2="48" stroke="#facc15" strokeWidth="2" strokeLinecap="round" />
+
+          {/* Typing Keyboard Keys Below (T A C O) */}
+          <rect x="14" y="74" width="16" height="13" rx="3" fill="#1e293b" stroke="#475569" strokeWidth="1" />
+          <text x="22" y="82.5" fill="#38bdf8" fontSize="8.5" fontWeight="900" textAnchor="middle" dominantBaseline="central">T</text>
+
+          <rect x="34" y="74" width="16" height="13" rx="3" fill="#1e293b" stroke="#475569" strokeWidth="1" />
+          <text x="42" y="82.5" fill="#f59e0b" fontSize="8.5" fontWeight="900" textAnchor="middle" dominantBaseline="central">A</text>
+
+          <rect x="54" y="74" width="16" height="13" rx="3" fill="#1e293b" stroke="#475569" strokeWidth="1" />
+          <text x="62" y="82.5" fill="#22c55e" fontSize="8.5" fontWeight="900" textAnchor="middle" dominantBaseline="central">C</text>
+
+          <rect x="74" y="74" width="16" height="13" rx="3" fill="#1e293b" stroke="#475569" strokeWidth="1" />
+          <text x="82" y="82.5" fill="#ec4899" fontSize="8.5" fontWeight="900" textAnchor="middle" dominantBaseline="central">O</text>
+        </svg>
+      );
+
+    case 'more-less':
+      return (
+        <svg viewBox="0 0 100 100" className="w-full h-full p-2 filter drop-shadow-[0_4px_8px_rgba(0,0,0,0.5)]">
+          {/* Left Card: MORE (Higher) */}
+          <g transform="translate(6, 15)">
+            <rect x="0" y="0" width="38" height="54" rx="6" fill="#064e3b" stroke="#10b981" strokeWidth="2" />
+            <polygon points="19,10 27,24 11,24" fill="#34d399" />
+            <text x="19" y="34" fill="#6ee7b7" fontSize="8.5" fontWeight="900" textAnchor="middle">MORE</text>
+            <text x="19" y="45" fill="#ffffff" fontSize="9" fontWeight="900" textAnchor="middle">+150%</text>
+          </g>
+
+          {/* Right Card: LESS (Lower) */}
+          <g transform="translate(56, 31)">
+            <rect x="0" y="0" width="38" height="54" rx="6" fill="#881337" stroke="#f43f5e" strokeWidth="2" />
+            <polygon points="19,44 11,30 27,30" fill="#fb7185" />
+            <text x="19" y="22" fill="#fda4af" fontSize="8.5" fontWeight="900" textAnchor="middle">LESS</text>
+            <text x="19" y="10" fill="#ffffff" fontSize="9" fontWeight="900" textAnchor="middle">-50%</text>
+          </g>
+
+          {/* Central Balance / VS Spark */}
+          <circle cx="50" cy="50" r="10" fill="#090d16" stroke="#fbbf24" strokeWidth="2" />
+          <text x="50" y="52" fill="#facc15" fontSize="8" fontWeight="900" textAnchor="middle" dominantBaseline="central">VS</text>
         </svg>
       );
 
@@ -319,16 +438,50 @@ export const GameArtwork: React.FC<GameArtworkProps> = ({ id, color }) => {
 
     case 'spelling-bee':
       return (
-        <svg viewBox="0 0 100 100" className="w-full h-full p-2">
-          {/* Bee body */}
-          <ellipse cx="50" cy="54" rx="22" ry="17" fill="#fbbf24" />
-          <path d="M 43 38 L 43 70" stroke="#000000" strokeWidth="5" />
-          <path d="M 57 38 L 57 70" stroke="#000000" strokeWidth="5" />
-          {/* Wings */}
-          <ellipse cx="44" cy="30" rx="9" ry="14" fill="#e0f2fe" opacity="0.8" transform="rotate(-20 44 30)" />
-          <ellipse cx="56" cy="30" rx="9" ry="14" fill="#e0f2fe" opacity="0.8" transform="rotate(20 56 30)" />
-          {/* Eye */}
-          <circle cx="34" cy="50" r="2.5" fill="#000000" />
+        <svg viewBox="0 0 100 100" className="w-full h-full p-1.5 filter drop-shadow-[0_4px_8px_rgba(0,0,0,0.5)]">
+          {/* Honeycomb Hexagon Background */}
+          <polygon
+            points="50,14 78,30 78,62 50,78 22,62 22,30"
+            fill="#451a03"
+            stroke="#f59e0b"
+            strokeWidth="2.5"
+            opacity="0.8"
+          />
+          <polygon
+            points="50,22 70,34 70,58 50,70 30,58 30,34"
+            fill="#78350f"
+            opacity="0.4"
+          />
+
+          {/* Translucent Gossamer Wings */}
+          <ellipse cx="40" cy="36" rx="8" ry="16" fill="#e0f2fe" stroke="#38bdf8" strokeWidth="1.2" opacity="0.85" transform="rotate(-30 40 36)" />
+          <ellipse cx="60" cy="36" rx="8" ry="16" fill="#e0f2fe" stroke="#38bdf8" strokeWidth="1.2" opacity="0.85" transform="rotate(30 60 36)" />
+
+          {/* Bee Body (Striped Abdomen & Thorax) */}
+          {/* Little stinger at bottom */}
+          <polygon points="50,75 48,68 52,68" fill="#18181b" />
+
+          {/* Oval Abdomen */}
+          <ellipse cx="50" cy="56" rx="16" ry="14" fill="#fbbf24" stroke="#d97706" strokeWidth="1" />
+          {/* Black Stripes */}
+          <path d="M 37 51 Q 50 54 63 51 L 63 56 Q 50 59 37 56 Z" fill="#18181b" />
+          <path d="M 39 60 Q 50 63 61 60 L 59 65 Q 50 67 41 65 Z" fill="#18181b" />
+
+          {/* Bee Head */}
+          <circle cx="50" cy="40" r="10" fill="#fbbf24" stroke="#d97706" strokeWidth="1" />
+          {/* Cute Eyes */}
+          <ellipse cx="46" cy="39" rx="2.5" ry="3.5" fill="#18181b" />
+          <circle cx="45" cy="38" r="1" fill="#ffffff" />
+          <ellipse cx="54" cy="39" rx="2.5" ry="3.5" fill="#18181b" />
+          <circle cx="53" cy="38" r="1" fill="#ffffff" />
+          {/* Smile */}
+          <path d="M 48 45 Q 50 47 52 45" fill="none" stroke="#18181b" strokeWidth="1.2" strokeLinecap="round" />
+
+          {/* Antennae */}
+          <path d="M 47 31 Q 44 24 39 25" fill="none" stroke="#18181b" strokeWidth="1.5" strokeLinecap="round" />
+          <circle cx="39" cy="25" r="1.5" fill="#18181b" />
+          <path d="M 53 31 Q 56 24 61 25" fill="none" stroke="#18181b" strokeWidth="1.5" strokeLinecap="round" />
+          <circle cx="61" cy="25" r="1.5" fill="#18181b" />
         </svg>
       );
 
@@ -452,46 +605,36 @@ export const GameArtwork: React.FC<GameArtworkProps> = ({ id, color }) => {
 
     case 'nim':
       return (
-        <svg viewBox="0 0 100 100" className="w-full h-full p-2">
-          {/* Row 1: 3 sticks */}
+        <svg viewBox="0 0 100 100" className="w-full h-full p-1.5 filter drop-shadow-[0_4px_8px_rgba(0,0,0,0.5)]">
+          {/* Row 1: 1 Matchstick (Centered with Flame) */}
           <g>
-            <rect x="36" y="16" width="4" height="20" rx="1" fill="#fde047" />
-            <circle cx="38" cy="15" r="3" fill="#ef4444" />
-            <rect x="48" y="16" width="4" height="20" rx="1" fill="#fde047" />
-            <circle cx="50" cy="15" r="3" fill="#ef4444" />
-            <rect x="60" y="16" width="4" height="20" rx="1" fill="#fde047" />
-            <circle cx="62" cy="15" r="3" fill="#ef4444" />
+            {/* Wooden Stem */}
+            <rect x="48.5" y="16" width="3.5" height="18" rx="0.8" fill="#d4b996" stroke="#92400e" strokeWidth="0.5" />
+            {/* Red Matchhead */}
+            <ellipse cx="50.2" cy="15" rx="3" ry="4" fill="#dc2626" />
+            <circle cx="49.5" cy="14" r="1.2" fill="#fca5a5" />
+            {/* Active Flame */}
+            <path d="M 50 11 Q 54 6 50 2 Q 46 6 50 11 Z" fill="#f59e0b" />
+            <path d="M 50 10 Q 52 7 50 4 Q 48 7 50 10 Z" fill="#fef08a" />
           </g>
-          {/* Row 2: 5 sticks */}
-          <g>
-            <rect x="24" y="44" width="4" height="20" rx="1" fill="#fde047" />
-            <circle cx="26" cy="43" r="3" fill="#ef4444" />
-            <rect x="36" y="44" width="4" height="20" rx="1" fill="#fde047" />
-            <circle cx="38" cy="43" r="3" fill="#ef4444" />
-            <rect x="48" y="44" width="4" height="20" rx="1" fill="#fde047" />
-            <circle cx="50" cy="43" r="3" fill="#ef4444" />
-            <rect x="60" y="44" width="4" height="20" rx="1" fill="#fde047" />
-            <circle cx="62" cy="43" r="3" fill="#ef4444" />
-            <rect x="72" y="44" width="4" height="20" rx="1" fill="#fde047" />
-            <circle cx="74" cy="43" r="3" fill="#ef4444" />
-          </g>
-          {/* Row 3: 7 sticks preview */}
-          <g>
-            <rect x="18" y="72" width="4" height="18" rx="1" fill="#fde047" />
-            <circle cx="20" cy="71" r="3" fill="#ef4444" />
-            <rect x="28" y="72" width="4" height="18" rx="1" fill="#fde047" />
-            <circle cx="30" cy="71" r="3" fill="#ef4444" />
-            <rect x="38" y="72" width="4" height="18" rx="1" fill="#fde047" />
-            <circle cx="40" cy="71" r="3" fill="#ef4444" />
-            <rect x="48" y="72" width="4" height="18" rx="1" fill="#fde047" />
-            <circle cx="50" cy="71" r="3" fill="#ef4444" />
-            <rect x="58" y="72" width="4" height="18" rx="1" fill="#fde047" />
-            <circle cx="60" cy="71" r="3" fill="#ef4444" />
-            <rect x="68" y="72" width="4" height="18" rx="1" fill="#fde047" />
-            <circle cx="70" cy="71" r="3" fill="#ef4444" />
-            <rect x="78" y="72" width="4" height="18" rx="1" fill="#fde047" />
-            <circle cx="80" cy="71" r="3" fill="#ef4444" />
-          </g>
+
+          {/* Row 2: 3 Matchsticks (Centered at 38, 50, 62) */}
+          {[38, 50, 62].map((x, i) => (
+            <g key={`nim-r2-${i}`}>
+              <rect x={x - 1.75} y="42" width="3.5" height="20" rx="0.8" fill="#d4b996" stroke="#92400e" strokeWidth="0.5" />
+              <ellipse cx={x} cy="41" rx="3" ry="4" fill="#dc2626" />
+              <circle cx={x - 0.7} cy="40" r="1.2" fill="#fca5a5" />
+            </g>
+          ))}
+
+          {/* Row 3: 5 Matchsticks (Centered at 26, 38, 50, 62, 74) */}
+          {[26, 38, 50, 62, 74].map((x, i) => (
+            <g key={`nim-r3-${i}`}>
+              <rect x={x - 1.75} y="70" width="3.5" height="20" rx="0.8" fill="#d4b996" stroke="#92400e" strokeWidth="0.5" />
+              <ellipse cx={x} cy="69" rx="3" ry="4" fill="#dc2626" />
+              <circle cx={x - 0.7} cy="68" r="1.2" fill="#fca5a5" />
+            </g>
+          ))}
         </svg>
       );
 
@@ -554,6 +697,54 @@ export const GameArtwork: React.FC<GameArtworkProps> = ({ id, color }) => {
           {/* Mane detail */}
           <line x1="58" y1="42" x2="65" y2="46" stroke="#818cf8" strokeWidth="2" strokeLinecap="round" />
           <line x1="56" y1="52" x2="64" y2="56" stroke="#818cf8" strokeWidth="2" strokeLinecap="round" />
+        </svg>
+      );
+
+    case 'reaction-time':
+      return (
+        <svg viewBox="0 0 100 100" className="w-full h-full p-1.5 filter drop-shadow-[0_4px_8px_rgba(0,0,0,0.5)]">
+          {/* Outer Stopwatch Housing */}
+          <circle cx="50" cy="54" r="34" fill="#0f172a" stroke="#22c55e" strokeWidth="2.5" />
+          {/* Top Crown Button */}
+          <rect x="46" y="12" width="8" height="6" rx="1.5" fill="#22c55e" />
+          <rect x="44" y="9" width="12" height="3" rx="1" fill="#4ade80" />
+          <line x1="50" y1="18" x2="50" y2="20" stroke="#22c55e" strokeWidth="2" />
+
+          {/* Emerald Green Digital Display Face */}
+          <circle cx="50" cy="54" r="28" fill="#14532d" stroke="#16a34a" strokeWidth="1" />
+          <circle cx="50" cy="54" r="25" fill="#052e16" />
+
+          {/* Stopwatch Ticks */}
+          {[0, 45, 90, 135, 180, 225, 270, 315].map(deg => (
+            <line
+              key={`tick-${deg}`}
+              x1="50"
+              y1="32"
+              x2="50"
+              y2="34"
+              stroke="#22c55e"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              transform={`rotate(${deg} 50 54)`}
+            />
+          ))}
+
+          {/* Digital Reaction Time Readout */}
+          <text x="50" y="52" fill="#4ade80" fontSize="13" fontWeight="900" textAnchor="middle" font-family="monospace">
+            215
+          </text>
+          <text x="50" y="63" fill="#86efac" fontSize="8" fontWeight="800" textAnchor="middle" font-family="monospace">
+            MS
+          </text>
+
+          {/* Golden Electric Lightning Bolt */}
+          <polygon
+            points="68,26 56,48 64,48 54,74 74,42 64,42"
+            fill="#facc15"
+            stroke="#ca8a04"
+            strokeWidth="0.8"
+            className="filter drop-shadow-[0_0_6px_#fde047]"
+          />
         </svg>
       );
 

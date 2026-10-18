@@ -291,5 +291,15 @@ export const GAMES_REGISTRY: GameMetadata[] = [
     accentGlow: 'rgba(99, 102, 241, 0.5)',
     tag: 'STRATEGY',
     statsKey: 'chess_plays'
+  },
+  {
+    id: 'reaction-time',
+    title: 'Reaction Time',
+    description: 'Classic Green Screen Reflex Test',
+    icon: '⚡',
+    color: '#22c55e',
+    accentGlow: 'rgba(34, 197, 94, 0.5)',
+    tag: 'REFLEX',
+    statsKey: 'reaction_time_plays'
   }
 ];

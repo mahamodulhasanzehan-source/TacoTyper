@@ -33,6 +33,7 @@ import NimGame from './NimGame';
 import TowerStackerGame from './TowerStackerGame';
 import TetrisGame from './TetrisGame';
 import ChessGame from './ChessGame';
+import ReactionTimeGame from './ReactionTimeGame';
 
 interface GameProps {
   user: User;
@@ -47,7 +48,7 @@ const VALID_APPS: AppId[] = [
   'spelling-bee', 'tic-tac-toe', 'connect-4', 'color-memory', 
   'particle-physics', 'fruit-merge', 'checkers', 'dots-and-boxes',
   'snake', 'brick-breaker', 'game-2048', 'ultimate-tictactoe', 'simon',
-  'quick-draw', 'finger-sumo', 'pong', 'knife-flip', 'reversi', 'battleship', 'nim', 'tower-stacker', 'tetris', 'chess'
+  'quick-draw', 'finger-sumo', 'pong', 'knife-flip', 'reversi', 'battleship', 'nim', 'tower-stacker', 'tetris', 'chess', 'reaction-time'
 ];
 
 export default function Game({ 
@@ -430,6 +431,14 @@ export default function Game({
       case 'chess':
         return (
           <ChessGame 
+            onBackToHub={handleBackToHub}
+            user={user}
+            username={customUsername}
+          />
+        );
+      case 'reaction-time':
+        return (
+          <ReactionTimeGame 
             onBackToHub={handleBackToHub}
             user={user}
             username={customUsername}

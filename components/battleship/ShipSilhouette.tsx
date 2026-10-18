@@ -7,21 +7,35 @@ interface ShipSilhouetteProps {
 }
 
 export const ShipSilhouette: React.FC<ShipSilhouetteProps> = ({ id, horizontal = true, className = '' }) => {
+  const renderSvg = (w: number, h: number, children: React.ReactNode) => {
+    const viewBox = horizontal ? `0 0 ${w} ${h}` : `0 0 ${h} ${w}`;
+    const transform = horizontal ? undefined : `translate(${h}, 0) rotate(90)`;
+
+    return (
+      <svg
+        viewBox={viewBox}
+        className="w-full h-full filter drop-shadow-[0_2px_4px_rgba(0,0,0,0.6)]"
+        preserveAspectRatio="none"
+      >
+        <g transform={transform}>
+          {children}
+        </g>
+      </svg>
+    );
+  };
+
   const getSvgContent = () => {
     switch (id) {
       case 'carrier':
-        // Modern Aircraft Carrier silhouette: angled flight deck, tower island, landing strip markings, radar mast
-        return (
-          <svg viewBox="0 0 200 48" className="w-full h-full filter drop-shadow-[0_2px_4px_rgba(0,0,0,0.6)]">
+        return renderSvg(
+          200,
+          48,
+          <>
             <defs>
               <linearGradient id="carrierHull" x1="0%" y1="0%" x2="100%" y2="0%">
                 <stop offset="0%" stopColor="#1e293b" />
                 <stop offset="50%" stopColor="#334155" />
                 <stop offset="100%" stopColor="#0f172a" />
-              </linearGradient>
-              <linearGradient id="deckGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-                <stop offset="0%" stopColor="#38bdf8" stopOpacity="0.8" />
-                <stop offset="100%" stopColor="#0284c7" stopOpacity="0.8" />
               </linearGradient>
             </defs>
             {/* Hull & Main Deck */}
@@ -43,13 +57,14 @@ export const ShipSilhouette: React.FC<ShipSilhouetteProps> = ({ id, horizontal =
             {/* Landing deck edge lights */}
             <circle cx="34" cy="24" r="1.5" fill="#facc15" />
             <circle cx="180" cy="24" r="1.5" fill="#38bdf8" />
-          </svg>
+          </>
         );
 
       case 'battleship':
-        // Heavy Battleship: streamlined bow, twin forward turrets, bridge tower, aft turret
-        return (
-          <svg viewBox="0 0 160 40" className="w-full h-full filter drop-shadow-[0_2px_4px_rgba(0,0,0,0.6)]">
+        return renderSvg(
+          160,
+          40,
+          <>
             <defs>
               <linearGradient id="battleshipHull" x1="0%" y1="0%" x2="100%" y2="0%">
                 <stop offset="0%" stopColor="#1e293b" />
@@ -79,13 +94,14 @@ export const ShipSilhouette: React.FC<ShipSilhouetteProps> = ({ id, horizontal =
             <circle cx="120" cy="20" r="5" fill="#1e293b" stroke="#38bdf8" strokeWidth="1" />
             <line x1="120" y1="18.5" x2="134" y2="18.5" stroke="#94a3b8" strokeWidth="2" strokeLinecap="round" />
             <line x1="120" y1="21.5" x2="134" y2="21.5" stroke="#94a3b8" strokeWidth="2" strokeLinecap="round" />
-          </svg>
+          </>
         );
 
       case 'cruiser':
-        // Guided Missile Cruiser: tapered sleek hull, radar radome, missile array
-        return (
-          <svg viewBox="0 0 120 36" className="w-full h-full filter drop-shadow-[0_2px_4px_rgba(0,0,0,0.6)]">
+        return renderSvg(
+          120,
+          36,
+          <>
             <defs>
               <linearGradient id="cruiserHull" x1="0%" y1="0%" x2="100%" y2="0%">
                 <stop offset="0%" stopColor="#1e293b" />
@@ -108,13 +124,14 @@ export const ShipSilhouette: React.FC<ShipSilhouetteProps> = ({ id, horizontal =
             {/* Aft VLS missile cells */}
             <rect x="84" y="13" width="14" height="10" rx="1" fill="#0f172a" stroke="#64748b" strokeWidth="1" />
             <line x1="91" y1="13" x2="91" y2="23" stroke="#38bdf8" strokeWidth="1" strokeDasharray="2,2" />
-          </svg>
+          </>
         );
 
       case 'submarine':
-        // Stealth Attack Submarine: cigar-shaped hull, conning tower sail, diving planes, propeller rudder
-        return (
-          <svg viewBox="0 0 120 34" className="w-full h-full filter drop-shadow-[0_2px_4px_rgba(0,0,0,0.6)]">
+        return renderSvg(
+          120,
+          34,
+          <>
             <defs>
               <linearGradient id="subHull" x1="0%" y1="0%" x2="100%" y2="0%">
                 <stop offset="0%" stopColor="#090d16" />
@@ -137,14 +154,15 @@ export const ShipSilhouette: React.FC<ShipSilhouetteProps> = ({ id, horizontal =
             <path d="M 112 10 L 118 7 L 118 27 L 112 24 Z" fill="#0891b2" />
             {/* Bow Sonar Dome */}
             <circle cx="18" cy="17" r="4" fill="#083344" stroke="#06b6d4" strokeWidth="1" />
-          </svg>
+          </>
         );
 
       case 'destroyer':
       default:
-        // Agile Fast Destroyer: compact sleek hull, dual antennas, torpedo rack
-        return (
-          <svg viewBox="0 0 80 32" className="w-full h-full filter drop-shadow-[0_2px_4px_rgba(0,0,0,0.6)]">
+        return renderSvg(
+          80,
+          32,
+          <>
             <defs>
               <linearGradient id="destroyerHull" x1="0%" y1="0%" x2="100%" y2="0%">
                 <stop offset="0%" stopColor="#1e293b" />
@@ -166,17 +184,13 @@ export const ShipSilhouette: React.FC<ShipSilhouetteProps> = ({ id, horizontal =
             <line x1="20" y1="16" x2="11" y2="16" stroke="#94a3b8" strokeWidth="1.5" strokeLinecap="round" />
             {/* Aft depth charges */}
             <circle cx="58" cy="16" r="2.5" fill="#f43f5e" />
-          </svg>
+          </>
         );
     }
   };
 
   return (
-    <div
-      className={`flex items-center justify-center transition-transform ${
-        horizontal ? '' : 'rotate-90'
-      } ${className}`}
-    >
+    <div className={`w-full h-full flex items-center justify-center ${className}`}>
       {getSvgContent()}
     </div>
   );

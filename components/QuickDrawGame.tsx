@@ -27,6 +27,9 @@ export default function QuickDrawGame({ onBackToHub, user, username }: QuickDraw
   const [streak, setStreak] = useState(0);
   const [isMobile, setIsMobile] = useState(false);
   const [showMobileLeaderboard, setShowMobileLeaderboard] = useState(false);
+  const [bulletAnimation, setBulletAnimation] = useState<{ from: 'player' | 'bot'; progress: number } | null>(null);
+  const [bulletHit, setBulletHit] = useState(false);
+  const [impactTarget, setImpactTarget] = useState<'player' | 'bot' | null>(null);
 
   useEffect(() => {
     setIsMobile(isMobileDevice());
@@ -64,6 +67,84 @@ export default function QuickDrawGame({ onBackToHub, user, username }: QuickDraw
     }
   }, []);
 
+  const triggerShootout = useCallback((winner: 'player' | 'bot', playerMs: number, botMs: number) => {
+    setPlayerReaction(playerMs);
+    setBotReaction(botMs);
+    setRoundWinner(winner);
+    setBulletHit(false);
+
+    // Muzzle blast sound
+    audioService.playSound('mine_explode');
+
+    // Bullet travels across the screen for 260ms (does NOT count towards recorded reaction time)
+    const startTime = performance.now();
+    const flightDuration = 260;
+
+    const anim = () => {
+      const elapsedFlight = performance.now() - startTime;
+      const progress = Math.min(1, elapsedFlight / flightDuration);
+      setBulletAnimation({ from: winner, progress });
+
+      if (progress < 1) {
+        requestAnimationFrame(anim);
+      } else {
+        // Impact! Slower participant is hit and only now tilts/kneels
+        setBulletAnimation(null);
+        setBulletHit(true);
+        const target = winner === 'player' ? 'bot' : 'player';
+        setImpactTarget(target);
+        setTimeout(() => setImpactTarget(null), 250);
+
+        if (winner === 'player') {
+          audioService.playSound('success');
+          setRoundMessage(`BULLSEYE! You drew first in ${playerMs}ms (Bot: ${botMs}ms)!`);
+
+          if (difficulty === 'medium' || difficulty === 'hard') {
+            saveLeaderboardScore(
+              user,
+              username || user?.displayName || 'Gunslinger',
+              playerMs,
+              `${difficulty.toUpperCase()} Reaction`,
+              { mistakes: 0, timeTaken: Math.round(playerMs / 1000), ingredientsMissed: 0, rottenWordsTyped: 0, totalScore: playerMs, levelReached: 1 },
+              `quick_draw-${difficulty}-time`
+            );
+
+            setStreak(prev => {
+              const next = prev + 1;
+              saveLeaderboardScore(
+                user,
+                username || user?.displayName || 'Gunslinger',
+                next,
+                `${difficulty.toUpperCase()} Streak`,
+                { mistakes: 0, timeTaken: 0, ingredientsMissed: 0, rottenWordsTyped: 0, totalScore: next, levelReached: next },
+                `quick_draw-${difficulty}-streak`
+              );
+              return next;
+            });
+          }
+
+          setPlayerScore(p => {
+            const next = p + 1;
+            if (next >= 3) setState('match_over');
+            else setState('round_over');
+            return next;
+          });
+        } else {
+          audioService.playSound('failure');
+          setRoundMessage(playerMs > 0 ? `OUTDRAWN! You drew in ${playerMs}ms, but bot was ${botMs}ms.` : `OUTDRAWN! The Outlaw fired in ${botMs}ms.`);
+          setStreak(0);
+          setBotScore(b => {
+            const next = b + 1;
+            if (next >= 3) setState('match_over');
+            else setState('round_over');
+            return next;
+          });
+        }
+      }
+    };
+    requestAnimationFrame(anim);
+  }, [difficulty, user, username]);
+
   const startRound = useCallback(() => {
     clearAllTimeouts();
     botFiredRef.current = false;
@@ -71,6 +152,9 @@ export default function QuickDrawGame({ onBackToHub, user, username }: QuickDraw
     fireTimestampRef.current = null;
     setFlash(false);
     setRoundWinner(null);
+    setBulletHit(false);
+    setBulletAnimation(null);
+    setImpactTarget(null);
     setPlayerReaction(null);
     setBotReaction(null);
     setRoundMessage('Hands by your holsters...');
@@ -130,17 +214,7 @@ export default function QuickDrawGame({ onBackToHub, user, username }: QuickDraw
         const tBot = setTimeout(() => {
           if (botFiredRef.current || playerFiredRef.current) return;
           botFiredRef.current = true;
-          setBotReaction(botLatency);
-          setRoundWinner('bot');
-          setRoundMessage(`OUTDRAWN! The Outlaw fired in ${botLatency}ms.`);
-          audioService.playSound('failure');
-          setStreak(0);
-          setBotScore(b => {
-            const next = b + 1;
-            if (next >= 3) setState('match_over');
-            else setState('round_over');
-            return next;
-          });
+          triggerShootout('bot', 0, botLatency);
         }, botLatency);
         timeoutsRef.current.push(tBot);
       }, delay);
@@ -149,7 +223,7 @@ export default function QuickDrawGame({ onBackToHub, user, username }: QuickDraw
     }, 1200);
 
     timeoutsRef.current.push(t1);
-  }, [difficulty, getBotReactionTime, user, username]);
+  }, [difficulty, getBotReactionTime, triggerShootout, user, username]);
 
   const handleShoot = useCallback(() => {
     if (state === 'idle' || state === 'round_over' || state === 'match_over') return;
@@ -176,60 +250,15 @@ export default function QuickDrawGame({ onBackToHub, user, username }: QuickDraw
       clearAllTimeouts();
 
       const elapsed = Math.round(performance.now() - (fireTimestampRef.current || performance.now()));
-      setPlayerReaction(elapsed);
-
       const botTarget = getBotReactionTime(difficulty).time;
-      setBotReaction(botTarget);
 
       if (elapsed < botTarget) {
-        setRoundWinner('player');
-        setRoundMessage(`BULLSEYE! You drew first in ${elapsed}ms (Bot: ${botTarget}ms)!`);
-        audioService.playSound('success');
-
-        if (difficulty === 'medium' || difficulty === 'hard') {
-          saveLeaderboardScore(
-            user,
-            username || user?.displayName || 'Gunslinger',
-            elapsed,
-            `${difficulty.toUpperCase()} Reaction`,
-            { mistakes: 0, timeTaken: Math.round(elapsed / 1000), ingredientsMissed: 0, rottenWordsTyped: 0, totalScore: elapsed, levelReached: 1 },
-            `quick_draw-${difficulty}-time`
-          );
-
-          setStreak(prev => {
-            const next = prev + 1;
-            saveLeaderboardScore(
-              user,
-              username || user?.displayName || 'Gunslinger',
-              next,
-              `${difficulty.toUpperCase()} Streak`,
-              { mistakes: 0, timeTaken: 0, ingredientsMissed: 0, rottenWordsTyped: 0, totalScore: next, levelReached: next },
-              `quick_draw-${difficulty}-streak`
-            );
-            return next;
-          });
-        }
-
-        setPlayerScore(p => {
-          const next = p + 1;
-          if (next >= 3) setState('match_over');
-          else setState('round_over');
-          return next;
-        });
+        triggerShootout('player', elapsed, botTarget);
       } else {
-        setRoundWinner('bot');
-        setRoundMessage(`OUTDRAWN! You drew in ${elapsed}ms, but bot was ${botTarget}ms.`);
-        audioService.playSound('failure');
-        setStreak(0);
-        setBotScore(b => {
-          const next = b + 1;
-          if (next >= 3) setState('match_over');
-          else setState('round_over');
-          return next;
-        });
+        triggerShootout('bot', elapsed, botTarget);
       }
     }
-  }, [state, difficulty, getBotReactionTime, user, username]);
+  }, [state, difficulty, getBotReactionTime, triggerShootout]);
 
   // Spacebar controls
   useEffect(() => {
@@ -249,6 +278,9 @@ export default function QuickDrawGame({ onBackToHub, user, username }: QuickDraw
     setPlayerScore(0);
     setBotScore(0);
     setRoundWinner(null);
+    setBulletAnimation(null);
+    setBulletHit(false);
+    setImpactTarget(null);
     setState('idle');
     setRoundMessage('Step into the street and tap START DUEL.');
   };
@@ -357,14 +389,52 @@ export default function QuickDrawGame({ onBackToHub, user, username }: QuickDraw
           </div>
 
           {/* Gunslingers Standoff Stage */}
-          <div className="w-full max-w-2xl flex items-center justify-around sm:justify-between px-2 sm:px-12 my-auto z-10">
+          <div className="w-full max-w-2xl flex items-center justify-around sm:justify-between px-2 sm:px-12 my-auto z-10 relative">
             {/* Player Gunslinger (Left) */}
             <GunslingerCharacter
               isPlayer={true}
               state={state}
-              winner={roundWinner}
+              winner={roundWinner === 'foul' ? 'foul' : (bulletHit ? roundWinner : null)}
               reactionTime={playerReaction}
             />
+
+            {/* Flying Bullet Animation */}
+            {bulletAnimation && (
+              <div
+                className="absolute top-1/2 -translate-y-1/2 pointer-events-none z-30"
+                style={{
+                  left: bulletAnimation.from === 'player'
+                    ? `${22 + bulletAnimation.progress * 56}%`
+                    : `${78 - bulletAnimation.progress * 56}%`,
+                  transform: `translateY(-22px) ${bulletAnimation.from === 'player' ? '' : 'scaleX(-1)'}`,
+                  transition: 'left 16ms linear'
+                }}
+              >
+                <div className="relative flex items-center">
+                  {/* Tracer fire glow */}
+                  <div className="w-8 sm:w-12 h-1 bg-gradient-to-r from-transparent via-amber-400 to-yellow-200 rounded-full blur-[0.5px]" />
+                  {/* Bullet Slug */}
+                  <div className="w-3.5 h-2 bg-gradient-to-r from-amber-300 via-yellow-100 to-white rounded-r-full shadow-[0_0_12px_#f59e0b]" />
+                </div>
+              </div>
+            )}
+
+            {/* Impact Flash Spark on Hit Target */}
+            {impactTarget && (
+              <div
+                className="absolute top-1/2 -translate-y-1/2 pointer-events-none z-40"
+                style={{
+                  left: impactTarget === 'player' ? '20%' : '80%',
+                  transform: 'translateY(-22px)'
+                }}
+              >
+                <div className="relative flex items-center justify-center">
+                  <div className="w-10 h-10 rounded-full bg-amber-300/80 animate-ping" />
+                  <div className="absolute w-6 h-6 rounded-full bg-white shadow-[0_0_20px_#ef4444]" />
+                  <span className="absolute text-lg">💥</span>
+                </div>
+              </div>
+            )}
 
             {/* VS Badge */}
             <div className="flex flex-col items-center">
@@ -377,7 +447,7 @@ export default function QuickDrawGame({ onBackToHub, user, username }: QuickDraw
             <GunslingerCharacter
               isPlayer={false}
               state={state}
-              winner={roundWinner}
+              winner={roundWinner === 'foul' ? 'foul' : (bulletHit ? roundWinner : null)}
               reactionTime={botReaction}
             />
           </div>

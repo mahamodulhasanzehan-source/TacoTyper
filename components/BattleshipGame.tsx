@@ -479,7 +479,7 @@ export default function BattleshipGame({ onBackToHub }: BattleshipProps) {
               {/* Ship Silhouettes Overlay */}
               {playerShips.map(ship => {
                 const isHoriz = isShipHorizontal(ship);
-                const firstCell = ship.cells[0];
+                const firstCell = Math.min(...ship.cells);
                 const r = Math.floor(firstCell / 10);
                 const c = firstCell % 10;
                 const isSelected = selectedShipId === ship.id;

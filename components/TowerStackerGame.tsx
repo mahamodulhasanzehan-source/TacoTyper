@@ -42,6 +42,8 @@ export default function TowerStackerGame({ onBackToHub, user, username }: TowerS
   const [highScore, setHighScore] = useState(() => {
     return parseInt(localStorage.getItem('tower_stacker_high') || '0', 10);
   });
+  const [thinnestTile, setThinnestTile] = useState<number>(100);
+  const minTileWidthRef = useRef<number>(100);
   const [isGameOver, setIsGameOver] = useState(false);
   const [combo, setCombo] = useState(0);
   const [comboText, setComboText] = useState<string | null>(null);
@@ -85,6 +87,17 @@ export default function TowerStackerGame({ onBackToHub, user, username }: TowerS
         { mistakes: 0, timeTaken: 0, ingredientsMissed: 0, rottenWordsTyped: 0, totalScore: score, levelReached: score },
         'tower_stacker'
       );
+
+      if (minTileWidthRef.current < 100) {
+        saveLeaderboardScore(
+          user,
+          username || user?.displayName || 'Tower Architect',
+          minTileWidthRef.current,
+          'Thinnest Slicer',
+          { mistakes: 0, timeTaken: 0, ingredientsMissed: 0, rottenWordsTyped: 0, totalScore: minTileWidthRef.current, levelReached: score },
+          'tower_stacker-thinnest'
+        );
+      }
     }
   }, [isGameOver, score, user, username]);
 
@@ -118,6 +131,8 @@ export default function TowerStackerGame({ onBackToHub, user, username }: TowerS
     setScore(0);
     setCombo(0);
     setComboText(null);
+    minTileWidthRef.current = 100;
+    setThinnestTile(100);
     setIsGameOver(false);
   }, []);
 
@@ -235,6 +250,15 @@ export default function TowerStackerGame({ onBackToHub, user, username }: TowerS
 
     const currentScore = stack.current.length - 1;
     setScore(currentScore);
+
+    // Track thinnest tile (original base tile = 100)
+    const placedWidth = stack.current[stack.current.length - 1].width;
+    const normalizedW = Math.max(1, Math.round((placedWidth / 160) * 100));
+    if (normalizedW < minTileWidthRef.current) {
+      minTileWidthRef.current = normalizedW;
+      setThinnestTile(normalizedW);
+    }
+
     setHighScore(prev => {
       if (currentScore > prev) {
         localStorage.setItem('tower_stacker_high', String(currentScore));
@@ -449,6 +473,10 @@ export default function TowerStackerGame({ onBackToHub, user, username }: TowerS
                     <span className="text-2xl font-black text-cyan-400">{score}</span>
                   </div>
                   <div>
+                    <span className="text-[10px] text-neutral-400 uppercase font-semibold block">Thinnest Tile</span>
+                    <span className="text-2xl font-black text-rose-400">{thinnestTile}<span className="text-xs text-neutral-400">/100</span></span>
+                  </div>
+                  <div>
                     <span className="text-[10px] text-neutral-400 uppercase font-semibold block">Record Height</span>
                     <span className="text-2xl font-black text-amber-400">{highScore}</span>
                   </div>
@@ -466,6 +494,11 @@ export default function TowerStackerGame({ onBackToHub, user, username }: TowerS
 
         <GameLeaderboardSidebar
           mode="tower_stacker"
+          allowedModes={['tower_stacker', 'tower_stacker-thinnest']}
+          tabLabels={{
+            tower_stacker: 'Max Floors',
+            'tower_stacker-thinnest': 'Thinnest Tile'
+          }}
           title="Tower Architects"
           scoreLabel="FLOORS"
           storageKey="tower_stacker_leaderboard_collapsed"

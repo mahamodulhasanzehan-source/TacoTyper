@@ -227,8 +227,11 @@ export const LeaderboardWidget: React.FC<LeaderboardWidgetProps> = ({
     };
 
     const formatScoreValue = (entry: LeaderboardEntry) => {
-        if (mode.includes('quick_draw') && mode.endsWith('-time')) {
+        if ((mode.includes('quick_draw') && mode.endsWith('-time')) || mode.startsWith('reaction_time') || mode.startsWith('reaction-time')) {
             return `${entry.score}ms`;
+        }
+        if (mode === 'tower_stacker-thinnest') {
+            return `${entry.score}/100`;
         }
         if (mode.startsWith('finger_sumo')) {
             return `${typeof entry.score === 'number' ? entry.score.toFixed(1) : entry.score}`;
@@ -254,6 +257,8 @@ export const LeaderboardWidget: React.FC<LeaderboardWidgetProps> = ({
         if (customScoreLabel) return customScoreLabel;
         if (mode === 'iq-test' || mode === 'iq_test') return 'IQ';
         if (mode.includes('quick_draw') && mode.endsWith('-time')) return 'MS';
+        if (mode.startsWith('reaction_time') || mode.startsWith('reaction-time')) return 'MS';
+        if (mode === 'tower_stacker-thinnest') return 'WIDTH';
         if (mode.startsWith('finger_sumo')) return 'CPS';
         if (mode === 'color_memory') return 'SCORE';
         if (mode === 'knife_flip') return 'KNIVES';

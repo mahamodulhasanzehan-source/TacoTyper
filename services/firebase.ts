@@ -606,7 +606,12 @@ export const isAscendingMetric = (mode: string): boolean => {
         mode.startsWith('checkers') ||
         mode === 'connect_4-time' ||
         mode === 'connect_4' ||
-        (mode.startsWith('quick_draw') && mode.endsWith('-time'))
+        (mode.startsWith('quick_draw') && mode.endsWith('-time')) ||
+        mode === 'reaction_time' ||
+        mode === 'reaction-time' ||
+        mode.startsWith('reaction_time') ||
+        mode.startsWith('reaction-time') ||
+        mode === 'tower_stacker-thinnest'
     );
 };
 
