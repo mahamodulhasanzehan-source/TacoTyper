@@ -750,33 +750,30 @@ export const GameArtwork: React.FC<GameArtworkProps> = ({ id, color }) => {
 
     case 'dead-trigger':
       return (
-        <svg viewBox="0 0 100 100" className="w-full h-full p-2">
-          {/* Apocalyptic dark biohazard shield */}
-          <rect x="8" y="8" width="84" height="84" rx="14" fill="#0d0202" stroke="#ef4444" strokeWidth="2.5" />
-          
-          {/* Tactical Crosshair Rings */}
-          <circle cx="50" cy="50" r="28" fill="none" stroke="#ef4444" strokeWidth="1.8" strokeDasharray="4 3" opacity="0.8" />
-          <circle cx="50" cy="50" r="16" fill="none" stroke="#22c55e" strokeWidth="1.5" />
-          <line x1="50" y1="14" x2="50" y2="30" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" />
-          <line x1="50" y1="70" x2="50" y2="86" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" />
-          <line x1="14" y1="50" x2="30" y2="50" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" />
-          <line x1="70" y1="50" x2="86" y2="50" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" />
-
-          {/* Biohazard / Skull Silhouette */}
-          <circle cx="50" cy="46" r="9" fill="#ef4444" />
-          <rect x="44" y="52" width="12" height="7" rx="2" fill="#ef4444" />
-          {/* Glowing Zombie Eyes */}
-          <circle cx="46.5" cy="45" r="2.2" fill="#22c55e" />
-          <circle cx="53.5" cy="45" r="2.2" fill="#22c55e" />
-          {/* Skull Teeth */}
-          <line x1="47" y1="55" x2="47" y2="58" stroke="#0d0202" strokeWidth="1.2" strokeLinecap="round" />
-          <line x1="50" y1="55" x2="50" y2="58" stroke="#0d0202" strokeWidth="1.2" strokeLinecap="round" />
-          <line x1="53" y1="55" x2="53" y2="58" stroke="#0d0202" strokeWidth="1.2" strokeLinecap="round" />
-
-          {/* Blood Splatter Drops */}
-          <circle cx="28" cy="26" r="3.2" fill="#dc2626" />
-          <circle cx="34" cy="22" r="1.8" fill="#dc2626" />
-          <circle cx="72" cy="74" r="2.8" fill="#dc2626" />
+        <svg viewBox="0 0 100 100" className="w-full h-full p-1.5">
+          <defs>
+            <radialGradient id="dtGlow" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stopColor="#ef4444" stopOpacity="0.4" />
+              <stop offset="100%" stopColor="#7f1d1d" stopOpacity="0" />
+            </radialGradient>
+          </defs>
+          {/* Subtle Dark Background Vignette */}
+          <circle cx="50" cy="50" r="42" fill="url(#dtGlow)" />
+          {/* Outer Tactical Crosshair Ring */}
+          <circle cx="50" cy="50" r="36" fill="none" stroke="#ef4444" strokeWidth="2" strokeDasharray="6 3" />
+          <circle cx="50" cy="50" r="22" fill="none" stroke="rgba(239, 68, 68, 0.4)" strokeWidth="1.5" />
+          {/* Crosshair Hairlines */}
+          <line x1="10" y1="50" x2="38" y2="50" stroke="#f87171" strokeWidth="2.5" strokeLinecap="round" />
+          <line x1="62" y1="50" x2="90" y2="50" stroke="#f87171" strokeWidth="2.5" strokeLinecap="round" />
+          <line x1="50" y1="10" x2="50" y2="38" stroke="#f87171" strokeWidth="2.5" strokeLinecap="round" />
+          <line x1="50" y1="62" x2="50" y2="90" stroke="#f87171" strokeWidth="2.5" strokeLinecap="round" />
+          {/* Center Red Dot */}
+          <circle cx="50" cy="50" r="3.5" fill="#ef4444" />
+          {/* Biohazard/Target accents */}
+          <path d="M 32 32 L 38 32 L 32 38 Z" fill="#facc15" />
+          <path d="M 68 32 L 62 32 L 68 38 Z" fill="#facc15" />
+          <path d="M 32 68 L 38 68 L 32 62 Z" fill="#facc15" />
+          <path d="M 68 68 L 62 68 L 68 62 Z" fill="#facc15" />
         </svg>
       );
 
