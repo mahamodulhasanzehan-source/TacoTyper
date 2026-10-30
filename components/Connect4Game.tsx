@@ -337,31 +337,31 @@ export default function Connect4Game({ user, onBackToHub, username }: Connect4Ga
                 <div className="absolute inset-0 opacity-15 pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at 50% 50%, #2563eb 2px, transparent 2px)', backgroundSize: '60px 60px' }}></div>
 
                 {/* Top Navigation - Pinned at top */}
-                <div className="flex justify-between items-center w-full max-w-xl shrink-0 pt-1 sm:pt-2 mb-2 z-10">
+                <div className="flex justify-between items-center w-full max-w-xl shrink-0 pt-1 mb-2 z-10 gap-1.5 sm:gap-2">
                     <button 
                         onClick={() => {
                             audioService.playSound('button_click');
                             onBackToHub();
                         }} 
-                        className="flex items-center gap-1.5 px-3 py-1.5 bg-neutral-900/80 hover:bg-neutral-800 border border-neutral-700 rounded-full text-sm font-bold transition-transform hover:scale-105 active:scale-95 shadow-md"
+                        className="flex items-center gap-1 px-2.5 sm:px-3 py-1 sm:py-1.5 bg-neutral-900/80 hover:bg-neutral-800 border border-neutral-700 rounded-full text-xs sm:text-sm font-bold transition-transform active:scale-95 shadow-md whitespace-nowrap shrink-0"
                         title="Back to Hub"
                     >
                         <span>⬅️</span>
-                        <span className="hidden sm:inline">Hub</span>
+                        <span className="hidden min-[380px]:inline">Hub</span>
                     </button>
 
-                    <div className="flex flex-col items-center">
-                        <h1 className="text-xl md:text-2xl font-black tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-red-500 to-amber-400">
+                    <div className="flex flex-col items-center min-w-0">
+                        <h1 className="text-sm sm:text-xl md:text-2xl font-black tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-red-500 to-amber-400 whitespace-nowrap truncate">
                             CONNECT 4
                         </h1>
-                        <div className="text-xs text-neutral-400 mt-0.5 font-bold flex items-center gap-3">
-                            <span>⏱️ Time: <span className="text-amber-400 font-mono">{elapsedTime}s</span></span>
-                            <span>🔥 Streak: <span className="text-cyan-400 font-mono">{streak}</span></span>
+                        <div className="text-[10px] sm:text-xs text-neutral-400 mt-0.5 font-bold flex items-center gap-1.5 sm:gap-3 whitespace-nowrap">
+                            <span>⏱️ <span className="hidden sm:inline">Time: </span><span className="text-amber-400 font-mono">{elapsedTime}s</span></span>
+                            <span>🔥 <span className="hidden sm:inline">Streak: </span><span className="text-cyan-400 font-mono">{streak}</span></span>
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-2">
-                        <span className={`text-xs px-2.5 py-1 rounded-full font-bold border ${isPlayerTurn ? 'bg-red-950/80 text-red-400 border-red-700' : 'bg-amber-950/80 text-amber-400 border-amber-700'}`}>
+                    <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+                        <span className={`text-[10px] sm:text-xs px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full font-bold border whitespace-nowrap shrink-0 ${isPlayerTurn ? 'bg-red-950/80 text-red-400 border-red-700' : 'bg-amber-950/80 text-amber-400 border-amber-700'}`}>
                             {isPlayerTurn ? 'Your Turn' : 'AI...'}
                         </span>
                         {isMobile && (

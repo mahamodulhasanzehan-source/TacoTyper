@@ -204,23 +204,23 @@ export default function ReversiGame({ onBackToHub, user, username }: ReversiGame
   return (
     <div className="w-full h-full flex flex-row bg-[#06080e] text-white select-none overflow-hidden font-sans">
       <div className="flex-1 h-full flex flex-col relative overflow-hidden min-w-0">
-        <header className="flex items-center justify-between px-3 py-2 bg-neutral-900/90 border-b border-neutral-800 z-20 shrink-0">
-          <div className="flex items-center gap-2">
+        <header className="flex items-center justify-between px-2 sm:px-4 py-1.5 sm:py-2 bg-neutral-900/95 border-b border-neutral-800 z-20 shrink-0 w-full overflow-hidden gap-1.5 sm:gap-3">
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink min-w-0">
             <button
               onClick={onBackToHub}
-              className="px-2.5 py-1 bg-neutral-800 hover:bg-neutral-700 text-xs font-bold rounded-lg border border-neutral-700 text-neutral-300"
+              className="px-2 sm:px-2.5 py-1 bg-neutral-800 hover:bg-neutral-700 text-xs font-bold rounded-lg border border-neutral-700 text-neutral-300 whitespace-nowrap shrink-0 flex items-center gap-1 cursor-pointer"
             >
-              ← Hub
+              <span>←</span>
+              <span className="hidden sm:inline">Hub</span>
             </button>
-            <div>
-              <h1 className="text-sm sm:text-base font-black tracking-wide text-emerald-400">REVERSI</h1>
-              <span className="text-[9px] text-neutral-400 font-mono hidden sm:inline">8X8 OTHELLO STRATEGY</span>
+            <div className="min-w-0">
+              <h1 className="text-xs sm:text-base font-black tracking-wide text-emerald-400 truncate">REVERSI</h1>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 sm:gap-2 shrink-0">
             {/* Difficulty Picker */}
-            <div className="flex bg-neutral-950 p-0.5 rounded-lg border border-neutral-800">
+            <div className="flex bg-neutral-950 p-0.5 rounded-lg border border-neutral-800 shrink-0">
               {(['easy', 'medium', 'hard'] as Difficulty[]).map(d => (
                 <button
                   key={d}
@@ -229,22 +229,25 @@ export default function ReversiGame({ onBackToHub, user, username }: ReversiGame
                     setDifficulty(d);
                     resetGame();
                   }}
-                  className={`px-2 py-0.5 text-[10px] sm:text-xs font-bold rounded capitalize transition-all ${
+                  className={`px-1.5 sm:px-2 py-0.5 text-[9px] sm:text-xs font-bold rounded capitalize transition-all whitespace-nowrap cursor-pointer ${
                     difficulty === d
                       ? 'bg-emerald-500 text-black shadow font-bold'
                       : 'text-neutral-400 hover:text-white disabled:opacity-50'
                   }`}
                 >
-                  {d}
+                  <span className="hidden md:inline">{d}</span>
+                  <span className="md:hidden">{d[0].toUpperCase()}</span>
                 </button>
               ))}
             </div>
 
             <button
               onClick={resetGame}
-              className="px-2.5 py-1 bg-neutral-800 hover:bg-neutral-700 text-xs font-bold rounded-lg border border-neutral-700 text-neutral-300"
+              className="p-1 sm:px-2 sm:py-1 bg-neutral-800 hover:bg-neutral-700 text-xs font-bold rounded-lg border border-neutral-700 text-neutral-300 cursor-pointer whitespace-nowrap shrink-0"
+              title="Reset Game"
             >
-              Reset
+              <span className="hidden sm:inline">Reset</span>
+              <span className="sm:hidden">↺</span>
             </button>
 
             {isMobile && (

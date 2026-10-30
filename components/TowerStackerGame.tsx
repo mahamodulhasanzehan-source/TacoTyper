@@ -148,7 +148,7 @@ export default function TowerStackerGame({ onBackToHub, user, username }: TowerS
     const blockColor = COLORS[floorIndex % COLORS.length];
 
     const diff = active.x - topBlock.x;
-    const tolerance = 3.5; // Perfect threshold
+    const tolerance = 1.0; // Minimal snap tolerance
 
     if (Math.abs(diff) <= tolerance) {
       // --- PERFECT PLACEMENT BONUS ---
@@ -160,7 +160,7 @@ export default function TowerStackerGame({ onBackToHub, user, username }: TowerS
       // Expand block if 3 or more consecutive perfect drops
       let newW = topBlock.width;
       if (consecutivePerfects.current >= 3) {
-        newW = Math.min(180, topBlock.width + 6);
+        newW = Math.min(180, topBlock.width + 4);
       }
 
       const placed: Block = {
@@ -219,6 +219,15 @@ export default function TowerStackerGame({ onBackToHub, user, username }: TowerS
         });
       }
 
+      // Check if surviving slice is essentially zero
+      if (newW < 0.05) {
+        isPlaying.current = false;
+        setIsGameOver(true);
+        audioService.playSound('failure');
+        currentBlock.current = null;
+        return;
+      }
+
       stack.current.push({
         x: newX,
         y: targetY,
@@ -251,9 +260,10 @@ export default function TowerStackerGame({ onBackToHub, user, username }: TowerS
     const currentScore = stack.current.length - 1;
     setScore(currentScore);
 
-    // Track thinnest tile (original base tile = 100)
+    // Track thinnest tile (original base tile = 100, allowing lower than 1/100 like 0.25, 0.1)
     const placedWidth = stack.current[stack.current.length - 1].width;
-    const normalizedW = Math.max(1, Math.round((placedWidth / 160) * 100));
+    const rawNormalized = (placedWidth / 160) * 100;
+    const normalizedW = Number(Math.max(0.01, rawNormalized).toFixed(rawNormalized < 1 ? 2 : 1));
     if (normalizedW < minTileWidthRef.current) {
       minTileWidthRef.current = normalizedW;
       setThinnestTile(normalizedW);
@@ -342,16 +352,16 @@ export default function TowerStackerGame({ onBackToHub, user, username }: TowerS
       // Draw Tower Stack
       stack.current.forEach((b, idx) => {
         ctx.fillStyle = b.color;
-        ctx.shadowColor = b.color;
-        ctx.shadowBlur = idx === stack.current.length - 1 ? 12 : 3;
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.35)';
+        ctx.shadowBlur = 2;
 
         ctx.beginPath();
-        ctx.roundRect(b.x, b.y, b.width, b.height, 4);
+        ctx.roundRect(b.x, b.y, b.width, b.height, 1);
         ctx.fill();
 
         // Floor bevel highlight
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
-        ctx.fillRect(b.x, b.y, b.width, 3);
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.18)';
+        ctx.fillRect(b.x, b.y, b.width, 2);
       });
 
       // Draw Debris
@@ -372,15 +382,15 @@ export default function TowerStackerGame({ onBackToHub, user, username }: TowerS
         const color = COLORS[stack.current.length % COLORS.length];
 
         ctx.fillStyle = color;
-        ctx.shadowColor = color;
-        ctx.shadowBlur = 15;
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.4)';
+        ctx.shadowBlur = 3;
         ctx.beginPath();
-        ctx.roundRect(currentBlock.current.x, nextY, currentBlock.current.width, 24, 4);
+        ctx.roundRect(currentBlock.current.x, nextY, currentBlock.current.width, 24, 1);
         ctx.fill();
 
         // Highlight
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
-        ctx.fillRect(currentBlock.current.x, nextY, currentBlock.current.width, 3);
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.25)';
+        ctx.fillRect(currentBlock.current.x, nextY, currentBlock.current.width, 2);
       }
 
       ctx.restore();
@@ -411,28 +421,28 @@ export default function TowerStackerGame({ onBackToHub, user, username }: TowerS
       className="w-full h-screen flex flex-col bg-[#07090e] text-white select-none overflow-hidden font-sans"
       onPointerDown={handleDrop}
     >
-      <header className="flex items-center justify-between px-4 py-3 bg-neutral-900/90 border-b border-neutral-800 z-20" onClick={e => e.stopPropagation()}>
-        <div className="flex items-center gap-3">
+      <header className="flex items-center justify-between px-2 sm:px-4 py-1.5 sm:py-2 bg-neutral-900/90 border-b border-neutral-800 z-20 shrink-0 w-full overflow-hidden gap-1.5 sm:gap-3" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center gap-1.5 sm:gap-2.5 min-w-0 shrink">
           <button
             onClick={onBackToHub}
-            className="px-3 py-1.5 bg-neutral-800 hover:bg-neutral-700 text-xs font-bold rounded-lg border border-neutral-700 text-neutral-300"
+            className="px-2 sm:px-2.5 py-1 bg-neutral-800 hover:bg-neutral-700 text-xs font-bold rounded-lg border border-neutral-700 text-neutral-300 whitespace-nowrap shrink-0"
           >
-            ← Hub
+            ← <span className="hidden sm:inline">Hub</span>
           </button>
-          <div>
-            <h1 className="text-base font-black tracking-wide text-cyan-400">TOWER STACKER</h1>
-            <span className="text-[10px] text-neutral-400 font-mono">TIMING & OVERHANG TRUNCATION</span>
+          <div className="min-w-0">
+            <h1 className="text-xs sm:text-base font-black tracking-wide text-cyan-400 truncate">TOWER STACKER</h1>
+            <span className="text-[9px] text-neutral-400 font-mono hidden md:inline">TIMING & OVERHANG TRUNCATION</span>
           </div>
         </div>
 
-        <div className="flex items-center gap-3 sm:gap-4">
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
           <div className="text-right">
-            <span className="text-[10px] text-neutral-400 uppercase font-semibold block">FLOORS</span>
-            <span className="text-lg sm:text-xl font-black text-cyan-400 font-mono">{score}</span>
+            <span className="text-[8px] sm:text-[10px] text-neutral-400 uppercase font-semibold block leading-none">FLOORS</span>
+            <span className="text-sm sm:text-lg font-black text-cyan-400 font-mono leading-tight">{score}</span>
           </div>
-          <div className="text-right border-l border-neutral-800 pl-3">
-            <span className="text-[10px] text-neutral-400 uppercase font-semibold block">RECORD</span>
-            <span className="text-lg sm:text-xl font-black text-amber-400 font-mono">{highScore}</span>
+          <div className="text-right border-l border-neutral-800 pl-2 sm:pl-3">
+            <span className="text-[8px] sm:text-[10px] text-neutral-400 uppercase font-semibold block leading-none">RECORD</span>
+            <span className="text-sm sm:text-lg font-black text-amber-400 font-mono leading-tight">{highScore}</span>
           </div>
           {isMobile && (
             <MobileLeaderboardButton onClick={() => setShowMobileLeaderboard(true)} />

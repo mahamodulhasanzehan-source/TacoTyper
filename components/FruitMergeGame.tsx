@@ -533,32 +533,32 @@ export default function FruitMergeGame({ onBackToHub, user, username }: FruitMer
     return (
         <div className="flex flex-col h-full w-full bg-[#09090b] text-white font-sans select-none overflow-hidden relative">
             {/* Top Bar - Pinned at top */}
-            <div className="flex justify-between items-center w-full px-3 sm:px-6 py-2 border-b border-neutral-800/80 bg-black/60 backdrop-blur-md shrink-0 z-20">
+            <div className="flex justify-between items-center w-full px-2 sm:px-6 py-1.5 sm:py-2 border-b border-neutral-800/80 bg-black/60 backdrop-blur-md shrink-0 z-20 overflow-hidden gap-1 sm:gap-3">
                 <button
                     onClick={onBackToHub}
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-neutral-900 hover:bg-neutral-800 border border-neutral-700 rounded-full text-xs sm:text-sm font-bold transition-transform hover:scale-105 active:scale-95 shadow-md"
+                    className="flex items-center gap-1 px-2.5 sm:px-3 py-1 sm:py-1.5 bg-neutral-900 hover:bg-neutral-800 border border-neutral-700 rounded-full text-xs sm:text-sm font-bold transition-transform active:scale-95 shadow-md whitespace-nowrap shrink-0"
                     title="Back to Hub"
                 >
                     <span>⬅️</span>
-                    <span className="hidden sm:inline">Hub</span>
+                    <span className="hidden min-[380px]:inline">Hub</span>
                 </button>
 
-                <div className="flex items-center gap-4 sm:gap-6">
+                <div className="flex items-center gap-2 sm:gap-6 shrink-0 whitespace-nowrap">
                     <div className="text-center">
-                        <div className="text-[10px] sm:text-xs uppercase tracking-wider text-neutral-400 font-mono">Score</div>
-                        <div className="text-lg sm:text-2xl font-black text-amber-400 font-mono leading-none">{score}</div>
+                        <div className="text-[9px] sm:text-xs uppercase tracking-wider text-neutral-400 font-mono">Score</div>
+                        <div className="text-sm sm:text-2xl font-black text-amber-400 font-mono leading-none">{score}</div>
                     </div>
-                    <div className="text-center">
-                        <div className="text-[10px] sm:text-xs uppercase tracking-wider text-neutral-400 font-mono">Best</div>
-                        <div className="text-lg sm:text-2xl font-black text-emerald-400 font-mono leading-none">{highScore}</div>
+                    <div className="text-center border-l border-neutral-800 pl-2 sm:pl-0 sm:border-l-0">
+                        <div className="text-[9px] sm:text-xs uppercase tracking-wider text-neutral-400 font-mono">Best</div>
+                        <div className="text-sm sm:text-2xl font-black text-emerald-400 font-mono leading-none">{highScore}</div>
                     </div>
                 </div>
 
                 {/* Next Fruit Preview */}
-                <div className="flex items-center gap-2">
-                    <div className="flex items-center gap-2 bg-neutral-900/80 border border-neutral-800 px-3 py-1 rounded-2xl">
-                        <div className="text-[10px] sm:text-xs text-neutral-400 font-mono uppercase">Next:</div>
-                        <FruitSVG tier={nextTier} size={28} />
+                <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+                    <div className="flex items-center gap-1 sm:gap-2 bg-neutral-900/80 border border-neutral-800 px-2 sm:px-3 py-0.5 sm:py-1 rounded-2xl whitespace-nowrap shrink-0">
+                        <div className="text-[9px] sm:text-xs text-neutral-400 font-mono uppercase">Next:</div>
+                        <FruitSVG tier={nextTier} size={22} />
                     </div>
                     {isMobile && (
                         <MobileLeaderboardButton onClick={() => setShowMobileLeaderboard(true)} />

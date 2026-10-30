@@ -430,18 +430,18 @@ export default function DotsAndBoxesGame({ onBackToHub, user, username }: DotsAn
     return (
         <div className="flex flex-col h-full w-full bg-[#0a0a0c] text-white font-sans select-none overflow-hidden relative">
             {/* Top Bar */}
-            <div className="flex justify-between items-center w-full px-3 sm:px-6 py-2 border-b border-neutral-800/80 bg-black/60 backdrop-blur-md shrink-0 z-20">
+            <div className="flex justify-between items-center w-full px-2 sm:px-4 py-1.5 sm:py-2 border-b border-neutral-800/80 bg-black/60 backdrop-blur-md shrink-0 z-20 overflow-hidden gap-1 sm:gap-2">
                 <button
                     onClick={onBackToHub}
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-neutral-900 hover:bg-neutral-800 border border-neutral-700 rounded-full text-xs sm:text-sm font-bold transition-transform hover:scale-105 active:scale-95 shadow-md"
+                    className="flex items-center gap-1 px-2 sm:px-3 py-1 sm:py-1.5 bg-neutral-900 hover:bg-neutral-800 border border-neutral-700 rounded-full text-xs font-bold transition-transform active:scale-95 shadow-md whitespace-nowrap shrink-0"
                     title="Back to Hub"
                 >
                     <span>⬅️</span>
-                    <span className="hidden sm:inline">Hub</span>
+                    <span className="hidden min-[380px]:inline">Hub</span>
                 </button>
 
                 {/* Grid Size Selector */}
-                <div className="flex items-center gap-1 bg-neutral-900/90 border border-neutral-800 p-1 rounded-full">
+                <div className="flex items-center gap-0.5 sm:gap-1 bg-neutral-900/90 border border-neutral-800 p-0.5 sm:p-1 rounded-full shrink-0">
                     {[4, 5, 6].map(size => (
                         <button
                             key={size}
@@ -452,7 +452,7 @@ export default function DotsAndBoxesGame({ onBackToHub, user, username }: DotsAn
                                 setGridSize(size);
                                 initBoard(size);
                             }}
-                            className={`px-2.5 sm:px-3.5 py-1 rounded-full text-[10px] sm:text-xs font-bold transition-all ${
+                            className={`px-1.5 sm:px-3 py-0.5 sm:py-1 rounded-full text-[9px] sm:text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
                                 gridSize === size
                                     ? 'bg-amber-500 text-black shadow-md'
                                     : 'text-neutral-400 hover:text-white'
@@ -464,10 +464,10 @@ export default function DotsAndBoxesGame({ onBackToHub, user, username }: DotsAn
                 </div>
 
                 {/* Auto-Fill Toggle, Mode Selector & Reset */}
-                <div className="flex items-center gap-1.5 sm:gap-2">
+                <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
                     <button
                         onClick={() => setAutoFillEnabled(prev => !prev)}
-                        className={`px-2 sm:px-3 py-1.5 rounded-xl border text-[10px] sm:text-xs font-bold transition-all flex items-center gap-1 shadow-sm ${
+                        className={`px-1.5 sm:px-2.5 py-1 sm:py-1.5 rounded-xl border text-[9px] sm:text-xs font-bold transition-all flex items-center gap-1 shadow-sm whitespace-nowrap shrink-0 cursor-pointer ${
                             autoFillEnabled
                                 ? 'bg-sky-500/20 border-sky-400/80 text-sky-300 shadow-[0_0_10px_rgba(56,189,248,0.25)]'
                                 : 'bg-neutral-900 hover:bg-neutral-800 border-neutral-700 text-neutral-400'
@@ -487,13 +487,15 @@ export default function DotsAndBoxesGame({ onBackToHub, user, username }: DotsAn
                             setGameMode(nextM);
                             initBoard(gridSize);
                         }}
-                        className="px-2 sm:px-3 py-1.5 bg-neutral-900 hover:bg-neutral-800 border border-neutral-700 rounded-xl text-[10px] sm:text-xs font-bold transition-transform active:scale-95"
+                        className="px-1.5 sm:px-2.5 py-1 sm:py-1.5 bg-neutral-900 hover:bg-neutral-800 border border-neutral-700 rounded-xl text-[9px] sm:text-xs font-bold transition-transform active:scale-95 whitespace-nowrap shrink-0 cursor-pointer"
+                        title={gameMode === 'bot' ? 'Playing vs Bot' : 'Playing 2-Player'}
                     >
-                        {gameMode === 'bot' ? '🤖 vs Bot' : '👥 2-Player'}
+                        <span className="hidden min-[480px]:inline">{gameMode === 'bot' ? '🤖 vs Bot' : '👥 2-Player'}</span>
+                        <span className="min-[480px]:hidden">{gameMode === 'bot' ? '🤖 Bot' : '👥 PvP'}</span>
                     </button>
                     <button
                         onClick={() => initBoard(gridSize)}
-                        className="px-2.5 sm:px-3 py-1.5 bg-neutral-900 hover:bg-neutral-800 border border-neutral-700 rounded-xl text-xs font-bold transition-transform active:scale-95"
+                        className="px-2 py-1 sm:px-2.5 sm:py-1.5 bg-neutral-900 hover:bg-neutral-800 border border-neutral-700 rounded-xl text-xs font-bold transition-transform active:scale-95 whitespace-nowrap shrink-0 cursor-pointer"
                         title="Restart Game"
                     >
                         🔄

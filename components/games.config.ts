@@ -301,5 +301,15 @@ export const GAMES_REGISTRY: GameMetadata[] = [
     accentGlow: 'rgba(34, 197, 94, 0.5)',
     tag: 'REFLEX',
     statsKey: 'reaction_time_plays'
+  },
+  {
+    id: 'dead-trigger',
+    title: 'Dead Trigger',
+    description: '3D Zombie Survival & Arsenal Arena',
+    icon: '☣️',
+    color: '#ef4444',
+    accentGlow: 'rgba(239, 68, 68, 0.5)',
+    tag: '3D SURVIVAL',
+    statsKey: 'dead_trigger_plays'
   }
 ];

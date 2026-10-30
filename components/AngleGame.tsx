@@ -166,27 +166,28 @@ export default function AngleGame({ user, onBackToHub, username }: AngleGameProp
                 <div className="absolute inset-0 opacity-15 pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at 10% 20%, #d946ef 2px, transparent 2px)', backgroundSize: '70px 70px' }}></div>
 
                 {/* Top Bar - Compact Header */}
-                <div className="flex justify-between items-center w-full max-w-md shrink-0 h-10 mb-1 z-10">
+                <div className="flex justify-between items-center w-full max-w-md shrink-0 h-10 mb-1 z-10 gap-1 sm:gap-2">
                     <button 
                         onClick={() => {
                             audioService.playSound('button_click');
                             onBackToHub();
                         }} 
-                        className="flex items-center gap-1.5 px-2.5 py-1 bg-neutral-900/80 hover:bg-neutral-800 border border-neutral-700 rounded-lg text-xs font-bold transition-colors cursor-pointer"
+                        className="flex items-center gap-1 px-2 sm:px-2.5 py-1 bg-neutral-900/80 hover:bg-neutral-800 border border-neutral-700 rounded-lg text-xs font-bold transition-colors cursor-pointer whitespace-nowrap shrink-0"
                         title="Back to Hub"
                     >
                         <span>⬅️</span>
-                        <span className="hidden sm:inline">Hub</span>
+                        <span className="hidden min-[380px]:inline">Hub</span>
                     </button>
 
-                    <div className="flex flex-col items-center">
-                        <h1 className="text-base sm:text-lg md:text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-fuchsia-400 to-purple-500 tracking-wide">
-                            ANGLE ESTIMATE
+                    <div className="flex flex-col items-center min-w-0">
+                        <h1 className="text-xs sm:text-base md:text-lg font-black text-transparent bg-clip-text bg-gradient-to-r from-fuchsia-400 to-purple-500 tracking-wide whitespace-nowrap truncate">
+                            <span className="hidden sm:inline">ANGLE ESTIMATE</span>
+                            <span className="sm:hidden">ANGLE</span>
                         </h1>
                     </div>
 
-                    <div className="flex items-center gap-1.5">
-                        <div className="text-[11px] sm:text-xs font-bold text-neutral-400 bg-neutral-900 px-2 py-0.5 rounded-lg border border-neutral-800">
+                    <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
+                        <div className="text-[11px] sm:text-xs font-bold text-neutral-400 bg-neutral-900 px-1.5 sm:px-2 py-0.5 rounded-lg border border-neutral-800 whitespace-nowrap shrink-0">
                             🔥 <span className="text-amber-400 font-mono">{streak}</span>
                         </div>
                         {isMobile && (

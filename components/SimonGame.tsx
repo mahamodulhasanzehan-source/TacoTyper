@@ -283,36 +283,37 @@ export default function SimonGame({ onBackToHub, user, username }: SimonGameProp
   return (
     <div className="flex flex-col h-full w-full bg-[#07090e] text-white select-none overflow-hidden font-sans">
       {/* Top Header */}
-      <header className="flex items-center justify-between px-3 sm:px-6 py-2.5 bg-[#0b0e17] border-b border-neutral-800 shrink-0">
-        <div className="flex items-center gap-3">
+      <header className="flex items-center justify-between px-2 sm:px-4 py-1.5 sm:py-2 bg-[#0b0e17] border-b border-neutral-800 shrink-0 w-full overflow-hidden gap-1.5 sm:gap-3">
+        <div className="flex items-center gap-1.5 sm:gap-2.5 min-w-0 shrink">
           <button
             onClick={onBackToHub}
-            className="px-3 py-1.5 rounded-full bg-neutral-900 hover:bg-neutral-800 text-xs sm:text-sm font-bold transition-all text-neutral-300 hover:text-white flex items-center gap-1.5 border border-neutral-700 active:scale-95 shadow-md cursor-pointer"
+            className="px-2 sm:px-2.5 py-1 rounded-full bg-neutral-900 hover:bg-neutral-800 text-xs font-bold transition-all text-neutral-300 hover:text-white flex items-center gap-1 border border-neutral-700 active:scale-95 shadow-md cursor-pointer whitespace-nowrap shrink-0"
           >
             <span>←</span>
-            <span>Hub</span>
+            <span className="hidden sm:inline">Hub</span>
           </button>
-          <div className="flex items-center gap-2">
-            <span className="text-xl">⭕</span>
-            <h1 className="text-sm sm:text-base font-black text-amber-400 tracking-wide uppercase">Simon</h1>
+          <div className="flex items-center gap-1 min-w-0">
+            <span className="text-sm sm:text-base shrink-0">⭕</span>
+            <h1 className="text-xs sm:text-sm font-black text-amber-400 tracking-wide uppercase truncate">Simon</h1>
           </div>
         </div>
 
-        <div className="flex items-center gap-3 sm:gap-6">
+        <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
           <button
             onClick={() => setSoundEnabled(s => !s)}
-            className="px-2.5 py-1 bg-neutral-900 hover:bg-neutral-800 border border-neutral-700 text-xs rounded-lg text-neutral-300 transition-colors cursor-pointer"
+            className="p-1 sm:px-2 sm:py-1 bg-neutral-900 hover:bg-neutral-800 border border-neutral-700 text-xs rounded-lg text-neutral-300 transition-colors cursor-pointer whitespace-nowrap shrink-0 flex items-center gap-1"
             title="Toggle Sound"
           >
-            {soundEnabled ? '🔊 Sound ON' : '🔇 Muted'}
+            <span>{soundEnabled ? '🔊' : '🔇'}</span>
+            <span className="hidden md:inline text-[11px] font-semibold">{soundEnabled ? 'Sound ON' : 'Muted'}</span>
           </button>
-          <div className="text-right">
-            <div className="text-[10px] sm:text-xs text-neutral-400 uppercase font-semibold">Score</div>
-            <div className="text-sm sm:text-lg font-black text-emerald-400 font-mono">{score}</div>
+          <div className="text-right whitespace-nowrap px-0.5 sm:px-1">
+            <div className="text-[8px] sm:text-[10px] text-neutral-400 uppercase font-semibold leading-none">Score</div>
+            <div className="text-xs sm:text-sm font-black text-emerald-400 font-mono leading-tight">{score}</div>
           </div>
-          <div className="text-right border-l border-neutral-800 pl-3">
-            <div className="text-[10px] sm:text-xs text-neutral-400 uppercase font-semibold">High</div>
-            <div className="text-sm sm:text-lg font-black text-amber-400 font-mono">{highScore}</div>
+          <div className="text-right border-l border-neutral-800 pl-1.5 sm:pl-2 whitespace-nowrap">
+            <div className="text-[8px] sm:text-[10px] text-neutral-400 uppercase font-semibold leading-none">High</div>
+            <div className="text-xs sm:text-sm font-black text-amber-400 font-mono leading-tight">{highScore}</div>
           </div>
           {isMobile && (
             <MobileLeaderboardButton onClick={() => setShowMobileLeaderboard(true)} />

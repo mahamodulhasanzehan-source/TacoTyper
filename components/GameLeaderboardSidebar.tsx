@@ -20,7 +20,7 @@ export const MobileLeaderboardButton: React.FC<{
 }> = ({ onClick, className = '' }) => (
   <button
     onClick={onClick}
-    className={`h-7 px-2.5 bg-[#f4b400] text-black border border-white hover:bg-yellow-400 font-bold text-xs rounded-lg shadow-sm active:scale-95 inline-flex items-center justify-center gap-1.5 cursor-pointer font-sans shrink-0 transition-transform ${className}`}
+    className={`h-7 px-1.5 sm:px-2.5 bg-[#f4b400] text-black border border-white hover:bg-yellow-400 font-bold text-xs rounded-lg shadow-sm active:scale-95 inline-flex items-center justify-center gap-1 cursor-pointer font-sans shrink-0 transition-transform whitespace-nowrap ${className}`}
     title="Open Leaderboard"
     onPointerDown={e => e.stopPropagation()}
   >
@@ -32,7 +32,7 @@ export const MobileLeaderboardButton: React.FC<{
       <path d="M14 14.66V17c0 .55.45 1 1 1h2"></path>
       <path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"></path>
     </svg>
-    <span className="text-[10px] font-black">RANK</span>
+    <span className="hidden sm:inline text-[10px] font-black leading-none">RANK</span>
   </button>
 );
 

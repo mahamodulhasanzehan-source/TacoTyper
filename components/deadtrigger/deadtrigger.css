@@ -1,0 +1,327 @@
+.dt-root {
+    --bg-color: #060706;
+    --ui-panel-bg: rgba(10, 12, 10, 0.94);
+    --ui-border: 1px solid rgba(170, 0, 0, 0.45);
+    --neon-accent: #39ff14;
+    --blood-red: #ff2525;
+    --warn-orange: #ff6a00;
+    --text-main: #f0f4f0;
+    --text-muted: #7d8a83;
+}
+
+#crosshair {
+    position: absolute; top: 50%; left: 50%; width: 12px; height: 12px;
+    transform: translate(-50%, -50%); z-index: 10; pointer-events: none;
+    transition: opacity 0.2s;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+}
+#crosshair::before, #crosshair::after {
+    content: ''; position: absolute; background: rgba(0, 255, 157, 0.8); box-shadow: 0 0 5px var(--neon-accent, #39ff14);
+}
+#crosshair::before { top: 5px; left: 0; width: 12px; height: 2px; }
+#crosshair::after { top: 0; left: 5px; width: 2px; height: 12px; }
+
+#scopeOverlay {
+    position: absolute; top: 0; left: 0; width: 100vw; height: 100vh;
+    pointer-events: none; display: none; z-index: 15;
+    background: radial-gradient(circle, transparent 20%, rgba(0,0,0,0.95) 60%, black 100%);
+}
+
+.sniper-scope {
+    position: absolute; top: 0; left: 0; width: 100vw; height: 100vh;
+    pointer-events: none; display: none; z-index: 15;
+}
+
+.scope-vignette {
+    position: absolute; top: 0; left: 0; width: 100vw; height: 100vh;
+    background: radial-gradient(circle, transparent 15%, rgba(0,0,0,0.9) 45%, black 100%);
+}
+
+.scope-vignette.blue-tint {
+    background: radial-gradient(circle, rgba(0, 100, 255, 0.05) 15%, rgba(0,0,0,0.9) 45%, black 100%);
+}
+
+.scope-vignette.brown-tint {
+    background: radial-gradient(circle, rgba(139, 90, 43, 0.1) 15%, rgba(0,0,0,0.9) 45%, black 100%);
+}
+
+.scope-markings {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    width: 600px; height: 600px;
+}
+
+.scope-markings.green { --scope-color: #39ff14; }
+.scope-markings.blue { --scope-color: #00d2ff; }
+.scope-markings.brown { --scope-color: #dcb484; }
+.scope-markings.brown .reticle-horizontal::before {
+    content: ''; position: absolute; top: 50%; width: 40px; height: 10px; background: var(--scope-color);
+    left: 20%; transform: translateY(-50%); border-radius: 2px;
+}
+.scope-markings.brown .reticle-horizontal::after {
+    content: ''; position: absolute; top: 50%; width: 40px; height: 10px; background: var(--scope-color);
+    right: 20%; transform: translateY(-50%); border-radius: 2px;
+}
+.scope-markings.brown .reticle-vertical::before {
+    content: ''; position: absolute; left: 50%; bottom: 20%; width: 10px; height: 40px; background: var(--scope-color);
+    transform: translateX(-50%); border-radius: 2px;
+}
+
+.reticle-center {
+    position: absolute; top: 50%; left: 50%; width: 4px; height: 4px;
+    background: var(--scope-color, #39ff14); border-radius: 50%; transform: translate(-50%, -50%);
+    box-shadow: 0 0 8px var(--scope-color, #39ff14);
+}
+
+.reticle-horizontal {
+    position: absolute; top: 50%; left: 0; width: 100%; height: 2px;
+    background: linear-gradient(to right, transparent, var(--scope-color, #39ff14) 45%, var(--scope-color, #39ff14) 55%, transparent);
+    transform: translateY(-50%); opacity: 0.8;
+}
+
+.reticle-vertical {
+    position: absolute; left: 50%; top: 0; width: 2px; height: 100%;
+    background: linear-gradient(to bottom, transparent, var(--scope-color, #39ff14) 45%, var(--scope-color, #39ff14) 55%, transparent);
+    transform: translateX(-50%); opacity: 0.8;
+}
+
+.reticle-horizontal.fine, .reticle-vertical.fine { height: 1px; width: 100%; opacity: 0.5; }
+.reticle-vertical.fine { width: 1px; height: 100%; }
+
+.reticle-ring {
+    position: absolute; top: 50%; left: 50%; width: 300px; height: 300px;
+    border: 1px solid var(--scope-color, #39ff14); border-radius: 50%;
+    transform: translate(-50%, -50%); opacity: 0.3;
+}
+
+.reticle-outer-ring {
+    position: absolute; top: 50%; left: 50%; width: 500px; height: 500px;
+    border: 1px dashed var(--scope-color, #39ff14); border-radius: 50%;
+    transform: translate(-50%, -50%); opacity: 0.2;
+}
+
+.reticle-crosshair-lines {
+    position: absolute; top: 50%; left: 50%; width: 100%; height: 100%;
+    transform: translate(-50%, -50%);
+}
+.reticle-crosshair-lines::before {
+    content: ''; position: absolute; top: 50%; left: 0; width: 100%; height: 4px;
+    background: linear-gradient(to right, transparent, var(--scope-color, #39ff14) 40%, var(--scope-color, #39ff14) 60%, transparent);
+    transform: translateY(-50%); opacity: 0.7;
+}
+.reticle-crosshair-lines::after {
+    content: ''; position: absolute; left: 50%; top: 0; width: 4px; height: 100%;
+    background: linear-gradient(to bottom, transparent, var(--scope-color, #39ff14) 40%, var(--scope-color, #39ff14) 60%, transparent);
+    transform: translateX(-50%); opacity: 0.7;
+}
+
+.scope-line { position: absolute; background: black; box-shadow: 0 0 10px rgba(0, 255, 157, 0.5); }
+.scope-line.horizontal { top: 50%; left: 0; width: 100%; height: 2px; transform: translateY(-50%); }
+.scope-line.vertical { top: 0; left: 50%; width: 2px; height: 100%; transform: translateX(-50%); }
+.scope-circle {
+    position: absolute; top: 50%; left: 50%; width: 400px; height: 400px;
+    transform: translate(-50%, -50%); border: 3px solid black; border-radius: 50%;
+}
+
+.interaction-prompt {
+    position: absolute;
+    bottom: 22%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: linear-gradient(180deg, rgba(8, 12, 8, 0.96), rgba(2, 3, 2, 0.98));
+    padding: 16px 36px;
+    border-radius: 4px;
+    border-left: 3px solid #39ff14;
+    border-right: 3px solid #39ff14;
+    border-top: 1px solid rgba(57, 255, 20, 0.2);
+    border-bottom: 1px solid rgba(57, 255, 20, 0.2);
+    color: #39ff14;
+    font-family: 'Orbitron', monospace;
+    font-weight: 800;
+    font-size: 1rem;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    display: none;
+    pointer-events: none;
+    z-index: 50;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.8), 0 0 20px rgba(57, 255, 20, 0.15);
+}
+
+.modal-overlay {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100vw; height: 100vh;
+    background: rgba(4, 5, 4, 0.85);
+    backdrop-filter: blur(8px);
+    z-index: 100;
+    display: none;
+    justify-content: center;
+    align-items: center;
+}
+.modal-window {
+    background: linear-gradient(180deg, rgba(12, 14, 12, 0.97) 0%, rgba(5, 6, 5, 0.99) 100%);
+    border: 2px solid rgba(170, 0, 0, 0.5);
+    border-top: 4px solid #ff2525;
+    border-radius: 6px;
+    padding: 28px;
+    width: 1350px;
+    max-width: 96%;
+    max-height: 88vh;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    box-shadow: 0 20px 80px rgba(0, 0, 0, 0.95), 0 0 30px rgba(170, 0, 0, 0.15);
+}
+.modal-header {
+    font-family: 'Creepster', cursive;
+    font-size: 2.7rem;
+    color: #ff2525;
+    letter-spacing: 4px;
+    text-align: center;
+    border-bottom: 1px solid rgba(170, 0, 0, 0.25);
+    padding-bottom: 12px;
+    margin-bottom: 8px;
+    text-shadow: 0 0 15px rgba(255, 37, 37, 0.3);
+}
+.armory-layout {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    gap: 12px;
+    justify-content: space-between;
+    overflow-x: auto;
+    padding-bottom: 12px;
+}
+.armory-column {
+    flex: 1;
+    min-width: 180px;
+    background: rgba(0, 0, 0, 0.6);
+    border-radius: 6px;
+    padding: 12px;
+    border: 1px solid rgba(125, 138, 131, 0.15);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+.column-title {
+    color: #ff6a00;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.25rem;
+    letter-spacing: 1.5px;
+    text-align: center;
+    margin-bottom: 4px;
+    border-bottom: 1px solid rgba(255, 106, 0, 0.2);
+    padding-bottom: 5px;
+}
+
+.weapon-btn {
+    background: linear-gradient(180deg, rgba(8, 8, 8, 0.9), rgba(2, 2, 2, 0.95));
+    border: 1px solid rgba(170, 0, 0, 0.25);
+    border-radius: 4px;
+    padding: 12px;
+    cursor: pointer;
+    transition: all 0.25s cubic-bezier(0.165, 0.84, 0.44, 1);
+    position: relative;
+    overflow: hidden;
+    box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.6);
+}
+.weapon-btn:hover {
+    background: linear-gradient(180deg, rgba(22, 6, 6, 0.95), rgba(8, 2, 2, 0.98));
+    border-color: #ff2525;
+    box-shadow: 0 0 15px rgba(255, 37, 37, 0.25), inset 0 0 5px rgba(0,0,0,0.8);
+    transform: scale(1.025);
+}
+.weapon-btn.active {
+    background: rgba(10, 10, 10, 0.7);
+    border-color: #444;
+}
+.weapon-btn.active-equipped {
+    background: linear-gradient(180deg, rgba(15, 45, 15, 0.45), rgba(4, 15, 4, 0.55));
+    border-color: #39ff14;
+    box-shadow: 0 0 12px rgba(57, 255, 20, 0.2), inset 0 0 8px rgba(57, 255, 20, 0.1);
+}
+
+.weapon-btn-name {
+    display: block;
+    color: #ffffff;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.35rem;
+    font-weight: 500;
+    letter-spacing: 1px;
+    margin-bottom: 2px;
+}
+.weapon-btn-stats {
+    display: block;
+    color: #7d8a83;
+    font-size: 0.72rem;
+    font-family: 'Orbitron', monospace;
+    letter-spacing: 0.5px;
+    margin-top: 4px;
+}
+
+.controls-help {
+    position: absolute;
+    bottom: 15px;
+    left: 15px;
+    font-family: 'Orbitron', monospace;
+    font-size: 11px;
+    letter-spacing: 0.5px;
+    line-height: 1.5;
+    color: #a4b2a4;
+    background: rgba(4, 6, 4, 0.85);
+    border-left: 3px solid #ff2525;
+    padding: 10px 16px;
+    border-radius: 4px;
+    pointer-events: none;
+    z-index: 20;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.8);
+    transition: opacity 0.4s ease-in-out, visibility 0.4s;
+}
+
+.controls-help.hidden {
+    opacity: 0;
+    visibility: hidden;
+}
+
+.controls-trigger-tip {
+    position: absolute;
+    bottom: 15px;
+    right: 15px;
+    font-family: 'Orbitron', monospace;
+    font-size: 13px;
+    font-weight: bold;
+    color: #39ff14;
+    background: rgba(4, 6, 4, 0.85);
+    border: 1px solid rgba(57, 255, 20, 0.4);
+    border-radius: 50%;
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: auto;
+    cursor: pointer;
+    z-index: 20;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.8);
+    transition: opacity 0.4s ease-in-out, visibility 0.4s, transform 0.2s, border-color 0.2s;
+    user-select: none;
+}
+.controls-trigger-tip:hover {
+    transform: scale(1.15);
+    border-color: #39ff14;
+    box-shadow: 0 0 10px rgba(57, 255, 20, 0.5);
+}
+
+.controls-trigger-tip.hidden {
+    opacity: 0;
+    visibility: hidden;
+}
+
+.armory-layout::-webkit-scrollbar { height: 8px; }
+.armory-layout::-webkit-scrollbar-track { background: rgba(0,0,0,0.4); border-radius: 4px; }
+.armory-layout::-webkit-scrollbar-thumb { background: rgba(170, 0, 0, 0.35); border-radius: 4px; }
+.armory-layout::-webkit-scrollbar-thumb:hover { background: rgba(255, 37, 37, 0.6); }
+
+#survHealthBar { transition: width 0.2s ease-out; }

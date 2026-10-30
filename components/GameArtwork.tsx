@@ -730,10 +730,10 @@ export const GameArtwork: React.FC<GameArtworkProps> = ({ id, color }) => {
           ))}
 
           {/* Digital Reaction Time Readout */}
-          <text x="50" y="52" fill="#4ade80" fontSize="13" fontWeight="900" textAnchor="middle" font-family="monospace">
+          <text x="50" y="52" fill="#4ade80" fontSize="13" fontWeight="900" textAnchor="middle" fontFamily="monospace">
             215
           </text>
-          <text x="50" y="63" fill="#86efac" fontSize="8" fontWeight="800" textAnchor="middle" font-family="monospace">
+          <text x="50" y="63" fill="#86efac" fontSize="8" fontWeight="800" textAnchor="middle" fontFamily="monospace">
             MS
           </text>
 
@@ -745,6 +745,38 @@ export const GameArtwork: React.FC<GameArtworkProps> = ({ id, color }) => {
             strokeWidth="0.8"
             className="filter drop-shadow-[0_0_6px_#fde047]"
           />
+        </svg>
+      );
+
+    case 'dead-trigger':
+      return (
+        <svg viewBox="0 0 100 100" className="w-full h-full p-2">
+          {/* Apocalyptic dark biohazard shield */}
+          <rect x="8" y="8" width="84" height="84" rx="14" fill="#0d0202" stroke="#ef4444" strokeWidth="2.5" />
+          
+          {/* Tactical Crosshair Rings */}
+          <circle cx="50" cy="50" r="28" fill="none" stroke="#ef4444" strokeWidth="1.8" strokeDasharray="4 3" opacity="0.8" />
+          <circle cx="50" cy="50" r="16" fill="none" stroke="#22c55e" strokeWidth="1.5" />
+          <line x1="50" y1="14" x2="50" y2="30" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" />
+          <line x1="50" y1="70" x2="50" y2="86" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" />
+          <line x1="14" y1="50" x2="30" y2="50" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" />
+          <line x1="70" y1="50" x2="86" y2="50" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" />
+
+          {/* Biohazard / Skull Silhouette */}
+          <circle cx="50" cy="46" r="9" fill="#ef4444" />
+          <rect x="44" y="52" width="12" height="7" rx="2" fill="#ef4444" />
+          {/* Glowing Zombie Eyes */}
+          <circle cx="46.5" cy="45" r="2.2" fill="#22c55e" />
+          <circle cx="53.5" cy="45" r="2.2" fill="#22c55e" />
+          {/* Skull Teeth */}
+          <line x1="47" y1="55" x2="47" y2="58" stroke="#0d0202" strokeWidth="1.2" strokeLinecap="round" />
+          <line x1="50" y1="55" x2="50" y2="58" stroke="#0d0202" strokeWidth="1.2" strokeLinecap="round" />
+          <line x1="53" y1="55" x2="53" y2="58" stroke="#0d0202" strokeWidth="1.2" strokeLinecap="round" />
+
+          {/* Blood Splatter Drops */}
+          <circle cx="28" cy="26" r="3.2" fill="#dc2626" />
+          <circle cx="34" cy="22" r="1.8" fill="#dc2626" />
+          <circle cx="72" cy="74" r="2.8" fill="#dc2626" />
         </svg>
       );
 

@@ -34,6 +34,7 @@ import TowerStackerGame from './TowerStackerGame';
 import TetrisGame from './TetrisGame';
 import ChessGame from './ChessGame';
 import ReactionTimeGame from './ReactionTimeGame';
+import DeadTriggerGame from './DeadTriggerGame';
 
 interface GameProps {
   user: User;
@@ -48,7 +49,7 @@ const VALID_APPS: AppId[] = [
   'spelling-bee', 'tic-tac-toe', 'connect-4', 'color-memory', 
   'particle-physics', 'fruit-merge', 'checkers', 'dots-and-boxes',
   'snake', 'brick-breaker', 'game-2048', 'ultimate-tictactoe', 'simon',
-  'quick-draw', 'finger-sumo', 'pong', 'knife-flip', 'reversi', 'battleship', 'nim', 'tower-stacker', 'tetris', 'chess', 'reaction-time'
+  'quick-draw', 'finger-sumo', 'pong', 'knife-flip', 'reversi', 'battleship', 'nim', 'tower-stacker', 'tetris', 'chess', 'reaction-time', 'dead-trigger'
 ];
 
 export default function Game({ 
@@ -439,6 +440,14 @@ export default function Game({
       case 'reaction-time':
         return (
           <ReactionTimeGame 
+            onBackToHub={handleBackToHub}
+            user={user}
+            username={customUsername}
+          />
+        );
+      case 'dead-trigger':
+        return (
+          <DeadTriggerGame 
             onBackToHub={handleBackToHub}
             user={user}
             username={customUsername}

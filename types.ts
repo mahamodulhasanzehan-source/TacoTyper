@@ -106,7 +106,8 @@ export type AppId =
   | 'tower-stacker'
   | 'tetris'
   | 'chess'
-  | 'reaction-time';
+  | 'reaction-time'
+  | 'dead-trigger';
 
 export type ActiveApp = 
   | 'hub'
@@ -138,7 +139,8 @@ export type ActiveApp =
   | 'tower-stacker'
   | 'tetris'
   | 'chess'
-  | 'reaction-time';
+  | 'reaction-time'
+  | 'dead-trigger';
 
 export interface GlobalGameStats {
   taco_typer_plays: number;
@@ -172,4 +174,5 @@ export interface GlobalGameStats {
   tetris_plays?: number;
   chess_plays?: number;
   reaction_time_plays?: number;
+  dead_trigger_plays?: number;
 }

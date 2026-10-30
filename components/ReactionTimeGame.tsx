@@ -23,6 +23,8 @@ export default function ReactionTimeGame({ onBackToHub, user, username }: Reacti
   const [isMobile, setIsMobile] = useState(false);
   const [showMobileLeaderboard, setShowMobileLeaderboard] = useState(false);
 
+  const [liveMs, setLiveMs] = useState(0);
+  const liveAnimRef = useRef<number | null>(null);
   const greenTimestampRef = useRef<number | null>(null);
   const timerTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -34,9 +36,36 @@ export default function ReactionTimeGame({ onBackToHub, user, username }: Reacti
   }, []);
 
   useEffect(() => {
+    if (state === 'ready') {
+      const updateLive = () => {
+        if (greenTimestampRef.current) {
+          setLiveMs(Math.round(performance.now() - greenTimestampRef.current));
+        }
+        liveAnimRef.current = requestAnimationFrame(updateLive);
+      };
+      liveAnimRef.current = requestAnimationFrame(updateLive);
+    } else {
+      if (liveAnimRef.current) {
+        cancelAnimationFrame(liveAnimRef.current);
+        liveAnimRef.current = null;
+      }
+      if (state === 'waiting' || state === 'idle') {
+        setLiveMs(0);
+      }
+    }
+    return () => {
+      if (liveAnimRef.current) {
+        cancelAnimationFrame(liveAnimRef.current);
+        liveAnimRef.current = null;
+      }
+    };
+  }, [state]);
+
+  useEffect(() => {
     incrementGamePlays('reaction_time');
     return () => {
       if (timerTimeoutRef.current) clearTimeout(timerTimeoutRef.current);
+      if (liveAnimRef.current) cancelAnimationFrame(liveAnimRef.current);
     };
   }, []);
 
@@ -45,10 +74,15 @@ export default function ReactionTimeGame({ onBackToHub, user, username }: Reacti
       clearTimeout(timerTimeoutRef.current);
       timerTimeoutRef.current = null;
     }
+    if (liveAnimRef.current) {
+      cancelAnimationFrame(liveAnimRef.current);
+      liveAnimRef.current = null;
+    }
   };
 
   const startTest = useCallback(() => {
     clearTimer();
+    setLiveMs(0);
     setState('waiting');
     setReactionTime(null);
     audioService.playSound('tile_click');
@@ -150,29 +184,29 @@ export default function ReactionTimeGame({ onBackToHub, user, username }: Reacti
       <div className="flex-1 h-full flex flex-col justify-between relative overflow-hidden min-w-0">
         {/* Header Bar */}
         <header
-          className="flex items-center justify-between px-3 py-2 bg-neutral-900/90 border-b border-neutral-800 z-20 shrink-0 backdrop-blur-md"
+          className="flex items-center justify-between px-2 sm:px-4 py-1.5 sm:py-2 bg-neutral-900/90 border-b border-neutral-800 z-20 shrink-0 backdrop-blur-md w-full overflow-hidden gap-1.5 sm:gap-3"
           onClick={e => e.stopPropagation()}
         >
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink min-w-0">
             <button
               onClick={onBackToHub}
-              className="px-2.5 py-1 bg-neutral-800 hover:bg-neutral-700 text-xs font-bold rounded-lg border border-neutral-700 text-neutral-300 transition-transform active:scale-95"
+              className="px-2 sm:px-2.5 py-1 bg-neutral-800 hover:bg-neutral-700 text-xs font-bold rounded-lg border border-neutral-700 text-neutral-300 transition-transform active:scale-95 whitespace-nowrap shrink-0"
             >
-              ← Hub
+              ← <span className="hidden sm:inline">Hub</span>
             </button>
-            <div>
-              <h1 className="text-sm sm:text-base font-black tracking-wide text-emerald-400">
+            <div className="min-w-0">
+              <h1 className="text-xs sm:text-base font-black tracking-wide text-emerald-400 truncate">
                 REACTION TIME
               </h1>
-              <span className="text-[9px] text-neutral-400 font-mono hidden sm:inline">
+              <span className="text-[9px] text-neutral-400 font-mono hidden md:inline">
                 CLASSIC GREEN SCREEN REFLEX TEST
               </span>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <div className="flex items-center gap-2 text-xs font-mono font-bold bg-neutral-950 px-2.5 py-1 rounded-lg border border-neutral-800">
-              <span className="text-neutral-400 text-[10px]">BEST:</span>
+          <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+            <div className="flex items-center gap-1 sm:gap-2 text-xs font-mono font-bold bg-neutral-950 px-2 sm:px-2.5 py-1 rounded-lg border border-neutral-800 whitespace-nowrap shrink-0">
+              <span className="text-neutral-400 text-[9px] sm:text-[10px]">BEST:</span>
               <span className="text-emerald-400">{bestReaction !== null ? `${bestReaction}ms` : '--'}</span>
             </div>
 
@@ -182,9 +216,10 @@ export default function ReactionTimeGame({ onBackToHub, user, username }: Reacti
                 setState('idle');
                 setReactionTime(null);
               }}
-              className="px-2.5 py-1 bg-neutral-800 hover:bg-neutral-700 text-xs font-bold rounded-lg border border-neutral-700 text-neutral-300 active:scale-95 transition-transform"
+              className="p-1 sm:px-2.5 sm:py-1 bg-neutral-800 hover:bg-neutral-700 text-xs font-bold rounded-lg border border-neutral-700 text-neutral-300 active:scale-95 transition-transform whitespace-nowrap"
             >
-              Reset
+              <span className="hidden sm:inline">Reset</span>
+              <span className="sm:hidden">↺</span>
             </button>
 
             {isMobile && (
@@ -225,11 +260,15 @@ export default function ReactionTimeGame({ onBackToHub, user, username }: Reacti
           )}
 
           {state === 'ready' && (
-            <div className="flex flex-col items-center gap-2 animate-bounce">
-              <div className="text-5xl sm:text-7xl mb-1">🟢</div>
-              <h2 className="text-6xl sm:text-8xl font-black text-white tracking-widest drop-shadow-[0_4px_24px_rgba(0,0,0,0.6)]">
+            <div className="flex flex-col items-center gap-2">
+              <div className="text-5xl sm:text-7xl mb-1 animate-pulse">🟢</div>
+              <h2 className="text-5xl sm:text-7xl font-black text-white tracking-widest drop-shadow-[0_4px_24px_rgba(0,0,0,0.6)]">
                 CLICK!
               </h2>
+              {/* MS timer in the middle of the screen */}
+              <div className="my-2 text-6xl sm:text-8xl font-black font-mono text-yellow-300 drop-shadow-[0_4px_20px_rgba(0,0,0,0.6)] tracking-tight">
+                {liveMs} <span className="text-3xl sm:text-4xl text-emerald-100">ms</span>
+              </div>
               <p className="text-sm sm:text-base text-green-100 font-bold tracking-wide">
                 Tap anywhere as fast as you can!
               </p>

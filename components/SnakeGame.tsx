@@ -666,29 +666,29 @@ export default function SnakeGame({ onBackToHub, user, username }: SnakeGameProp
   return (
     <div className="flex flex-col h-full w-full bg-[#06080d] text-white select-none overflow-hidden font-sans">
       {/* Top Header Bar */}
-      <header className="flex items-center justify-between px-3 sm:px-5 py-2.5 bg-[#0b0e17] border-b border-neutral-800 shrink-0">
-        <div className="flex items-center gap-3">
+      <header className="flex items-center justify-between px-2 sm:px-5 py-2 bg-[#0b0e17] border-b border-neutral-800 shrink-0 w-full overflow-hidden gap-1.5 sm:gap-3">
+        <div className="flex items-center gap-1.5 sm:gap-2.5 min-w-0 shrink">
           <button
             onClick={onBackToHub}
-            className="px-3 py-1.5 rounded-full bg-neutral-900 hover:bg-neutral-800 text-xs sm:text-sm font-bold transition-all text-neutral-300 hover:text-white flex items-center gap-1.5 border border-neutral-700 active:scale-95 shadow-md cursor-pointer"
+            className="px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full bg-neutral-900 hover:bg-neutral-800 text-xs sm:text-sm font-bold transition-all text-neutral-300 hover:text-white flex items-center gap-1 border border-neutral-700 active:scale-95 shadow-md cursor-pointer whitespace-nowrap shrink-0"
           >
             <span>←</span>
-            <span>Hub</span>
+            <span className="hidden min-[380px]:inline">Hub</span>
           </button>
-          <div className="flex items-center gap-2">
-            <span className="text-xl">🐍</span>
-            <h1 className="text-sm sm:text-base font-black text-emerald-400 tracking-wide">Snake</h1>
+          <div className="flex items-center gap-1.5 min-w-0">
+            <span className="text-base sm:text-xl shrink-0">🐍</span>
+            <h1 className="text-xs sm:text-base font-black text-emerald-400 tracking-wide whitespace-nowrap truncate">Snake</h1>
           </div>
         </div>
 
-        <div className="flex items-center gap-3 sm:gap-6">
-          <div className="text-right">
-            <div className="text-[10px] sm:text-xs text-neutral-400 uppercase font-semibold">Score</div>
-            <div className="text-sm sm:text-lg font-black text-emerald-400 font-mono">{score}</div>
+        <div className="flex items-center gap-2 sm:gap-4 shrink-0">
+          <div className="text-right whitespace-nowrap">
+            <div className="text-[9px] sm:text-[10px] text-neutral-400 uppercase font-semibold leading-tight">Score</div>
+            <div className="text-xs sm:text-base font-black text-emerald-400 font-mono leading-tight">{score}</div>
           </div>
-          <div className="text-right border-l border-neutral-800 pl-3">
-            <div className="text-[10px] sm:text-xs text-neutral-400 uppercase font-semibold">High</div>
-            <div className="text-sm sm:text-lg font-black text-amber-400 font-mono">{highScore}</div>
+          <div className="text-right border-l border-neutral-800 pl-1.5 sm:pl-3 whitespace-nowrap">
+            <div className="text-[9px] sm:text-[10px] text-neutral-400 uppercase font-semibold leading-tight">High</div>
+            <div className="text-xs sm:text-base font-black text-amber-400 font-mono leading-tight">{highScore}</div>
           </div>
           {isMobile && (
             <MobileLeaderboardButton onClick={() => setShowMobileLeaderboard(true)} />

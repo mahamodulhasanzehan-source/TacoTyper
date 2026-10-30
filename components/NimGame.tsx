@@ -200,59 +200,66 @@ export default function NimGame({ onBackToHub, user, username }: NimProps) {
 
   return (
     <div className="w-full h-screen flex flex-col bg-[#0b0c10] text-white select-none overflow-hidden font-sans">
-      <header className="flex items-center justify-between px-3 py-2 bg-neutral-900/90 border-b border-neutral-800 z-20 shrink-0">
-        <div className="flex items-center gap-2">
+      <header className="flex items-center justify-between px-2 sm:px-4 py-1.5 sm:py-2 bg-neutral-900/95 border-b border-neutral-800 z-20 shrink-0 w-full overflow-hidden gap-1 sm:gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 shrink">
           <button
             onClick={onBackToHub}
-            className="px-2.5 py-1 bg-neutral-800 hover:bg-neutral-700 text-xs font-bold rounded-lg border border-neutral-700 text-neutral-300"
+            className="px-2 sm:px-2.5 py-1 bg-neutral-800 hover:bg-neutral-700 text-xs font-bold rounded-lg border border-neutral-700 text-neutral-300 whitespace-nowrap shrink-0 flex items-center gap-1"
           >
-            ← Hub
+            <span>←</span>
+            <span className="hidden sm:inline">Hub</span>
           </button>
-          <div>
-            <h1 className="text-sm sm:text-base font-black tracking-wide text-amber-400">NIM</h1>
-            <span className="text-[9px] text-neutral-400 font-mono hidden sm:inline">PYRAMID MATCHSTICKS (1-3-5-7)</span>
+          <div className="min-w-0 flex items-center gap-1">
+            <span className="text-sm shrink-0">🥢</span>
+            <h1 className="text-xs sm:text-sm font-black tracking-wide text-amber-400 truncate">NIM</h1>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
           {/* Misere Toggle */}
           <button
             onClick={() => { setIsMisere(!isMisere); resetGame(); }}
-            className={`px-2 py-0.5 text-[10px] sm:text-xs font-bold rounded border ${
+            className={`px-1.5 sm:px-2 py-0.5 sm:py-1 text-[10px] sm:text-xs font-bold rounded-lg border whitespace-nowrap shrink-0 cursor-pointer ${
               isMisere
                 ? 'bg-amber-500/20 border-amber-400 text-amber-300'
                 : 'bg-neutral-800 border-neutral-700 text-neutral-400'
             }`}
+            title={isMisere ? 'Misère: Last stick taken loses' : 'Normal: Last stick taken wins'}
           >
-            {isMisere ? 'Misère (Last Loses)' : 'Normal (Last Wins)'}
+            <span className="hidden lg:inline">{isMisere ? 'Misère (Last Loses)' : 'Normal (Last Wins)'}</span>
+            <span className="hidden md:inline lg:hidden">{isMisere ? 'Misère' : 'Normal'}</span>
+            <span className="md:hidden">{isMisere ? 'Mis' : 'Norm'}</span>
           </button>
 
           {/* Difficulty */}
-          <div className="flex bg-neutral-950 p-0.5 rounded-lg border border-neutral-800">
+          <div className="flex bg-neutral-950 p-0.5 rounded-lg border border-neutral-800 shrink-0">
             {(['easy', 'medium', 'hard'] as Difficulty[]).map(d => (
               <button
                 key={d}
                 onClick={() => { setDifficulty(d); resetGame(); }}
-                className={`px-2 py-0.5 text-[10px] sm:text-xs font-bold rounded capitalize transition-all ${
+                className={`px-1.5 sm:px-2 py-0.5 text-[9px] sm:text-xs font-bold rounded capitalize transition-all whitespace-nowrap cursor-pointer ${
                   difficulty === d
                     ? 'bg-amber-500 text-black shadow'
                     : 'text-neutral-400 hover:text-white'
                 }`}
               >
-                {d}
+                <span className="hidden md:inline">{d}</span>
+                <span className="md:hidden">{d[0].toUpperCase()}</span>
               </button>
             ))}
           </div>
 
-          <div className="text-xs font-bold text-neutral-400 bg-neutral-950 px-2.5 py-1 rounded-lg border border-neutral-800">
+          <div className="text-[10px] sm:text-xs font-bold text-neutral-400 bg-neutral-950 px-1.5 py-0.5 rounded-lg border border-neutral-800 whitespace-nowrap shrink-0">
             🔥 <span className="text-amber-400 font-mono">{streak}</span>
           </div>
 
           <button
             onClick={resetGame}
-            className="px-2.5 py-1 bg-neutral-800 hover:bg-neutral-700 text-xs font-bold rounded-lg border border-neutral-700 text-neutral-300 cursor-pointer"
+            className="p-1 sm:px-2 sm:py-1 bg-neutral-800 hover:bg-neutral-700 text-xs font-bold rounded-lg border border-neutral-700 text-neutral-300 cursor-pointer whitespace-nowrap shrink-0"
+            title="Reset matchsticks"
           >
-            Reset
+            <span className="hidden md:inline">Reset</span>
+            <span className="md:hidden">↺</span>
           </button>
 
           {isMobile && (

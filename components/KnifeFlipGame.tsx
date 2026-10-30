@@ -651,51 +651,46 @@ export default function KnifeFlipGame({ onBackToHub, user, username }: KnifeThro
     >
       {/* Header */}
       <header
-        className="flex items-center justify-between px-3 py-2 bg-neutral-900/90 border-b border-neutral-800 z-20 shrink-0"
+        className="flex items-center justify-between px-2 sm:px-4 py-2 bg-neutral-900/95 border-b border-neutral-800 z-20 shrink-0 w-full overflow-hidden gap-1.5 sm:gap-3"
         onPointerDown={e => e.stopPropagation()}
         onClick={e => e.stopPropagation()}
       >
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2.5 min-w-0 shrink">
           <button
             onClick={onBackToHub}
-            className="px-2.5 py-1 bg-neutral-800 hover:bg-neutral-700 text-xs font-bold rounded-lg border border-neutral-700 text-neutral-300"
+            className="px-2 sm:px-2.5 py-1 bg-neutral-800 hover:bg-neutral-700 text-xs font-bold rounded-lg border border-neutral-700 text-neutral-300 whitespace-nowrap shrink-0 flex items-center gap-1 cursor-pointer"
           >
-            ← Hub
+            <span>←</span>
+            <span className="hidden min-[380px]:inline">Hub</span>
           </button>
-          <div>
-            <h1 className="text-sm sm:text-base font-black tracking-wide text-rose-400">KNIFE THROW</h1>
-            <span className="text-[9px] text-neutral-400 font-mono hidden sm:inline">TARGET LOG PRECISION</span>
+          <div className="min-w-0">
+            <h1 className="text-xs sm:text-base font-black tracking-wide text-rose-400 whitespace-nowrap truncate">KNIFE THROW</h1>
           </div>
         </div>
 
-        <div className="flex items-center gap-2 sm:gap-4">
-          <div className="text-right font-mono">
-            <span className="text-[9px] text-neutral-400 uppercase font-semibold block">STAGE</span>
-            <span className="text-sm font-black text-rose-400">{stage}</span>
+        <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
+          <div className="text-right font-mono whitespace-nowrap shrink-0">
+            <span className="text-[9px] text-neutral-400 uppercase font-semibold block leading-tight">STAGE</span>
+            <span className="text-xs sm:text-sm font-black text-rose-400 leading-tight">{stage}</span>
           </div>
-          <div className="text-right font-mono">
-            <span className="text-[9px] text-neutral-400 uppercase font-semibold block">SCORE</span>
-            <span className="text-sm font-black text-white">{score}</span>
+          <div className="text-right font-mono whitespace-nowrap shrink-0">
+            <span className="text-[9px] text-neutral-400 uppercase font-semibold block leading-tight">SCORE</span>
+            <span className="text-xs sm:text-sm font-black text-white leading-tight">{score}</span>
           </div>
-          <div className="text-right font-mono hidden xs:block">
-            <span className="text-[9px] text-neutral-400 uppercase font-semibold block">HIGH</span>
-            <span className="text-sm font-black text-emerald-400">{highScore}</span>
+          <div className="text-right font-mono hidden min-[480px]:block whitespace-nowrap shrink-0">
+            <span className="text-[9px] text-neutral-400 uppercase font-semibold block leading-tight">HIGH</span>
+            <span className="text-xs sm:text-sm font-black text-emerald-400 leading-tight">{highScore}</span>
           </div>
           <button
             onClick={resetGame}
-            className="px-2.5 py-1 bg-neutral-800 hover:bg-neutral-700 text-xs font-bold rounded-lg border border-neutral-700 text-neutral-300 cursor-pointer"
+            className="px-2 py-1 bg-neutral-800 hover:bg-neutral-700 text-xs font-bold rounded-lg border border-neutral-700 text-neutral-300 cursor-pointer whitespace-nowrap shrink-0"
+            title="Reset Game"
           >
-            Reset
+            <span className="hidden sm:inline">Reset</span>
+            <span className="sm:hidden">↺</span>
           </button>
           {isMobile && (
-            <button
-              onClick={() => setShowMobileLeaderboard(true)}
-              className="px-2.5 py-1 bg-[#f4b400] text-black border border-white hover:bg-yellow-400 font-bold text-xs rounded-lg shadow-sm active:scale-95 flex items-center gap-1 cursor-pointer font-sans"
-              title="Open Leaderboard"
-            >
-              <span>🏆</span>
-              <span className="text-[10px] font-black">RANK</span>
-            </button>
+            <MobileLeaderboardButton onClick={() => setShowMobileLeaderboard(true)} />
           )}
         </div>
       </header>

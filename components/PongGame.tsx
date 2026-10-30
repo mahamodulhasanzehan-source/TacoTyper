@@ -369,22 +369,22 @@ export default function PongGame({ onBackToHub, user, username }: PongGameProps)
   return (
     <div className="w-full h-full flex flex-row bg-[#05070d] text-white select-none overflow-hidden font-sans">
       <div className="flex-1 h-full flex flex-col relative overflow-hidden min-w-0">
-        <header className="flex items-center justify-between px-3 py-2 bg-neutral-900/90 border-b border-neutral-800 z-20 shrink-0">
-          <div className="flex items-center gap-2">
+        <header className="flex items-center justify-between px-2 sm:px-4 py-1.5 sm:py-2 bg-neutral-900/90 border-b border-neutral-800 z-20 shrink-0 w-full overflow-hidden gap-1.5 sm:gap-3">
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink min-w-0">
             <button
               onClick={onBackToHub}
-              className="px-2.5 py-1 bg-neutral-800 hover:bg-neutral-700 text-xs font-bold rounded-lg border border-neutral-700 text-neutral-300"
+              className="px-2 sm:px-2.5 py-1 bg-neutral-800 hover:bg-neutral-700 text-xs font-bold rounded-lg border border-neutral-700 text-neutral-300 whitespace-nowrap shrink-0"
             >
-              ← Hub
+              ← <span className="hidden sm:inline">Hub</span>
             </button>
-            <div>
-              <h1 className="text-sm sm:text-base font-black tracking-wide text-cyan-400">PONG 2D</h1>
-              <span className="text-[9px] text-neutral-400 font-mono hidden sm:inline">FIRST TO 7 • TABLE TENNIS</span>
+            <div className="min-w-0">
+              <h1 className="text-xs sm:text-base font-black tracking-wide text-cyan-400 truncate">PONG 2D</h1>
+              <span className="text-[9px] text-neutral-400 font-mono hidden md:inline">FIRST TO 7 • TABLE TENNIS</span>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <div className="flex bg-neutral-950 p-0.5 rounded-lg border border-neutral-800">
+          <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+            <div className="flex bg-neutral-950 p-0.5 rounded-lg border border-neutral-800 shrink-0">
               {(['easy', 'medium', 'hard'] as Difficulty[]).map(d => (
                 <button
                   key={d}
@@ -393,22 +393,24 @@ export default function PongGame({ onBackToHub, user, username }: PongGameProps)
                     if (d !== difficulty) setStreak(0);
                     setDifficulty(d);
                   }}
-                  className={`px-2 py-0.5 text-[10px] sm:text-xs font-bold rounded capitalize transition-all ${
+                  className={`px-1.5 sm:px-2 py-0.5 text-[9px] sm:text-xs font-bold rounded capitalize transition-all ${
                     difficulty === d
                       ? 'bg-cyan-500 text-black shadow font-bold'
                       : 'text-neutral-400 hover:text-white disabled:opacity-50'
                   }`}
                 >
-                  {d}
+                  <span className="hidden md:inline">{d}</span>
+                  <span className="md:hidden">{d[0].toUpperCase()}</span>
                 </button>
               ))}
             </div>
 
             <button
               onClick={startMatch}
-              className="px-2.5 py-1 bg-neutral-800 hover:bg-neutral-700 text-xs font-bold rounded-lg border border-neutral-700 text-neutral-300"
+              className="p-1 sm:px-2.5 sm:py-1 bg-neutral-800 hover:bg-neutral-700 text-xs font-bold rounded-lg border border-neutral-700 text-neutral-300 whitespace-nowrap"
             >
-              {isPlaying ? 'Restart' : 'Play'}
+              <span className="hidden sm:inline">{isPlaying ? 'Restart' : 'Play'}</span>
+              <span className="sm:hidden">{isPlaying ? '↺' : '▶'}</span>
             </button>
 
             {isMobile && (

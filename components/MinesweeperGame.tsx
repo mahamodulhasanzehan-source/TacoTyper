@@ -296,22 +296,23 @@ export default function MinesweeperGame({ user, onBackToHub, username }: Mineswe
 
             <div className="flex-1 h-full flex flex-col min-w-0 overflow-hidden relative">
                 {/* Compact, Uncluttered Top Bar & HUD */}
-                <header className="flex items-center justify-between px-3 py-1.5 bg-neutral-900/95 border-b border-neutral-800 shrink-0 z-20 gap-2 h-12">
+                <header className="flex items-center justify-between px-2 sm:px-3 py-1.5 bg-neutral-900/95 border-b border-neutral-800 shrink-0 z-20 gap-1 sm:gap-2 h-11 sm:h-12 w-full overflow-hidden">
                     {/* Left: Hub Navigation & Game Title */}
-                    <div className="flex items-center gap-2 shrink-0">
+                    <div className="flex items-center gap-1.5 sm:gap-2 shrink min-w-0">
                         <button 
                             onClick={() => {
                                 audioService.playSound('button_click');
                                 onBackToHub();
                             }} 
-                            className="flex items-center gap-1.5 px-2.5 py-1 bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 rounded-lg text-xs font-bold text-neutral-300 transition-colors cursor-pointer"
+                            className="flex items-center gap-1 px-2 sm:px-2.5 py-1 bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 rounded-lg text-xs font-bold text-neutral-300 transition-colors cursor-pointer whitespace-nowrap shrink-0"
                             title="Back to Hub"
                         >
                             <span>⬅️</span>
-                            <span className="hidden sm:inline">Hub</span>
+                            <span className="hidden min-[380px]:inline">Hub</span>
                         </button>
-                        <div className="font-black text-sm sm:text-base tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-red-400 to-amber-500">
-                            MINESWEEPER
+                        <div className="font-black text-xs sm:text-base tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-red-400 to-amber-500 whitespace-nowrap truncate min-w-0">
+                            <span className="hidden md:inline">MINESWEEPER</span>
+                            <span className="md:hidden">MINES</span>
                         </div>
                     </div>
 
@@ -345,11 +346,11 @@ export default function MinesweeperGame({ user, onBackToHub, username }: Mineswe
                     )}
 
                     {/* Right: Quick Difficulty Switcher, Touch Mode Toggle & Mobile Leaderboard */}
-                    <div className="flex items-center gap-1.5 shrink-0">
+                    <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
                         {gameState !== 'menu' && (
                             <>
                                 {/* Fast Difficulty Switcher */}
-                                <div className="hidden sm:flex bg-neutral-950 p-0.5 rounded-lg border border-neutral-800 text-[11px] font-bold">
+                                <div className="hidden md:flex bg-neutral-950 p-0.5 rounded-lg border border-neutral-800 text-[11px] font-bold">
                                     {(['beginner', 'intermediate', 'expert'] as Difficulty[]).map(d => (
                                         <button
                                             key={d}
@@ -371,19 +372,20 @@ export default function MinesweeperGame({ user, onBackToHub, username }: Mineswe
                                         audioService.playSound('button_click');
                                         setTouchMode(prev => prev === 'dig' ? 'flag' : 'dig');
                                     }}
-                                    className={`px-2.5 py-1 rounded-lg text-xs font-bold border transition-colors flex items-center gap-1 ${
+                                    className={`px-1.5 sm:px-2.5 py-1 rounded-lg text-xs font-bold border transition-colors flex items-center gap-1 ${
                                         touchMode === 'flag'
                                             ? 'bg-red-600/30 border-red-500 text-red-300'
                                             : 'bg-neutral-800 border-neutral-700 text-neutral-300'
                                     }`}
                                     title="Toggle Dig / Flag Mode"
                                 >
-                                    <span>{touchMode === 'flag' ? '🚩 Flag' : '⛏️ Dig'}</span>
+                                    <span>{touchMode === 'flag' ? '🚩' : '⛏️'}</span>
+                                    <span className="hidden sm:inline">{touchMode === 'flag' ? 'Flag' : 'Dig'}</span>
                                 </button>
 
                                 <button 
                                     onClick={() => setGameState('menu')}
-                                    className="px-2 py-1 bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 rounded-lg text-xs font-bold text-neutral-400 hover:text-white transition-colors"
+                                    className="px-1.5 sm:px-2 py-1 bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 rounded-lg text-xs font-bold text-neutral-400 hover:text-white transition-colors"
                                 >
                                     Menu
                                 </button>

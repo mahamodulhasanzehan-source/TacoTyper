@@ -512,18 +512,18 @@ export default function CheckersGame({ onBackToHub, user, username }: CheckersGa
     return (
         <div className="flex flex-col h-full w-full bg-[#0a0a0c] text-white font-sans select-none overflow-hidden relative">
             {/* Top Bar - Pinned at top */}
-            <div className="flex justify-between items-center w-full px-3 sm:px-6 py-2 border-b border-neutral-800/80 bg-black/60 backdrop-blur-md shrink-0 z-20">
+            <div className="flex justify-between items-center w-full px-2 sm:px-5 py-1.5 sm:py-2 border-b border-neutral-800/80 bg-black/60 backdrop-blur-md shrink-0 z-20 overflow-hidden gap-1 sm:gap-2">
                 <button
                     onClick={onBackToHub}
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-neutral-900 hover:bg-neutral-800 border border-neutral-700 rounded-full text-xs sm:text-sm font-bold transition-transform hover:scale-105 active:scale-95 shadow-md"
+                    className="flex items-center gap-1 px-2.5 sm:px-3 py-1 sm:py-1.5 bg-neutral-900 hover:bg-neutral-800 border border-neutral-700 rounded-full text-xs sm:text-sm font-bold transition-transform active:scale-95 shadow-md whitespace-nowrap shrink-0"
                     title="Back to Hub"
                 >
                     <span>⬅️</span>
-                    <span className="hidden sm:inline">Hub</span>
+                    <span className="hidden min-[380px]:inline">Hub</span>
                 </button>
 
                 {/* Difficulty Pill Controls */}
-                <div className="flex items-center gap-1 bg-neutral-900/90 border border-neutral-800 p-1 rounded-full">
+                <div className="flex items-center gap-0.5 sm:gap-1 bg-neutral-900/90 border border-neutral-800 p-0.5 sm:p-1 rounded-full shrink-0">
                     {(['easy', 'medium', 'hard'] as Difficulty[]).map(lvl => (
                         <button
                             key={lvl}
@@ -531,7 +531,7 @@ export default function CheckersGame({ onBackToHub, user, username }: CheckersGa
                                 setDifficulty(lvl);
                                 handleRestart();
                             }}
-                            className={`px-2.5 sm:px-3.5 py-1 rounded-full text-[10px] sm:text-xs font-bold capitalize transition-all ${
+                            className={`px-2 sm:px-3 py-0.5 sm:py-1 rounded-full text-[9px] sm:text-xs font-bold capitalize transition-all whitespace-nowrap cursor-pointer ${
                                 difficulty === lvl
                                     ? lvl === 'easy'
                                         ? 'bg-emerald-600 text-white shadow-md'
@@ -541,23 +541,24 @@ export default function CheckersGame({ onBackToHub, user, username }: CheckersGa
                                     : 'text-neutral-400 hover:text-white'
                             }`}
                         >
-                            {lvl}
+                            <span className="hidden min-[420px]:inline">{lvl}</span>
+                            <span className="min-[420px]:hidden">{lvl[0].toUpperCase()}</span>
                         </button>
                     ))}
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1 sm:gap-2 shrink-0">
                     <button
                         onClick={handleUndo}
                         disabled={moveHistory.length < 2 || isBotThinking}
-                        className="px-2.5 sm:px-3 py-1.5 bg-neutral-900 hover:bg-neutral-800 disabled:opacity-30 border border-neutral-700 rounded-xl text-xs font-bold transition-transform active:scale-95"
+                        className="px-2 sm:px-3 py-1 sm:py-1.5 bg-neutral-900 hover:bg-neutral-800 disabled:opacity-30 border border-neutral-700 rounded-xl text-xs font-bold transition-transform active:scale-95 whitespace-nowrap shrink-0 cursor-pointer"
                         title="Undo Move"
                     >
                         ↩️ <span className="hidden sm:inline">Undo</span>
                     </button>
                     <button
                         onClick={handleRestart}
-                        className="px-2.5 sm:px-3 py-1.5 bg-neutral-900 hover:bg-neutral-800 border border-neutral-700 rounded-xl text-xs font-bold transition-transform active:scale-95"
+                        className="px-2 sm:px-3 py-1 sm:py-1.5 bg-neutral-900 hover:bg-neutral-800 border border-neutral-700 rounded-xl text-xs font-bold transition-transform active:scale-95 whitespace-nowrap shrink-0 cursor-pointer"
                         title="Reset Game"
                     >
                         🔄

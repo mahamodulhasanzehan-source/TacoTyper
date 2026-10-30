@@ -311,48 +311,51 @@ export default function TetrisGame({ onBackToHub, user, username }: TetrisProps)
   return (
     <div className="w-full h-screen flex flex-col bg-[#05060a] text-white select-none overflow-hidden font-sans">
       {/* Header */}
-      <header className="flex items-center justify-between px-3 py-2 bg-neutral-900/90 border-b border-neutral-800 z-20 shrink-0">
-        <div className="flex items-center gap-2">
+      <header className="flex items-center justify-between px-2 sm:px-4 py-1.5 sm:py-2 bg-neutral-900/90 border-b border-neutral-800 z-20 shrink-0 gap-1.5 sm:gap-3 w-full overflow-hidden">
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink min-w-0">
           <button
             onClick={onBackToHub}
-            className="px-2.5 py-1 bg-neutral-800 hover:bg-neutral-700 text-xs font-bold rounded-lg border border-neutral-700 text-neutral-300"
+            className="px-2 sm:px-2.5 py-1 bg-neutral-800 hover:bg-neutral-700 text-xs font-bold rounded-lg border border-neutral-700 text-neutral-300 whitespace-nowrap shrink-0"
           >
-            ← Hub
+            ← <span className="hidden sm:inline">Hub</span>
           </button>
-          <div>
-            <h1 className="text-sm sm:text-base font-black tracking-wide text-purple-400">TETRIS</h1>
-            <span className="text-[9px] text-neutral-400 font-mono hidden sm:inline">10X20 MATRIX</span>
+          <div className="min-w-0">
+            <h1 className="text-xs sm:text-base font-black tracking-wide text-purple-400 truncate">TETRIS</h1>
           </div>
         </div>
 
-        {/* Compact stats pill in header for phones */}
-        <div className="flex items-center gap-3 font-mono text-xs">
-          <div>
-            <span className="text-[10px] text-neutral-400 uppercase mr-1">Score</span>
-            <span className="font-black text-purple-400">{score}</span>
+        {/* Compact stats in header */}
+        <div className="flex items-center gap-2 sm:gap-3 font-mono text-xs shrink-0">
+          <div className="text-center">
+            <span className="text-[9px] text-neutral-400 uppercase mr-1">Score</span>
+            <span className="font-black text-purple-400 text-xs sm:text-sm">{score}</span>
           </div>
-          <div className="hidden xs:block">
-            <span className="text-[10px] text-neutral-400 uppercase mr-1">Lvl</span>
-            <span className="font-bold text-amber-400">{level}</span>
+          <div className="hidden sm:block text-center border-l border-neutral-800 pl-2">
+            <span className="text-[9px] text-neutral-400 uppercase mr-1">Lvl</span>
+            <span className="font-bold text-amber-400 text-xs sm:text-sm">{level}</span>
           </div>
-          <div className="hidden xs:block">
-            <span className="text-[10px] text-neutral-400 uppercase mr-1">High</span>
-            <span className="font-bold text-emerald-400">{highScore}</span>
+          <div className="hidden md:block text-center border-l border-neutral-800 pl-2">
+            <span className="text-[9px] text-neutral-400 uppercase mr-1">High</span>
+            <span className="font-bold text-emerald-400 text-xs sm:text-sm">{highScore}</span>
           </div>
         </div>
 
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
           <button
             onClick={() => setIsPaused(p => !p)}
-            className="px-2.5 py-1 bg-neutral-800 hover:bg-neutral-700 text-xs font-bold rounded-lg border border-neutral-700 text-neutral-300"
+            className="p-1 sm:px-2.5 sm:py-1 bg-neutral-800 hover:bg-neutral-700 text-xs font-bold rounded-lg border border-neutral-700 text-neutral-300 cursor-pointer whitespace-nowrap"
+            title={isPaused ? 'Resume Game' : 'Pause Game'}
           >
-            {isPaused ? 'Resume' : 'Pause'}
+            <span className="hidden sm:inline">{isPaused ? 'Resume' : 'Pause'}</span>
+            <span className="sm:hidden">{isPaused ? '▶️' : '⏸️'}</span>
           </button>
           <button
             onClick={resetGame}
-            className="px-2.5 py-1 bg-neutral-800 hover:bg-neutral-700 text-xs font-bold rounded-lg border border-neutral-700 text-neutral-300"
+            className="p-1 sm:px-2.5 sm:py-1 bg-neutral-800 hover:bg-neutral-700 text-xs font-bold rounded-lg border border-neutral-700 text-neutral-300 cursor-pointer whitespace-nowrap"
+            title="Reset Game"
           >
-            Reset
+            <span className="hidden sm:inline">Reset</span>
+            <span className="sm:hidden">↺</span>
           </button>
           {isMobile && (
             <MobileLeaderboardButton onClick={() => setShowMobileLeaderboard(true)} />
