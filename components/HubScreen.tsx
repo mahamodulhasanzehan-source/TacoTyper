@@ -194,20 +194,20 @@ const HubScreen: React.FC<HubScreenProps> = ({
 
                 {/* Featured Games Row */}
                 {sortedGames.length > 0 && (
-                    <div className="mb-6 sm:mb-8 p-4 sm:p-6 rounded-3xl bg-neutral-900/90 border-2 border-amber-500/40 shadow-xl backdrop-blur-md">
-                        <div className="flex items-center justify-between mb-4 px-1">
+                    <div className="mb-6 sm:mb-8 p-3 sm:p-5 rounded-3xl bg-neutral-900/90 border-2 border-amber-500/40 shadow-xl backdrop-blur-md">
+                        <div className="flex items-center justify-between mb-3 px-1">
                             <div className="flex items-center gap-2 text-xs md:text-sm font-black tracking-wider text-amber-400">
                                 <span>⭐</span>
                                 <span>Featured Games</span>
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 sm:gap-8 justify-items-center">
+                        <div className="grid grid-cols-3 gap-2 sm:gap-4 items-center justify-center">
                             {['taco', 'dead-trigger', 'chess'].map((gameId, index) => {
                                 const foundGame = sortedGames.find(g => g.id === gameId);
                                 if (!foundGame) return null;
                                 return (
-                                    <div key={`perm-${gameId}`} className="w-full max-w-[240px]">
+                                    <div key={`perm-${gameId}`} className="w-full min-w-0">
                                         <RandomReveal delay={0.1 + index * 0.05} distance={200}>
                                             <MiniGameCard game={foundGame} />
                                         </RandomReveal>
