@@ -2257,7 +2257,7 @@ export function setupEngine(canvas: HTMLCanvasElement) {
     globals.scene = new THREE.Scene();
     globals.scene.fog = new THREE.FogExp2(0x111122, 0.0025);
 
-    globals.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    globals.camera = new THREE.PerspectiveCamera(95, window.innerWidth / window.innerHeight, 0.1, 1000);
     globals.cameraRecoilObj = new THREE.Object3D();
     globals.cameraRecoilObj.add(globals.camera);
 
