@@ -750,30 +750,94 @@ export const GameArtwork: React.FC<GameArtworkProps> = ({ id, color }) => {
 
     case 'dead-trigger':
       return (
-        <svg viewBox="0 0 100 100" className="w-full h-full p-1.5">
+        <svg viewBox="0 0 100 100" className="w-full h-full p-1 select-none">
           <defs>
-            <radialGradient id="dtGlow" cx="50%" cy="50%" r="50%">
-              <stop offset="0%" stopColor="#ef4444" stopOpacity="0.4" />
-              <stop offset="100%" stopColor="#7f1d1d" stopOpacity="0" />
+            <radialGradient id="dt-bg-glow" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stopColor="#2e0505" />
+              <stop offset="65%" stopColor="#140202" />
+              <stop offset="100%" stopColor="#050101" />
             </radialGradient>
+            <radialGradient id="dt-blood-glow" cx="50%" cy="50%" r="48%">
+              <stop offset="0%" stopColor="#ff2525" stopOpacity="0.4" />
+              <stop offset="100%" stopColor="#ff2525" stopOpacity="0" />
+            </radialGradient>
+            <filter id="dt-glow" x="-20%" y="-20%" width="140%" height="140%">
+              <feGaussianBlur stdDeviation="1.5" result="blur" />
+              <feComposite in="SourceGraphic" in2="blur" operator="over" />
+            </filter>
           </defs>
-          {/* Subtle Dark Background Vignette */}
-          <circle cx="50" cy="50" r="42" fill="url(#dtGlow)" />
-          {/* Outer Tactical Crosshair Ring */}
-          <circle cx="50" cy="50" r="36" fill="none" stroke="#ef4444" strokeWidth="2" strokeDasharray="6 3" />
-          <circle cx="50" cy="50" r="22" fill="none" stroke="rgba(239, 68, 68, 0.4)" strokeWidth="1.5" />
-          {/* Crosshair Hairlines */}
-          <line x1="10" y1="50" x2="38" y2="50" stroke="#f87171" strokeWidth="2.5" strokeLinecap="round" />
-          <line x1="62" y1="50" x2="90" y2="50" stroke="#f87171" strokeWidth="2.5" strokeLinecap="round" />
-          <line x1="50" y1="10" x2="50" y2="38" stroke="#f87171" strokeWidth="2.5" strokeLinecap="round" />
-          <line x1="50" y1="62" x2="50" y2="90" stroke="#f87171" strokeWidth="2.5" strokeLinecap="round" />
-          {/* Center Red Dot */}
-          <circle cx="50" cy="50" r="3.5" fill="#ef4444" />
-          {/* Biohazard/Target accents */}
-          <path d="M 32 32 L 38 32 L 32 38 Z" fill="#facc15" />
-          <path d="M 68 32 L 62 32 L 68 38 Z" fill="#facc15" />
-          <path d="M 32 68 L 38 68 L 32 62 Z" fill="#facc15" />
-          <path d="M 68 68 L 62 68 L 68 62 Z" fill="#facc15" />
+
+          {/* Grungy Decay Chamber Background */}
+          <rect x="6" y="6" width="88" height="88" rx="14" fill="url(#dt-bg-glow)" stroke="#ff2525" strokeWidth="2.2" strokeOpacity="0.7" />
+          <circle cx="50" cy="50" r="38" fill="url(#dt-blood-glow)" />
+
+          {/* Radar / Scope Rings */}
+          <circle cx="50" cy="50" r="34" fill="none" stroke="#ff2525" strokeWidth="1" strokeDasharray="3 3" opacity="0.45" />
+          <circle cx="50" cy="50" r="23" fill="none" stroke="#39ff14" strokeWidth="1" opacity="0.35" />
+
+          {/* Zombie Silhouette in Target Crosshair */}
+          <g opacity="0.9">
+            {/* Zombie Head */}
+            <path
+              d="M 39 39 C 37 27, 63 27, 61 39 C 61 45, 57 49, 50 49 C 43 49, 39 45, 39 39 Z"
+              fill="#18221a"
+              stroke="#0b120d"
+              strokeWidth="1.2"
+            />
+            {/* Gritted Jaw / Teeth */}
+            <path d="M 44 44 L 56 44 L 54 48 L 46 48 Z" fill="#3f1414" />
+            <line x1="47.5" y1="44" x2="47.5" y2="48" stroke="#ffffff" strokeWidth="0.9" opacity="0.75" />
+            <line x1="50" y1="44" x2="50" y2="48" stroke="#ffffff" strokeWidth="0.9" opacity="0.75" />
+            <line x1="52.5" y1="44" x2="52.5" y2="48" stroke="#ffffff" strokeWidth="0.9" opacity="0.75" />
+            
+            {/* Glowing Radioactive Crimson Zombie Eyes */}
+            <circle cx="44.5" cy="36.5" r="2.2" fill="#ff2525" filter="url(#dt-glow)" />
+            <circle cx="55.5" cy="36.5" r="2.2" fill="#ff2525" filter="url(#dt-glow)" />
+            <circle cx="44.5" cy="36.5" r="0.9" fill="#ffff88" />
+            <circle cx="55.5" cy="36.5" r="0.9" fill="#ffff88" />
+
+            {/* Zombie Torso & Shoulders */}
+            <path
+              d="M 26 68 C 28 53, 40 51, 50 51 C 60 51, 72 53, 74 68 Z"
+              fill="#111713"
+            />
+          </g>
+
+          {/* Biohazard Symbol Background Accent */}
+          <g transform="translate(50, 50) scale(0.62)" opacity="0.45" stroke="#ff2525" strokeWidth="2.5" fill="none">
+            <circle cx="0" cy="-14" r="9" />
+            <circle cx="-12" cy="7" r="9" />
+            <circle cx="12" cy="7" r="9" />
+            <circle cx="0" cy="0" r="5" stroke="#39ff14" />
+          </g>
+
+          {/* Laser Sniper Reticle / Precision Crosshairs */}
+          <line x1="10" y1="50" x2="36" y2="50" stroke="#39ff14" strokeWidth="1.8" filter="url(#dt-glow)" />
+          <line x1="64" y1="50" x2="90" y2="50" stroke="#39ff14" strokeWidth="1.8" filter="url(#dt-glow)" />
+          <line x1="50" y1="10" x2="50" y2="36" stroke="#39ff14" strokeWidth="1.8" filter="url(#dt-glow)" />
+          <line x1="50" y1="64" x2="50" y2="90" stroke="#39ff14" strokeWidth="1.8" filter="url(#dt-glow)" />
+
+          {/* Milliradian Ticks on Reticle */}
+          <line x1="26" y1="47.5" x2="26" y2="52.5" stroke="#39ff14" strokeWidth="1.2" opacity="0.8" />
+          <line x1="74" y1="47.5" x2="74" y2="52.5" stroke="#39ff14" strokeWidth="1.2" opacity="0.8" />
+          <line x1="47.5" y1="26" x2="52.5" y2="26" stroke="#39ff14" strokeWidth="1.2" opacity="0.8" />
+          <line x1="47.5" y1="74" x2="52.5" y2="74" stroke="#39ff14" strokeWidth="1.2" opacity="0.8" />
+
+          {/* Reticle Inner Target Ring and Center Bullseye */}
+          <circle cx="50" cy="50" r="12" fill="none" stroke="#ff2525" strokeWidth="1.5" />
+          <circle cx="50" cy="50" r="2.5" fill="#ff2525" filter="url(#dt-glow)" />
+
+          {/* Tactical Corner Brackets */}
+          <path d="M 14 24 L 14 14 L 24 14" fill="none" stroke="#ff2525" strokeWidth="2.5" strokeLinecap="round" />
+          <path d="M 86 24 L 86 14 L 76 14" fill="none" stroke="#ff2525" strokeWidth="2.5" strokeLinecap="round" />
+          <path d="M 14 76 L 14 86 L 24 86" fill="none" stroke="#ff2525" strokeWidth="2.5" strokeLinecap="round" />
+          <path d="M 86 76 L 86 86 L 76 86" fill="none" stroke="#ff2525" strokeWidth="2.5" strokeLinecap="round" />
+
+          {/* Hazard Biohazard Strip */}
+          <rect x="34" y="80" width="32" height="7.5" rx="2" fill="#7f1d1d" stroke="#ff2525" strokeWidth="0.8" />
+          <text x="50" y="85.5" fill="#ffdddd" fontSize="5.2" fontWeight="900" textAnchor="middle" fontFamily="monospace" letterSpacing="0.8">
+            SURVIVAL
+          </text>
         </svg>
       );
 

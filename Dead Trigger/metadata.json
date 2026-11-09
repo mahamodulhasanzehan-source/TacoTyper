@@ -1,0 +1,10 @@
+{
+  "name": "Dead Trigger Online",
+  "description": "Fast-paced first-person shooter featuring procedural zombie archetypes, survival wave defense, gun customizer, and multiplayer arena.",
+  "requestFramePermissions": [
+    "microphone"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

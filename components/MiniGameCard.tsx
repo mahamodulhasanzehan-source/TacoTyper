@@ -30,8 +30,12 @@ export const MiniGameCard: React.FC<MiniGameCardProps> = ({ game, featured = fal
       }`}
       style={{
         borderColor: game.color,
-        background: `linear-gradient(180deg, #181c28 0%, #0c0e14 100%)`,
-        boxShadow: `0 6px 0 0 ${game.color}66, 0 12px 24px -4px rgba(0,0,0,0.85), inset 0 1px 0 0 rgba(255,255,255,0.2)`,
+        background: game.id === 'dead-trigger'
+          ? `linear-gradient(180deg, #220808 0%, #0d0303 60%, #040101 100%)`
+          : `linear-gradient(180deg, #181c28 0%, #0c0e14 100%)`,
+        boxShadow: game.id === 'dead-trigger'
+          ? `0 6px 0 0 ${game.color}99, 0 14px 28px -4px rgba(255, 37, 37, 0.3), inset 0 1px 0 0 rgba(255, 100, 100, 0.35)`
+          : `0 6px 0 0 ${game.color}66, 0 12px 24px -4px rgba(0,0,0,0.85), inset 0 1px 0 0 rgba(255,255,255,0.2)`,
       }}
     >
       {/* Top Banner: Game Name & Live Plays Counter */}

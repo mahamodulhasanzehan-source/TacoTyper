@@ -553,7 +553,9 @@ export const getGlobalGameStats = async (): Promise<GlobalGameStats> => {
         battleship_plays: parseInt(localStorage.getItem('play_count_battleship') || '0', 10),
         nim_plays: parseInt(localStorage.getItem('play_count_nim') || '0', 10),
         tower_stacker_plays: parseInt(localStorage.getItem('play_count_tower_stacker') || '0', 10),
-        tetris_plays: parseInt(localStorage.getItem('play_count_tetris') || '0', 10)
+        tetris_plays: parseInt(localStorage.getItem('play_count_tetris') || '0', 10),
+        reaction_time_plays: parseInt(localStorage.getItem('play_count_reaction_time') || '0', 10),
+        dead_trigger_plays: parseInt(localStorage.getItem('play_count_dead_trigger') || '0', 10)
     };
     if (!dbExport) return fallback;
     try {

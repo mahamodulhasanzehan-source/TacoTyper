@@ -192,37 +192,34 @@ const HubScreen: React.FC<HubScreenProps> = ({
                     </div>
                 </div>
 
-                {/* Featured / Most Played Game at the Top */}
+                {/* Featured Games Row */}
                 {sortedGames.length > 0 && (
-                    <div className="mb-5 sm:mb-6">
-                        <div className="flex items-center justify-between mb-2 px-1">
-                            <div 
-                                className="flex items-center gap-1.5 text-[10px] md:text-xs font-black tracking-wider"
-                                style={{ color: sortedGames[0].color }}
-                            >
-                                <span>🔥</span>
-                                <span>TOP PICK • MOST PLAYED</span>
+                    <div className="mb-6 sm:mb-8 p-4 sm:p-6 rounded-3xl bg-neutral-900/90 border-2 border-amber-500/40 shadow-xl backdrop-blur-md">
+                        <div className="flex items-center justify-between mb-4 px-1">
+                            <div className="flex items-center gap-2 text-xs md:text-sm font-black tracking-wider text-amber-400">
+                                <span>⭐</span>
+                                <span>Featured Games</span>
                             </div>
-                            <span 
-                                className="text-[10px] font-mono font-bold"
-                                style={{ color: sortedGames[0].color }}
-                            >
-                                {sortedGames[0].plays.toLocaleString()} plays
-                            </span>
                         </div>
 
-                        <RandomReveal 
-                            key={`featured-${sortedGames[0].id}`} 
-                            delay={0.2} 
-                            distance={200}
-                        >
-                            <MiniGameCard game={sortedGames[0]} featured={true} />
-                        </RandomReveal>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 sm:gap-8 justify-items-center">
+                            {['taco', 'dead-trigger', 'chess'].map((gameId, index) => {
+                                const foundGame = sortedGames.find(g => g.id === gameId);
+                                if (!foundGame) return null;
+                                return (
+                                    <div key={`perm-${gameId}`} className="w-full max-w-[240px]">
+                                        <RandomReveal delay={0.1 + index * 0.05} distance={200}>
+                                            <MiniGameCard game={foundGame} />
+                                        </RandomReveal>
+                                    </div>
+                                );
+                            })}
+                        </div>
                     </div>
                 )}
 
-                {/* 2 Player Games Style Game Grid */}
-                {sortedGames.length > 1 && (
+                {/* 2 Player Games Style Game Grid (All games remain fully in collection) */}
+                {sortedGames.length > 0 && (
                     <div className="flex flex-col gap-3 pb-12">
                         <div className="flex items-center justify-between text-[#aaa] text-[10px] md:text-xs mb-1 px-1">
                             <div className="flex items-center gap-2">
@@ -233,9 +230,9 @@ const HubScreen: React.FC<HubScreenProps> = ({
                         </div>
 
                         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4.5">
-                            {sortedGames.slice(1).map((game, index) => (
+                            {sortedGames.map((game, index) => (
                                 <RandomReveal 
-                                    key={game.id} 
+                                    key={`collection-${game.id}`} 
                                     delay={0.25 + (Math.min(index, 8) * 0.04)} 
                                     distance={200}
                                 >

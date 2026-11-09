@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { incrementGamePlays } from '../services/firebase';
-import DeadTriggerApp from '../DeadTrigger/src/App';
+import DeadTriggerApp from '../Dead Trigger/src/App';
+import '../Dead Trigger/src/index.css';
 
 interface DeadTriggerGameProps {
   onBackToHub: () => void;

@@ -46,7 +46,7 @@
     font-weight: 700;
 }
 
-select, button {
+.app-main-container select, .app-main-container button {
     background: rgba(255, 255, 255, 0.06);
     border: 1px solid rgba(255, 255, 255, 0.15);
     color: #f8fafc;
@@ -63,17 +63,17 @@ select, button {
     gap: 6px;
 }
 
-select:hover, button:hover {
+.app-main-container select:hover, .app-main-container button:hover {
     background: rgba(255, 255, 255, 0.15);
     border-color: rgba(255, 255, 255, 0.3);
     transform: translateY(-1px);
 }
 
-select:active, button:active {
+.app-main-container select:active, .app-main-container button:active {
     transform: translateY(0);
 }
 
-select option {
+.app-main-container select option {
     background: #0f121c;
     color: #ffffff;
 }
@@ -128,7 +128,7 @@ select option {
 }
 
 /* Modal Overlay */
-.modal-overlay {
+.app-main-container .modal-overlay {
     position: absolute;
     top: 0;
     left: 0;
@@ -145,25 +145,25 @@ select option {
     transition: opacity 0.35s ease;
 }
 
-.modal-overlay.toast {
+.app-main-container .modal-overlay.toast {
     background: transparent;
     backdrop-filter: none;
 }
 
-.modal-overlay.active {
+.app-main-container .modal-overlay.active {
     opacity: 1;
     pointer-events: auto;
 }
 
-.modal-overlay.toast.active {
+.app-main-container .modal-overlay.toast.active {
     pointer-events: none; /* Let clicks pass through to board if needed, but we probably want it to block or just allow card clicks */
 }
 
-.modal-overlay.toast.active .modal-card {
+.app-main-container .modal-overlay.toast.active .modal-card {
     pointer-events: auto;
 }
 
-.modal-card {
+.app-main-container .modal-card {
     background: linear-gradient(180deg, #181c2b 0%, #101320 100%);
     border: 1px solid rgba(255, 255, 255, 0.15);
     padding: 36px 44px;
@@ -176,22 +176,22 @@ select option {
     transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-.modal-card.win {
+.app-main-container .modal-card.win {
     border: 2px solid rgba(16, 185, 129, 0.8);
     background: linear-gradient(180deg, rgba(16, 185, 129, 0.1) 0%, #101320 100%);
 }
 
-.modal-card.lose {
+.app-main-container .modal-card.lose {
     border: 2px solid rgba(239, 68, 68, 0.8);
     background: linear-gradient(180deg, rgba(239, 68, 68, 0.1) 0%, #101320 100%);
 }
 
-.modal-card.draw {
+.app-main-container .modal-card.draw {
     border: 2px solid rgba(245, 158, 11, 0.8);
     background: linear-gradient(180deg, rgba(245, 158, 11, 0.1) 0%, #101320 100%);
 }
 
-.modal-overlay.active .modal-card {
+.app-main-container .modal-overlay.active .modal-card {
     transform: scale(1);
 }
 
